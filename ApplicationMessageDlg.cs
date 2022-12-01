@@ -1,5 +1,5 @@
 ﻿
-namespace Station.Simulation
+namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua.Configuration;
     using System;

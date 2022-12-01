@@ -1,27 +1,18 @@
 
-namespace Station.Simulation
+namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
-    using Opc.Ua.Export;
     using Opc.Ua.Server;
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Threading;
-
-    public enum StationStatus : int
-    {
-        Ready = 0,
-        WorkInProgress = 1,
-        Done = 2,
-        Discarded = 3,
-        Fault = 4
-    }
 
     public class UANodeManager : CustomNodeManager2
     {
         private ushort m_namespaceIndex;
         private long m_lastUsedId;
+
+        private Timer m_timer;
 
         private NodeId m_NumberOfManufacturedProductsID;
         private object m_numberOfManufacturedProducts;
@@ -31,12 +22,17 @@ namespace Station.Simulation
         {
             SystemContext.NodeIdFactory = this;
 
-            List<string> namespaceUris = new List<string>();
-            namespaceUris.Add("http://opcfoundation.org/UA/Station/");
+            List<string> namespaceUris = new List<string>
+            {
+                "http://opcfoundation.org/UA/EdgeTranslator/"
+            };
+
             NamespaceUris = namespaceUris;
 
             m_namespaceIndex = Server.NamespaceUris.GetIndexOrAppend(namespaceUris[0]);
             m_lastUsedId = 0;
+
+            m_timer = new Timer(UpdateNodeValues, null, 1000, 1000);
         }
 
         public override NodeId New(ISystemContext context, NodeState node)
@@ -54,31 +50,9 @@ namespace Station.Simulation
                     externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
                 }
 
-                ImportNodeset2Xml(externalReferences, "Station.NodeSet2.xml");
+                // TODO: add our nodes
 
                 AddReverseReferences(externalReferences);
-            }
-        }
-
-        // Nodeset2 files can be edited using e.g. the SIEMENS OPC UA Modeling Editor (SiOME)
-        // see https://support.industry.siemens.com/cs/document/109755133/siemens-opc-ua-modeling-editor-(siome)-for-implementing-opc-ua-companion-specification
-        private void ImportNodeset2Xml(IDictionary<NodeId, IList<IReference>> externalReferences, string resourcepath)
-        {
-            NodeStateCollection predefinedNodes = new NodeStateCollection();
-
-            Stream stream = new FileStream(resourcepath, FileMode.Open);
-            UANodeSet nodeSet = UANodeSet.Read(stream);
-
-            foreach (string namespaceUri in nodeSet.NamespaceUris)
-            {
-                SystemContext.NamespaceUris.GetIndexOrAppend(namespaceUri);
-            }
-
-            nodeSet.Import(SystemContext, predefinedNodes);
-
-            for (int i = 0; i < predefinedNodes.Count; i++)
-            {
-                AddPredefinedNode(SystemContext, predefinedNodes[i]);
             }
         }
 
@@ -128,17 +102,11 @@ namespace Station.Simulation
 
         private ServiceResult ConfigureAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
+            // TODO
             throw new NotImplementedException();
         }
 
-        private ServiceResult OpenPressureReleaseValve(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            UpdateNodeValues();
-
-            return ServiceResult.Good;
-        }
-
-        private void UpdateNodeValues()
+        private void UpdateNodeValues(object state)
         {
             NodeState node = Find(m_NumberOfManufacturedProductsID);
             BaseDataVariableState variableState = node as BaseDataVariableState;

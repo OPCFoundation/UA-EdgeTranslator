@@ -6,9 +6,10 @@
     <AssemblyName>UAEdgeTranslator</AssemblyName>
     <RootNamespace>Opc.Ua.Edge.Translator</RootNamespace>
     <StartupObject></StartupObject>
-    <PackageId>UACloudCommander</PackageId>
+    <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
+    <DockerfileRunArguments>-p 4840:4840</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>

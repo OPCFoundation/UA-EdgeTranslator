@@ -1,11 +1,11 @@
 ﻿
-using System;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-
-namespace PVMonitor
+namespace Opc.Ua.Edge.Translator
 {
+    using System;
+    using System.IO;
+    using System.Net.Sockets;
+    using System.Threading.Tasks;
+
     public class ApplicationDataUnit
     {
         public const uint maxADU = 260;

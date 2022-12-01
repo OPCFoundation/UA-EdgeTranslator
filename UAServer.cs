@@ -1,5 +1,5 @@
 
-namespace Station.Simulation
+namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Server;
@@ -9,8 +9,10 @@ namespace Station.Simulation
     {
         protected override MasterNodeManager CreateMasterNodeManager(IServerInternal server, ApplicationConfiguration configuration)
         {
-            List<INodeManager> nodeManagers = new List<INodeManager>();
-            nodeManagers.Add(new UANodeManager(server, configuration));
+            List<INodeManager> nodeManagers = new List<INodeManager>
+            {
+                new UANodeManager(server, configuration)
+            };
 
             return new MasterNodeManager(server, configuration, null, nodeManagers.ToArray());
         }
@@ -19,8 +21,8 @@ namespace Station.Simulation
         {
             ServerProperties properties = new ServerProperties
             {
-                ManufacturerName = "Contoso",
-                ProductName = "Factory Station Simulation",
+                ManufacturerName = "Web of Things",
+                ProductName = "UA Edge Translator",
                 ProductUri = "",
                 SoftwareVersion = Utils.GetAssemblySoftwareVersion(),
                 BuildNumber = Utils.GetAssemblyBuildNumber(),

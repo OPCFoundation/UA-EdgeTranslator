@@ -4,19 +4,17 @@
   xmlns="http://opcfoundation.org/UA/SDK/Configuration.xsd"
   schemaLocation="./Schema/ApplicationConfiguration.xsd"
 >
-  <ApplicationName>Station</ApplicationName>
-  <ApplicationUri>urn:localhost:Station</ApplicationUri>
-  <ProductUri>http://contoso.com/UA/Station</ProductUri>
+  <ApplicationName>UAEdgeTranslator</ApplicationName>
+  <ApplicationUri>urn:localhost:UAEdgeTranslator</ApplicationUri>
+  <ProductUri>http://opcfoundation.com/UA/EdgeTranslator</ProductUri>
   <ApplicationType>Server_0</ApplicationType>
 
-
   <SecurityConfiguration>
-
     <!-- Where the application instance certificate is stored (MachineDefault) -->
     <ApplicationCertificate>
       <StoreType>X509Store</StoreType>
       <StorePath>CurrentUser\UA_MachineDefault</StorePath>
-      <SubjectName>UndefinedStationName</SubjectName>
+      <SubjectName>UAEdgeTranslator</SubjectName>
     </ApplicationCertificate>
 
     <!-- Where the issuer certificate are stored (certificate authorities) -->
@@ -45,7 +43,6 @@
     The setting below to allow them is only required for UACTT (1.02.336.244) which uses SHA-1 signed certs. -->
     <RejectSHA1SignedCertificates>false</RejectSHA1SignedCertificates>
     <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
-
   </SecurityConfiguration>
 
   <TransportConfigurations/>
@@ -63,7 +60,7 @@
 
   <ServerConfiguration>
     <BaseAddresses>
-      <ua:String>opc.tcp://localhost:[Port]/UA/[Station]Station</ua:String>
+      <ua:String>opc.tcp://localhost:4840/UA/UAEdgeTranslator</ua:String>
     </BaseAddresses>
 
     <SecurityPolicies>
@@ -102,6 +99,7 @@
         <ua:SecurityPolicyUri>http://opcfoundation.org/UA/SecurityPolicy#Basic256</ua:SecurityPolicyUri>
       </ua:UserTokenPolicy>
     </UserTokenPolicies>
+
     <DiagnosticsEnabled>true</DiagnosticsEnabled>
     <MaxSessionCount>100</MaxSessionCount>
     <MinSessionTimeout>10000</MinSessionTimeout>
@@ -143,7 +141,7 @@
   </Extensions>
 
   <TraceConfiguration>
-    <OutputFilePath>../Logs/Opc.Ua.Station.log.txt</OutputFilePath>
+    <OutputFilePath>../Logs/Opc.Ua.EdgeTranslator.logfile.txt</OutputFilePath>
     <DeleteOnLoad>true</DeleteOnLoad>
     <!-- Show Only Errors -->
     <!-- <TraceMasks>1</TraceMasks> -->

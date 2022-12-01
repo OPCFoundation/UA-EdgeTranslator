@@ -1,20 +1,13 @@
 {
   "profiles": {
-    "UACloudCommander": {
+    "UAEdgeTranslator": {
       "commandName": "Project"
     },
     "Docker": {
       "commandName": "Docker",
+      "publishAllPorts": true,
       "environmentVariables": {
-        "BROKERNAME": "onttest-eventhubs.servicebus.windows.net",
-        "CLIENTNAME": "commander",
-        "TOPIC": "commander.corp.contoso.command",
-        "RESPONSE_TOPIC": "commander.corp.contoso.response",
-        "USERNAME": "$ConnectionString",
-        "PASSWORD": "Endpoint=sb://onttest-eventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=TPUSvvHFhBlcSxaf50k2UVbWhwQXRfWrQe8Umez4OCQ=",
-        "CERT_STORE_PATH": "/Shared/CertificateStores/UA Applications",
-        "LOG_FILE_PATH": "/Logs/test",
-        "USE_KAFKA": "1"
+        "LOG_FILE_PATH": "/Logs/test"
       }
     }
   }

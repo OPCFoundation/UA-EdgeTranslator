@@ -22,42 +22,37 @@ namespace Opc.Ua.Edge.Translator
             InitLogging(pathToLogFile);
 
             // create OPC UA client app
-            string appName = "UACloudCommander";
+            string appName = "UAEdgeTranslator";
             if (Environment.GetEnvironmentVariable("APP_NAME") != null)
             {
                 appName = Environment.GetEnvironmentVariable("APP_NAME");
             }
+
+            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
             ApplicationInstance app = new ApplicationInstance
             {
                 ApplicationName = appName,
-                ApplicationType = ApplicationType.Client,
+                ApplicationType = ApplicationType.Server,
                 ConfigSectionName = "UA.Edge.Translator"
             };
-
-            // redirect cert store location, if required and update cert issuer name
-            if (Environment.GetEnvironmentVariable("CERT_STORE_PATH") != null)
-            {
-                string certStorePath = Environment.GetEnvironmentVariable("CERT_STORE_PATH");
-                string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UA.Edge.Translator.Config.xml"));
-                fileContent = fileContent.Replace(">%LocalApplicationData%/UACloudCommander/pki/trusted<", ">" + certStorePath + "<");
-                fileContent = fileContent.Replace("CN=UACloudCommander", "CN=" + app.ApplicationName);
-                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "UA.Edge.Translator.Config.xml"), fileContent);
-            }
 
             await app.LoadApplicationConfiguration(false).ConfigureAwait(false);
             await app.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
 
             // create OPC UA cert validator
             app.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
-            app.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAServerCertificateValidationCallback);
+            app.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
+
+            // start the server
+            await app.Start(new UAServer()).ConfigureAwait(false);
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
         }
 
-        private static void OPCUAServerCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
+        private static void OPCUAClientCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
         {
-            // always trust the OPC UA server certificate
+            // always trust the OPC UA client certificate
             if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
             {
                 e.Accept = true;
@@ -80,10 +75,10 @@ namespace Opc.Ua.Edge.Translator
 
             // set logging sinks
             loggerConfiguration.WriteTo.Console();
-            loggerConfiguration.WriteTo.File(Path.Combine(pathToLogFile, "uacloudcommander.logfile.txt"), fileSizeLimitBytes: 1024 * 1024, rollOnFileSizeLimit: true, retainedFileCountLimit: 10);
+            loggerConfiguration.WriteTo.File(Path.Combine(pathToLogFile, "uaedgetranslator.logfile.txt"), fileSizeLimitBytes: 1024 * 1024, rollOnFileSizeLimit: true, retainedFileCountLimit: 10);
 
             Log.Logger = loggerConfiguration.CreateLogger();
-            Log.Logger.Information($"Log file is: {Path.Combine(pathToLogFile, "uacloudcommander.logfile.txt")}");
+            Log.Logger.Information($"Log file is: {Path.Combine(pathToLogFile, "uaedgetranslator.logfile.txt")}");
         }
     }
 }
