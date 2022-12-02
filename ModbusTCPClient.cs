@@ -69,7 +69,7 @@ namespace Opc.Ua.Edge.Translator
         }
     }
 
-    class ModbusTCPClient
+    class ModbusTCPClient : IAsset
     {
         public enum FunctionCode : byte
         {
@@ -124,7 +124,34 @@ namespace Opc.Ua.Edge.Translator
             tcpClient = null;
         }
 
-        public async Task<byte[]> Read(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
+        public Task<byte[]> Read(byte unitID, string function, uint address, ushort count)
+        {
+            switch (function)
+            {
+                case "ForceMultipleCoils": return ReadInternal(unitID, FunctionCode.ForceMultipleCoils, (ushort)address, count);
+                case "ForceSingleCoil": return ReadInternal(unitID, FunctionCode.ForceSingleCoil, (ushort)address, count);
+                case "PresetMultipleRegisters": return ReadInternal(unitID, FunctionCode.PresetMultipleRegisters, (ushort)address, count);
+                case "PresetSingleRegister": return ReadInternal(unitID, FunctionCode.PresetSingleRegister, (ushort)address, count);
+                case "ReadCoilStatus": return ReadInternal(unitID, FunctionCode.ReadCoilStatus, (ushort)address, count);
+                case "ReadExceptionStatus": return ReadInternal(unitID, FunctionCode.ReadExceptionStatus, (ushort)address, count);
+                case "ReadHoldingRegisters": return ReadInternal(unitID, FunctionCode.ReadHoldingRegisters, (ushort)address, count);
+                case "ReadInputRegisters": return ReadInternal(unitID, FunctionCode.ReadInputRegisters, (ushort)address, count);
+                case "ReadInputStatus": return ReadInternal(unitID, FunctionCode.ReadInputStatus, (ushort)address, count);
+                default: return Task.FromResult(Array.Empty<byte>());
+            }
+        }
+
+        public Task WriteBit(byte unitID, uint address, bool set)
+        {
+            return WriteCoil(unitID, (ushort)address, set);
+        }
+
+        public Task Write(byte unitID, uint address, ushort[] values)
+        {
+            return WriteHoldingRegisters(unitID, (ushort)address, values);
+        }
+
+        public async Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
         {
             // debounce reading to not overwhelm our poor little Modbus server
             await Task.Delay(1000).ConfigureAwait(false);
@@ -141,12 +168,12 @@ namespace Opc.Ua.Edge.Translator
             aduRequest.TransactionID = transactionID++;
             aduRequest.Length = 6;
             aduRequest.UnitID = unitID;
-            aduRequest.FunctionCode = (byte) function;
+            aduRequest.FunctionCode = (byte)function;
 
-            aduRequest.Payload[0] = (byte) (registerBaseAddress >> 8);
-            aduRequest.Payload[1] = (byte) (registerBaseAddress & 0x00FF);
-            aduRequest.Payload[2] = (byte) (count >> 8);
-            aduRequest.Payload[3] = (byte) (count & 0x00FF);
+            aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
+            aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
+            aduRequest.Payload[2] = (byte)(count >> 8);
+            aduRequest.Payload[3] = (byte)(count & 0x00FF);
 
             byte[] buffer = new byte[ApplicationDataUnit.maxADU];
             aduRequest.CopyADUToNetworkBuffer(buffer);
@@ -175,7 +202,7 @@ namespace Opc.Ua.Edge.Translator
                 }
                 else
                 {
-                    HandlerError((byte) errorCode);
+                    HandlerError((byte)errorCode);
                 }
             }
 
@@ -209,21 +236,21 @@ namespace Opc.Ua.Edge.Translator
 
             ApplicationDataUnit aduRequest = new ApplicationDataUnit();
             aduRequest.TransactionID = transactionID++;
-            aduRequest.Length = (ushort) (7 + (values.Length * 2));
+            aduRequest.Length = (ushort)(7 + (values.Length * 2));
             aduRequest.UnitID = unitID;
             aduRequest.FunctionCode = (byte)FunctionCode.PresetMultipleRegisters;
 
-            aduRequest.Payload[0] = (byte) (registerBaseAddress >> 8);
-            aduRequest.Payload[1] = (byte) (registerBaseAddress & 0x00FF);
-            aduRequest.Payload[2] = (byte) (((ushort) values.Length) >> 8);
-            aduRequest.Payload[3] = (byte) (((ushort) values.Length) & 0x00FF);
-            aduRequest.Payload[4] = (byte) (values.Length * 2);
+            aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
+            aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
+            aduRequest.Payload[2] = (byte)(((ushort)values.Length) >> 8);
+            aduRequest.Payload[3] = (byte)(((ushort)values.Length) & 0x00FF);
+            aduRequest.Payload[4] = (byte)(values.Length * 2);
 
             int payloadIndex = 5;
-            foreach(ushort value in values)
+            foreach (ushort value in values)
             {
-                aduRequest.Payload[payloadIndex++] = (byte) (value >> 8);
-                aduRequest.Payload[payloadIndex++] = (byte) (value & 0x00FF);
+                aduRequest.Payload[payloadIndex++] = (byte)(value >> 8);
+                aduRequest.Payload[payloadIndex++] = (byte)(value & 0x00FF);
             }
 
             byte[] buffer = new byte[ApplicationDataUnit.maxADU];
@@ -265,8 +292,8 @@ namespace Opc.Ua.Edge.Translator
             }
 
             // check number of registers written
-            if ((buffer[10] != (((ushort) values.Length) >> 8))
-             && (buffer[11] != (((ushort) values.Length) & 0x00FF)))
+            if ((buffer[10] != (((ushort)values.Length) >> 8))
+             && (buffer[11] != (((ushort)values.Length) & 0x00FF)))
             {
                 throw new Exception("Incorrect number of registers written returned");
             }

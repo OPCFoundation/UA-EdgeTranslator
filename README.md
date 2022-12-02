@@ -1,5 +1,5 @@
 # UA Edge Translator
-An industrial connectivity edge application translating from proprietary protocols to [OPC UA](https://opcfoundation.org/) leveraging the [W3C Web of Things (WoT)](https://www.w3.org/WoT/) thing descriptions. Thing descriptions can be easily edited using the [Eclipse Foundation's edi{TD}or](https://eclipse.github.io/editdor/).
+An industrial connectivity edge reference application translating from proprietary protocols to [OPC UA](https://opcfoundation.org/) leveraging the [W3C Web of Things (WoT)](https://www.w3.org/WoT/) thing descriptions. Thing descriptions can be easily edited using the [Eclipse Foundation's edi{TD}or](https://eclipse.github.io/editdor/).
 
 ## How it works
 
@@ -16,3 +16,7 @@ UA Edge Translator can be controlled through the use of just 3 OPC UA methods re
 * ConfigureAsset(thingDescription) - configures a new asset, returning the ID of the newly configured asset on success
 * DeleteAsset(assetID) - deletes a configured asset
 * GetAssets() - returns a list of configured assets, each element in the list is a WoT Thing Description
+
+## Supported "Southbound" Asset Interfaces
+
+In this reference implementation, only Modbus TCP is supported, but other interfaces can easily be added by implementing the IAsset interface.
