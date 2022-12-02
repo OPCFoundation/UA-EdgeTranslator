@@ -3,11 +3,11 @@ An industrial connectivity edge application translating from proprietary protoco
 
 ## How it works
 
-UA Edge Translator solves the common "brownfield" use case of connecting disparate industrial assets with proprietary interfaces and translates their data into an OPC UA information model, enabling processing the assets data either on the edge or in the cloud leveraging a normalized, IEC standard (OPC UA) data format. This accelerates Industrial IoT projects and saves cost since the data doesn't need to be nromalized in the cloud and makes use of the OT expertize foten only found on-premises. For defining a mapping from the proprietary data format to OPC UA, the Web of Things (WoT) "Thing Description" schema is used. Additionally, the mechanism to provide the schema to the Ua Edge Translator is also OPC UA, so for the first time, OPC UA is used for both the control and data plane in this architecture.
+UA Edge Translator solves the common "brownfield" use case of connecting disparate industrial assets with proprietary interfaces and translates their data into an OPC UA information model, enabling processing of the assets'' data either on the edge or in the cloud leveraging a normalized, IEC standard (OPC UA) data format. This accelerates Industrial IoT projects and saves cost since the data doesn't need to be normalized in the cloud and makes use of the OT expertize often only found on-premises. For defining a mapping from the proprietary data format to OPC UA, the Web of Things (WoT) Thing Description schema (JSON-LD-based) is used. Additionally, the mechanism to provide the schema to the UA Edge Translator is also leveraging OPC UA. Therefore, for the first time, OPC UA is used for both the control and data plane for industrial connectivity, while previous solutions only used OPC UA for the data plane and a proprietary REST interface for the control plane.
 
 ## Installation
 
-UA Edge Translator is available as a pre-built Docker cotainer and will run on any Docker- or Kunbernetes-enabled edge device. See "packages" in this repo for details.
+UA Edge Translator is available as a pre-built Docker cotainer and will run on any Docker- or Kunbernetes-enabled edge device. See "Packages" in this repo for details.
 
 ## Operation
 
