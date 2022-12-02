@@ -14,8 +14,8 @@ namespace Opc.Ua.Edge.Translator
 
         private Timer m_timer;
 
-        private NodeId m_NumberOfManufacturedProductsID;
-        private object m_numberOfManufacturedProducts;
+        private NodeId m_NumberOfManufacturedProductsID = null;
+        private object m_numberOfManufacturedProducts = 0;
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
@@ -50,54 +50,89 @@ namespace Opc.Ua.Edge.Translator
                     externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
                 }
 
-                // TODO: add our nodes
+                // create our top-level folder
+                FolderState assetManagementFolder = CreateFolder(null, "AssetManagement", "AssetManagement");
+                assetManagementFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
+                references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, assetManagementFolder.NodeId));
+                assetManagementFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
+                AddRootNotifier(assetManagementFolder);
 
+                // create our methods
+                MethodState configureAssetMethod = CreateMethod(assetManagementFolder, "ConfigureAsset", "ConfigureAsset");
+                configureAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(ConfigureAsset);
+                configureAssetMethod.InputArguments = CreateInputArguments(configureAssetMethod, "WoTThingDescription", "The WoT Thing Description of the asset to be configured");
+
+                MethodState deleteAssetMethod = CreateMethod(assetManagementFolder, "DeleteAsset", "DeleteAsset");
+                deleteAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(DeleteAsset);
+                deleteAssetMethod.InputArguments = CreateInputArguments(deleteAssetMethod, "AssetID", "The ID of the asset to be deleted");
+
+                MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetAssets", "GetAssets");
+                getAssetsMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetAssets);
+
+                // add everyting to our nodeset
+                AddPredefinedNode(SystemContext, assetManagementFolder);
                 AddReverseReferences(externalReferences);
             }
         }
 
-        protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
+        private PropertyState<Argument[]> CreateInputArguments(NodeState parent, string name, string description)
         {
-            // add behaviour to our methods
-            MethodState methodState = predefinedNode as MethodState;
-            if (( methodState != null) && (methodState.ModellingRuleId == null))
+            PropertyState<Argument[]> arguments = new PropertyState<Argument[]>(parent)
             {
-                if (methodState.DisplayName == "ConfigureAsset")
+                NodeId = new NodeId(parent.BrowseName.Name + "InArgs", NamespaceIndex),
+                BrowseName = BrowseNames.InputArguments,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                ReferenceTypeId = ReferenceTypeIds.HasProperty,
+                DataType = DataTypeIds.Argument,
+                ValueRank = ValueRanks.OneDimension,
+                Value = new Argument[]
                 {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(ConfigureAsset);
-
-                    // define the method's input argument (the serial number)
-                    methodState.InputArguments = new PropertyState<Argument[]>(methodState)
-                    {
-                        NodeId = new NodeId(methodState.BrowseName.Name + "InArgs", NamespaceIndex),
-                        BrowseName = BrowseNames.InputArguments
-                    };
-                    methodState.InputArguments.DisplayName = methodState.InputArguments.BrowseName.Name;
-                    methodState.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    methodState.InputArguments.ReferenceTypeId = ReferenceTypeIds.HasProperty;
-                    methodState.InputArguments.DataType = DataTypeIds.Argument;
-                    methodState.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    methodState.InputArguments.Value = new Argument[]
-                    {
-                        new Argument { Name = "SerialNumber", Description = "Serial number of the product to make.",  DataType = DataTypeIds.UInt64, ValueRank = ValueRanks.Scalar }
-                    };
-
-                    return predefinedNode;
+                    new Argument { Name = name, Description = description, DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                 }
-            }
+            };
 
-            // also capture the nodeIDs of our instance variables (i.e. NOT the model!)
-            BaseDataVariableState variableState = predefinedNode as BaseDataVariableState;
-            if ((variableState != null) && (variableState.ModellingRuleId == null))
+            arguments.DisplayName = arguments.BrowseName.Name;
+
+            return arguments;
+        }
+
+        private FolderState CreateFolder(NodeState parent, string path, string name)
+        {
+            FolderState folder = new FolderState(parent)
             {
-                if (variableState.DisplayName == "NumberOfManufacturedProducts")
-                {
-                    m_NumberOfManufacturedProductsID = variableState.NodeId;
-                }
-            }
+                SymbolicName = name,
+                ReferenceTypeId = ReferenceTypes.Organizes,
+                TypeDefinitionId = ObjectTypeIds.FolderType,
+                NodeId = new NodeId(path, NamespaceIndex),
+                BrowseName = new QualifiedName(path, NamespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                WriteMask = AttributeWriteMask.None,
+                UserWriteMask = AttributeWriteMask.None,
+                EventNotifier = EventNotifiers.None
+            };
+            parent?.AddChild(folder);
 
-            return predefinedNode;
+            return folder;
+        }
+
+        private MethodState CreateMethod(NodeState parent, string path, string name)
+        {
+            MethodState method = new MethodState(parent)
+            {
+                SymbolicName = name,
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
+                NodeId = new NodeId(path, NamespaceIndex),
+                BrowseName = new QualifiedName(path, NamespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                WriteMask = AttributeWriteMask.None,
+                UserWriteMask = AttributeWriteMask.None,
+                Executable = true,
+                UserExecutable = true
+            };
+
+            parent?.AddChild(method);
+
+            return method;
         }
 
         private ServiceResult ConfigureAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
@@ -106,8 +141,21 @@ namespace Opc.Ua.Edge.Translator
             throw new NotImplementedException();
         }
 
+        private ServiceResult GetAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            // TODO
+            throw new NotImplementedException();
+        }
+
+        private ServiceResult DeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            // TODO
+            throw new NotImplementedException();
+        }
+
         private void UpdateNodeValues(object state)
         {
+            // TODO: update node values for all configured assets
             NodeState node = Find(m_NumberOfManufacturedProductsID);
             BaseDataVariableState variableState = node as BaseDataVariableState;
             if (variableState != null)

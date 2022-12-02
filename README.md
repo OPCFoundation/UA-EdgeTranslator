@@ -13,6 +13,6 @@ UA Edge Translator is available as a pre-built Docker cotainer and will run on a
 
 UA Edge Translator can be controlled through the use of just 3 OPC UA methods reaily available through the OPC UA server interface built in. The methods are:
 
-* CreateAsset(thingDescription) - creates a new asset, returning the ID of the newly created asset on success
-* DeleteAsset(assetID) - deletes an asset
+* ConfigureAsset(thingDescription) - configures a new asset, returning the ID of the newly configured asset on success
+* DeleteAsset(assetID) - deletes a configured asset
 * GetAssets() - returns a list of configured assets, each element in the list is a WoT Thing Description
