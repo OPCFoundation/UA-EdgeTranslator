@@ -1,0 +1,300 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1",
+    "https://si-ra.github.io/ontologies/td-context.jsonld"
+  ],
+  "id": "urn:pac4200",
+  "gms:hasValueType": [
+    "gms:www.siemens.com/gms_ontology.owl"
+  ],
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "soris:Thing",
+    "Thing"
+  ],
+  "name": "modbus-pac4200-sn324",
+  "base": "modbus://192.168.10.100:1502",
+  "title": "Siemens SENTRON PAC4200",
+  "mlfb": "7KM4212-0BA00-2AA0",
+  "properties": {
+    "VoltageL1-N": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=1&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL2-N": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=3&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL3-N": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=5&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL1-L2": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=7&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL2-L3": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=9&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL3-L1": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=11&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL1": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=13&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL2": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=15&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL3": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=17&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL1": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=37&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL2": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=39&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL3": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=41&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalApparentPower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=63&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalActivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=65&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalReactivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=67&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalPowerFactor": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?offset=69&length=4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    }
+  }
+}
