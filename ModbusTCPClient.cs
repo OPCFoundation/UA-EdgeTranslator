@@ -156,7 +156,7 @@ namespace Opc.Ua.Edge.Translator
                 throw new EndOfStreamException();
             }
 
-            return responseBuffer;
+            return Task.FromResult(responseBuffer);
         }
 
         public async Task WriteHoldingRegisters(byte unitID, ushort registerBaseAddress, ushort[] values)
