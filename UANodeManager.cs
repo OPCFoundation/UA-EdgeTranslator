@@ -5,6 +5,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Server;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading;
 
     public class UANodeManager : CustomNodeManager2
@@ -14,8 +15,7 @@ namespace Opc.Ua.Edge.Translator
 
         private Timer m_timer;
 
-        private NodeId m_NumberOfManufacturedProductsID = null;
-        private object m_numberOfManufacturedProducts = 0;
+        private Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
@@ -50,27 +50,40 @@ namespace Opc.Ua.Edge.Translator
                     externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
                 }
 
-                // create our top-level folder
-                FolderState assetManagementFolder = CreateFolder(null, "AssetManagement", "AssetManagement");
+                // create our top-level asset management folder
+                FolderState assetManagementFolder = CreateFolder(null, "AssetManagement", NamespaceIndex);
                 assetManagementFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
                 references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, assetManagementFolder.NodeId));
                 assetManagementFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
                 AddRootNotifier(assetManagementFolder);
 
                 // create our methods
-                MethodState configureAssetMethod = CreateMethod(assetManagementFolder, "ConfigureAsset", "ConfigureAsset");
+                MethodState configureAssetMethod = CreateMethod(assetManagementFolder, "ConfigureAsset", NamespaceIndex);
                 configureAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(ConfigureAsset);
                 configureAssetMethod.InputArguments = CreateInputArguments(configureAssetMethod, "WoTThingDescription", "The WoT Thing Description of the asset to be configured");
 
-                MethodState deleteAssetMethod = CreateMethod(assetManagementFolder, "DeleteAsset", "DeleteAsset");
+                MethodState deleteAssetMethod = CreateMethod(assetManagementFolder, "DeleteAsset", NamespaceIndex);
                 deleteAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(DeleteAsset);
                 deleteAssetMethod.InputArguments = CreateInputArguments(deleteAssetMethod, "AssetID", "The ID of the asset to be deleted");
 
-                MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetAssets", "GetAssets");
+                MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetAssets", NamespaceIndex);
                 getAssetsMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetAssets);
 
-                // add everyting to our nodeset
                 AddPredefinedNode(SystemContext, assetManagementFolder);
+
+                // create a top-level asset folder
+                FolderState assetFolder = CreateFolder(null, "Asset1", NamespaceIndex);
+                assetFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
+                references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, assetFolder.NodeId));
+                assetFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
+                AddRootNotifier(assetFolder);
+
+                // create our variables
+                _uaVariables.Add("Temperature", CreateVariable(assetFolder, "Temperature", NamespaceIndex));
+                _uaVariables["Temperature"].Value = 0.0f;
+
+                AddPredefinedNode(SystemContext, assetFolder);
+
                 AddReverseReferences(externalReferences);
             }
         }
@@ -96,15 +109,15 @@ namespace Opc.Ua.Edge.Translator
             return arguments;
         }
 
-        private FolderState CreateFolder(NodeState parent, string path, string name)
+        private FolderState CreateFolder(NodeState parent, string name, ushort namespaceIndex)
         {
             FolderState folder = new FolderState(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
                 TypeDefinitionId = ObjectTypeIds.FolderType,
-                NodeId = new NodeId(path, NamespaceIndex),
-                BrowseName = new QualifiedName(path, NamespaceIndex),
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
@@ -115,14 +128,33 @@ namespace Opc.Ua.Edge.Translator
             return folder;
         }
 
-        private MethodState CreateMethod(NodeState parent, string path, string name)
+        private BaseDataVariableState CreateVariable(NodeState parent, string name, ushort namespaceIndex, bool isString = false)
+        {
+            BaseDataVariableState variable = new BaseDataVariableState(parent)
+            {
+                SymbolicName = name,
+                ReferenceTypeId = ReferenceTypes.Organizes,
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                WriteMask = AttributeWriteMask.None,
+                UserWriteMask = AttributeWriteMask.None,
+                AccessLevel = AccessLevels.CurrentRead,
+                DataType = isString ? DataTypes.String : DataTypes.Float
+            };
+            parent?.AddChild(variable);
+
+            return variable;
+        }
+
+        private MethodState CreateMethod(NodeState parent, string name, ushort namespaceIndex)
         {
             MethodState method = new MethodState(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypeIds.HasComponent,
-                NodeId = new NodeId(path, NamespaceIndex),
-                BrowseName = new QualifiedName(path, NamespaceIndex),
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
@@ -155,14 +187,12 @@ namespace Opc.Ua.Edge.Translator
 
         private void UpdateNodeValues(object state)
         {
-            // TODO: update node values for all configured assets
-            NodeState node = Find(m_NumberOfManufacturedProductsID);
-            BaseDataVariableState variableState = node as BaseDataVariableState;
-            if (variableState != null)
+            _uaVariables["Temperature"].Value = (float)_uaVariables["Temperature"].Value + 0.1f;
+
+            foreach (BaseDataVariableState variable in _uaVariables.Values.ToList())
             {
-                variableState.Value = m_numberOfManufacturedProducts;
-                variableState.Timestamp = DateTime.UtcNow;
-                variableState.ClearChangeMasks(SystemContext, false);
+                variable.Timestamp = DateTime.UtcNow;
+                variable.ClearChangeMasks(SystemContext, false);
             }
         }
     }
