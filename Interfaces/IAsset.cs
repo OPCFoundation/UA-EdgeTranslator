@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Edge.Translator
+﻿namespace Opc.Ua.Edge.Translator.Interfaces
 {
     using System.Threading.Tasks;
 

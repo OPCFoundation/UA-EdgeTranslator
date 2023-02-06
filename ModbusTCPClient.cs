@@ -5,6 +5,7 @@ namespace Opc.Ua.Edge.Translator
     using System.IO;
     using System.Net.Sockets;
     using System.Threading.Tasks;
+    using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
 
     class ModbusTCPClient : IAsset

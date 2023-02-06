@@ -11,6 +11,8 @@ namespace Opc.Ua.Edge.Translator
 
     public class Program
     {
+        public static ApplicationInstance App { get; private set; }
+
         public static async Task Main()
         {
             // setup logging
@@ -29,22 +31,22 @@ namespace Opc.Ua.Edge.Translator
             }
 
             ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
-            ApplicationInstance app = new ApplicationInstance
+            App = new ApplicationInstance
             {
                 ApplicationName = appName,
                 ApplicationType = ApplicationType.Server,
                 ConfigSectionName = "UA.Edge.Translator"
             };
 
-            await app.LoadApplicationConfiguration(false).ConfigureAwait(false);
-            await app.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
+            await App.LoadApplicationConfiguration(false).ConfigureAwait(false);
+            await App.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
 
             // create OPC UA cert validator
-            app.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
-            app.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
+            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
+            App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
 
             // start the server
-            await app.Start(new UAServer()).ConfigureAwait(false);
+            await App.Start(new UAServer()).ConfigureAwait(false);
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
