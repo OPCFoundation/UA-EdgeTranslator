@@ -16,10 +16,11 @@ namespace Opc.Ua.Edge.Translator
 
     public class UANodeManager : CustomNodeManager2
     {
-        private ushort m_namespaceIndex;
-        private long m_lastUsedId;
+        private ushort _namespaceIndex;
 
-        private Timer m_timer;
+        private long _lastUsedId;
+
+        private Timer _timer;
 
         private Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
@@ -39,15 +40,15 @@ namespace Opc.Ua.Edge.Translator
 
             NamespaceUris = namespaceUris;
 
-            m_namespaceIndex = Server.NamespaceUris.GetIndexOrAppend(namespaceUris[0]);
-            m_lastUsedId = 0;
+            _namespaceIndex = Server.NamespaceUris.GetIndexOrAppend(namespaceUris[0]);
+            _lastUsedId = 0;
 
-            m_timer = new Timer(UpdateNodeValues, null, 1000, 1000);
+            _timer = new Timer(UpdateNodeValues, null, 1000, 1000);
         }
 
         public override NodeId New(ISystemContext context, NodeState node)
         {
-            return new NodeId(Utils.IncrementIdentifier(ref m_lastUsedId), m_namespaceIndex);
+            return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), _namespaceIndex);
         }
 
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
