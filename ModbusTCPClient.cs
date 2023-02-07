@@ -92,72 +92,75 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
         {
-            // check funtion code
-            if ((function != FunctionCode.ReadInputRegisters)
-             && (function != FunctionCode.ReadHoldingRegisters)
-             && (function != FunctionCode.ReadCoilStatus))
+            lock (this)
             {
-                throw new ArgumentException("Only coil, input registers and holding registers can be read");
-            }
+                // check funtion code
+                if ((function != FunctionCode.ReadInputRegisters)
+                 && (function != FunctionCode.ReadHoldingRegisters)
+                 && (function != FunctionCode.ReadCoilStatus))
+                {
+                    throw new ArgumentException("Only coil, input registers and holding registers can be read");
+                }
 
-            ApplicationDataUnit aduRequest = new ApplicationDataUnit();
-            aduRequest.TransactionID = transactionID++;
-            aduRequest.Length = 6;
-            aduRequest.UnitID = unitID;
-            aduRequest.FunctionCode = (byte)function;
+                ApplicationDataUnit aduRequest = new ApplicationDataUnit();
+                aduRequest.TransactionID = transactionID++;
+                aduRequest.Length = 6;
+                aduRequest.UnitID = unitID;
+                aduRequest.FunctionCode = (byte)function;
 
-            aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
-            aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
-            aduRequest.Payload[2] = (byte)(count >> 8);
-            aduRequest.Payload[3] = (byte)(count & 0x00FF);
+                aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
+                aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
+                aduRequest.Payload[2] = (byte)(count >> 8);
+                aduRequest.Payload[3] = (byte)(count & 0x00FF);
 
-            byte[] buffer = new byte[ApplicationDataUnit.maxADU];
-            aduRequest.CopyADUToNetworkBuffer(buffer);
+                byte[] buffer = new byte[ApplicationDataUnit.maxADU];
+                aduRequest.CopyADUToNetworkBuffer(buffer);
 
-            // send request to Modbus server
-            tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
+                // send request to Modbus server
+                tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
 
-            // read response header from Modbus server
-            int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength);
-            if (numBytesRead != ApplicationDataUnit.headerLength)
-            {
-                throw new EndOfStreamException();
-            }
-
-            ApplicationDataUnit aduResponse = new ApplicationDataUnit();
-            aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-            // check for error
-            if ((aduResponse.FunctionCode & errorFlag) > 0)
-            {
-                // read error
-                int errorCode = tcpClient.GetStream().ReadByte();
-                if (errorCode == -1)
+                // read response header from Modbus server
+                int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength);
+                if (numBytesRead != ApplicationDataUnit.headerLength)
                 {
                     throw new EndOfStreamException();
                 }
-                else
+
+                ApplicationDataUnit aduResponse = new ApplicationDataUnit();
+                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
+
+                // check for error
+                if ((aduResponse.FunctionCode & errorFlag) > 0)
                 {
-                    HandlerError((byte)errorCode);
+                    // read error
+                    int errorCode = tcpClient.GetStream().ReadByte();
+                    if (errorCode == -1)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    else
+                    {
+                        HandlerError((byte)errorCode);
+                    }
                 }
-            }
 
-            // read length of response
-            int length = tcpClient.GetStream().ReadByte();
-            if (length == -1)
-            {
-                throw new EndOfStreamException();
-            }
+                // read length of response
+                int length = tcpClient.GetStream().ReadByte();
+                if (length == -1)
+                {
+                    throw new EndOfStreamException();
+                }
 
-            // read response
-            byte[] responseBuffer = new byte[length];
-            numBytesRead = tcpClient.GetStream().Read(responseBuffer, 0, length);
-            if (numBytesRead != length)
-            {
-                throw new EndOfStreamException();
-            }
+                // read response
+                byte[] responseBuffer = new byte[length];
+                numBytesRead = tcpClient.GetStream().Read(responseBuffer, 0, length);
+                if (numBytesRead != length)
+                {
+                    throw new EndOfStreamException();
+                }
 
-            return Task.FromResult(responseBuffer);
+                return Task.FromResult(responseBuffer);
+            }
         }
 
         public async Task WriteHoldingRegisters(byte unitID, ushort registerBaseAddress, ushort[] values)
@@ -165,73 +168,76 @@ namespace Opc.Ua.Edge.Translator
             // debounce writing to not overwhelm our poor little Modbus server
             await Task.Delay(1000).ConfigureAwait(false);
 
-            if ((11 + (values.Length * 2)) > ApplicationDataUnit.maxADU)
+            lock (this)
             {
-                throw new ArgumentException("Too many values");
-            }
+                if ((11 + (values.Length * 2)) > ApplicationDataUnit.maxADU)
+                {
+                    throw new ArgumentException("Too many values");
+                }
 
-            ApplicationDataUnit aduRequest = new ApplicationDataUnit();
-            aduRequest.TransactionID = transactionID++;
-            aduRequest.Length = (ushort)(7 + (values.Length * 2));
-            aduRequest.UnitID = unitID;
-            aduRequest.FunctionCode = (byte)FunctionCode.PresetMultipleRegisters;
+                ApplicationDataUnit aduRequest = new ApplicationDataUnit();
+                aduRequest.TransactionID = transactionID++;
+                aduRequest.Length = (ushort)(7 + (values.Length * 2));
+                aduRequest.UnitID = unitID;
+                aduRequest.FunctionCode = (byte)FunctionCode.PresetMultipleRegisters;
 
-            aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
-            aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
-            aduRequest.Payload[2] = (byte)(((ushort)values.Length) >> 8);
-            aduRequest.Payload[3] = (byte)(((ushort)values.Length) & 0x00FF);
-            aduRequest.Payload[4] = (byte)(values.Length * 2);
+                aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
+                aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
+                aduRequest.Payload[2] = (byte)(((ushort)values.Length) >> 8);
+                aduRequest.Payload[3] = (byte)(((ushort)values.Length) & 0x00FF);
+                aduRequest.Payload[4] = (byte)(values.Length * 2);
 
-            int payloadIndex = 5;
-            foreach (ushort value in values)
-            {
-                aduRequest.Payload[payloadIndex++] = (byte)(value >> 8);
-                aduRequest.Payload[payloadIndex++] = (byte)(value & 0x00FF);
-            }
+                int payloadIndex = 5;
+                foreach (ushort value in values)
+                {
+                    aduRequest.Payload[payloadIndex++] = (byte)(value >> 8);
+                    aduRequest.Payload[payloadIndex++] = (byte)(value & 0x00FF);
+                }
 
-            byte[] buffer = new byte[ApplicationDataUnit.maxADU];
-            aduRequest.CopyADUToNetworkBuffer(buffer);
+                byte[] buffer = new byte[ApplicationDataUnit.maxADU];
+                aduRequest.CopyADUToNetworkBuffer(buffer);
 
-            // send request to Modbus server
-            tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 5 + (values.Length * 2));
+                // send request to Modbus server
+                tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 5 + (values.Length * 2));
 
-            // read response
-            int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
-            if (numBytesRead != ApplicationDataUnit.headerLength + 4)
-            {
-                throw new EndOfStreamException();
-            }
-
-            ApplicationDataUnit aduResponse = new ApplicationDataUnit();
-            aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-            // check for error
-            if ((aduResponse.FunctionCode & errorFlag) > 0)
-            {
-                // read error
-                int errorCode = tcpClient.GetStream().ReadByte();
-                if (errorCode == -1)
+                // read response
+                int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
+                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
                 {
                     throw new EndOfStreamException();
                 }
-                else
+
+                ApplicationDataUnit aduResponse = new ApplicationDataUnit();
+                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
+
+                // check for error
+                if ((aduResponse.FunctionCode & errorFlag) > 0)
                 {
-                    HandlerError((byte)errorCode);
+                    // read error
+                    int errorCode = tcpClient.GetStream().ReadByte();
+                    if (errorCode == -1)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    else
+                    {
+                        HandlerError((byte)errorCode);
+                    }
                 }
-            }
 
-            // check address written
-            if ((buffer[8] != (registerBaseAddress >> 8))
-             && (buffer[9] != (registerBaseAddress & 0x00FF)))
-            {
-                throw new Exception("Incorrect base register returned");
-            }
+                // check address written
+                if ((buffer[8] != (registerBaseAddress >> 8))
+                 && (buffer[9] != (registerBaseAddress & 0x00FF)))
+                {
+                    throw new Exception("Incorrect base register returned");
+                }
 
-            // check number of registers written
-            if ((buffer[10] != (((ushort)values.Length) >> 8))
-             && (buffer[11] != (((ushort)values.Length) & 0x00FF)))
-            {
-                throw new Exception("Incorrect number of registers written returned");
+                // check number of registers written
+                if ((buffer[10] != (((ushort)values.Length) >> 8))
+                 && (buffer[11] != (((ushort)values.Length) & 0x00FF)))
+                {
+                    throw new Exception("Incorrect number of registers written returned");
+                }
             }
         }
 
@@ -240,60 +246,63 @@ namespace Opc.Ua.Edge.Translator
             // debounce writing to not overwhelm our poor little Modbus server
             await Task.Delay(1000).ConfigureAwait(false);
 
-            ApplicationDataUnit aduRequest = new ApplicationDataUnit();
-            aduRequest.TransactionID = transactionID++;
-            aduRequest.Length = 6;
-            aduRequest.UnitID = unitID;
-            aduRequest.FunctionCode = (byte)FunctionCode.ForceSingleCoil;
-
-            aduRequest.Payload[0] = (byte)(coilAddress >> 8);
-            aduRequest.Payload[1] = (byte)(coilAddress & 0x00FF);
-            aduRequest.Payload[2] = (byte)(set ? 0xFF : 0x0);
-            aduRequest.Payload[3] = 0x0;
-
-            byte[] buffer = new byte[ApplicationDataUnit.maxADU];
-            aduRequest.CopyADUToNetworkBuffer(buffer);
-
-            // send request to Modbus server
-            tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
-
-            // read response
-            int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
-            if (numBytesRead != ApplicationDataUnit.headerLength + 4)
+            lock (this)
             {
-                throw new EndOfStreamException();
-            }
+                ApplicationDataUnit aduRequest = new ApplicationDataUnit();
+                aduRequest.TransactionID = transactionID++;
+                aduRequest.Length = 6;
+                aduRequest.UnitID = unitID;
+                aduRequest.FunctionCode = (byte)FunctionCode.ForceSingleCoil;
 
-            ApplicationDataUnit aduResponse = new ApplicationDataUnit();
-            aduResponse.CopyHeaderFromNetworkBuffer(buffer);
+                aduRequest.Payload[0] = (byte)(coilAddress >> 8);
+                aduRequest.Payload[1] = (byte)(coilAddress & 0x00FF);
+                aduRequest.Payload[2] = (byte)(set ? 0xFF : 0x0);
+                aduRequest.Payload[3] = 0x0;
 
-            // check for error
-            if ((aduResponse.FunctionCode & errorFlag) > 0)
-            {
-                // read error
-                int errorCode = tcpClient.GetStream().ReadByte();
-                if (errorCode == -1)
+                byte[] buffer = new byte[ApplicationDataUnit.maxADU];
+                aduRequest.CopyADUToNetworkBuffer(buffer);
+
+                // send request to Modbus server
+                tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
+
+                // read response
+                int numBytesRead = tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
+                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
                 {
                     throw new EndOfStreamException();
                 }
-                else
+
+                ApplicationDataUnit aduResponse = new ApplicationDataUnit();
+                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
+
+                // check for error
+                if ((aduResponse.FunctionCode & errorFlag) > 0)
                 {
-                    HandlerError((byte)errorCode);
+                    // read error
+                    int errorCode = tcpClient.GetStream().ReadByte();
+                    if (errorCode == -1)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    else
+                    {
+                        HandlerError((byte)errorCode);
+                    }
                 }
-            }
 
-            // check address written
-            if ((buffer[8] != (coilAddress >> 8))
-             && (buffer[9] != (coilAddress & 0x00FF)))
-            {
-                throw new Exception("Incorrect coil register returned");
-            }
+                // check address written
+                if ((buffer[8] != (coilAddress >> 8))
+                 && (buffer[9] != (coilAddress & 0x00FF)))
+                {
+                    throw new Exception("Incorrect coil register returned");
+                }
 
-            // check flag written
-            if ((buffer[10] != (set ? 0xFF : 0x0))
-             && (buffer[11] != 0x0))
-            {
-                throw new Exception("Incorrect coil flag returned");
+                // check flag written
+                if ((buffer[10] != (set ? 0xFF : 0x0))
+                 && (buffer[11] != 0x0))
+                {
+                    throw new Exception("Incorrect coil flag returned");
+                }
             }
         }
     }

@@ -28,6 +28,8 @@ namespace Opc.Ua.Edge.Translator
 
         private List<AssetTag> _tags = new();
 
+        private uint _counter = 0;
+
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
         {
@@ -311,6 +313,8 @@ namespace Opc.Ua.Edge.Translator
 
         private void UpdateNodeValues(object state)
         {
+            _counter++;
+
             foreach (AssetTag tag in _tags)
             {
                 try
@@ -319,15 +323,31 @@ namespace Opc.Ua.Edge.Translator
                     {
                         if (_assets[tag.AssetName] is ModbusTCPClient)
                         {
-                            // read tag
-                            byte unitID = 1;
-                            ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
-                            uint address = uint.Parse(tag.Address);
-                            ushort count = ushort.Parse(tag.Address);
+                            if (_counter * 1000 % tag.PollingInterval == 0)
+                            {
+                                // read tag
+                                byte unitID = 1;
 
-                            byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), address, count).GetAwaiter().GetResult();
+                                ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
+                                if (tag.Entity == "Holdingregister")
+                                {
+                                    functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
+                                }
 
-                            _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+
+                                if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
+                                {
+                                    uint offset = uint.Parse(addressParts[2]);
+                                    ushort length = ushort.Parse(addressParts[4]);
+                                    byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
+
+                                    if (tag.Type == "Float")
+                                    {
+                                        _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -20,7 +20,7 @@
     "Thing"
   ],
   "name": "modbus-pac4200-sn324",
-  "base": "modbus://192.168.10.100:1502",
+  "base": "modbus://192.168.10.100:502",
   "title": "Siemens SENTRON PAC4200",
   "mlfb": "7KM4212-0BA00-2AA0",
   "properties": {

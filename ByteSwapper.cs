@@ -26,14 +26,14 @@ namespace Opc.Ua.Edge.Translator
             if (value.Length == 8)
             {
                 byte[] swappedBytes = new byte[8];
-                swappedBytes[0] = value[7];
-                swappedBytes[1] = value[6];
-                swappedBytes[2] = value[5];
-                swappedBytes[3] = value[4];
-                swappedBytes[4] = value[3];
-                swappedBytes[5] = value[2];
-                swappedBytes[6] = value[1];
-                swappedBytes[7] = value[0];
+                swappedBytes[4] = value[7];
+                swappedBytes[5] = value[6];
+                swappedBytes[6] = value[5];
+                swappedBytes[7] = value[4];
+                swappedBytes[0] = value[3];
+                swappedBytes[1] = value[2];
+                swappedBytes[2] = value[1];
+                swappedBytes[3] = value[0];
                 return swappedBytes;
             }
 
