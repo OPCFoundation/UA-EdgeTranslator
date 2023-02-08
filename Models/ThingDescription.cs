@@ -67,6 +67,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modbus:type")]
         public ModbusType ModbusType { get; set; }
 
+        [JsonProperty("opcua:type")]
+        public string OpcUaType { get; set; }
+
         [JsonProperty("modbus:entity")]
         public ModbusEntity ModbusEntity { get; set; }
 

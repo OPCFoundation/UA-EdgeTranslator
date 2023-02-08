@@ -1,7 +1,8 @@
 {
   "@context": [
     "https://www.w3.org/2019/wot/td/v1",
-    "https://si-ra.github.io/ontologies/td-context.jsonld"
+    "https://si-ra.github.io/ontologies/td-context.jsonld",
+    "https://uacloudlibrary.opcfoundation.org/infomodel/download/2630483500"
   ],
   "id": "urn:pac4200",
   "gms:hasValueType": [
@@ -35,6 +36,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -52,6 +54,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -69,6 +72,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -86,6 +90,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -103,6 +108,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -120,6 +126,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -137,6 +144,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -154,6 +162,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -171,6 +180,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -188,6 +198,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -205,6 +216,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -222,6 +234,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -239,6 +252,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -256,6 +270,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -273,6 +288,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6081",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -290,6 +306,7 @@
             "readproperty",
             "observeproperty"
           ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
