@@ -67,8 +67,7 @@ namespace Opc.Ua.Edge.Translator
                         }
                     }
 
-                    // log into UA Cloud Library if a companion spec to download the companion spec and its dependencies
-                    // and add their namespaces to our list
+                    // log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
                     if (!string.IsNullOrEmpty(opcuaCompanionSpecDownloadUrl))
                     {
                         _uacloudLibraryClient.Login(opcuaCompanionSpecDownloadUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
