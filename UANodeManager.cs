@@ -17,8 +17,6 @@ namespace Opc.Ua.Edge.Translator
 
     public class UANodeManager : CustomNodeManager2
     {
-        private ushort _namespaceIndex = 0;
-
         private long _lastUsedId = 0;
 
         private Timer _timer;
@@ -99,14 +97,12 @@ namespace Opc.Ua.Edge.Translator
             }
 
             NamespaceUris = namespaceUris;
-
-            // for new nodes we create, pick our default namespace
-            _namespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/");
         }
 
         public override NodeId New(ISystemContext context, NodeState node)
         {
-            return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), _namespaceIndex);
+            // for new nodes we create, pick our default namespace
+            return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
         }
 
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
