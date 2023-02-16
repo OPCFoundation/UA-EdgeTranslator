@@ -141,22 +141,9 @@
   </Extensions>
 
   <TraceConfiguration>
-    <OutputFilePath>../Logs/Opc.Ua.EdgeTranslator.logfile.txt</OutputFilePath>
+    <OutputFilePath>Opc.Ua.EdgeTranslator.logfile.txt</OutputFilePath>
     <DeleteOnLoad>true</DeleteOnLoad>
-    <!-- Show Only Errors -->
-    <!-- <TraceMasks>1</TraceMasks> -->
-    <!-- Show Only Security and Errors -->
-    <!-- <TraceMasks>515</TraceMasks> -->
-    <!-- Show Only Security, Errors and Trace -->
-    <!-- <TraceMasks>515</TraceMasks> -->
-    <!-- Show Only Security, COM Calls, Errors and Trace -->
-    <!-- <TraceMasks>771</TraceMasks> -->
-    <!-- Show Only Security, Service Calls, Errors and Trace -->
-    <!-- <TraceMasks>523</TraceMasks> -->
-    <!-- Show Only Security, ServiceResultExceptions, Errors and Trace -->
-    <!-- <TraceMasks>519</TraceMasks> -->
-    <!-- Show Only Security, Errors and ServiceResultExceptions -->
-    <TraceMasks>517</TraceMasks>
+    <TraceMasks>645</TraceMasks>
   </TraceConfiguration>
 
   <!-- Disables the hi-res clock if the QueryPerformanceCounter does work on a particular machine. -->

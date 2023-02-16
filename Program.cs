@@ -5,6 +5,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Configuration;
     using Serilog;
     using System;
+    using System.Globalization;
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
@@ -39,7 +40,10 @@ namespace Opc.Ua.Edge.Translator
             };
 
             await App.LoadApplicationConfiguration(false).ConfigureAwait(false);
+
             await App.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
+
+            Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
 
             // create OPC UA cert validator
             App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
@@ -58,6 +62,21 @@ namespace Opc.Ua.Edge.Translator
             if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
             {
                 e.Accept = true;
+            }
+        }
+
+        private static void OpcStackLoggingHandler(object sender, TraceEventArgs e)
+        {
+            if ((e.TraceMask & App.ApplicationConfiguration.TraceConfiguration.TraceMasks) != 0)
+            {
+                if (e.Arguments != null)
+                {
+                    Log.Logger.Information("OPC UA Stack: " + string.Format(CultureInfo.InvariantCulture, e.Format, e.Arguments).Trim());
+                }
+                else
+                {
+                    Log.Logger.Information("OPC UA Stack: " + e.Format.Trim());
+                }
             }
         }
 
