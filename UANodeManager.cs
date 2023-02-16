@@ -153,9 +153,9 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 AddReverseReferences(externalReferences);
-
-                _timer = new Timer(UpdateNodeValues, null, 1000, 1000);
             }
+
+            _timer = new Timer(UpdateNodeValues, null, 1000, 1000);
         }
 
         private void AddModbusNodes(ThingDescription td, FolderState assetFolder, KeyValuePair<string, Property> property, object form)
