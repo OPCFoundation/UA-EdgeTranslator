@@ -76,7 +76,7 @@ namespace Opc.Ua.Edge.Translator
             string opcuaCompanionSpecPath = string.Empty;
             foreach (Uri uris in td.Context)
             {
-                if (uris.IsAbsoluteUri && uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") && uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net"))  //any Cloud library will do
+                if (uris.IsAbsoluteUri && (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") || uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net")))  //any Cloud library will do
                 {
                     opcuaCompanionSpecUrl = uris.AbsoluteUri;
                 } 
@@ -88,7 +88,6 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
-
             // Support local Nodesets
             if (!string.IsNullOrEmpty(opcuaCompanionSpecPath))
             {
@@ -101,45 +100,41 @@ namespace Opc.Ua.Edge.Translator
                 {
                     filePath = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecPath);
                 }
-                using (Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-                {
-                    UANodeSet nodeSet = UANodeSet.Read(stream);
-                    if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
-                    {
-                        foreach (string ns in nodeSet.NamespaceUris)
-                        {
-                            if (!namespaceUris.Contains(ns))
-                            {
-                                namespaceUris.Add(ns);
-                            }
-                        }
-                    }
-                }
+                Log.Logger.Information("Loading nodeset from local file: " + filePath);
+                LoadNamespaceUrisFromStream(namespaceUris, new FileStream(filePath, FileMode.Open, FileAccess.Read));
             }
             // CloudLibrary Nodesets: log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
             if (!string.IsNullOrEmpty(opcuaCompanionSpecUrl))
             {
                 _uacloudLibraryClient.Login(opcuaCompanionSpecUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+                Log.Logger.Information("Loading nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
 
                 foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                {    
+                    LoadNamespaceUrisFromStream(namespaceUris, new FileStream(nodesetFile, FileMode.Open));
+                }
+            }
+        }
+
+        private List<string> LoadNamespaceUrisFromStream(List<string> namespaceUris, Stream stream)
+        {
+            using (stream)
+            {
+                UANodeSet nodeSet = UANodeSet.Read(stream);
+                if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
                 {
-                    using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
+                    foreach (string ns in nodeSet.NamespaceUris)
                     {
-                        UANodeSet nodeSet = UANodeSet.Read(stream);
-                        if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
+                        if (!namespaceUris.Contains(ns))
                         {
-                            foreach (string ns in nodeSet.NamespaceUris)
-                            {
-                                if (!namespaceUris.Contains(ns))
-                                {
-                                    namespaceUris.Add(ns);
-                                }
-                            }
+                            namespaceUris.Add(ns);
                         }
                     }
                 }
             }
+            return namespaceUris;
         }
+
 
         public override NodeId New(ISystemContext context, NodeState node)
         {
