@@ -76,10 +76,11 @@ namespace Opc.Ua.Edge.Translator
             string opcuaCompanionSpecPath = string.Empty;
             foreach (Uri uris in td.Context)
             {
-                if (uris.IsAbsoluteUri && (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") || uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net")))  //any Cloud library will do
+                // all known UA Cloud Libraries are supported
+                if (uris.IsAbsoluteUri && (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") || uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net")))
                 {
                     opcuaCompanionSpecUrl = uris.AbsoluteUri;
-                } 
+                }
                 else
                 {
                     if (!uris.IsAbsoluteUri || (!uris.AbsoluteUri.Contains("http://") && !uris.AbsoluteUri.Contains("https://")))
@@ -88,37 +89,44 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
-            // Support local Nodesets
+
+            // support local Nodesets
             if (!string.IsNullOrEmpty(opcuaCompanionSpecPath))
             {
-                string filePath = string.Empty;
-                if (Path.IsPathFullyQualified(opcuaCompanionSpecPath))    // absolute file path
+                string nodesetFile = string.Empty;
+                if (Path.IsPathFullyQualified(opcuaCompanionSpecPath))
                 {
-                    filePath = opcuaCompanionSpecPath;
+                    // absolute file path
+                    nodesetFile = opcuaCompanionSpecPath;
                 }
-                else    // relative file path
+                else
                 {
-                    filePath = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecPath);
+                    // relative file path
+                    nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecPath);
                 }
-                Log.Logger.Information("Loading nodeset from local file: " + filePath);
-                LoadNamespaceUrisFromStream(namespaceUris, new FileStream(filePath, FileMode.Open, FileAccess.Read));
+
+                Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
+
+                LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
             }
-            // CloudLibrary Nodesets: log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
+
+            // UA Cloud Library nodesets: Log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
             if (!string.IsNullOrEmpty(opcuaCompanionSpecUrl))
             {
                 _uacloudLibraryClient.Login(opcuaCompanionSpecUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+
                 Log.Logger.Information("Loading nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
 
                 foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
-                {    
-                    LoadNamespaceUrisFromStream(namespaceUris, new FileStream(nodesetFile, FileMode.Open));
+                {
+                    LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
                 }
             }
         }
 
-        private List<string> LoadNamespaceUrisFromStream(List<string> namespaceUris, Stream stream)
+        private void LoadNamespaceUrisFromStream(List<string> namespaceUris, string nodesetFile)
         {
-            using (stream)
+            using (FileStream stream = new(nodesetFile, FileMode.Open, FileAccess.Read))
             {
                 UANodeSet nodeSet = UANodeSet.Read(stream);
                 if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
@@ -132,9 +140,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
-            return namespaceUris;
         }
-
 
         public override NodeId New(ISystemContext context, NodeState node)
         {
@@ -496,9 +502,6 @@ namespace Opc.Ua.Edge.Translator
                         {
                             if (_counter * 1000 % tag.PollingInterval == 0)
                             {
-                                // read tag
-                                byte unitID = 1;
-
                                 ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
                                 if (tag.Entity == "Holdingregister")
                                 {
@@ -509,6 +512,8 @@ namespace Opc.Ua.Edge.Translator
 
                                 if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
                                 {
+                                    // read tag
+                                    byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
                                     uint offset = uint.Parse(addressParts[2]);
                                     ushort length = ushort.Parse(addressParts[4]);
                                     byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
@@ -516,6 +521,8 @@ namespace Opc.Ua.Edge.Translator
                                     if (tag.Type == "Float")
                                     {
                                         _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                        _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                                        _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
                                     }
                                 }
                             }
@@ -527,12 +534,6 @@ namespace Opc.Ua.Edge.Translator
                     // skip this tag, but log an error
                     Log.Logger.Error(ex.Message, ex);
                 }
-            }
-
-            foreach (BaseDataVariableState variable in _uaVariables.Values.ToList())
-            {
-                variable.Timestamp = DateTime.UtcNow;
-                variable.ClearChangeMasks(SystemContext, false);
             }
         }
     }

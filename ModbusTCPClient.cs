@@ -92,9 +92,6 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
         {
-            // debounce reading to not overwhelm our poor little Modbus server
-            Task.Delay(500).GetAwaiter().GetResult();
-
             lock (this)
             {
                 // check funtion code
