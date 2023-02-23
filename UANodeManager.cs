@@ -1,6 +1,7 @@
 
 namespace Opc.Ua.Edge.Translator
 {
+    using Microsoft.AspNetCore.Mvc.ApplicationParts;
     using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
@@ -12,6 +13,7 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -55,7 +57,7 @@ namespace Opc.Ua.Edge.Translator
 
                     namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
 
-                    DownloadOPCUACompanionSpec(namespaceUris, td);
+                    FetchOPCUACompanionSpec(namespaceUris, td);
                 }
                 catch (Exception ex)
                 {
@@ -67,42 +69,72 @@ namespace Opc.Ua.Edge.Translator
             NamespaceUris = namespaceUris;
         }
 
-        private void DownloadOPCUACompanionSpec(List<string> namespaceUris, ThingDescription td)
+        private void FetchOPCUACompanionSpec(List<string> namespaceUris, ThingDescription td)
         {
             // check if an OPC UA companion spec is mentioned in the WoT TD file
-            string opcuaCompanionSpecDownloadUrl = string.Empty;
+            string opcuaCompanionSpecUrl = string.Empty;
+            string opcuaCompanionSpecPath = string.Empty;
             foreach (Uri uris in td.Context)
             {
-                if (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org"))
+                if (uris.IsAbsoluteUri && (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") || uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net")))  //any Cloud library will do
                 {
-                    opcuaCompanionSpecDownloadUrl = uris.AbsoluteUri;
+                    opcuaCompanionSpecUrl = uris.AbsoluteUri;
+                } 
+                else
+                {
+                    if (!uris.IsAbsoluteUri || (!uris.AbsoluteUri.Contains("http://") && !uris.AbsoluteUri.Contains("https://")))
+                    {
+                        opcuaCompanionSpecPath = uris.OriginalString;
+                    }
                 }
             }
-
-            // log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
-            if (!string.IsNullOrEmpty(opcuaCompanionSpecDownloadUrl))
+            // Support local Nodesets
+            if (!string.IsNullOrEmpty(opcuaCompanionSpecPath))
             {
-                _uacloudLibraryClient.Login(opcuaCompanionSpecDownloadUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+                string filePath = string.Empty;
+                if (Path.IsPathFullyQualified(opcuaCompanionSpecPath))    // absolute file path
+                {
+                    filePath = opcuaCompanionSpecPath;
+                }
+                else    // relative file path
+                {
+                    filePath = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecPath);
+                }
+                Log.Logger.Information("Loading nodeset from local file: " + filePath);
+                LoadNamespaceUrisFromStream(namespaceUris, new FileStream(filePath, FileMode.Open, FileAccess.Read));
+            }
+            // CloudLibrary Nodesets: log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
+            if (!string.IsNullOrEmpty(opcuaCompanionSpecUrl))
+            {
+                _uacloudLibraryClient.Login(opcuaCompanionSpecUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+                Log.Logger.Information("Loading nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
 
                 foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                {    
+                    LoadNamespaceUrisFromStream(namespaceUris, new FileStream(nodesetFile, FileMode.Open));
+                }
+            }
+        }
+
+        private List<string> LoadNamespaceUrisFromStream(List<string> namespaceUris, Stream stream)
+        {
+            using (stream)
+            {
+                UANodeSet nodeSet = UANodeSet.Read(stream);
+                if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
                 {
-                    using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
+                    foreach (string ns in nodeSet.NamespaceUris)
                     {
-                        UANodeSet nodeSet = UANodeSet.Read(stream);
-                        if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
+                        if (!namespaceUris.Contains(ns))
                         {
-                            foreach (string ns in nodeSet.NamespaceUris)
-                            {
-                                if (!namespaceUris.Contains(ns))
-                                {
-                                    namespaceUris.Add(ns);
-                                }
-                            }
+                            namespaceUris.Add(ns);
                         }
                     }
                 }
             }
+            return namespaceUris;
         }
+
 
         public override NodeId New(ISystemContext context, NodeState node)
         {
