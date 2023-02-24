@@ -1,7 +1,6 @@
 
 namespace Opc.Ua.Edge.Translator
 {
-    using Microsoft.AspNetCore.Mvc.ApplicationParts;
     using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
@@ -12,8 +11,6 @@ namespace Opc.Ua.Edge.Translator
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
-    using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -21,7 +18,7 @@ namespace Opc.Ua.Edge.Translator
     {
         private long _lastUsedId = 0;
 
-        private Timer _timer;
+        private bool _shutdown = false;
 
         private Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
@@ -193,7 +190,7 @@ namespace Opc.Ua.Edge.Translator
                 AddReverseReferences(externalReferences);
             }
 
-            _timer = new Timer(UpdateNodeValues, null, 1000, 1000);
+            _ = Task.Run(() => UpdateNodeValues());
         }
 
         private void AddModbusNodes(ThingDescription td, FolderState assetFolder, KeyValuePair<string, Property> property, object form)
@@ -331,6 +328,7 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetAssets", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
             getAssetsMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetAssets);
+            getAssetsMethod.OutputArguments = CreateOutputArguments(getAssetsMethod, "AssetIDs", "The IDs of the assets currently defined", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
 
             AddPredefinedNode(SystemContext, assetManagementFolder);
         }
@@ -341,6 +339,25 @@ namespace Opc.Ua.Edge.Translator
             {
                 NodeId = new NodeId(parent.BrowseName.Name + "InArgs", namespaceIndex),
                 BrowseName = BrowseNames.InputArguments,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                ReferenceTypeId = ReferenceTypeIds.HasProperty,
+                DataType = DataTypeIds.Argument,
+                ValueRank = ValueRanks.OneDimension,
+                Value = new Argument[]
+                {
+                    new Argument { Name = name, Description = description, DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
+                }
+            };
+
+            arguments.DisplayName = arguments.BrowseName.Name;
+
+            return arguments;
+        }
+
+        private PropertyState<Argument[]> CreateOutputArguments(NodeState parent, string name, string description, ushort namespaceIndex) {
+            PropertyState<Argument[]> arguments = new PropertyState<Argument[]>(parent) {
+                NodeId = new NodeId(parent.BrowseName.Name + "OutArgs", namespaceIndex),
+                BrowseName = BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
                 ReferenceTypeId = ReferenceTypeIds.HasProperty,
                 DataType = DataTypeIds.Argument,
@@ -438,7 +455,9 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleServerRestart()
         {
-            Thread.Sleep(1000);
+            _shutdown = true;
+
+            Thread.Sleep(5000);
 
             Program.App.Stop();
             Program.App.Start(new UAServer()).GetAwaiter().GetResult();
@@ -446,10 +465,17 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult GetAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
+            if (outputArguments.Count == 0)
+            {
+                return new ServiceResult(StatusCodes.BadInvalidArgument);
+            }
+
+            outputArguments[0] = string.Empty;
             foreach (string asset in _assets.Keys)
             {
-                outputArguments.Add(asset);
+                outputArguments[0] += asset + ",";
             }
+            outputArguments[0] = ((string)outputArguments[0]).TrimEnd(',');
 
             return ServiceResult.Good;
         }
@@ -488,51 +514,56 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private void UpdateNodeValues(object state)
+        private void UpdateNodeValues()
         {
-            _counter++;
-
-            foreach (AssetTag tag in _tags)
+            while (!_shutdown)
             {
-                try
+                Thread.Sleep(1000);
+
+                _counter++;
+
+                foreach (AssetTag tag in _tags)
                 {
-                    if (_assets.ContainsKey(tag.AssetName))
+                    try
                     {
-                        if (_assets[tag.AssetName] is ModbusTCPClient)
+                        if (_assets.ContainsKey(tag.AssetName))
                         {
-                            if (_counter * 1000 % tag.PollingInterval == 0)
+                            if (_assets[tag.AssetName] is ModbusTCPClient)
                             {
-                                ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
-                                if (tag.Entity == "Holdingregister")
+                                if (_counter * 1000 % tag.PollingInterval == 0)
                                 {
-                                    functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
-                                }
-
-                                string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
-
-                                if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
-                                {
-                                    // read tag
-                                    byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
-                                    uint offset = uint.Parse(addressParts[2]);
-                                    ushort length = ushort.Parse(addressParts[4]);
-                                    byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
-
-                                    if (tag.Type == "Float")
+                                    ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
+                                    if (tag.Entity == "Holdingregister")
                                     {
-                                        _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-                                        _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                                        _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                                        functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
+                                    }
+
+                                    string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+
+                                    if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
+                                    {
+                                        // read tag
+                                        byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
+                                        uint offset = uint.Parse(addressParts[2]);
+                                        ushort length = ushort.Parse(addressParts[4]);
+                                        byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
+
+                                        if (tag.Type == "Float")
+                                        {
+                                            _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                                            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    // skip this tag, but log an error
-                    Log.Logger.Error(ex.Message, ex);
+                    catch (Exception ex)
+                    {
+                        // skip this tag, but log an error
+                        Log.Logger.Error(ex.Message, ex);
+                    }
                 }
             }
         }
