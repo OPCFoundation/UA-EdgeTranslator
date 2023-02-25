@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <Content Include="Ua.Edge.Translator.Config.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 

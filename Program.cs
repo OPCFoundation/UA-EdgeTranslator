@@ -36,7 +36,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 ApplicationName = appName,
                 ApplicationType = ApplicationType.Server,
-                ConfigSectionName = "UA.Edge.Translator"
+                ConfigSectionName = "Ua.Edge.Translator"
             };
 
             await App.LoadApplicationConfiguration(false).ConfigureAwait(false);
