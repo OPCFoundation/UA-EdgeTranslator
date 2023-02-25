@@ -13,13 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="UA.Cloud.Commander.Config.xml" />
-    <None Remove="Ua.Edge.Translator.Config.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="Ua.Edge.Translator.Config.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
