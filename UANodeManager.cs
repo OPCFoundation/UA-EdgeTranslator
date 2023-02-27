@@ -24,7 +24,7 @@ namespace Opc.Ua.Edge.Translator
 
         private Dictionary<string, IAsset> _assets = new();
 
-        private List<AssetTag> _tags = new();
+        private Dictionary<string, List<AssetTag>> _tags = new();
 
         private uint _counter = 0;
 
@@ -179,6 +179,8 @@ namespace Opc.Ua.Edge.Translator
                         }
 
                         AddPredefinedNode(SystemContext, assetFolder);
+
+                        _ = Task.Factory.StartNew(UpdateNodeValues, td.Title + " [" + td.Name + "]", TaskCreationOptions.LongRunning);
                     }
                     catch (Exception ex)
                     {
@@ -189,8 +191,6 @@ namespace Opc.Ua.Edge.Translator
 
                 AddReverseReferences(externalReferences);
             }
-
-            _ = Task.Run(() => UpdateNodeValues());
         }
 
         private void AddModbusNodes(ThingDescription td, FolderState assetFolder, KeyValuePair<string, Property> property, object form)
@@ -225,12 +225,19 @@ namespace Opc.Ua.Edge.Translator
                 Name = property.Key,
                 Address = modbusForm.Href,
                 Type = modbusForm.ModbusType.ToString(),
-                AssetName = td.Title + " [" + td.Name + "]",
                 PollingInterval = (int)modbusForm.ModbusPollingTime,
                 Entity = modbusForm.ModbusEntity.ToString(),
                 MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[property.Key].NodeId, Server.NamespaceUris).ToString()
             };
-            _tags.Add(tag);
+
+            string assetName = td.Title + " [" + td.Name + "]";
+
+            if (!_tags.ContainsKey(assetName))
+            {
+                _tags.Add(assetName, new List<AssetTag>());
+            }
+
+            _tags[assetName].Add(tag);
         }
 
         private void AddOPCUACompanionSpecNodes(ThingDescription td)
@@ -294,8 +301,10 @@ namespace Opc.Ua.Edge.Translator
                     throw new Exception("Expected Modbus address in the format modbus://ipaddress:port!");
                 }
 
+                // check if we can reach the Modbus asset
                 ModbusTCPClient client = new();
                 client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
+                client.Disconnect();
 
                 _assets.Add(td.Title + " [" + td.Name + "]", client);
             }
@@ -514,7 +523,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private void UpdateNodeValues()
+        private void UpdateNodeValues(object assetNameObject)
         {
             while (!_shutdown)
             {
@@ -522,38 +531,41 @@ namespace Opc.Ua.Edge.Translator
 
                 _counter++;
 
-                foreach (AssetTag tag in _tags)
+                string assetName = (string) assetNameObject;
+                if (string.IsNullOrEmpty(assetName) || !_tags.ContainsKey(assetName) || !_assets.ContainsKey(assetName))
+                {
+                    throw new Exception("Cannot find asset: " +  assetName);
+                }
+
+                foreach (AssetTag tag in _tags[assetName])
                 {
                     try
                     {
-                        if (_assets.ContainsKey(tag.AssetName))
+                        if (_assets[assetName] is ModbusTCPClient)
                         {
-                            if (_assets[tag.AssetName] is ModbusTCPClient)
+                            if (_counter * 1000 % tag.PollingInterval == 0)
                             {
-                                if (_counter * 1000 % tag.PollingInterval == 0)
+                                ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
+                                if (tag.Entity == "Holdingregister")
                                 {
-                                    ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
-                                    if (tag.Entity == "Holdingregister")
+                                    functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
+                                }
+
+                                string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+
+                                if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
+                                {
+                                    // read tag
+                                    byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
+                                    uint offset = uint.Parse(addressParts[2]);
+                                    ushort length = ushort.Parse(addressParts[4]);
+                                    byte[] tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
+
+                                    if (tag.Type == "Float")
                                     {
-                                        functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
-                                    }
-
-                                    string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
-
-                                    if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
-                                    {
-                                        // read tag
-                                        byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
-                                        uint offset = uint.Parse(addressParts[2]);
-                                        ushort length = ushort.Parse(addressParts[4]);
-                                        byte[] tagBytes = _assets[tag.AssetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
-
-                                        if (tag.Type == "Float")
-                                        {
-                                            _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-                                            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                                            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
-                                        }
+                                        _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                        _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                                        _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
                                     }
                                 }
                             }

@@ -32,6 +32,8 @@ namespace Opc.Ua.Edge.Translator
 
         private const byte errorFlag = 0x80;
 
+        private object _lock = new object();
+
         private void HandlerError(byte errorCode)
         {
             switch (errorCode)
@@ -59,8 +61,11 @@ namespace Opc.Ua.Edge.Translator
 
         public void Disconnect()
         {
-            tcpClient.Close();
-            tcpClient = null;
+            if (tcpClient != null)
+            {
+                tcpClient.Close();
+                tcpClient = null;
+            }
         }
 
         public Task<byte[]> Read(byte unitID, string function, uint address, ushort count)
@@ -92,7 +97,7 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
         {
-            lock (this)
+            lock (_lock)
             {
                 // check funtion code
                 if ((function != FunctionCode.ReadInputRegisters)
@@ -165,10 +170,10 @@ namespace Opc.Ua.Edge.Translator
 
         public async Task WriteHoldingRegisters(byte unitID, ushort registerBaseAddress, ushort[] values)
         {
-            // debounce writing to not overwhelm our poor little Modbus server
+            // throttle writing to not overwhelm our poor little Modbus server
             await Task.Delay(1000).ConfigureAwait(false);
 
-            lock (this)
+            lock (_lock)
             {
                 if ((11 + (values.Length * 2)) > ApplicationDataUnit.maxADU)
                 {
@@ -243,10 +248,10 @@ namespace Opc.Ua.Edge.Translator
 
         public async Task WriteCoil(byte unitID, ushort coilAddress, bool set)
         {
-            // debounce writing to not overwhelm our poor little Modbus server
+            // throttle writing to not overwhelm our poor little Modbus server
             await Task.Delay(1000).ConfigureAwait(false);
 
-            lock (this)
+            lock (_lock)
             {
                 ApplicationDataUnit aduRequest = new ApplicationDataUnit();
                 aduRequest.TransactionID = transactionID++;

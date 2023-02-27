@@ -9,8 +9,6 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public string Type { get; set; }
 
-        public string AssetName { get; set; }
-
         public int PollingInterval { get; set; }
 
         public string Entity { get; set; }
