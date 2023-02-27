@@ -304,7 +304,6 @@ namespace Opc.Ua.Edge.Translator
                 // check if we can reach the Modbus asset
                 ModbusTCPClient client = new();
                 client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
-                client.Disconnect();
 
                 _assets.Add(td.Title + " [" + td.Name + "]", client);
             }
