@@ -31,7 +31,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=1&length=2",
+          "href": "/1?address=1&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -49,7 +49,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=3&length=2",
+          "href": "/1?address=3&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -67,7 +67,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=5&length=2",
+          "href": "/1?address=5&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -85,7 +85,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=7&length=2",
+          "href": "/1?address=7&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -103,7 +103,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=9&length=2",
+          "href": "/1?address=9&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -121,7 +121,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=11&length=2",
+          "href": "/1?address=11&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -139,7 +139,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=13&length=2",
+          "href": "/1?address=13&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -157,7 +157,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=15&length=2",
+          "href": "/1?address=15&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -175,7 +175,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=17&length=2",
+          "href": "/1?address=17&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -193,7 +193,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=37&length=2",
+          "href": "/1?address=37&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -211,7 +211,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=39&length=2",
+          "href": "/1?address=39&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -229,7 +229,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=41&length=2",
+          "href": "/1?address=41&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -247,7 +247,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=63&length=2",
+          "href": "/1?address=63&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -265,7 +265,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=65&length=2",
+          "href": "/1?address=65&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -283,7 +283,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=67&length=2",
+          "href": "/1?address=67&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -301,7 +301,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?offset=69&length=2",
+          "href": "/1?address=69&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"

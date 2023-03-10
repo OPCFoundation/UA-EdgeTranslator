@@ -552,13 +552,13 @@ namespace Opc.Ua.Edge.Translator
 
                                 string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-                                if ((addressParts.Length > 4) && (addressParts[1] == "offset") && (addressParts[3] == "length"))
+                                if ((addressParts.Length > 4) && (addressParts[1] == "address") && (addressParts[3] == "quantity"))
                                 {
                                     // read tag
                                     byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
-                                    uint offset = uint.Parse(addressParts[2]);
-                                    ushort length = ushort.Parse(addressParts[4]);
-                                    byte[] tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), offset, length).GetAwaiter().GetResult();
+                                    uint address = uint.Parse(addressParts[2]);
+                                    ushort quantity = ushort.Parse(addressParts[4]);
+                                    byte[] tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
 
                                     if (tag.Type == "Float")
                                     {
