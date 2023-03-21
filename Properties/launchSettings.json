@@ -7,7 +7,7 @@
       "commandName": "Docker",
       "publishAllPorts": true,
       "environmentVariables": {
-        "LOG_FILE_PATH": "/Logs/test"
+        "LOG_FILE_PATH": "/logs"
       }
     }
   }

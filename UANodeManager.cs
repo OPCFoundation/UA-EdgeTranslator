@@ -11,6 +11,7 @@ namespace Opc.Ua.Edge.Translator
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -42,7 +43,7 @@ namespace Opc.Ua.Edge.Translator
             };
 
             // add a seperate namespace for each asset from the WoT TD files
-            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.jsonld");
+            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
             {
                 try
@@ -157,7 +158,12 @@ namespace Opc.Ua.Edge.Translator
 
                 AddAssetManagementNodes(references);
 
-                IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.jsonld");
+                if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "settings")))
+                {
+                    Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
+                }
+
+                IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
                 foreach (string file in WoTFiles)
                 {
                     try
@@ -205,7 +211,16 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string namespaceURI = opcuaTypeParts[1];
                     uint nodeID = uint.Parse(opcuaTypeParts[3]);
-                    _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/")));
+
+                    if (NamespaceUris.Contains(namespaceURI))
+                    {
+                        _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/")));
+                    }
+                    else
+                    {
+                        // default to float
+                        _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/")));
+                    }
                 }
                 else
                 {
@@ -448,7 +463,7 @@ namespace Opc.Ua.Edge.Translator
 
             try
             {
-                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Guid.NewGuid().ToString() + ".jsonld"), inputArguments[0].ToString());
+                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", Guid.NewGuid().ToString() + ".jsonld"), inputArguments[0].ToString());
 
                 _ = Task.Run(() => HandleServerRestart());
 
@@ -495,7 +510,7 @@ namespace Opc.Ua.Edge.Translator
                 return new ServiceResult(StatusCodes.BadInvalidArgument);
             }
 
-            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.jsonld");
+            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
             {
                 try
