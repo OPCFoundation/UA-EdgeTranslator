@@ -573,9 +573,23 @@ namespace Opc.Ua.Edge.Translator
                                     byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
                                     uint address = uint.Parse(addressParts[2]);
                                     ushort quantity = ushort.Parse(addressParts[4]);
-                                    byte[] tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
 
-                                    if (tag.Type == "Float")
+                                    byte[] tagBytes = null;
+                                    try
+                                    {
+                                        tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Log.Logger.Error(ex.Message, ex);
+
+                                        // try reconnecting
+                                        string[] remoteEndpoint = _assets[assetName].GetRemoteEndpoint().Split(':');
+                                        _assets[assetName].Disconnect();
+                                        _assets[assetName].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                                    }
+
+                                    if ((tagBytes != null) && (tag.Type == "Float"))
                                     {
                                         _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
                                         _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;

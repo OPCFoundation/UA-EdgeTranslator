@@ -8,6 +8,8 @@
 
         public void Disconnect();
 
+        public string GetRemoteEndpoint();
+
         public Task<byte[]> Read(byte unitID, string function, uint address, ushort count);
 
         public Task WriteBit(byte unitID, uint address, bool set);

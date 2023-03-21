@@ -59,6 +59,11 @@ namespace Opc.Ua.Edge.Translator
             _tcpClient.GetStream().WriteTimeout = _timeout;
         }
 
+        public string GetRemoteEndpoint()
+        {
+            return _tcpClient.Client.RemoteEndPoint.ToString();
+        }
+
         public bool IsConnected()
         {
             return _tcpClient != null;
