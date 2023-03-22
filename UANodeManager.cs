@@ -42,6 +42,11 @@ namespace Opc.Ua.Edge.Translator
                 "http://opcfoundation.org/UA/EdgeTranslator/"
             };
 
+            if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "settings")))
+            {
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
+            }
+
             // add a seperate namespace for each asset from the WoT TD files
             IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
