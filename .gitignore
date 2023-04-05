@@ -351,3 +351,4 @@ MigrationBackup/
 *.jsonld
 /DI.nodeset2.xml
 /PROFIenergy.nodeset2.xml
+/uaedgetranslator.logfile.txt
