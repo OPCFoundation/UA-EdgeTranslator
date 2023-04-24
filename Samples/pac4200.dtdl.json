@@ -1,0 +1,34 @@
+{
+  "@context": "dtmi:dtdl:context;2",
+  "@id": "dtmi:siemens:sentron:pac4200;1",
+  "@type": "Interface",
+  "displayName": "modbus-pac4200-sn324",
+  "description": "Siemens SENTRON PAC4200",
+  "comment": "modbus://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/",
+  "contents": [
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=1&quantity=2",
+      "displayName": "VoltageL1-N",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=3&quantity=2",
+      "displayName": "VoltageL2-N",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=5&quantity=2",
+      "displayName": "VoltageL3-N",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "schema": "float"
+    }
+  ]
+}
