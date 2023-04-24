@@ -23,5 +23,6 @@ In this reference implementation, only Modbus TCP is supported, but other interf
 
 ## Optional Environment Variables
 
+* UACLURL - UA Cloud Library URL (e.g. https://uacloudlibrary.opcfoundation.org or https://cloudlib.cesmii.net)
 * UACLUsername - UA Cloud Library Username
 * UACLPassword - UA Cloud Library Password

@@ -2,12 +2,9 @@
   "@context": [
     "https://www.w3.org/2019/wot/td/v1",
     "https://si-ra.github.io/ontologies/td-context.jsonld",
-    "https://uacloudlibrary.opcfoundation.org/infomodel/download/2630483500"
+    "http://opcfoundation.org/UA/PNEM/"
   ],
   "id": "urn:pac4200",
-  "gms:hasValueType": [
-    "gms:www.siemens.com/gms_ontology.owl"
-  ],
   "securityDefinitions": {
     "nosec_sc": {
       "scheme": "nosec"

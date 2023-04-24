@@ -47,6 +47,9 @@ namespace Opc.Ua.Edge.Translator
                 Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
             }
 
+            // log into UA Cloud Library and download available Nodeset files
+            _uacloudLibraryClient.Login(Environment.GetEnvironmentVariable("UACLURL"), Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+
             // add a seperate namespace for each asset from the WoT TD files
             IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
@@ -60,7 +63,7 @@ namespace Opc.Ua.Edge.Translator
 
                     namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
 
-                    FetchOPCUACompanionSpec(namespaceUris, td);
+                    FetchOPCUACompanionSpecs(namespaceUris, td);
                 }
                 catch (Exception ex)
                 {
@@ -72,58 +75,47 @@ namespace Opc.Ua.Edge.Translator
             NamespaceUris = namespaceUris;
         }
 
-        private void FetchOPCUACompanionSpec(List<string> namespaceUris, ThingDescription td)
+        private void FetchOPCUACompanionSpecs(List<string> namespaceUris, ThingDescription td)
         {
             // check if an OPC UA companion spec is mentioned in the WoT TD file
-            string opcuaCompanionSpecUrl = string.Empty;
-            string opcuaCompanionSpecPath = string.Empty;
-            foreach (Uri uris in td.Context)
+            foreach (Uri opcuaCompanionSpecUrl in td.Context)
             {
-                // all known UA Cloud Libraries are supported
-                if (uris.IsAbsoluteUri && (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org") || uris.AbsoluteUri.Contains("https://cloudlib.cesmii.net")))
+                // support local Nodesets
+                if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
                 {
-                    opcuaCompanionSpecUrl = uris.AbsoluteUri;
+                    string nodesetFile = string.Empty;
+                    if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
+                    {
+                        // absolute file path
+                        nodesetFile = opcuaCompanionSpecUrl.OriginalString;
+                    }
+                    else
+                    {
+                        // relative file path
+                        nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
+                    }
+
+                    Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
+                    LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
                 }
                 else
                 {
-                    if (!uris.IsAbsoluteUri || (!uris.AbsoluteUri.Contains("http://") && !uris.AbsoluteUri.Contains("https://")))
+                    if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), opcuaCompanionSpecUrl.OriginalString))
                     {
-                        opcuaCompanionSpecPath = uris.OriginalString;
+                        Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
+
+                        foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                        {
+                            LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
+                        }
                     }
                 }
             }
 
-            // support local Nodesets
-            if (!string.IsNullOrEmpty(opcuaCompanionSpecPath))
+            string validationError = _uacloudLibraryClient.ValidateNamespacesAndModels(Environment.GetEnvironmentVariable("UACLURL"), true);
+            if (!string.IsNullOrEmpty(validationError))
             {
-                string nodesetFile = string.Empty;
-                if (Path.IsPathFullyQualified(opcuaCompanionSpecPath))
-                {
-                    // absolute file path
-                    nodesetFile = opcuaCompanionSpecPath;
-                }
-                else
-                {
-                    // relative file path
-                    nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecPath);
-                }
-
-                Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
-
-                LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
-            }
-
-            // UA Cloud Library nodesets: Log into UA Cloud Library to download the companion spec and its dependencies and add their namespaces to our list
-            if (!string.IsNullOrEmpty(opcuaCompanionSpecUrl))
-            {
-                _uacloudLibraryClient.Login(opcuaCompanionSpecUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
-
-                Log.Logger.Information("Loading nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
-
-                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
-                {
-                    LoadNamespaceUrisFromStream(namespaceUris, nodesetFile);
-                }
+                Log.Logger.Error(validationError);
             }
         }
 
@@ -262,42 +254,27 @@ namespace Opc.Ua.Edge.Translator
 
         private void AddOPCUACompanionSpecNodes(ThingDescription td)
         {
-            string opcuaCompanionSpecDownloadUrl = string.Empty;
-            foreach (Uri uris in td.Context)
+            // we need as many passes as we have nodesetfiles to make sure all references can be resolved
+            for (int i = 0; i < _uacloudLibraryClient._nodeSetFilenames.Count; i++)
             {
-                if (uris.AbsoluteUri.Contains("https://uacloudlibrary.opcfoundation.org"))
+                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
                 {
-                    opcuaCompanionSpecDownloadUrl = uris.AbsoluteUri;
-                }
-            }
-
-            // log into UA Cloud Library if a companion spec is mentioned in the WoT TD file
-            if (!string.IsNullOrEmpty(opcuaCompanionSpecDownloadUrl))
-            {
-                _uacloudLibraryClient.Login(opcuaCompanionSpecDownloadUrl, Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
-
-                // we need as many passes as we have nodesetfiles to make sure all references can be resolved
-                for (int i = 0; i < _uacloudLibraryClient._nodeSetFilenames.Count; i++)
-                {
-                    foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                    using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
                     {
-                        using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
+                        UANodeSet nodeSet = UANodeSet.Read(stream);
+
+                        NodeStateCollection predefinedNodes = new NodeStateCollection();
+                        nodeSet.Import(SystemContext, predefinedNodes);
+
+                        for (int j = 0; j < predefinedNodes.Count; j++)
                         {
-                            UANodeSet nodeSet = UANodeSet.Read(stream);
-
-                            NodeStateCollection predefinedNodes = new NodeStateCollection();
-                            nodeSet.Import(SystemContext, predefinedNodes);
-
-                            for (int j = 0; j < predefinedNodes.Count; j++)
+                            try
                             {
-                                try
-                                {
-                                    AddPredefinedNode(SystemContext, predefinedNodes[j]);
-                                }
-                                catch (Exception)
-                                {
-                                    // do nothing
-                                }
+                                AddPredefinedNode(SystemContext, predefinedNodes[j]);
+                            }
+                            catch (Exception)
+                            {
+                                // do nothing
                             }
                         }
                     }

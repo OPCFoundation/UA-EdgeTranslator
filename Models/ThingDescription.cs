@@ -13,9 +13,6 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonProperty("gms:hasValueType")]
-        public string[] GmsHasValueType { get; set; }
-
         [JsonProperty("securityDefinitions")]
         public SecurityDefinitions SecurityDefinitions { get; set; }
 

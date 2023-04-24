@@ -1,57 +1,75 @@
-﻿
-namespace Opc.Ua.Edge.Translator.Models
+﻿/* ========================================================================
+ * Copyright (c) 2005-2021 The OPC Foundation, Inc. All rights reserved.
+ *
+ * OPC Foundation MIT License 1.00
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * The complete license agreement can be found here:
+ * http://opcfoundation.org/License/MIT/1.00/
+ * ======================================================================*/
+
+namespace Opc.Ua.Cloud.Library.Models
 {
     using System;
     using System.ComponentModel.DataAnnotations;
 
-    public enum AddressSpaceLicense
+    public enum License
     {
         MIT,
         ApacheLicense20,
         Custom
     }
 
-    public class AddressSpace
+    public class UANameSpace
     {
-        public AddressSpace()
+        public UANameSpace()
         {
             Title = string.Empty;
-            Version = "1.0.0";
-            License = AddressSpaceLicense.Custom;
+            License = License.Custom;
             CopyrightText = string.Empty;
-            CreationTime = DateTime.UtcNow;
-            LastModificationTime = DateTime.UtcNow;
             Contributor = new Organisation();
             Description = string.Empty;
-            Category = new AddressSpaceCategory();
-            Nodeset = new AddressSpaceNodeset2();
+            Category = new Category();
+            Nodeset = new Nodeset();
             DocumentationUrl = null;
             IconUrl = null;
             LicenseUrl = null;
-            Keywords = new string[0];
+            Keywords = Array.Empty<string>();
             PurchasingInformationUrl = null;
             ReleaseNotesUrl = null;
             TestSpecificationUrl = null;
-            SupportedLocales = new string[0];
+            SupportedLocales = Array.Empty<string>();
             NumberOfDownloads = 0;
-            AdditionalProperties = new Tuple<string, string>[0];
+            AdditionalProperties = null;
         }
 
         [Required]
         public string Title { get; set; }
 
         [Required]
-        public string Version { get; set; }
-
-        [Required]
-        public AddressSpaceLicense License { get; set; }
+        public License License { get; set; }
 
         [Required]
         public string CopyrightText { get; set; }
-
-        public DateTime? CreationTime { get; set; }
-
-        public DateTime LastModificationTime { get; set; }
 
         [Required]
         public Organisation Contributor { get; set; }
@@ -60,10 +78,10 @@ namespace Opc.Ua.Edge.Translator.Models
         public string Description { get; set; }
 
         [Required]
-        public AddressSpaceCategory Category { get; set; }
+        public Category Category { get; set; }
 
         [Required]
-        public AddressSpaceNodeset2 Nodeset { get; set; }
+        public Nodeset Nodeset { get; set; }
 
         /// <summary>
         /// Link to additional documentation, specifications, GitHub, etc.
@@ -90,7 +108,16 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public uint NumberOfDownloads { get; set; }
 
-        public Tuple<string, string>[] AdditionalProperties { get; set; }
+        public string ValidationStatus { get; set; }
+
+        public UAProperty[] AdditionalProperties { get; set; }
+    }
+
+    public class UAProperty
+    {
+        public string Name { get; set; }
+
+        public string Value { get; set; }
     }
 
     public class Organisation
@@ -102,8 +129,6 @@ namespace Opc.Ua.Edge.Translator.Models
             LogoUrl = null;
             ContactEmail = null;
             Website = null;
-            CreationTime = DateTime.UtcNow;
-            LastModificationTime = DateTime.UtcNow;
         }
 
         [Required]
@@ -117,20 +142,32 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public Uri Website { get; set; }
 
-        public DateTime CreationTime { get; set; }
+        public override bool Equals(object obj)
+        {
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            else
+            {
+                Organisation org = (Organisation)obj;
+                return Name.Equals(org.Name, StringComparison.Ordinal);
+            }
+        }
 
-        public DateTime LastModificationTime { get; set; }
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode(StringComparison.Ordinal);
+        }
     }
 
-    public class AddressSpaceCategory
+    public class Category
     {
-        public AddressSpaceCategory()
+        public Category()
         {
             Name = string.Empty;
             Description = null;
             IconUrl = null;
-            CreationTime = DateTime.UtcNow;
-            LastModificationTime = DateTime.UtcNow;
         }
 
         [Required]
@@ -140,25 +177,48 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public Uri IconUrl { get; set; }
 
-        public DateTime CreationTime { get; set; }
+        public override bool Equals(object obj)
+        {
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            else
+            {
+                Category org = (Category)obj;
+                return Name.Equals(org.Name, StringComparison.Ordinal);
+            }
+        }
 
-        public DateTime LastModificationTime { get; set; }
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode(StringComparison.Ordinal);
+        }
     }
 
-    public class AddressSpaceNodeset2
+    public class Nodeset
     {
-        public AddressSpaceNodeset2()
+        public Nodeset()
         {
             NodesetXml = string.Empty;
-            CreationTime = DateTime.UtcNow;
-            LastModificationTime = DateTime.UtcNow;
+            Identifier = 0;
+            NamespaceUri = null;
+            Version = string.Empty;
+            PublicationDate = DateTime.MinValue;
+            LastModifiedDate = DateTime.MinValue;
         }
 
         [Required]
         public string NodesetXml { get; set; }
 
-        public DateTime CreationTime { get; set; }
+        public uint Identifier { get; set; }
 
-        public DateTime LastModificationTime { get; set; }
+        public Uri NamespaceUri { get; set; }
+
+        public string Version { get; set; }
+
+        public DateTime PublicationDate { get; set; }
+
+        public DateTime LastModifiedDate { get; set; }
     }
 }
