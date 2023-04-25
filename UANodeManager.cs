@@ -60,6 +60,13 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string contents = File.ReadAllText(file);
 
+                    // check file type (WoT TD or DTDL)
+                    if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
+                    {
+                        // parse DTDL contents and convert to WoT
+                        contents = WoT2DTDLMapper.DTDL2WoT(contents);
+                    }
+
                     // parse WoT TD files contents
                     ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
@@ -288,6 +295,13 @@ namespace Opc.Ua.Edge.Translator
         {
             string contents = File.ReadAllText(file);
 
+            // check file type (WoT TD or DTDL)
+            if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
+            {
+                // parse DTDL contents and convert to WoT
+                contents = WoT2DTDLMapper.DTDL2WoT(contents);
+            }
+
             // parse WoT TD file contents
             td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
@@ -505,6 +519,13 @@ namespace Opc.Ua.Edge.Translator
                 try
                 {
                     string contents = File.ReadAllText(file);
+
+                    // check file type (WoT TD or DTDL)
+                    if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
+                    {
+                        // parse DTDL contents and convert to WoT
+                        contents = WoT2DTDLMapper.DTDL2WoT(contents);
+                    }
 
                     // parse WoT TD files contents
                     ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
