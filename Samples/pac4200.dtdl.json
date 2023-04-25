@@ -29,6 +29,110 @@
       "description": "holdingregister;2000",
       "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
       "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=7&quantity=2",
+      "displayName": "VoltageL1-L2",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=9&quantity=2",
+      "displayName": "VoltageL2-L3",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=11&quantity=2",
+      "displayName": "VoltageL3-L1",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=13&quantity=2",
+      "displayName": "CurrentL1",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=15&quantity=2",
+      "displayName": "CurrentL2",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=17&quantity=2",
+      "displayName": "CurrentL3",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=37&quantity=2",
+      "displayName": "PowerFactorL1",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=39&quantity=2",
+      "displayName": "PowerFactorL2",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=41&quantity=2",
+      "displayName": "PowerFactorL3",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=63&quantity=2",
+      "displayName": "TotalApparentPower",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=65&quantity=2",
+      "displayName": "TotalActivePower",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=67&quantity=2",
+      "displayName": "TotalReactivePower",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6081",
+      "schema": "float"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "/1?address=69&quantity=2",
+      "displayName": "TotalPowerFactor",
+      "description": "holdingregister;2000",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "schema": "float"
     }
   ]
 }

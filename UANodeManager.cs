@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
@@ -10,6 +11,7 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Threading;
@@ -286,8 +288,13 @@ namespace Opc.Ua.Edge.Translator
         {
             string contents = File.ReadAllText(file);
 
-            // parse WoT TD files contents
+            // parse WoT TD file contents
             td = JsonConvert.DeserializeObject<ThingDescription>(contents);
+
+            // generate DTDL content, convert back to WoT TD and compare to original
+            string dtdlContent = WoT2DTDLMapper.WoT2DTDL(contents);
+            string convertedWoTTDContent = WoT2DTDLMapper.DTDL2WoT(dtdlContent);
+            Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
 
             // create a connection to the asset
             if (td.Base.ToLower().StartsWith("modbus://"))

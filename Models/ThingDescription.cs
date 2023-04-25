@@ -2,8 +2,10 @@
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
+    using System.Runtime.Serialization;
 
     public partial class ThingDescription
     {
@@ -30,9 +32,6 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("title")]
         public string Title { get; set; }
-
-        [JsonProperty("mlfb")]
-        public string Mlfb { get; set; }
 
         [JsonProperty("properties")]
         public Dictionary<string, Property> Properties { get; set; }
@@ -86,11 +85,34 @@ namespace Opc.Ua.Edge.Translator.Models
         public string Scheme { get; set; }
     }
 
-    public enum ModbusEntity { Holdingregister };
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum ModbusEntity
+    {
+        [EnumMember(Value = "holdingregister")]
+        Holdingregister
+    };
 
-    public enum ModbusType { Float };
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum ModbusType
+    {
+        [EnumMember(Value = "float")]
+        Float
+    };
 
-    public enum Op { Observeproperty, Readproperty };
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum Op
+    {
+        [EnumMember(Value = "observeproperty")]
+        Observeproperty,
 
-    public enum TypeEnum { Number };
+        [EnumMember(Value = "readproperty")]
+        Readproperty
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum TypeEnum
+    {
+        [EnumMember(Value = "number")]
+        Number
+    };
 }

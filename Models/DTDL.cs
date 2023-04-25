@@ -31,7 +31,7 @@ namespace Opc.Ua.Edge.Translator.Models
     public class Content
     {
         [JsonProperty("@type")]
-        public string type { get; set; }
+        public string Type { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }
