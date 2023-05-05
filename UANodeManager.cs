@@ -466,7 +466,35 @@ namespace Opc.Ua.Edge.Translator
 
             try
             {
-                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", Guid.NewGuid().ToString() + ".jsonld"), inputArguments[0].ToString());
+                // test if we can parse the content and connect to the asset
+                string contents = inputArguments[0].ToString();
+
+                // check file type (WoT TD or DTDL)
+                if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
+                {
+                    // parse DTDL contents and convert to WoT
+                    contents = WoT2DTDLMapper.DTDL2WoT(contents);
+                }
+
+                // parse WoT TD file contents
+                ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
+
+                // create a connection to the asset
+                if (td.Base.ToLower().StartsWith("modbus://"))
+                {
+                    string[] modbusAddress = td.Base.Split(':');
+                    if (modbusAddress.Length != 3)
+                    {
+                        throw new Exception("Expected Modbus address in the format modbus://ipaddress:port!");
+                    }
+
+                    // check if we can reach the Modbus asset
+                    ModbusTCPClient client = new();
+                    client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
+                    client.Disconnect();
+                }
+
+                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", Guid.NewGuid().ToString() + ".jsonld"), contents);
 
                 _ = Task.Run(() => HandleServerRestart());
 
