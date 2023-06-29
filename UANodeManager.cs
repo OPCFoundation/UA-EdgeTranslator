@@ -209,7 +209,7 @@ namespace Opc.Ua.Edge.Translator
         {
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
 
-            // create a OPC UA variable
+            // create an OPC UA variable
             if (!string.IsNullOrEmpty(modbusForm.OpcUaType))
             {
                 string[] opcuaTypeParts = modbusForm.OpcUaType.Split(new char[] { '=', ';' });
@@ -220,6 +220,10 @@ namespace Opc.Ua.Edge.Translator
 
                     if (NamespaceUris.Contains(namespaceURI))
                     {
+                        // TODO: Check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
+                        // This is not yet supported in the current OPC Foundation .Net Standard OPC UA stack.
+                        // Waiting for OPCFoundation.NetStandard.Opc.Ua.Server.ComplexTypes to become available!
+
                         _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/")));
                     }
                     else
@@ -510,8 +514,6 @@ namespace Opc.Ua.Edge.Translator
         private void HandleServerRestart()
         {
             _shutdown = true;
-
-            Thread.Sleep(5000);
 
             Program.App.Stop();
             Program.App.Start(new UAServer()).GetAwaiter().GetResult();
