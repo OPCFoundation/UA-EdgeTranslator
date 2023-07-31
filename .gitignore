@@ -349,6 +349,5 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 *.jsonld
-/DI.nodeset2.xml
-/PROFIenergy.nodeset2.xml
+/*.nodeset2.xml
 /uaedgetranslator.logfile.txt

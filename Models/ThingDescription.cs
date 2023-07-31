@@ -32,6 +32,15 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("title")]
         public string Title { get; set; }
+        
+        [JsonProperty("opcua:node")]
+        public string OpcUaObjectNode { get; set; }
+
+        [JsonProperty("opcua:type")]
+        public string OpcUaObjectType { get; set; }
+
+        [JsonProperty("opcua:parent")]
+        public string OpcUaParentNode { get; set; }
 
         [JsonProperty("properties")]
         public Dictionary<string, Property> Properties { get; set; }
@@ -62,6 +71,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("modbus:type")]
         public ModbusType ModbusType { get; set; }
+
+        [JsonProperty("opcua:node")]
+        public string OpcUaVariableNode { get; set; }
 
         [JsonProperty("opcua:type")]
         public string OpcUaType { get; set; }

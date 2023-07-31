@@ -30,4 +30,13 @@
     <Folder Include="settings\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Nodesets\Opc.Ua.WoT.NodeSet2.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Nodesets\Opc.Ua.WoT.PredefinedNodes.uanodes">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
