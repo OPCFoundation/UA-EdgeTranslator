@@ -141,30 +141,61 @@
       <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=5000</Reference>
     </References>
   </UAVariable>
-  <UAObjectType NodeId="ns=1;i=1000" BrowseName="1:IAssetManagementType" IsAbstract="true">
-    <DisplayName>IAssetManagementType</DisplayName>
+  <UAObject NodeId="ns=1;i=5001" BrowseName="1:AssetManagement">
+    <DisplayName>AssetManagement</DisplayName>
+    <Description>Asset Management for industrial assets using WoT.</Description>
     <References>
       <Reference ReferenceType="HasComponent">ns=1;i=7000</Reference>
       <Reference ReferenceType="HasComponent">ns=1;i=7001</Reference>
       <Reference ReferenceType="HasComponent">ns=1;i=7002</Reference>
-      <Reference ReferenceType="HasSubtype" IsForward="false">i=17602</Reference>
+      <Reference ReferenceType="Organizes" IsForward="false">i=85</Reference>
+      <Reference ReferenceType="HasNotifier" IsForward="false">i=2253</Reference>
+      <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
     </References>
-  </UAObjectType>
-  <UAMethod NodeId="ns=1;i=7000" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=1000">
-    <DisplayName>DeleteAsset</DisplayName>
+  </UAObject>
+  <UAMethod NodeId="ns=1;i=7000" BrowseName="1:ConfigureAsset" ParentNodeId="ns=1;i=5001">
+    <DisplayName>ConfigureAsset</DisplayName>
     <References>
       <Reference ReferenceType="HasProperty">ns=1;i=6008</Reference>
       <Reference ReferenceType="HasProperty">ns=1;i=6009</Reference>
-      <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1000</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
     </References>
   </UAMethod>
   <UAVariable NodeId="ns=1;i=6008" BrowseName="InputArguments" ParentNodeId="ns=1;i=7000" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:DeleteAsset</Description>
+    <Description>the definition of the input argument of method 1:AssetManagement.1:ConfigureAsset</Description>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7000</Reference>
+    </References>
+    <Value>
+      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
+        <ExtensionObject>
+          <TypeId>
+            <Identifier>i=297</Identifier>
+          </TypeId>
+          <Body>
+            <Argument>
+              <Name>WoTTD</Name>
+              <DataType>
+                <Identifier>i=12</Identifier>
+              </DataType>
+              <ValueRank>-1</ValueRank>
+              <ArrayDimensions />
+              <Description>
+                <Text>The Web of Things Thing Description describing the industrial asset.</Text>
+              </Description>
+            </Argument>
+          </Body>
+        </ExtensionObject>
+      </ListOfExtensionObject>
+    </Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;i=6009" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7000" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+    <DisplayName>OutputArguments</DisplayName>
+    <Description>the definition of the output arguments of method 1:AssetManagement.1:ConfigureAsset</Description>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7000</Reference>
     </References>
     <Value>
@@ -181,46 +212,28 @@
               </DataType>
               <ValueRank>-1</ValueRank>
               <ArrayDimensions />
-              <Description />
+              <Description>
+                <Text>A globally unique identifier for the configured asset.</Text>
+              </Description>
             </Argument>
           </Body>
         </ExtensionObject>
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=6009" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7000" DataType="i=296" ValueRank="1" ArrayDimensions="0">
-    <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:DeleteAsset</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7000</Reference>
-    </References>
-  </UAVariable>
-  <UAMethod NodeId="ns=1;i=7001" BrowseName="1:GetAssets" ParentNodeId="ns=1;i=1000">
-    <DisplayName>GetAssets</DisplayName>
+  <UAMethod NodeId="ns=1;i=7001" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=5001">
+    <DisplayName>DeleteAsset</DisplayName>
     <References>
       <Reference ReferenceType="HasProperty">ns=1;i=6010</Reference>
       <Reference ReferenceType="HasProperty">ns=1;i=6011</Reference>
-      <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1000</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=6010" BrowseName="InputArguments" ParentNodeId="ns=1;i=7001" DataType="i=296" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=6010" BrowseName="InputArguments" ParentNodeId="ns=1;i=7001" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:GetAssets</Description>
+    <Description>the definition of the input argument of method 1:AssetManagement.1:DeleteAsset</Description>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7001</Reference>
-    </References>
-  </UAVariable>
-  <UAVariable NodeId="ns=1;i=6011" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7001" DataType="i=296" ValueRank="1" ArrayDimensions="1">
-    <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:GetAssets</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
       <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7001</Reference>
     </References>
     <Value>
@@ -231,244 +244,51 @@
           </TypeId>
           <Body>
             <Argument>
-              <Name>AssetIds</Name>
+              <Name>AssetId</Name>
               <DataType>
                 <Identifier>i=14</Identifier>
               </DataType>
               <ValueRank>-1</ValueRank>
               <ArrayDimensions />
-              <Description />
+              <Description>
+                <Text>The globally unique identifier of the asset to delete.</Text>
+              </Description>
             </Argument>
           </Body>
         </ExtensionObject>
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=7002" BrowseName="1:ConfigureAsset" ParentNodeId="ns=1;i=1000">
-    <DisplayName>ConfigureAsset</DisplayName>
+  <UAVariable NodeId="ns=1;i=6011" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7001" DataType="i=296" ValueRank="1" ArrayDimensions="0">
+    <DisplayName>OutputArguments</DisplayName>
+    <Description>the definition of the output arguments of method 1:AssetManagement.1:DeleteAsset</Description>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7001</Reference>
+    </References>
+  </UAVariable>
+  <UAMethod NodeId="ns=1;i=7002" BrowseName="1:GetConfiguredAssets" ParentNodeId="ns=1;i=5001">
+    <DisplayName>GetConfiguredAssets</DisplayName>
     <References>
       <Reference ReferenceType="HasProperty">ns=1;i=6012</Reference>
       <Reference ReferenceType="HasProperty">ns=1;i=6013</Reference>
-      <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1000</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=6012" BrowseName="InputArguments" ParentNodeId="ns=1;i=7002" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=6012" BrowseName="InputArguments" ParentNodeId="ns=1;i=7002" DataType="i=296" ValueRank="1" ArrayDimensions="0">
     <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:ConfigureAsset</Description>
+    <Description>the definition of the input argument of method 1:AssetManagement.1:GetConfiguredAssets</Description>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
       <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7002</Reference>
     </References>
-    <Value>
-      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>ThingDescription</Name>
-              <DataType>
-                <Identifier>i=12</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-      </ListOfExtensionObject>
-    </Value>
   </UAVariable>
   <UAVariable NodeId="ns=1;i=6013" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7002" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:ConfigureAsset</Description>
+    <Description>the definition of the output arguments of method 1:AssetManagement.1:GetConfiguredAssets</Description>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasModellingRule">i=78</Reference>
       <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7002</Reference>
-    </References>
-    <Value>
-      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>AssetId</Name>
-              <DataType>
-                <Identifier>i=14</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-      </ListOfExtensionObject>
-    </Value>
-  </UAVariable>
-  <UAObject NodeId="ns=1;i=5001" BrowseName="1:AssetManagement">
-    <DisplayName>AssetManagement</DisplayName>
-    <References>
-      <Reference ReferenceType="HasComponent">ns=1;i=7003</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=7004</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=7005</Reference>
-      <Reference ReferenceType="Organizes" IsForward="false">i=85</Reference>
-      <Reference ReferenceType="HasNotifier" IsForward="false">i=2253</Reference>
-      <Reference ReferenceType="HasInterface">ns=1;i=1000</Reference>
-      <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
-    </References>
-  </UAObject>
-  <UAMethod NodeId="ns=1;i=7003" BrowseName="1:ConfigureAsset" ParentNodeId="ns=1;i=5001">
-    <DisplayName>ConfigureAsset</DisplayName>
-    <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=6014</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=6015</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
-    </References>
-  </UAMethod>
-  <UAVariable NodeId="ns=1;i=6014" BrowseName="InputArguments" ParentNodeId="ns=1;i=7003" DataType="i=296" ValueRank="1" ArrayDimensions="1">
-    <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:ConfigureAsset</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7003</Reference>
-    </References>
-    <Value>
-      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>ThingDescription</Name>
-              <DataType>
-                <Identifier>i=12</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-      </ListOfExtensionObject>
-    </Value>
-  </UAVariable>
-  <UAVariable NodeId="ns=1;i=6015" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7003" DataType="i=296" ValueRank="1" ArrayDimensions="2">
-    <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:ConfigureAsset</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7003</Reference>
-    </References>
-    <Value>
-      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>AssetId</Name>
-              <DataType>
-                <Identifier>i=14</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>Status</Name>
-              <DataType>
-                <Identifier>i=19</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-      </ListOfExtensionObject>
-    </Value>
-  </UAVariable>
-  <UAMethod NodeId="ns=1;i=7004" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=5001">
-    <DisplayName>DeleteAsset</DisplayName>
-    <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=6016</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=6017</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
-    </References>
-  </UAMethod>
-  <UAVariable NodeId="ns=1;i=6016" BrowseName="InputArguments" ParentNodeId="ns=1;i=7004" DataType="i=296" ValueRank="1" ArrayDimensions="1">
-    <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:DeleteAsset</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7004</Reference>
-    </References>
-    <Value>
-      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-        <ExtensionObject>
-          <TypeId>
-            <Identifier>i=297</Identifier>
-          </TypeId>
-          <Body>
-            <Argument>
-              <Name>AssetId</Name>
-              <DataType>
-                <Identifier>i=14</Identifier>
-              </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
-            </Argument>
-          </Body>
-        </ExtensionObject>
-      </ListOfExtensionObject>
-    </Value>
-  </UAVariable>
-  <UAVariable NodeId="ns=1;i=6017" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7004" DataType="i=296" ValueRank="1" ArrayDimensions="0">
-    <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:DeleteAsset</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7004</Reference>
-    </References>
-  </UAVariable>
-  <UAMethod NodeId="ns=1;i=7005" BrowseName="1:GetAssets" ParentNodeId="ns=1;i=5001">
-    <DisplayName>GetAssets</DisplayName>
-    <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=6018</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=6019</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5001</Reference>
-    </References>
-  </UAMethod>
-  <UAVariable NodeId="ns=1;i=6018" BrowseName="InputArguments" ParentNodeId="ns=1;i=7005" DataType="i=296" ValueRank="1" ArrayDimensions="0">
-    <DisplayName>InputArguments</DisplayName>
-    <Description>the definition of the input argument of method 1:IAssetManagementType.1:GetAssets</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7005</Reference>
-    </References>
-  </UAVariable>
-  <UAVariable NodeId="ns=1;i=6019" BrowseName="OutputArguments" ParentNodeId="ns=1;i=7005" DataType="i=296" ValueRank="1" ArrayDimensions="1">
-    <DisplayName>OutputArguments</DisplayName>
-    <Description>the definition of the output arguments of method 1:IAssetManagementType.1:GetAssets</Description>
-    <References>
-      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=7005</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -480,11 +300,15 @@
             <Argument>
               <Name>AssetIds</Name>
               <DataType>
-                <Identifier>i=14</Identifier>
+                <Identifier>i=12</Identifier>
               </DataType>
-              <ValueRank>-1</ValueRank>
-              <ArrayDimensions />
-              <Description />
+              <ValueRank>1</ValueRank>
+              <ArrayDimensions>
+                <UInt32>1</UInt32>
+              </ArrayDimensions>
+              <Description>
+                <Text>A list of the globally unique identifiers of the configured assets.</Text>
+              </Description>
             </Argument>
           </Body>
         </ExtensionObject>

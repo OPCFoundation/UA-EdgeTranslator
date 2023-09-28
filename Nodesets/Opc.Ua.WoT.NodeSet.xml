@@ -6,74 +6,6 @@
   </NamespaceUris>
   <ServerUris />
   <Nodes>
-    <Node i:type="ObjectTypeNode">
-      <NodeId>
-        <Identifier>ns=1;i=1000</Identifier>
-      </NodeId>
-      <NodeClass>ObjectType_8</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>1</NamespaceIndex>
-        <Name>IAssetManagementType</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>IAssetManagementType</Text>
-      </DisplayName>
-      <Description i:nil="true" />
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=45</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>i=17602</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7000</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7001</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7002</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=17603</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=5001</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <IsAbstract>true</IsAbstract>
-    </Node>
     <Node i:type="ObjectNode">
       <NodeId>
         <Identifier>ns=1;i=5000</Identifier>
@@ -200,7 +132,10 @@
         <Locale></Locale>
         <Text>AssetManagement</Text>
       </DisplayName>
-      <Description i:nil="true" />
+      <Description>
+        <Locale></Locale>
+        <Text>Asset Management for industrial assets using WoT.</Text>
+      </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
       <RolePermissions />
@@ -213,7 +148,7 @@
           </ReferenceTypeId>
           <IsInverse>false</IsInverse>
           <TargetId>
-            <Identifier>i=61</Identifier>
+            <Identifier>i=58</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -236,11 +171,11 @@
         </ReferenceNode>
         <ReferenceNode>
           <ReferenceTypeId>
-            <Identifier>i=17603</Identifier>
+            <Identifier>i=47</Identifier>
           </ReferenceTypeId>
           <IsInverse>false</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=1000</Identifier>
+            <Identifier>ns=1;i=7000</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -249,7 +184,7 @@
           </ReferenceTypeId>
           <IsInverse>false</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=7003</Identifier>
+            <Identifier>ns=1;i=7001</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -258,16 +193,7 @@
           </ReferenceTypeId>
           <IsInverse>false</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=7004</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7005</Identifier>
+            <Identifier>ns=1;i=7002</Identifier>
           </TargetId>
         </ReferenceNode>
       </References>
@@ -736,7 +662,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:DeleteAsset</Text>
+        <Text>the definition of the input argument of method 1:AssetManagement.1:ConfigureAsset</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -762,15 +688,6 @@
             <Identifier>i=68</Identifier>
           </TargetId>
         </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
       </References>
       <Value>
         <Value>
@@ -781,13 +698,15 @@
               </TypeId>
               <Body>
                 <Argument>
-                  <Name>AssetId</Name>
+                  <Name>WoTTD</Name>
                   <DataType>
-                    <Identifier>i=14</Identifier>
+                    <Identifier>i=12</Identifier>
                   </DataType>
                   <ValueRank>-1</ValueRank>
                   <ArrayDimensions />
-                  <Description />
+                  <Description>
+                    <Text>The Web of Things Thing Description describing the industrial asset.</Text>
+                  </Description>
                 </Argument>
               </Body>
             </ExtensionObject>
@@ -822,7 +741,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:DeleteAsset</Text>
+        <Text>the definition of the output arguments of method 1:AssetManagement.1:ConfigureAsset</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -848,19 +767,29 @@
             <Identifier>i=68</Identifier>
           </TargetId>
         </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
       </References>
       <Value>
         <Value>
-          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
+          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
+            <ExtensionObject>
+              <TypeId>
+                <Identifier>i=297</Identifier>
+              </TypeId>
+              <Body>
+                <Argument>
+                  <Name>AssetId</Name>
+                  <DataType>
+                    <Identifier>i=14</Identifier>
+                  </DataType>
+                  <ValueRank>-1</ValueRank>
+                  <ArrayDimensions />
+                  <Description>
+                    <Text>A globally unique identifier for the configured asset.</Text>
+                  </Description>
+                </Argument>
+              </Body>
+            </ExtensionObject>
+          </ListOfExtensionObject>
         </Value>
       </Value>
       <DataType>
@@ -868,7 +797,7 @@
       </DataType>
       <ValueRank>1</ValueRank>
       <ArrayDimensions>
-        <UInt32>0</UInt32>
+        <UInt32>1</UInt32>
       </ArrayDimensions>
       <AccessLevel>1</AccessLevel>
       <UserAccessLevel>1</UserAccessLevel>
@@ -891,7 +820,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:GetAssets</Text>
+        <Text>the definition of the input argument of method 1:AssetManagement.1:DeleteAsset</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -917,19 +846,29 @@
             <Identifier>i=68</Identifier>
           </TargetId>
         </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
       </References>
       <Value>
         <Value>
-          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
+          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
+            <ExtensionObject>
+              <TypeId>
+                <Identifier>i=297</Identifier>
+              </TypeId>
+              <Body>
+                <Argument>
+                  <Name>AssetId</Name>
+                  <DataType>
+                    <Identifier>i=14</Identifier>
+                  </DataType>
+                  <ValueRank>-1</ValueRank>
+                  <ArrayDimensions />
+                  <Description>
+                    <Text>The globally unique identifier of the asset to delete.</Text>
+                  </Description>
+                </Argument>
+              </Body>
+            </ExtensionObject>
+          </ListOfExtensionObject>
         </Value>
       </Value>
       <DataType>
@@ -937,7 +876,7 @@
       </DataType>
       <ValueRank>1</ValueRank>
       <ArrayDimensions>
-        <UInt32>0</UInt32>
+        <UInt32>1</UInt32>
       </ArrayDimensions>
       <AccessLevel>1</AccessLevel>
       <UserAccessLevel>1</UserAccessLevel>
@@ -960,7 +899,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:GetAssets</Text>
+        <Text>the definition of the output arguments of method 1:AssetManagement.1:DeleteAsset</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -986,36 +925,10 @@
             <Identifier>i=68</Identifier>
           </TargetId>
         </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
       </References>
       <Value>
         <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>AssetIds</Name>
-                  <DataType>
-                    <Identifier>i=14</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
+          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
         </Value>
       </Value>
       <DataType>
@@ -1023,7 +936,7 @@
       </DataType>
       <ValueRank>1</ValueRank>
       <ArrayDimensions>
-        <UInt32>1</UInt32>
+        <UInt32>0</UInt32>
       </ArrayDimensions>
       <AccessLevel>1</AccessLevel>
       <UserAccessLevel>1</UserAccessLevel>
@@ -1046,7 +959,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:ConfigureAsset</Text>
+        <Text>the definition of the input argument of method 1:AssetManagement.1:GetConfiguredAssets</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -1072,36 +985,10 @@
             <Identifier>i=68</Identifier>
           </TargetId>
         </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
       </References>
       <Value>
         <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>ThingDescription</Name>
-                  <DataType>
-                    <Identifier>i=12</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
+          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
         </Value>
       </Value>
       <DataType>
@@ -1109,7 +996,7 @@
       </DataType>
       <ValueRank>1</ValueRank>
       <ArrayDimensions>
-        <UInt32>1</UInt32>
+        <UInt32>0</UInt32>
       </ArrayDimensions>
       <AccessLevel>1</AccessLevel>
       <UserAccessLevel>1</UserAccessLevel>
@@ -1132,7 +1019,7 @@
       </DisplayName>
       <Description>
         <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:ConfigureAsset</Text>
+        <Text>the definition of the output arguments of method 1:AssetManagement.1:GetConfiguredAssets</Text>
       </Description>
       <WriteMask>0</WriteMask>
       <UserWriteMask>0</UserWriteMask>
@@ -1147,459 +1034,6 @@
           <IsInverse>true</IsInverse>
           <TargetId>
             <Identifier>ns=1;i=7002</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=78</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>AssetId</Name>
-                  <DataType>
-                    <Identifier>i=14</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>1</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6014</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>InputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>InputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:ConfigureAsset</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7003</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>ThingDescription</Name>
-                  <DataType>
-                    <Identifier>i=12</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>1</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6015</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>OutputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>OutputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:ConfigureAsset</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7003</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>AssetId</Name>
-                  <DataType>
-                    <Identifier>i=14</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>Status</Name>
-                  <DataType>
-                    <Identifier>i=19</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>2</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6016</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>InputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>InputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:DeleteAsset</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7004</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
-            <ExtensionObject>
-              <TypeId>
-                <Identifier>i=297</Identifier>
-              </TypeId>
-              <Body>
-                <Argument>
-                  <Name>AssetId</Name>
-                  <DataType>
-                    <Identifier>i=14</Identifier>
-                  </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
-                </Argument>
-              </Body>
-            </ExtensionObject>
-          </ListOfExtensionObject>
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>1</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6017</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>OutputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>OutputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:DeleteAsset</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7004</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>0</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6018</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>InputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>InputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the input argument of method 1:IAssetManagementType.1:GetAssets</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7005</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=40</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=68</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Value>
-        <Value>
-          <Null xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
-        </Value>
-      </Value>
-      <DataType>
-        <Identifier>i=296</Identifier>
-      </DataType>
-      <ValueRank>1</ValueRank>
-      <ArrayDimensions>
-        <UInt32>0</UInt32>
-      </ArrayDimensions>
-      <AccessLevel>1</AccessLevel>
-      <UserAccessLevel>1</UserAccessLevel>
-      <MinimumSamplingInterval>0</MinimumSamplingInterval>
-      <Historizing>false</Historizing>
-      <AccessLevelEx>0</AccessLevelEx>
-    </Node>
-    <Node i:type="VariableNode">
-      <NodeId>
-        <Identifier>ns=1;i=6019</Identifier>
-      </NodeId>
-      <NodeClass>Variable_2</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>0</NamespaceIndex>
-        <Name>OutputArguments</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>OutputArguments</Text>
-      </DisplayName>
-      <Description>
-        <Locale></Locale>
-        <Text>the definition of the output arguments of method 1:IAssetManagementType.1:GetAssets</Text>
-      </Description>
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=7005</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -1623,11 +1057,15 @@
                 <Argument>
                   <Name>AssetIds</Name>
                   <DataType>
-                    <Identifier>i=14</Identifier>
+                    <Identifier>i=12</Identifier>
                   </DataType>
-                  <ValueRank>-1</ValueRank>
-                  <ArrayDimensions />
-                  <Description />
+                  <ValueRank>1</ValueRank>
+                  <ArrayDimensions>
+                    <UInt32>1</UInt32>
+                  </ArrayDimensions>
+                  <Description>
+                    <Text>A list of the globally unique identifiers of the configured assets.</Text>
+                  </Description>
                 </Argument>
               </Body>
             </ExtensionObject>
@@ -1654,11 +1092,11 @@
       <NodeClass>Method_4</NodeClass>
       <BrowseName>
         <NamespaceIndex>1</NamespaceIndex>
-        <Name>DeleteAsset</Name>
+        <Name>ConfigureAsset</Name>
       </BrowseName>
       <DisplayName>
         <Locale></Locale>
-        <Text>DeleteAsset</Text>
+        <Text>ConfigureAsset</Text>
       </DisplayName>
       <Description i:nil="true" />
       <WriteMask>0</WriteMask>
@@ -1673,16 +1111,7 @@
           </ReferenceTypeId>
           <IsInverse>true</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=1000</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=80</Identifier>
+            <Identifier>ns=1;i=5001</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -1714,11 +1143,11 @@
       <NodeClass>Method_4</NodeClass>
       <BrowseName>
         <NamespaceIndex>1</NamespaceIndex>
-        <Name>GetAssets</Name>
+        <Name>DeleteAsset</Name>
       </BrowseName>
       <DisplayName>
         <Locale></Locale>
-        <Text>GetAssets</Text>
+        <Text>DeleteAsset</Text>
       </DisplayName>
       <Description i:nil="true" />
       <WriteMask>0</WriteMask>
@@ -1733,16 +1162,7 @@
           </ReferenceTypeId>
           <IsInverse>true</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=1000</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=80</Identifier>
+            <Identifier>ns=1;i=5001</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -1774,11 +1194,11 @@
       <NodeClass>Method_4</NodeClass>
       <BrowseName>
         <NamespaceIndex>1</NamespaceIndex>
-        <Name>ConfigureAsset</Name>
+        <Name>GetConfiguredAssets</Name>
       </BrowseName>
       <DisplayName>
         <Locale></Locale>
-        <Text>ConfigureAsset</Text>
+        <Text>GetConfiguredAssets</Text>
       </DisplayName>
       <Description i:nil="true" />
       <WriteMask>0</WriteMask>
@@ -1793,16 +1213,7 @@
           </ReferenceTypeId>
           <IsInverse>true</IsInverse>
           <TargetId>
-            <Identifier>ns=1;i=1000</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=37</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>i=80</Identifier>
+            <Identifier>ns=1;i=5001</Identifier>
           </TargetId>
         </ReferenceNode>
         <ReferenceNode>
@@ -1821,159 +1232,6 @@
           <IsInverse>false</IsInverse>
           <TargetId>
             <Identifier>ns=1;i=6013</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Executable>true</Executable>
-      <UserExecutable>true</UserExecutable>
-    </Node>
-    <Node i:type="MethodNode">
-      <NodeId>
-        <Identifier>ns=1;i=7003</Identifier>
-      </NodeId>
-      <NodeClass>Method_4</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>1</NamespaceIndex>
-        <Name>ConfigureAsset</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>ConfigureAsset</Text>
-      </DisplayName>
-      <Description i:nil="true" />
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=5001</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6014</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6015</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Executable>true</Executable>
-      <UserExecutable>true</UserExecutable>
-    </Node>
-    <Node i:type="MethodNode">
-      <NodeId>
-        <Identifier>ns=1;i=7004</Identifier>
-      </NodeId>
-      <NodeClass>Method_4</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>1</NamespaceIndex>
-        <Name>DeleteAsset</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>DeleteAsset</Text>
-      </DisplayName>
-      <Description i:nil="true" />
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=5001</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6016</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6017</Identifier>
-          </TargetId>
-        </ReferenceNode>
-      </References>
-      <Executable>true</Executable>
-      <UserExecutable>true</UserExecutable>
-    </Node>
-    <Node i:type="MethodNode">
-      <NodeId>
-        <Identifier>ns=1;i=7005</Identifier>
-      </NodeId>
-      <NodeClass>Method_4</NodeClass>
-      <BrowseName>
-        <NamespaceIndex>1</NamespaceIndex>
-        <Name>GetAssets</Name>
-      </BrowseName>
-      <DisplayName>
-        <Locale></Locale>
-        <Text>GetAssets</Text>
-      </DisplayName>
-      <Description i:nil="true" />
-      <WriteMask>0</WriteMask>
-      <UserWriteMask>0</UserWriteMask>
-      <RolePermissions />
-      <UserRolePermissions />
-      <AccessRestrictions>0</AccessRestrictions>
-      <References>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=47</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>true</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=5001</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6018</Identifier>
-          </TargetId>
-        </ReferenceNode>
-        <ReferenceNode>
-          <ReferenceTypeId>
-            <Identifier>i=46</Identifier>
-          </ReferenceTypeId>
-          <IsInverse>false</IsInverse>
-          <TargetId>
-            <Identifier>ns=1;i=6019</Identifier>
           </TargetId>
         </ReferenceNode>
       </References>

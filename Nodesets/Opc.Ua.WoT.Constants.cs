@@ -37,32 +37,6 @@ using Opc.Ua;
 
 namespace Opc.Ua.WoT
 {
-    #region Method Identifiers
-    /// <remarks />
-    /// <exclude />
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("Opc.Ua.ModelCompiler", "1.0.0.0")]
-    public static partial class Methods
-    {
-        /// <remarks />
-        public const uint IAssetManagementType_DeleteAsset = 7000;
-
-        /// <remarks />
-        public const uint IAssetManagementType_GetAssets = 7001;
-
-        /// <remarks />
-        public const uint IAssetManagementType_ConfigureAsset = 7002;
-
-        /// <remarks />
-        public const string IAssetManagementType_DeleteAssetMethodType = "";
-
-        /// <remarks />
-        public const string IAssetManagementType_GetAssetsMethodType = "";
-
-        /// <remarks />
-        public const string IAssetManagementType_ConfigureAssetMethodType = "";
-    }
-    #endregion
-
     #region Object Identifiers
     /// <remarks />
     /// <exclude />
@@ -74,17 +48,6 @@ namespace Opc.Ua.WoT
 
         /// <remarks />
         public const uint AssetManagement = 5001;
-    }
-    #endregion
-
-    #region ObjectType Identifiers
-    /// <remarks />
-    /// <exclude />
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("Opc.Ua.ModelCompiler", "1.0.0.0")]
-    public static partial class ObjectTypes
-    {
-        /// <remarks />
-        public const uint IAssetManagementType = 1000;
     }
     #endregion
 
@@ -114,50 +77,6 @@ namespace Opc.Ua.WoT
 
         /// <remarks />
         public const uint http___opcfoundation_org_UA_WoT__StaticStringNodeIdPattern = 6006;
-
-        /// <remarks />
-        public const uint IAssetManagementType_DeleteAsset_InputArguments = 6008;
-
-        /// <remarks />
-        public const uint IAssetManagementType_DeleteAsset_OutputArguments = 6009;
-
-        /// <remarks />
-        public const uint IAssetManagementType_GetAssets_InputArguments = 6010;
-
-        /// <remarks />
-        public const uint IAssetManagementType_GetAssets_OutputArguments = 6011;
-
-        /// <remarks />
-        public const uint IAssetManagementType_ConfigureAsset_InputArguments = 6012;
-
-        /// <remarks />
-        public const uint IAssetManagementType_ConfigureAsset_OutputArguments = 6013;
-    }
-    #endregion
-
-    #region Method Node Identifiers
-    /// <remarks />
-    /// <exclude />
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("Opc.Ua.ModelCompiler", "1.0.0.0")]
-    public static partial class MethodIds
-    {
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_DeleteAsset = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_DeleteAsset, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_GetAssets = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_GetAssets, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_ConfigureAsset = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_ConfigureAsset, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_DeleteAssetMethodType = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_DeleteAssetMethodType, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_GetAssetsMethodType = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_GetAssetsMethodType, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_ConfigureAssetMethodType = new ExpandedNodeId(Opc.Ua.WoT.Methods.IAssetManagementType_ConfigureAssetMethodType, Opc.Ua.WoT.Namespaces.WoT);
     }
     #endregion
 
@@ -172,17 +91,6 @@ namespace Opc.Ua.WoT
 
         /// <remarks />
         public static readonly ExpandedNodeId AssetManagement = new ExpandedNodeId(Opc.Ua.WoT.Objects.AssetManagement, Opc.Ua.WoT.Namespaces.WoT);
-    }
-    #endregion
-
-    #region ObjectType Node Identifiers
-    /// <remarks />
-    /// <exclude />
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("Opc.Ua.ModelCompiler", "1.0.0.0")]
-    public static partial class ObjectTypeIds
-    {
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType = new ExpandedNodeId(Opc.Ua.WoT.ObjectTypes.IAssetManagementType, Opc.Ua.WoT.Namespaces.WoT);
     }
     #endregion
 
@@ -212,24 +120,6 @@ namespace Opc.Ua.WoT
 
         /// <remarks />
         public static readonly ExpandedNodeId http___opcfoundation_org_UA_WoT__StaticStringNodeIdPattern = new ExpandedNodeId(Opc.Ua.WoT.Variables.http___opcfoundation_org_UA_WoT__StaticStringNodeIdPattern, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_DeleteAsset_InputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_DeleteAsset_InputArguments, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_DeleteAsset_OutputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_DeleteAsset_OutputArguments, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_GetAssets_InputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_GetAssets_InputArguments, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_GetAssets_OutputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_GetAssets_OutputArguments, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_ConfigureAsset_InputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_ConfigureAsset_InputArguments, Opc.Ua.WoT.Namespaces.WoT);
-
-        /// <remarks />
-        public static readonly ExpandedNodeId IAssetManagementType_ConfigureAsset_OutputArguments = new ExpandedNodeId(Opc.Ua.WoT.Variables.IAssetManagementType_ConfigureAsset_OutputArguments, Opc.Ua.WoT.Namespaces.WoT);
     }
     #endregion
 
@@ -245,25 +135,13 @@ namespace Opc.Ua.WoT
         public const string ConfigureAsset = "ConfigureAsset";
 
         /// <remarks />
-        public const string ConfigureAssetMethodType = "ConfigureAssetMethodType";
-
-        /// <remarks />
         public const string DeleteAsset = "DeleteAsset";
 
         /// <remarks />
-        public const string DeleteAssetMethodType = "DeleteAssetMethodType";
-
-        /// <remarks />
-        public const string GetAssets = "GetAssets";
-
-        /// <remarks />
-        public const string GetAssetsMethodType = "GetAssetsMethodType";
+        public const string GetConfiguredAssets = "GetConfiguredAssets";
 
         /// <remarks />
         public const string http___opcfoundation_org_UA_WoT_ = "http://opcfoundation.org/UA/WoT/";
-
-        /// <remarks />
-        public const string IAssetManagementType = "IAssetManagementType";
     }
     #endregion
 
