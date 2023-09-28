@@ -38,7 +38,7 @@ namespace Opc.Ua.Edge.Translator
 
         private UACloudLibraryClient _uacloudLibraryClient = new();
 
-        private readonly string _wotNodeset = Path.Combine(Directory.GetCurrentDirectory(), "Nodesets", "Opc.Ua.WoT.nodeset2.xml");
+        private readonly string _wotNodeset = Path.Combine(Directory.GetCurrentDirectory(), "Nodesets", "Opc.Ua.WoT.NodeSet2.xml");
         private readonly bool _useWotNodeset = false;
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
@@ -192,9 +192,11 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
+                        var assetId = Path.GetFileNameWithoutExtension(file);
+                        Log.Logger.Information(assetId);
                         ParseAsset(file, out ThingDescription td);
                         AddOPCUACompanionSpecNodes(td);
-                        AddAsset(references, td, out BaseObjectState assetFolder);
+                        AddAsset(references, td, out BaseObjectState assetFolder, assetId);
                         
                         // create nodes for each TD property
                         foreach (KeyValuePair<string, Property> property in td.Properties)
@@ -203,14 +205,14 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 if (td.Base.ToLower().StartsWith("modbus://"))
                                 {
-                                    AddModbusNodes(td, assetFolder, property, form);
+                                    AddModbusNodes(td, assetFolder, property, form, assetId);
                                 }
                             }
                         }
 
                         AddPredefinedNode(SystemContext, assetFolder);
 
-                        _ = Task.Factory.StartNew(UpdateNodeValues, td.Title + " [" + td.Name + "]", TaskCreationOptions.LongRunning);
+                        _ = Task.Factory.StartNew(UpdateNodeValues, assetId/*td.Title + " [" + td.Name + "]"*/, TaskCreationOptions.LongRunning);
                     }
                     catch (Exception ex)
                     {
@@ -223,16 +225,17 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void AddModbusNodes(ThingDescription td, BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form)
+        private void AddModbusNodes(ThingDescription td, BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form, string assetId)
         {
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
+            var variableId = $"{assetId}:{property.Key}";
 
             // Check if the Modbus node has a predefined variable node to use.
             var variableNode = (BaseDataVariableState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaVariableNode), Server.NamespaceUris));
             if (variableNode != null)
             {
-                Log.Logger.Information($"Mapping to existing variable node {variableNode.BrowseName.ToString()}");
-                _uaVariables.Add(property.Key, variableNode);
+                Log.Logger.Information($"Mapping to existing variable node {variableNode.NodeId}/{variableNode.BrowseName}");
+                _uaVariables.Add(variableId, variableNode);
             }
             else
             {
@@ -251,46 +254,44 @@ namespace Opc.Ua.Edge.Translator
 							// This is not yet supported in the current OPC Foundation .Net Standard OPC UA stack.
 							// Waiting for OPCFoundation.NetStandard.Opc.Ua.Server.ComplexTypes to become available!
 						
-                            _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                            _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
                         }
                         else
                         {
                             // default to float
-                            _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                            _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                         }
                     }
                     else
                     {
                         // default to float
-                        _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                        _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                     }
                 }
                 else
                 {
                     // default to float
-                    _uaVariables.Add(property.Key, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                 }
             }
 
             // create an asset tag and add to our list
             AssetTag tag = new()
             {
-                Name = property.Key,
+                Name = variableId,
                 Address = modbusForm.Href,
                 Type = modbusForm.ModbusType.ToString(),
                 PollingInterval = (int)modbusForm.ModbusPollingTime,
                 Entity = modbusForm.ModbusEntity.ToString(),
-                MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[property.Key].NodeId, Server.NamespaceUris).ToString()
+                MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString()
             };
-
-            string assetName = td.Title + " [" + td.Name + "]";
-
-            if (!_tags.ContainsKey(assetName))
+            
+            if (!_tags.ContainsKey(assetId))
             {
-                _tags.Add(assetName, new List<AssetTag>());
+                _tags.Add(assetId, new List<AssetTag>());
             }
 
-            _tags[assetName].Add(tag);
+            _tags[assetId].Add(tag);
         }
 
         private void AddOPCUACompanionSpecNodes(ThingDescription td)
@@ -382,7 +383,7 @@ namespace Opc.Ua.Edge.Translator
             //Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
         }
 
-        private void AddAsset(IList<IReference> references, ThingDescription td, out BaseObjectState assetFolder)
+        private void AddAsset(IList<IReference> references, ThingDescription td, out BaseObjectState assetFolder, string assetId)
         {
             // create a connection to the asset
             if (td.Base.ToLower().StartsWith("modbus://"))
@@ -397,7 +398,7 @@ namespace Opc.Ua.Edge.Translator
                 ModbusTCPClient client = new();
                 client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
 
-                _assets.Add(td.Title + " [" + td.Name + "]", client);
+                _assets.Add(assetId, client);
             }
 
             var objectNodeId = ParseExpandedNodeId(td.OpcUaObjectNode);
@@ -423,7 +424,7 @@ namespace Opc.Ua.Edge.Translator
                     Log.Logger.Information($"Set asset type definition: ns={typeNodeId.NamespaceIndex}, i={typeNodeId.Identifier}.");
                 }
 
-                assetFolder = CreateAssetObject(null, td.Title + " [" + td.Name + "]", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/"), ExpandedNodeId.ToNodeId(typeNodeId, Server.NamespaceUris));
+                assetFolder = CreateAssetObject(null, td.Title + " [" + td.Name + "]", assetId, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/"), ExpandedNodeId.ToNodeId(typeNodeId, Server.NamespaceUris));
                 assetFolder.AddReference(ReferenceTypes.Organizes, true, parentNodeId ?? ObjectIds.ObjectsFolder);
             }
             
@@ -482,18 +483,18 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
                 
-                var assetManagementFolder = (BaseObjectState)Find(ExpandedNodeId.ToNodeId(new ExpandedNodeId(WoT.Objects.AssetManagement, WoT.Namespaces.WoT), Server.NamespaceUris));
+                var assetManagement = (BaseObjectState)Find(ExpandedNodeId.ToNodeId(new ExpandedNodeId(WoT.Objects.AssetManagement, WoT.Namespaces.WoT), Server.NamespaceUris));
 
-                var configureAsset = (MethodState)assetManagementFolder.FindChild(SystemContext, new QualifiedName("ConfigureAsset", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
+                var configureAsset = (MethodState)assetManagement.FindChild(SystemContext, new QualifiedName("ConfigureAsset", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
                 configureAsset.OnCallMethod = ConfigureAsset;
 
-                var deleteAsset = (MethodState)assetManagementFolder.FindChild(SystemContext, new QualifiedName("DeleteAsset", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
+                var deleteAsset = (MethodState)assetManagement.FindChild(SystemContext, new QualifiedName("DeleteAsset", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
                 deleteAsset.OnCallMethod = DeleteAsset;
 
-                var getAssets = (MethodState)assetManagementFolder.FindChild(SystemContext, new QualifiedName("GetAssets", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
+                var getAssets = (MethodState)assetManagement.FindChild(SystemContext, new QualifiedName("GetConfiguredAssets", (ushort)Server.NamespaceUris.GetIndex(WoT.Namespaces.WoT)));
                 getAssets.OnCallMethod = GetAssets;
 
-                AddPredefinedNode(SystemContext, assetManagementFolder);
+                AddPredefinedNode(SystemContext, assetManagement);
             }
             else
             {
@@ -580,7 +581,7 @@ namespace Opc.Ua.Edge.Translator
             return folder;
         }
 
-        private BaseObjectState CreateAssetObject(NodeState parent, string name, ushort namespaceIndex, NodeId typeDefinition = null)
+        private BaseObjectState CreateAssetObject(NodeState parent, string name, string description, ushort namespaceIndex, NodeId typeDefinition = null)
         {
             BaseObjectState folder = new BaseObjectState(parent)
             {
@@ -589,6 +590,7 @@ namespace Opc.Ua.Edge.Translator
                 TypeDefinitionId = typeDefinition ?? ObjectTypeIds.BaseObjectType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
+                Description = new LocalizedText(null, description),
                 DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
@@ -679,7 +681,6 @@ namespace Opc.Ua.Edge.Translator
                 File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetGuid + ".jsonld"), contents);
 
                 outputArguments[0] = assetGuid;
-                outputArguments[1] = StatusCodes.Good;
 
                 _ = Task.Run(() => HandleServerRestart());
 
@@ -766,17 +767,17 @@ namespace Opc.Ua.Edge.Translator
 
                 _counter++;
 
-                string assetName = (string) assetNameObject;
-                if (string.IsNullOrEmpty(assetName) || !_tags.ContainsKey(assetName) || !_assets.ContainsKey(assetName))
+                string assetId = (string) assetNameObject;
+                if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
-                    throw new Exception("Cannot find asset: " +  assetName);
+                    throw new Exception("Cannot find asset: " +  assetId);
                 }
 
-                foreach (AssetTag tag in _tags[assetName])
+                foreach (AssetTag tag in _tags[assetId])
                 {
                     try
                     {
-                        if (_assets[assetName] is ModbusTCPClient)
+                        if (_assets[assetId] is ModbusTCPClient)
                         {
                             if (_counter * 1000 % tag.PollingInterval == 0)
                             {
@@ -798,16 +799,16 @@ namespace Opc.Ua.Edge.Translator
                                     byte[] tagBytes = null;
                                     try
                                     {
-                                        tagBytes = _assets[assetName].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
+                                        tagBytes = _assets[assetId].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
                                     }
                                     catch (Exception ex)
                                     {
                                         Log.Logger.Error(ex.Message, ex);
 
                                         // try reconnecting
-                                        string[] remoteEndpoint = _assets[assetName].GetRemoteEndpoint().Split(':');
-                                        _assets[assetName].Disconnect();
-                                        _assets[assetName].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                                        string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                                        _assets[assetId].Disconnect();
+                                        _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
                                     }
 
                                     if ((tagBytes != null) && (tag.Type == "Float"))
