@@ -300,7 +300,7 @@
             <Argument>
               <Name>AssetIds</Name>
               <DataType>
-                <Identifier>i=12</Identifier>
+                <Identifier>i=14</Identifier>
               </DataType>
               <ValueRank>1</ValueRank>
               <ArrayDimensions>
