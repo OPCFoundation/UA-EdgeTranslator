@@ -18,7 +18,7 @@
   "@type": [
     "Thing"
   ],
-  "opcua:node": "nsu=http://company.com/UA/SubStation/;i=5012",
+  "opcua:nodeId": "nsu=http://company.com/UA/SubStation/;i=5012",
   "name": "modbus-pac4200-sn324",
   "base": "modbus://192.168.128.250:502",
   "title": "Siemens SENTRON PAC4200",
@@ -34,7 +34,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:node": "nsu=http://company.com/UA/SubStation/;i=6108",
+          "opcua:nodeId": "nsu=http://company.com/UA/SubStation/;i=6108",
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
@@ -53,7 +53,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:node": "nsu=http://company.com/UA/SubStation/;i=6110",
+          "opcua:nodeId": "nsu=http://company.com/UA/SubStation/;i=6110",
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
@@ -72,7 +72,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:node": "nsu=http://company.com/UA/SubStation/;i=6112",
+          "opcua:nodeId": "nsu=http://company.com/UA/SubStation/;i=6112",
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",

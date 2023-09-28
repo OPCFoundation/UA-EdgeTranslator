@@ -32,8 +32,12 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("title")]
         public string Title { get; set; }
-        
-        [JsonProperty("opcua:node")]
+
+        [JsonProperty("properties")]
+        public Dictionary<string, Property> Properties { get; set; }
+
+
+        [JsonProperty("opcua:nodeId")]
         public string OpcUaObjectNode { get; set; }
 
         [JsonProperty("opcua:type")]
@@ -41,9 +45,6 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("opcua:parent")]
         public string OpcUaParentNode { get; set; }
-
-        [JsonProperty("properties")]
-        public Dictionary<string, Property> Properties { get; set; }
     }
 
     public partial class Property
@@ -72,17 +73,18 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modbus:type")]
         public ModbusType ModbusType { get; set; }
 
-        [JsonProperty("opcua:node")]
-        public string OpcUaVariableNode { get; set; }
-
-        [JsonProperty("opcua:type")]
-        public string OpcUaType { get; set; }
-
         [JsonProperty("modbus:entity")]
         public ModbusEntity ModbusEntity { get; set; }
 
         [JsonProperty("modbus:pollingTime")]
         public long ModbusPollingTime { get; set; }
+
+
+        [JsonProperty("opcua:node")]
+        public string OpcUaVariableNode { get; set; }
+
+        [JsonProperty("opcua:type")]
+        public string OpcUaType { get; set; }
     }
 
     public partial class SecurityDefinitions
