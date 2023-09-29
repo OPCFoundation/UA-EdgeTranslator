@@ -80,7 +80,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public long ModbusPollingTime { get; set; }
 
 
-        [JsonProperty("opcua:node")]
+        [JsonProperty("opcua:nodeId")]
         public string OpcUaVariableNode { get; set; }
 
         [JsonProperty("opcua:type")]
