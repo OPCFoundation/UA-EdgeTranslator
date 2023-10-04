@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
@@ -9,6 +10,7 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Reflection;
@@ -172,12 +174,8 @@ namespace Opc.Ua.Edge.Translator
 
         private void ImportFromBinary()
         {
-            if (!_useWotNodesetBinary)
-            {
-                return;
-            }
-
             NodeStateCollection predefinedNodes = new NodeStateCollection();
+
             predefinedNodes.LoadFromBinaryResource(SystemContext, _wotNodesetBinary, this.GetType().GetTypeInfo().Assembly, true);
 
             foreach (var node in predefinedNodes)
@@ -195,13 +193,8 @@ namespace Opc.Ua.Edge.Translator
 
         public void ImportFromXml()
         {
-            if (!_useWotNodeset)
-            {
-                return;
-            }
-
             NodeStateCollection predefinedNodes = new NodeStateCollection();
-            
+
             using (var stream = new FileStream(_wotNodeset, FileMode.Open, FileAccess.Read))
             {
                 var nodeSet = UANodeSet.Read(stream);
@@ -237,8 +230,15 @@ namespace Opc.Ua.Edge.Translator
                     externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
                 }
 
-                ImportFromXml();
-                ImportFromBinary();
+                if (_useWotNodeset && !_useWotNodesetBinary)
+                {
+                    ImportFromXml();
+                }
+
+                if(_useWotNodesetBinary)
+                {
+                    ImportFromBinary();
+                }
 
                 AddAssetManagementNodes(references);
 
@@ -441,7 +441,7 @@ namespace Opc.Ua.Edge.Translator
             // generate DTDL content, convert back to WoT TD and compare to original
             string dtdlContent = WoT2DTDLMapper.WoT2DTDL(contents);
             string convertedWoTTDContent = WoT2DTDLMapper.DTDL2WoT(dtdlContent);
-            //Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
+            Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
         }
 
         private void AddAsset(IList<IReference> references, ThingDescription td, out BaseObjectState assetFolder, string assetId)
@@ -528,23 +528,27 @@ namespace Opc.Ua.Edge.Translator
 
         protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
         {
-            MethodState methodState = predefinedNode as MethodState;
-            if ((methodState != null) && (methodState.ModellingRuleId == null) && methodState.NodeClass == NodeClass.Method)
+            MethodState passiveMethod = predefinedNode as MethodState;
+            if (passiveMethod != null && passiveMethod.ModellingRuleId == null && passiveMethod.NodeClass == NodeClass.Method)
             {
-                switch (methodState.BrowseName.Name)
+                var activeMethod = new MethodState(passiveMethod.Parent);
+                activeMethod.Create(context, passiveMethod);
+                passiveMethod.Parent?.ReplaceChild(context, activeMethod);
+
+                switch (activeMethod.BrowseName.Name)
                 {
                     case WoT.BrowseNames.ConfigureAsset:
-                        methodState.OnCallMethod = ConfigureAsset;
+                        activeMethod.OnCallMethod = ConfigureAsset;
                     break;
                     case WoT.BrowseNames.DeleteAsset:
-                        methodState.OnCallMethod = DeleteAsset;
+                        activeMethod.OnCallMethod = DeleteAsset;
                     break;
                     case WoT.BrowseNames.GetConfiguredAssets:
-                        methodState.OnCallMethod = GetConfiguredAssets;
+                        activeMethod.OnCallMethod = GetConfiguredAssets;
                     break;
                 }
 
-                return predefinedNode;
+                return activeMethod;
             }
 
             return predefinedNode;
@@ -739,7 +743,6 @@ namespace Opc.Ua.Edge.Translator
                 return new ServiceResult(StatusCodes.BadInvalidArgument);
             }
 
-            var isDeleted = false;
             IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
             {
@@ -749,8 +752,22 @@ namespace Opc.Ua.Edge.Translator
                     
                     if (inputArguments[0].ToString() == assetId)
                     {
+                        var contents = File.ReadAllText(file);
+                        // check file type (WoT TD or DTDL)
+                        if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
+                        {
+                            // parse DTDL contents and convert to WoT
+                            contents = WoT2DTDLMapper.DTDL2WoT(contents);
+                        }
+
+                        // parse WoT TD files contents
+                        ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
+
                         File.Delete(file);
-                        isDeleted = true;
+
+                        _ = Task.Run(() => HandleServerRestart());
+
+                        return ServiceResult.Good;
                     }
                 }
                 catch (Exception ex)
@@ -758,13 +775,6 @@ namespace Opc.Ua.Edge.Translator
                     Log.Logger.Error(ex.Message, ex);
                     return new ServiceResult(ex);
                 }
-            }
-
-            if (isDeleted)
-            {
-                _ = Task.Run(() => HandleServerRestart());
-
-                return ServiceResult.Good;
             }
 
             return new ServiceResult(StatusCodes.BadNotFound);
