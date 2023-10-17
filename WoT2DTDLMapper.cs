@@ -5,6 +5,8 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Text.RegularExpressions;
 
     public class WoT2DTDLMapper
     {
@@ -31,6 +33,20 @@
                     }
                 }
 
+                if (!string.IsNullOrEmpty(td.OpcUaObjectNode))
+                {
+                    dtdl.Comment += $";nodeId:{td.OpcUaObjectNode}";
+                }
+
+                if (!string.IsNullOrWhiteSpace(td.OpcUaParentNode))
+                {
+                    dtdl.Comment += $";parent:{td.OpcUaObjectNode}";
+                }
+                if (!string.IsNullOrWhiteSpace(td.OpcUaObjectType))
+                {
+                    dtdl.Comment += $";type:{td.OpcUaObjectType}";
+                }
+
                 dtdl.Contents = new List<Content>();
                 foreach (KeyValuePair<string, Property> property in td.Properties)
                 {
@@ -45,6 +61,10 @@
                             content.DisplayName = property.Key;
                             content.Description = modbusForm.ModbusEntity.ToString().ToLower() + ";" + modbusForm.ModbusPollingTime.ToString();
                             content.Comment = modbusForm.OpcUaType;
+                            if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaVariableNode))
+                            {
+                                content.Comment += $";nodeId:{modbusForm.OpcUaVariableNode}";
+                            }
 
                             switch (modbusForm.ModbusType)
                             {
@@ -81,10 +101,30 @@
                     new Uri("https://si-ra.github.io/ontologies/td-context.jsonld", UriKind.Absolute),
                 };
 
-                string[] comments = dtdl.Comment.Split(';');
+                string[] comments = SplitWithNodeIds(';', dtdl.Comment);
                 if ((comments != null) && (comments.Length > 1))
                 {
-                    context.Add(new Uri(comments[1], UriKind.Absolute));
+                    for (var i = 1; i < comments.Length; i++)
+                    {
+                        var comment = comments[i];
+                        Log.Logger.Debug(comment);
+                        if (comment.StartsWith("nodeId:"))
+                        {
+                            td.OpcUaObjectNode = comment.Substring(comment.IndexOf(":") + 1);
+                        }
+                        else if (comment.StartsWith("parent:"))
+                        {
+                            td.OpcUaParentNode = comment.Substring(comment.IndexOf(":") + 1);
+                        }
+                        else if (comment.StartsWith("type:"))
+                        {
+                            td.OpcUaObjectType = comment.Substring(comment.IndexOf(":") + 1);
+                        }
+                        else
+                        {
+                            context.Add(new Uri(comment, UriKind.Absolute));
+                        }
+                    }
                 }
                 td.Context = context.ToArray();
 
@@ -122,7 +162,10 @@
                         ModbusForm form = new();
                         form.Href = content.Name;
                         form.Op = new List<Op>() { Op.Readproperty, Op.Observeproperty }.ToArray();
-                        form.OpcUaType = content.Comment;
+                        var uaData = SplitWithNodeIds(';', content.Comment);
+                        form.OpcUaType = uaData?.FirstOrDefault(d => d.StartsWith("nsu"));
+                        var nodeId = uaData?.FirstOrDefault(d => d.StartsWith("nodeId:"));
+                        form.OpcUaVariableNode = nodeId?.Substring(nodeId.IndexOf(":") + 1);
 
                         switch (content.Schema)
                         {
@@ -147,7 +190,10 @@
                     td.Properties.Add(content.DisplayName, property);
                 }
 
-                return JsonConvert.SerializeObject(td, Formatting.Indented);
+                return JsonConvert.SerializeObject(td, Formatting.Indented, new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                });
             }
             catch (Exception ex)
             {
@@ -155,5 +201,9 @@
                 return string.Empty;
             }
         }
+
+        private static string[] SplitWithNodeIds(char separator, string content) => 
+            Regex.Split(content, $"{separator}(?![sigb]=)", RegexOptions.None);
+        
     }
 }
