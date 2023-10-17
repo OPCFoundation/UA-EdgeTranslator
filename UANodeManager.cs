@@ -36,7 +36,7 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly string _wotNodeset = Path.Combine(Directory.GetCurrentDirectory(), "Nodesets", "Opc.Ua.WoT.NodeSet2.xml");
         private readonly bool _useWotNodeset = false;
-        
+
         private readonly string _wotNodesetBinary = Path.Combine(Directory.GetCurrentDirectory(), "Nodesets", "Opc.Ua.WoT.PredefinedNodes.uanodes");
         private readonly bool _useWotNodesetBinary = false;
 
@@ -178,7 +178,7 @@ namespace Opc.Ua.Edge.Translator
 
             predefinedNodes.LoadFromBinaryResource(SystemContext, _wotNodesetBinary, this.GetType().GetTypeInfo().Assembly, true);
 
-            foreach (var node in predefinedNodes)
+            foreach (NodeState node in predefinedNodes)
             {
                 try
                 {
@@ -195,11 +195,11 @@ namespace Opc.Ua.Edge.Translator
         {
             NodeStateCollection predefinedNodes = new NodeStateCollection();
 
-            using (var stream = new FileStream(_wotNodeset, FileMode.Open, FileAccess.Read))
+            using (FileStream stream = new FileStream(_wotNodeset, FileMode.Open, FileAccess.Read))
             {
-                var nodeSet = UANodeSet.Read(stream);
+                UANodeSet nodeSet = UANodeSet.Read(stream);
 
-                foreach (var namespaceUri in nodeSet.NamespaceUris)
+                foreach (string namespaceUri in nodeSet.NamespaceUris)
                 {
                     SystemContext.NamespaceUris.GetIndexOrAppend(namespaceUri);
                 }
@@ -207,7 +207,7 @@ namespace Opc.Ua.Edge.Translator
                 nodeSet.Import(SystemContext, predefinedNodes);
             }
 
-            foreach (var node in predefinedNodes)
+            foreach (NodeState node in predefinedNodes)
             {
                 try
                 {
@@ -252,13 +252,13 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        var assetId = Path.GetFileNameWithoutExtension(file);
+                        string assetId = Path.GetFileNameWithoutExtension(file);
                         Log.Logger.Information($"Configuring asset: {assetId}");
 
                         ParseAsset(file, out ThingDescription td);
                         AddOPCUACompanionSpecNodes(td);
                         AddAsset(references, td, out BaseObjectState assetFolder, assetId);
-                        
+
                         // create nodes for each TD property
                         foreach (KeyValuePair<string, Property> property in td.Properties)
                         {
@@ -280,7 +280,7 @@ namespace Opc.Ua.Edge.Translator
                         Log.Logger.Error(ex.Message, ex);
                     }
                 }
-                
+
                 AddReverseReferences(externalReferences);
                 base.CreateAddressSpace(externalReferences);
             }
@@ -289,10 +289,10 @@ namespace Opc.Ua.Edge.Translator
         private void AddModbusNodes(ThingDescription td, BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form, string assetId)
         {
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
-            var variableId = $"{assetId}:{property.Key}";
+            string variableId = $"{assetId}:{property.Key}";
 
             // Check if the Modbus node has a predefined variable node to use.
-            var variableNode = (BaseDataVariableState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaVariableNode), Server.NamespaceUris));
+            BaseDataVariableState variableNode = (BaseDataVariableState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaVariableNode), Server.NamespaceUris));
             if (variableNode != null)
             {
                 Log.Logger.Information($"Mapping to existing variable node {variableNode.NodeId}/{variableNode.BrowseName}");
@@ -314,7 +314,7 @@ namespace Opc.Ua.Edge.Translator
 							// TODO: Check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
 							// This is not yet supported in the current OPC Foundation .Net Standard OPC UA stack.
 							// Waiting for OPCFoundation.NetStandard.Opc.Ua.Server.ComplexTypes to become available!
-						
+
                             _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
                         }
                         else
@@ -346,7 +346,7 @@ namespace Opc.Ua.Edge.Translator
                 Entity = modbusForm.ModbusEntity.ToString(),
                 MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString()
             };
-            
+
             if (!_tags.ContainsKey(assetId))
             {
                 _tags.Add(assetId, new List<AssetTag>());
@@ -383,8 +383,8 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
-            
-            foreach (var opcuaCompanionSpecUrl in td.Context)
+
+            foreach (Uri opcuaCompanionSpecUrl in td.Context)
             {
                 // support local Nodesets
                 if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
@@ -462,7 +462,7 @@ namespace Opc.Ua.Edge.Translator
                 _assets.Add(assetId, client);
             }
 
-            var objectNodeId = ParseExpandedNodeId(td.OpcUaObjectNode);
+            ExpandedNodeId objectNodeId = ParseExpandedNodeId(td.OpcUaObjectNode);
 
             // If the asset has defined a target node in the address space, link to that node, otherwise create a top-level OPC UA folder for the asset.
             if (objectNodeId != null)
@@ -475,13 +475,13 @@ namespace Opc.Ua.Edge.Translator
             {
                 Log.Logger.Information($"Creating new node for {assetId}.");
 
-                var parentNodeId = ParseExpandedNodeId(td.OpcUaParentNode);
+                ExpandedNodeId parentNodeId = ParseExpandedNodeId(td.OpcUaParentNode);
                 if (parentNodeId != null)
                 {
                     Log.Logger.Information($"Set asset parent node: ns={parentNodeId.NamespaceIndex}, i={parentNodeId.Identifier}.");
                 }
 
-                var typeNodeId = ParseExpandedNodeId(td.OpcUaObjectType);
+                ExpandedNodeId typeNodeId = ParseExpandedNodeId(td.OpcUaObjectType);
                 if (typeNodeId != null)
                 {
                     Log.Logger.Information($"Set asset type definition: ns={typeNodeId.NamespaceIndex}, i={typeNodeId.Identifier}.");
@@ -490,12 +490,12 @@ namespace Opc.Ua.Edge.Translator
                 assetFolder = CreateObject(null, td.Title + " [" + td.Name + "]", assetId, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/"), ExpandedNodeId.ToNodeId(typeNodeId, Server.NamespaceUris));
                 assetFolder.AddReference(ReferenceTypes.Organizes, true, parentNodeId ?? ObjectIds.ObjectsFolder);
             }
-            
+
             assetFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
             AddRootNotifier(assetFolder);
         }
 
-        private ExpandedNodeId? ParseExpandedNodeId(string nodeString)
+        private ExpandedNodeId ParseExpandedNodeId(string nodeString)
         {
             if (!string.IsNullOrEmpty(nodeString))
             {
@@ -531,7 +531,7 @@ namespace Opc.Ua.Edge.Translator
             MethodState passiveMethod = predefinedNode as MethodState;
             if (passiveMethod != null && passiveMethod.ModellingRuleId == null && passiveMethod.NodeClass == NodeClass.Method)
             {
-                var activeMethod = new MethodState(passiveMethod.Parent);
+                MethodState activeMethod = new MethodState(passiveMethod.Parent);
                 activeMethod.Create(context, passiveMethod);
                 passiveMethod.Parent?.ReplaceChild(context, activeMethod);
 
@@ -560,23 +560,23 @@ namespace Opc.Ua.Edge.Translator
             if (!_useWotNodeset)
             {
                 // create our top-level asset management folder
-                var assetManagementFolder = CreateObject(null, "AssetManagement", null,(ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+                BaseObjectState assetManagementFolder = CreateObject(null, "AssetManagement", null,(ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
                 assetManagementFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
                 references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, assetManagementFolder.NodeId));
                 assetManagementFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
                 AddRootNotifier(assetManagementFolder);
 
                 // create our methods
-                var configureAssetMethod = CreateMethod(assetManagementFolder, "ConfigureAsset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+                MethodState configureAssetMethod = CreateMethod(assetManagementFolder, "ConfigureAsset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
                 configureAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(ConfigureAsset);
                 configureAssetMethod.InputArguments = CreateInputArguments(configureAssetMethod, "WoTTD", "The WoT Thing Description of the asset to be configured", DataTypeIds.String, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
                 configureAssetMethod.OutputArguments = CreateOutputArguments(configureAssetMethod, "AssetId", "The ID of the created asset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
 
-                var deleteAssetMethod = CreateMethod(assetManagementFolder, "DeleteAsset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+                MethodState deleteAssetMethod = CreateMethod(assetManagementFolder, "DeleteAsset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
                 deleteAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(DeleteAsset);
                 deleteAssetMethod.InputArguments = CreateInputArguments(deleteAssetMethod, "AssetId", "The ID of the asset to be deleted", DataTypeIds.Guid, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
 
-                var getAssetsMethod = CreateMethod(assetManagementFolder, "GetConfiguredAssets", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+                MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetConfiguredAssets", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
                 getAssetsMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetConfiguredAssets);
                 getAssetsMethod.OutputArguments = CreateOutputArguments(getAssetsMethod, "AssetIds", "The IDs of the assets currently defined", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"), true);
                 AddPredefinedNode(SystemContext, assetManagementFolder);
@@ -586,7 +586,7 @@ namespace Opc.Ua.Edge.Translator
 
         private PropertyState<Argument[]> CreateInputArguments(NodeState parent, string name, string description, NodeId dataType, ushort namespaceIndex)
         {
-            var arguments = new PropertyState<Argument[]>(parent)
+            PropertyState<Argument[]> arguments = new(parent)
             {
                 NodeId = new NodeId(parent.BrowseName.Name + "InArgs", namespaceIndex),
                 BrowseName = BrowseNames.InputArguments,
@@ -605,8 +605,9 @@ namespace Opc.Ua.Edge.Translator
             return arguments;
         }
 
-        private PropertyState<Argument[]> CreateOutputArguments(NodeState parent, string name, string description, ushort namespaceIndex, bool isArray = false) {
-            var arguments = new PropertyState<Argument[]>(parent) {
+        private PropertyState<Argument[]> CreateOutputArguments(NodeState parent, string name, string description, ushort namespaceIndex, bool isArray = false)
+        {
+            PropertyState<Argument[]> arguments = new(parent) {
                 NodeId = new NodeId(parent.BrowseName.Name + "OutArgs", namespaceIndex),
                 BrowseName = BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
@@ -720,7 +721,7 @@ namespace Opc.Ua.Edge.Translator
                     client.Disconnect();
                 }
 
-                var assetId = Guid.NewGuid();
+                Guid assetId = Guid.NewGuid();
                 File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetId + ".jsonld"), contents);
 
                 outputArguments[0] = assetId;
@@ -749,10 +750,10 @@ namespace Opc.Ua.Edge.Translator
                 try
                 {
                     string assetId = Path.GetFileNameWithoutExtension(file);
-                    
+
                     if (inputArguments[0].ToString() == assetId)
                     {
-                        var contents = File.ReadAllText(file);
+                        string contents = File.ReadAllText(file);
                         // check file type (WoT TD or DTDL)
                         if (contents.Contains("\"@context\": \"dtmi:dtdl:context;2\""))
                         {
