@@ -1,7 +1,6 @@
 {
   "@context": [
     "https://www.w3.org/2019/wot/td/v1",
-    "https://si-ra.github.io/ontologies/td-context.jsonld",
     "http://opcfoundation.org/UA/PNEM/"
   ],
   "id": "urn:pac4200",
@@ -16,8 +15,9 @@
   "@type": [
     "Thing"
   ],
+  "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
   "name": "modbus-pac4200-sn324",
-  "base": "modbus://192.168.10.100:502",
+  "base": "modbus+tcp://192.168.10.100:502",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL1-N": {
@@ -26,7 +26,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=1&quantity=2",
+          "href": "/1?address=1&quantity=2", //pattern: /{unitID}/{address}?quantity={?quantity}
           "op": [
             "readproperty",
             "observeproperty"

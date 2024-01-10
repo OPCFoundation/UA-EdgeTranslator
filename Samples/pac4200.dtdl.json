@@ -4,7 +4,7 @@
   "@type": "Interface",
   "displayName": "modbus-pac4200-sn324",
   "description": "Siemens SENTRON PAC4200",
-  "comment": "modbus://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/",
+  "comment": "modbus+tcp://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/;i=3005",
   "contents": [
     {
       "@type": "Telemetry",

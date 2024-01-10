@@ -1,7 +1,6 @@
 {
   "@context": [
     "https://www.w3.org/2019/wot/td/v1",
-    "https://si-ra.github.io/ontologies/td-context.jsonld",
     "http://opcfoundation.org/UA/DI/",
     "http://opcfoundation.org/UA/PNEM/",
     "http://company.com/UA/SubStation/"
@@ -20,7 +19,7 @@
   ],
   "opcua:nodeId": "nsu=http://company.com/UA/SubStation/;i=5012",
   "name": "modbus-pac4200-sn324",
-  "base": "modbus://192.168.128.250:502",
+  "base": "modbus+tcp://192.168.128.250:502",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL1-N": {

@@ -42,6 +42,7 @@
                 {
                     dtdl.Comment += $";parent:{td.OpcUaObjectNode}";
                 }
+
                 if (!string.IsNullOrWhiteSpace(td.OpcUaObjectType))
                 {
                     dtdl.Comment += $";type:{td.OpcUaObjectType}";
@@ -52,7 +53,7 @@
                 {
                     foreach (object form in property.Value.Forms)
                     {
-                        if (td.Base.ToLower().StartsWith("modbus://"))
+                        if (td.Base.ToLower().StartsWith("modbus+tcp://"))
                         {
                             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
                             Content content = new();
@@ -97,8 +98,7 @@
 
                 List<Uri> context = new()
                 {
-                    new Uri("https://www.w3.org/2019/wot/td/v1", UriKind.Absolute),
-                    new Uri("https://si-ra.github.io/ontologies/td-context.jsonld", UriKind.Absolute),
+                    new Uri("https://www.w3.org/2019/wot/td/v1", UriKind.Absolute)
                 };
 
                 string[] comments = SplitWithNodeIds(';', dtdl.Comment);
@@ -108,6 +108,7 @@
                     {
                         var comment = comments[i];
                         Log.Logger.Debug(comment);
+
                         if (comment.StartsWith("nodeId:"))
                         {
                             td.OpcUaObjectNode = comment.Substring(comment.IndexOf(":") + 1);
@@ -126,6 +127,7 @@
                         }
                     }
                 }
+
                 td.Context = context.ToArray();
 
                 string[] idParts = dtdl.Id.Split(":");
@@ -157,7 +159,7 @@
                     property.ReadOnly = true;
                     property.Observable = true;
 
-                    if ((comments != null) && (comments.Length > 0) && comments[0].StartsWith("modbus://"))
+                    if ((comments != null) && (comments.Length > 0) && comments[0].StartsWith("modbus+tcp://"))
                     {
                         ModbusForm form = new();
                         form.Href = content.Name;
@@ -202,8 +204,6 @@
             }
         }
 
-        private static string[] SplitWithNodeIds(char separator, string content) => 
-            Regex.Split(content, $"{separator}(?![sigb]=)", RegexOptions.None);
-        
+        private static string[] SplitWithNodeIds(char separator, string content) => Regex.Split(content, $"{separator}(?![sigb]=)", RegexOptions.None);
     }
 }

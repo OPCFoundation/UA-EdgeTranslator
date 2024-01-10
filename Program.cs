@@ -48,6 +48,7 @@ namespace Opc.Ua.Edge.Translator
             // create OPC UA cert validator
             App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
             App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
+            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration.SecurityConfiguration).GetAwaiter().GetResult();
 
             // start the server
             await App.Start(new UAServer()).ConfigureAwait(false);
@@ -58,7 +59,7 @@ namespace Opc.Ua.Edge.Translator
 
         private static void OPCUAClientCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
         {
-            // always trust the OPC UA client certificate
+            // always trust the OPC UA client certificate (NOT recommended for production!)
             if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
             {
                 e.Accept = true;

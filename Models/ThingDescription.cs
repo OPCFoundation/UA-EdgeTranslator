@@ -36,7 +36,6 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("properties")]
         public Dictionary<string, Property> Properties { get; set; }
 
-
         [JsonProperty("opcua:nodeId")]
         public string OpcUaObjectNode { get; set; }
 
