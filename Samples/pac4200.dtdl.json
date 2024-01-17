@@ -4,30 +4,30 @@
   "@type": "Interface",
   "displayName": "modbus-pac4200-sn324",
   "description": "Siemens SENTRON PAC4200",
-  "comment": "modbus+tcp://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/;i=3005",
+  "comment": "modbus+tcp://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/;type:nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
   "contents": [
     {
       "@type": "Telemetry",
       "name": "/1?address=1&quantity=2",
-      "displayName": "VoltageL1-N",
+      "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=3&quantity=2",
-      "displayName": "VoltageL2-N",
+      "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=5&quantity=2",
-      "displayName": "VoltageL3-N",
+      "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6098",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
       "schema": "float"
     },
     {
@@ -35,7 +35,7 @@
       "name": "/1?address=7&quantity=2",
       "displayName": "VoltageL1-L2",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "comment": null,
       "schema": "float"
     },
     {
@@ -43,7 +43,7 @@
       "name": "/1?address=9&quantity=2",
       "displayName": "VoltageL2-L3",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "comment": null,
       "schema": "float"
     },
     {
@@ -51,55 +51,55 @@
       "name": "/1?address=11&quantity=2",
       "displayName": "VoltageL3-L1",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6099",
+      "comment": null,
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=13&quantity=2",
-      "displayName": "CurrentL1",
+      "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=15&quantity=2",
-      "displayName": "CurrentL2",
+      "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=17&quantity=2",
-      "displayName": "CurrentL3",
+      "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6060",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=37&quantity=2",
-      "displayName": "PowerFactorL1",
+      "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=39&quantity=2",
-      "displayName": "PowerFactorL2",
+      "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
       "schema": "float"
     },
     {
       "@type": "Telemetry",
       "name": "/1?address=41&quantity=2",
-      "displayName": "PowerFactorL3",
+      "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
       "schema": "float"
     },
     {
@@ -107,7 +107,7 @@
       "name": "/1?address=63&quantity=2",
       "displayName": "TotalApparentPower",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
+      "comment": null,
       "schema": "float"
     },
     {
@@ -115,7 +115,7 @@
       "name": "/1?address=65&quantity=2",
       "displayName": "TotalActivePower",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6064",
+      "comment": null,
       "schema": "float"
     },
     {
@@ -123,7 +123,7 @@
       "name": "/1?address=67&quantity=2",
       "displayName": "TotalReactivePower",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6081",
+      "comment": null,
       "schema": "float"
     },
     {
@@ -131,7 +131,7 @@
       "name": "/1?address=69&quantity=2",
       "displayName": "TotalPowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=6101",
+      "comment": null,
       "schema": "float"
     }
   ]

@@ -237,27 +237,57 @@ namespace Opc.Ua.Edge.Translator
 
                         if (NamespaceUris.Contains(namespaceURI))
                         {
-							// TODO: Check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
-							// This is not yet supported in the current OPC Foundation .Net Standard OPC UA stack.
-							// Waiting for OPCFoundation.NetStandard.Opc.Ua.Server.ComplexTypes to become available!
+                            // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
+                            if (opcuaTypeParts.Length > 4)
+                            {
+                                DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaType), Server.NamespaceUris));
+                                if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                                {
+                                    ExtensionObject complexTypeInstance = new();
+                                    complexTypeInstance.TypeId = opcuaType.NodeId;
 
-                            _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                                    BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+                                    foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                                    {
+                                        encoder.WriteFloat(field.Name, 0);
+
+                                        if (field.Name == opcuaTypeParts[4])
+                                        {
+                                            // add the field name to the variable ID to make sure we can distinguish the tag during data updates
+                                            variableId += ":" + field.Name;
+                                        }
+                                    }
+
+                                    complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+
+                                    // now add it, if it doesn't already exist
+                                    if (!_uaVariables.ContainsKey(variableId))
+                                    {
+                                        _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // it's an OPC UA built-in type
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                            }
                         }
                         else
                         {
-                            // default to float
+                            // no namespace info, default to float
                             _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                         }
                     }
                     else
                     {
-                        // default to float
+                        // can't parse type info, default to float
                         _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                     }
                 }
                 else
                 {
-                    // default to float
+                    // no type info, default to float
                     _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                 }
             }
@@ -273,11 +303,13 @@ namespace Opc.Ua.Edge.Translator
                 MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString()
             };
 
+            // check if we need to create a new asset first
             if (!_tags.ContainsKey(assetId))
             {
                 _tags.Add(assetId, new List<AssetTag>());
             }
 
+            // add the tag to the asset
             _tags[assetId].Add(tag);
         }
 
@@ -543,7 +575,7 @@ namespace Opc.Ua.Edge.Translator
             return folder;
         }
 
-        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex)
+        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null)
         {
             BaseDataVariableState variable = new BaseDataVariableState(parent)
             {
@@ -555,7 +587,8 @@ namespace Opc.Ua.Edge.Translator
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
-                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris)
+                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
+                Value = value
             };
             parent?.AddChild(variable);
 
@@ -773,7 +806,41 @@ namespace Opc.Ua.Edge.Translator
 
                                     if ((tagBytes != null) && (tag.Type == "Float"))
                                     {
-                                        _uaVariables[tag.Name].Value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                                        float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+
+                                        // check for complex type
+                                        if (_uaVariables[tag.Name].Value is ExtensionObject)
+                                        {
+                                            string[] tagNameParts = tag.Name.Split(":");
+
+                                            // decode existing values and re-encode them with our updated value
+                                            BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
+                                            BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+
+                                            DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
+                                            if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                                            {
+                                                foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                                                {
+                                                    float newValue = decoder.ReadFloat(field.Name);
+
+                                                    if (field.Name == tagNameParts[2])
+                                                    {
+                                                        // overwrite existing value with our upated value
+                                                        newValue = value;
+                                                    }
+
+                                                    encoder.WriteFloat(field.Name, newValue);
+                                                }
+
+                                                ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            _uaVariables[tag.Name].Value = value;
+                                        }
+
                                         _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                         _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
                                     }

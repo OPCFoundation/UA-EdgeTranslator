@@ -152,21 +152,44 @@
                 }
 
                 td.Properties = new Dictionary<string, Property>();
+                List<ModbusForm> forms = new();
+                Property property = null;
+
+                string displayName = string.Empty;
+
                 foreach (Content content in dtdl.Contents)
                 {
-                    Property property = new();
+                    property = new();
                     property.Type = TypeEnum.Number;
                     property.ReadOnly = true;
                     property.Observable = true;
 
                     if ((comments != null) && (comments.Length > 0) && comments[0].StartsWith("modbus+tcp://"))
                     {
+                        if (string.IsNullOrEmpty(displayName))
+                        {
+                            displayName = content.DisplayName;
+                        }
+
                         ModbusForm form = new();
                         form.Href = content.Name;
                         form.Op = new List<Op>() { Op.Readproperty, Op.Observeproperty }.ToArray();
-                        var uaData = SplitWithNodeIds(';', content.Comment);
-                        form.OpcUaType = uaData?.FirstOrDefault(d => d.StartsWith("nsu"));
-                        var nodeId = uaData?.FirstOrDefault(d => d.StartsWith("nodeId:"));
+
+                        string[] uaData = SplitWithNodeIds(';', content.Comment);
+                        if ((uaData?.Length > 1) && uaData[0].StartsWith("nsu"))
+                        {
+                            form.OpcUaType = uaData[0] + ";" + uaData[1];
+                        }
+                        else if ((uaData?.Length > 2) && uaData[1].StartsWith("nsu"))
+                        {
+                            form.OpcUaType = uaData[1] + ";" + uaData[2];
+                        }
+                        else
+                        {
+                            form.OpcUaType = uaData?.FirstOrDefault(d => d.StartsWith("nsu"));
+                        }
+
+                        string nodeId = uaData?.FirstOrDefault(d => d.StartsWith("nodeId:"));
                         form.OpcUaVariableNode = nodeId?.Substring(nodeId.IndexOf(":") + 1);
 
                         switch (content.Schema)
@@ -186,11 +209,26 @@
                             form.ModbusPollingTime = long.Parse(descriptionParts[1]);
                         }
 
-                        property.Forms = new List<ModbusForm>() { form }.ToArray();
-                    }
+                        // check if we are at a new property
+                        if (displayName != content.DisplayName)
+                        {
+                            property.Forms = forms.ToArray();
+                            forms.Clear();
 
-                    td.Properties.Add(content.DisplayName, property);
+                            td.Properties.Add(displayName, property);
+                            displayName = content.DisplayName;
+                        }
+
+                        forms.Add(form);
+                    }
                 }
+
+                property = new();
+                property.Type = TypeEnum.Number;
+                property.ReadOnly = true;
+                property.Observable = true;
+                property.Forms = forms.ToArray();
+                td.Properties.Add(displayName, property);
 
                 return JsonConvert.SerializeObject(td, Formatting.Indented, new JsonSerializerSettings
                 {
@@ -204,6 +242,16 @@
             }
         }
 
-        private static string[] SplitWithNodeIds(char separator, string content) => Regex.Split(content, $"{separator}(?![sigb]=)", RegexOptions.None);
+        private static string[] SplitWithNodeIds(char separator, string content)
+        {
+            if (content != null)
+            {
+                return Regex.Split(content, $"{separator}(?![sigb]=)", RegexOptions.None);
+            }
+            else
+            {
+                return null;
+            }
+        }
     }
 }
