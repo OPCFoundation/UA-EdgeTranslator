@@ -271,6 +271,11 @@ namespace Opc.Ua.Edge.Translator
                                         _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
                                     }
                                 }
+                                else
+                                {
+                                    // OPC UA type info not found, default to float
+                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                                }
                             }
                             else
                             {
@@ -431,7 +436,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 Log.Logger.Information($"Map asset to node: ns={objectNodeId.NamespaceIndex}, i={objectNodeId.Identifier}.");
                 assetFolder = (BaseObjectState)Find(ExpandedNodeId.ToNodeId(objectNodeId, Server.NamespaceUris));
-                assetFolder.Description = new LocalizedText("en", td.Title + " [" + td.Name + "]");
+                assetFolder.Description = new Opc.Ua.LocalizedText("en", td.Title + " [" + td.Name + "]");
             }
             else
             {
@@ -569,8 +574,8 @@ namespace Opc.Ua.Edge.Translator
                 TypeDefinitionId = typeDefinition ?? ObjectTypeIds.BaseObjectType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                Description = new LocalizedText(null, description),
-                DisplayName = new LocalizedText("en", name),
+                Description = new Opc.Ua.LocalizedText(null, description),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 EventNotifier = EventNotifiers.None
@@ -588,7 +593,7 @@ namespace Opc.Ua.Edge.Translator
                 ReferenceTypeId = ReferenceTypes.Organizes,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
@@ -608,7 +613,7 @@ namespace Opc.Ua.Edge.Translator
                 ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 Executable = true,
