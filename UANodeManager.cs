@@ -249,7 +249,12 @@ namespace Opc.Ua.Edge.Translator
                                     BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
                                     foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
                                     {
-                                        encoder.WriteFloat(field.Name, 0);
+                                        // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                                        switch (field.DataType.ToString())
+                                        {
+                                            case "i=10": encoder.WriteFloat(field.Name, 0); break;
+                                            default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                                        }
 
                                         if (field.Name == opcuaTypeParts[4])
                                         {
@@ -822,15 +827,25 @@ namespace Opc.Ua.Edge.Translator
                                             {
                                                 foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
                                                 {
-                                                    float newValue = decoder.ReadFloat(field.Name);
-
-                                                    if (field.Name == tagNameParts[2])
+                                                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                                                    switch (field.DataType.ToString())
                                                     {
-                                                        // overwrite existing value with our upated value
-                                                        newValue = value;
-                                                    }
+                                                        case "i=10":
+                                                        {
+                                                            float newValue = decoder.ReadFloat(field.Name);
 
-                                                    encoder.WriteFloat(field.Name, newValue);
+                                                            if (field.Name == tagNameParts[2])
+                                                            {
+                                                                // overwrite existing value with our upated value
+                                                                newValue = value;
+                                                            }
+
+                                                            encoder.WriteFloat(field.Name, newValue);
+
+                                                            break;
+                                                        }
+                                                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                                                    }
                                                 }
 
                                                 ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
