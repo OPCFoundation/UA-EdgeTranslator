@@ -1,0 +1,263 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1",
+    "http://opcfoundation.org/UA/PNEM/"
+  ],
+  "id": "urn:pac4200",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
+  "name": "modbus-pac4200-sn324",
+  "base": "modbus+tcp://192.168.178.100:502",
+  "title": "Siemens SENTRON PAC4200",
+  "properties": {
+    "VoltageL-N": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=1&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=3&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=5&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL1-L2": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=7&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL2-L3": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=9&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL3-L1": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=11&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "Current": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=13&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=15&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=17&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactor": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=37&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=39&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        },
+        {
+          "href": "/1?address=41&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalApparentPower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=63&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalActivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=65&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalReactivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=67&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalPowerFactor": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=69&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    }
+  }
+}

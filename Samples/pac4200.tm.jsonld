@@ -13,11 +13,11 @@
     "nosec_sc"
   ],
   "@type": [
-    "Thing"
+    "tm:ThingModel"
   ],
   "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
   "name": "modbus-pac4200-sn324",
-  "base": "modbus+tcp://192.168.10.100:502",
+  "base": "modbus+tcp://{{address}}:{{port}}",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL-N": {
