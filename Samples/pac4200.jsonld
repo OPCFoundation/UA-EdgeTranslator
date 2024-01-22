@@ -26,7 +26,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=1&quantity=2", //pattern: /{unitID}/{address}?quantity={?quantity}
+          "href": "/1?address=1&quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
