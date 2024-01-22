@@ -71,6 +71,13 @@ namespace Opc.Ua.Edge.Translator
                     ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
                     namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
+                    foreach (Uri ns in td.Context)
+                    {
+                        if (!ns.ToString().Contains("https://www.w3.org/"))
+                        {
+                            namespaceUris.Add(ns.ToString());
+                        }
+                    }
 
                     FetchOPCUACompanionSpecs(namespaceUris, td);
                 }
@@ -217,90 +224,114 @@ namespace Opc.Ua.Edge.Translator
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
             string variableId = $"{assetId}:{property.Key}";
 
-            // Check if the Modbus node has a predefined variable node to use.
-            BaseDataVariableState variableNode = (BaseDataVariableState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaVariableNode), Server.NamespaceUris));
-            if (variableNode != null)
+            // create an OPC UA variable optionally with a specified variable type.
+            if (!string.IsNullOrEmpty(modbusForm.OpcUaType))
             {
-                Log.Logger.Information($"Mapping to existing variable node {variableNode.NodeId}/{variableNode.BrowseName}");
-                _uaVariables.Add(variableId, variableNode);
-            }
-            else
-            {
-                // create an OPC UA variable optionally with a specified variable type.
-                if (!string.IsNullOrEmpty(modbusForm.OpcUaType))
+                string[] opcuaTypeParts = modbusForm.OpcUaType.Split(new char[] { '=', ';' });
+                if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i"))
                 {
-                    string[] opcuaTypeParts = modbusForm.OpcUaType.Split(new char[] { '=', ';' });
-                    if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i"))
+                    string namespaceURI = opcuaTypeParts[1];
+                    uint nodeID = uint.Parse(opcuaTypeParts[3]);
+
+                    if (NamespaceUris.Contains(namespaceURI))
                     {
-                        string namespaceURI = opcuaTypeParts[1];
-                        uint nodeID = uint.Parse(opcuaTypeParts[3]);
-
-                        if (NamespaceUris.Contains(namespaceURI))
+                        // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
+                        if (opcuaTypeParts.Length > 4)
                         {
-                            // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
-                            if (opcuaTypeParts.Length > 4)
+                            DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaType), Server.NamespaceUris));
+                            if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
                             {
-                                DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaType), Server.NamespaceUris));
-                                if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                                ExtensionObject complexTypeInstance = new();
+                                complexTypeInstance.TypeId = opcuaType.NodeId;
+
+                                BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+                                foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
                                 {
-                                    ExtensionObject complexTypeInstance = new();
-                                    complexTypeInstance.TypeId = opcuaType.NodeId;
-
-                                    BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
-                                    foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                                    switch (field.DataType.ToString())
                                     {
-                                        // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                                        switch (field.DataType.ToString())
-                                        {
-                                            case "i=10": encoder.WriteFloat(field.Name, 0); break;
-                                            default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                                        }
-
-                                        if (field.Name == opcuaTypeParts[4])
-                                        {
-                                            // add the field name to the variable ID to make sure we can distinguish the tag during data updates
-                                            variableId += ":" + field.Name;
-                                        }
+                                        case "i=10": encoder.WriteFloat(field.Name, 0); break;
+                                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
                                     }
 
-                                    complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+                                    if (field.Name == opcuaTypeParts[4])
+                                    {
+                                        // add the field name to the variable ID to make sure we can distinguish the tag during data updates
+                                        variableId += ":" + field.Name;
+                                    }
+                                }
 
-                                    // now add it, if it doesn't already exist
-                                    if (!_uaVariables.ContainsKey(variableId))
+                                complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+
+                                // now add it, if it doesn't already exist
+                                if (!_uaVariables.ContainsKey(variableId))
+                                {
+                                    // Check if the Modbus node has a predefined variable node to use
+                                    if (!string.IsNullOrEmpty(modbusForm.OpcUaVariableNode) && (modbusForm.OpcUaVariableNode.Split(";").Count() > 1))
+                                    {
+                                        Log.Logger.Information($"Mapping to existing variable node {modbusForm.OpcUaVariableNode}");
+
+                                        ExpandedNodeId newNodeID = new(modbusForm.OpcUaVariableNode.Split(";")[1], modbusForm.OpcUaVariableNode.Split(";")[0].Substring(4));
+                                        _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), newNodeID.NamespaceIndex, complexTypeInstance, ExpandedNodeId.ToNodeId(newNodeID, Server.NamespaceUris)));
+                                    }
+                                    else
                                     {
                                         _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
                                     }
                                 }
-                                else
-                                {
-                                    // OPC UA type info not found, default to float
-                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
-                                }
                             }
                             else
                             {
-                                // it's an OPC UA built-in type
-                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                                // OPC UA type info not found, default to float
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                             }
                         }
                         else
                         {
-                            // no namespace info, default to float
-                            _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                            // it's an OPC UA built-in type
+                            // check if the Modbus node has a predefined variable node to use
+                            if (!string.IsNullOrEmpty(modbusForm.OpcUaVariableNode) && (modbusForm.OpcUaVariableNode.Split(";").Count() > 1))
+                            {
+                                Log.Logger.Information($"Mapping to existing variable node {modbusForm.OpcUaVariableNode}");
+
+                                ExpandedNodeId newNodeID = new(modbusForm.OpcUaVariableNode.Split(";")[1], modbusForm.OpcUaVariableNode.Split(";")[0].Substring(4));
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), newNodeID.NamespaceIndex, 0, ExpandedNodeId.ToNodeId(newNodeID, Server.NamespaceUris)));
+                            }
+                            else
+                            {
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                            }
                         }
                     }
                     else
                     {
-                        // can't parse type info, default to float
+                        // no namespace info, default to float
                         _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                     }
                 }
                 else
                 {
-                    // no type info, default to float
+                    // can't parse type info, default to float
                     _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                 }
             }
+            else
+            {
+                // no type info, default to float
+                // check if the Modbus node has a predefined variable node to use
+                if (!string.IsNullOrEmpty(modbusForm.OpcUaVariableNode) && (modbusForm.OpcUaVariableNode.Split(";").Count() > 1))
+                {
+                    Log.Logger.Information($"Mapping to existing variable node {modbusForm.OpcUaVariableNode}");
+
+                    ExpandedNodeId newNodeID = new(modbusForm.OpcUaVariableNode.Split(";")[1], modbusForm.OpcUaVariableNode.Split(";")[0].Substring(4));
+                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), newNodeID.NamespaceIndex, 0, ExpandedNodeId.ToNodeId(newNodeID, Server.NamespaceUris)));
+                }
+                else
+                {
+                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                }
+            }
+
 
             // create an asset tag and add to our list
             AssetTag tag = new()
@@ -409,7 +440,9 @@ namespace Opc.Ua.Edge.Translator
             // to test our lossless conversion between DTDL and WoT, generate DTDL content, convert back to WoT and compare to original
             string dtdlContent = WoT2DTDLMapper.WoT2DTDL(contents);
             string convertedWoTTDContent = WoT2DTDLMapper.DTDL2WoT(dtdlContent);
-            Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
+
+            // uncomment this line to check if the files are exactly the same, otherwise compare them in a comparer tool like Beyond Compare:
+            // Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
         }
 
         private void AddAsset(IList<IReference> references, ThingDescription td, out BaseObjectState assetFolder, string assetId)
@@ -430,30 +463,31 @@ namespace Opc.Ua.Edge.Translator
                 _assets.Add(assetId, client);
             }
 
+            Log.Logger.Information($"Creating new node for {assetId}.");
+
+            ExpandedNodeId parentNodeId = ParseExpandedNodeId(td.OpcUaParentNode);
+            if (parentNodeId != null)
+            {
+                Log.Logger.Information($"Set asset parent node: ns={parentNodeId.NamespaceIndex}, i={parentNodeId.Identifier}.");
+            }
+
+            ExpandedNodeId typeNodeId = ParseExpandedNodeId(td.OpcUaObjectType);
+            if (typeNodeId != null)
+            {
+                Log.Logger.Information($"Set asset type definition: ns={typeNodeId.NamespaceIndex}, i={typeNodeId.Identifier}.");
+            }
+
             // If the asset has defined a target node in the address space, link to that node, otherwise create a top-level OPC UA folder for the asset.
             ExpandedNodeId objectNodeId = ParseExpandedNodeId(td.OpcUaObjectNode);
             if (objectNodeId != null)
             {
-                Log.Logger.Information($"Map asset to node: ns={objectNodeId.NamespaceIndex}, i={objectNodeId.Identifier}.");
-                assetFolder = (BaseObjectState)Find(ExpandedNodeId.ToNodeId(objectNodeId, Server.NamespaceUris));
-                assetFolder.Description = new Opc.Ua.LocalizedText("en", td.Title + " [" + td.Name + "]");
+                Log.Logger.Information($"Map asset to node: nsu={objectNodeId.NamespaceIndex};i={objectNodeId.Identifier}.");
+
+                assetFolder = CreateObject(null, td.Title + " [" + td.Name + "]", assetId, objectNodeId.NamespaceIndex, ExpandedNodeId.ToNodeId(typeNodeId, Server.NamespaceUris));
+                assetFolder.AddReference(ReferenceTypes.Organizes, true, parentNodeId ?? ObjectIds.ObjectsFolder);
             }
             else
             {
-                Log.Logger.Information($"Creating new node for {assetId}.");
-
-                ExpandedNodeId parentNodeId = ParseExpandedNodeId(td.OpcUaParentNode);
-                if (parentNodeId != null)
-                {
-                    Log.Logger.Information($"Set asset parent node: ns={parentNodeId.NamespaceIndex}, i={parentNodeId.Identifier}.");
-                }
-
-                ExpandedNodeId typeNodeId = ParseExpandedNodeId(td.OpcUaObjectType);
-                if (typeNodeId != null)
-                {
-                    Log.Logger.Information($"Set asset type definition: ns={typeNodeId.NamespaceIndex}, i={typeNodeId.Identifier}.");
-                }
-
                 assetFolder = CreateObject(null, td.Title + " [" + td.Name + "]", assetId, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/"), ExpandedNodeId.ToNodeId(typeNodeId, Server.NamespaceUris));
                 assetFolder.AddReference(ReferenceTypes.Organizes, true, parentNodeId ?? ObjectIds.ObjectsFolder);
             }
@@ -496,7 +530,7 @@ namespace Opc.Ua.Edge.Translator
         private void AddAssetManagementNodes(IList<IReference> references)
         {
             // create our top-level WoT asset connection management folder
-            BaseObjectState assetManagementFolder = CreateObject(null, "WoTAssetConnectionManagement", null,(ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+            BaseObjectState assetManagementFolder = CreateObject(null, "WoTAssetConnectionManagement", null, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
             assetManagementFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
             references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, assetManagementFolder.NodeId));
             assetManagementFolder.EventNotifier = EventNotifiers.SubscribeToEvents;
@@ -547,7 +581,8 @@ namespace Opc.Ua.Edge.Translator
 
         private PropertyState<Argument[]> CreateOutputArguments(NodeState parent, string name, string description, NodeId dataType, ushort namespaceIndex, bool isArray = false)
         {
-            PropertyState<Argument[]> arguments = new(parent) {
+            PropertyState<Argument[]> arguments = new(parent)
+            {
                 NodeId = new NodeId(parent.BrowseName.Name + "OutArgs", namespaceIndex),
                 BrowseName = BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
@@ -585,13 +620,13 @@ namespace Opc.Ua.Edge.Translator
             return folder;
         }
 
-        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null)
+        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null, NodeId nodeId = null)
         {
             BaseDataVariableState variable = new BaseDataVariableState(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
-                NodeId = new NodeId(name, namespaceIndex),
+                NodeId = (nodeId == null)? new NodeId(name, namespaceIndex) : nodeId,
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
@@ -770,10 +805,10 @@ namespace Opc.Ua.Edge.Translator
 
                 _counter++;
 
-                string assetId = (string) assetNameObject;
+                string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
-                    throw new Exception("Cannot find asset: " +  assetId);
+                    throw new Exception("Cannot find asset: " + assetId);
                 }
 
                 foreach (AssetTag tag in _tags[assetId])
@@ -828,7 +863,7 @@ namespace Opc.Ua.Edge.Translator
                                             BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
 
                                             DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
-                                            if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                                            if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
                                             {
                                                 foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
                                                 {
@@ -836,19 +871,19 @@ namespace Opc.Ua.Edge.Translator
                                                     switch (field.DataType.ToString())
                                                     {
                                                         case "i=10":
-                                                        {
-                                                            float newValue = decoder.ReadFloat(field.Name);
-
-                                                            if (field.Name == tagNameParts[2])
                                                             {
-                                                                // overwrite existing value with our upated value
-                                                                newValue = value;
+                                                                float newValue = decoder.ReadFloat(field.Name);
+
+                                                                if (field.Name == tagNameParts[2])
+                                                                {
+                                                                    // overwrite existing value with our upated value
+                                                                    newValue = value;
+                                                                }
+
+                                                                encoder.WriteFloat(field.Name, newValue);
+
+                                                                break;
                                                             }
-
-                                                            encoder.WriteFloat(field.Name, newValue);
-
-                                                            break;
-                                                        }
                                                         default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
                                                     }
                                                 }

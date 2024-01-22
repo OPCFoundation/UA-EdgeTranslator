@@ -176,21 +176,44 @@
                         form.Op = new List<Op>() { Op.Readproperty, Op.Observeproperty }.ToArray();
 
                         string[] uaData = SplitWithNodeIds(';', content.Comment);
-                        if ((uaData?.Length > 1) && uaData[0].StartsWith("nsu"))
+                        if ((uaData?.Length > 0) && uaData[0].StartsWith("nsu"))
                         {
-                            form.OpcUaType = uaData[0] + ";" + uaData[1];
-                        }
-                        else if ((uaData?.Length > 2) && uaData[1].StartsWith("nsu"))
-                        {
-                            form.OpcUaType = uaData[1] + ";" + uaData[2];
-                        }
-                        else
-                        {
-                            form.OpcUaType = uaData?.FirstOrDefault(d => d.StartsWith("nsu"));
+                            // check for complex type info
+                            if ((uaData?.Length > 2) && uaData[2].StartsWith("nodeId:"))
+                            {
+                                form.OpcUaType = uaData[0] + ";" + uaData[1];
+                            }
+                            else
+                            {
+                                form.OpcUaType = uaData[0];
+                            }
                         }
 
-                        string nodeId = uaData?.FirstOrDefault(d => d.StartsWith("nodeId:"));
-                        form.OpcUaVariableNode = nodeId?.Substring(nodeId.IndexOf(":") + 1);
+                        if ((uaData?.Length > 2) && uaData[2].StartsWith("nodeId"))
+                        {
+                            // check for complex type info
+                            if (uaData?.Length > 3)
+                            {
+                                form.OpcUaVariableNode = uaData[2] + ";" + uaData[3];
+                            }
+                            else
+                            {
+                                form.OpcUaVariableNode = uaData[2];
+                            }
+                        }
+
+                        if ((uaData?.Length > 1) && uaData[1].StartsWith("nodeId"))
+                        {
+                            // check for complex type info
+                            if (uaData?.Length > 2)
+                            {
+                                form.OpcUaVariableNode = uaData[1] + ";" + uaData[2];
+                            }
+                            else
+                            {
+                                form.OpcUaVariableNode = uaData[1];
+                            }
+                        }
 
                         switch (content.Schema)
                         {
