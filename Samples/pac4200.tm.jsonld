@@ -16,7 +16,7 @@
     "tm:ThingModel"
   ],
   "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
-  "name": "modbus-pac4200-sn324",
+  "name": "modbus-pac4200-{{serialnumber}}",
   "base": "modbus+tcp://{{address}}:{{port}}",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
