@@ -83,6 +83,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("opcua:type")]
         public string OpcUaType { get; set; }
+
+        [JsonProperty("opcua:fieldpath")]
+        public string OpcUaFieldPath { get; set; }
     }
 
     public partial class SecurityDefinitions

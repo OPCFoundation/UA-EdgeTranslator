@@ -2,7 +2,6 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
@@ -10,7 +9,6 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Threading;
@@ -236,7 +234,7 @@ namespace Opc.Ua.Edge.Translator
                     if (NamespaceUris.Contains(namespaceURI))
                     {
                         // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
-                        if (opcuaTypeParts.Length > 4)
+                        if (!string.IsNullOrEmpty(modbusForm.OpcUaFieldPath))
                         {
                             DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(modbusForm.OpcUaType), Server.NamespaceUris));
                             if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
@@ -254,7 +252,7 @@ namespace Opc.Ua.Edge.Translator
                                         default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
                                     }
 
-                                    if (field.Name == opcuaTypeParts[4])
+                                    if (field.Name == modbusForm.OpcUaFieldPath)
                                     {
                                         // add the field name to the variable ID to make sure we can distinguish the tag during data updates
                                         variableId += ":" + field.Name;

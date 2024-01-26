@@ -5,7 +5,6 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text.RegularExpressions;
 
     public class WoT2DTDLMapper
@@ -61,10 +60,17 @@
                             content.Name = modbusForm.Href;
                             content.DisplayName = property.Key;
                             content.Description = modbusForm.ModbusEntity.ToString().ToLower() + ";" + modbusForm.ModbusPollingTime.ToString();
-                            content.Comment = modbusForm.OpcUaType;
+
+                            content.Comment = $"type:{modbusForm.OpcUaType}";
+
                             if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaVariableNode))
                             {
                                 content.Comment += $";nodeId:{modbusForm.OpcUaVariableNode}";
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaFieldPath))
+                            {
+                                content.Comment += $";fieldpath:{modbusForm.OpcUaFieldPath}";
                             }
 
                             switch (modbusForm.ModbusType)
@@ -111,15 +117,15 @@
 
                         if (comment.StartsWith("nodeId:"))
                         {
-                            td.OpcUaObjectNode = comment.Substring(comment.IndexOf(":") + 1);
+                            td.OpcUaObjectNode = comment.Substring("nodeId:".Length);
                         }
                         else if (comment.StartsWith("parent:"))
                         {
-                            td.OpcUaParentNode = comment.Substring(comment.IndexOf(":") + 1);
+                            td.OpcUaParentNode = comment.Substring("parent:".Length);
                         }
                         else if (comment.StartsWith("type:"))
                         {
-                            td.OpcUaObjectType = comment.Substring(comment.IndexOf(":") + 1);
+                            td.OpcUaObjectType = comment.Substring("type:".Length);
                         }
                         else
                         {
@@ -176,42 +182,21 @@
                         form.Op = new List<Op>() { Op.Readproperty, Op.Observeproperty }.ToArray();
 
                         string[] uaData = SplitWithNodeIds(';', content.Comment);
-                        if ((uaData?.Length > 0) && uaData[0].StartsWith("nsu"))
+                        foreach (string uaDataPart in uaData)
                         {
-                            // check for complex type info
-                            if ((uaData?.Length > 2) && uaData[2].StartsWith("nodeId:"))
+                            if (uaDataPart.StartsWith("type:"))
                             {
-                                form.OpcUaType = uaData[0] + ";" + uaData[1];
+                                form.OpcUaType = uaDataPart.Substring("type:".Length);
                             }
-                            else
-                            {
-                                form.OpcUaType = uaData[0];
-                            }
-                        }
 
-                        if ((uaData?.Length > 2) && uaData[2].StartsWith("nodeId"))
-                        {
-                            // check for complex type info
-                            if (uaData?.Length > 3)
+                            if (uaDataPart.StartsWith("nodeId:"))
                             {
-                                form.OpcUaVariableNode = uaData[2] + ";" + uaData[3];
+                                form.OpcUaVariableNode = uaDataPart.Substring("nodeId:".Length);
                             }
-                            else
-                            {
-                                form.OpcUaVariableNode = uaData[2];
-                            }
-                        }
 
-                        if ((uaData?.Length > 1) && uaData[1].StartsWith("nodeId"))
-                        {
-                            // check for complex type info
-                            if (uaData?.Length > 2)
+                            if (uaDataPart.StartsWith("fieldpath:"))
                             {
-                                form.OpcUaVariableNode = uaData[1] + ";" + uaData[2];
-                            }
-                            else
-                            {
-                                form.OpcUaVariableNode = uaData[1];
+                                form.OpcUaFieldPath = uaDataPart.Substring("fieldpath:".Length);
                             }
                         }
 

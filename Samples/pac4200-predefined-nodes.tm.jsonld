@@ -33,8 +33,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108;A",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "A",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -45,8 +46,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108;B",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "B",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -57,8 +59,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108;C",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6108",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "C",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -130,8 +133,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112;A",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "A",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -142,8 +146,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112;B",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "B",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -154,8 +159,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112;C",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6112",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "C",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -173,8 +179,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113;A",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "A",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -185,8 +192,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113;B",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "B",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000
@@ -197,8 +205,9 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113;C",
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+          "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6113",
+          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+          "opcua:fieldpath": "C",
           "modbus:type": "float",
           "modbus:entity": "holdingregister",
           "modbus:pollingTime": 2000

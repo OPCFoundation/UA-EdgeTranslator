@@ -11,7 +11,7 @@
       "name": "/1?address=1&quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
     {
@@ -19,7 +19,7 @@
       "name": "/1?address=3&quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
     {
@@ -27,7 +27,7 @@
       "name": "/1?address=5&quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
     {
@@ -59,7 +59,7 @@
       "name": "/1?address=13&quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
     {
@@ -67,7 +67,7 @@
       "name": "/1?address=15&quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
     {
@@ -75,7 +75,7 @@
       "name": "/1?address=17&quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
     {
@@ -83,7 +83,7 @@
       "name": "/1?address=37&quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;A",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
     {
@@ -91,7 +91,7 @@
       "name": "/1?address=39&quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;B",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
     {
@@ -99,7 +99,7 @@
       "name": "/1?address=41&quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
-      "comment": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005;C",
+      "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
     {
