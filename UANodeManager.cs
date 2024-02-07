@@ -188,7 +188,7 @@ namespace Opc.Ua.Edge.Translator
 
                         ParseAsset(file, out ThingDescription td);
                         AddOPCUACompanionSpecNodes(td);
-                        AddAsset(references, td, out BaseObjectState assetFolder, assetId);
+                        AddAsset(references, td, assetId, out BaseObjectState assetFolder, out byte unitId);
 
                         // create nodes for each TD property
                         foreach (KeyValuePair<string, Property> property in td.Properties)
@@ -197,10 +197,11 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 if (td.Base.ToLower().StartsWith("modbus+tcp://"))
                                 {
-                                    AddModbusNodes(td, assetFolder, property, form, assetId);
+                                    AddModbusNodes(td, assetFolder, property, form, assetId, unitId);
                                 }
                             }
                         }
+
                         AddPredefinedNode(SystemContext, assetFolder);
 
                         _ = Task.Factory.StartNew(UpdateNodeValues, assetId, TaskCreationOptions.LongRunning);
@@ -217,7 +218,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void AddModbusNodes(ThingDescription td, BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form, string assetId)
+        private void AddModbusNodes(ThingDescription td, BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
         {
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
             string variableId = $"{assetId}:{property.Key}";
@@ -336,6 +337,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 Name = variableId,
                 Address = modbusForm.Href,
+                UnitID = unitId,
                 Type = modbusForm.ModbusType.ToString(),
                 PollingInterval = (int)modbusForm.ModbusPollingTime,
                 Entity = modbusForm.ModbusEntity.ToString(),
@@ -443,20 +445,22 @@ namespace Opc.Ua.Edge.Translator
             // Debug.Assert(JObject.DeepEquals(JObject.Parse(convertedWoTTDContent), JObject.Parse(contents)));
         }
 
-        private void AddAsset(IList<IReference> references, ThingDescription td, out BaseObjectState assetFolder, string assetId)
+        private void AddAsset(IList<IReference> references, ThingDescription td, string assetId, out BaseObjectState assetFolder, out byte unitId)
         {
             // create a connection to the asset
+            unitId = 1;
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
-                string[] modbusAddress = td.Base.Split(':');
-                if (modbusAddress.Length != 3)
+                string[] modbusAddress = td.Base.Split(new char[] { ':','/' });
+                if ((modbusAddress.Length != 6) && (modbusAddress[0] != "modbus+tcp"))
                 {
-                    throw new Exception("Expected Modbus address in the format modbus+tcp://ipaddress:port!");
+                    throw new Exception("Expected Modbus address in the format modbus+tcp://ipaddress:port/unitID!");
                 }
 
                 // check if we can reach the Modbus asset
+                unitId = byte.Parse(modbusAddress[5]);
                 ModbusTCPClient client = new();
-                client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
+                client.Connect(modbusAddress[3], int.Parse(modbusAddress[4]));
 
                 _assets.Add(assetId, client);
             }
@@ -683,15 +687,15 @@ namespace Opc.Ua.Edge.Translator
                 // create a connection to the asset
                 if (td.Base.ToLower().StartsWith("modbus+tcp://"))
                 {
-                    string[] modbusAddress = td.Base.Split(':');
-                    if (modbusAddress.Length != 3)
+                    string[] modbusAddress = td.Base.Split(new char[] { ':', '/' } );
+                    if ((modbusAddress.Length != 6) && (modbusAddress[0] != "modbus+tcp"))
                     {
-                        throw new Exception("Expected Modbus address in the format modbus+tcp://ipaddress:port!");
+                        throw new Exception("Expected Modbus address in the format modbus+tcp://ipaddress:port/unitID!");
                     }
 
                     // check if we can reach the Modbus asset
                     ModbusTCPClient client = new();
-                    client.Connect(modbusAddress[1].TrimStart('/'), int.Parse(modbusAddress[2]));
+                    client.Connect(modbusAddress[3], int.Parse(modbusAddress[4]));
                     client.Disconnect();
                 }
 
@@ -825,12 +829,12 @@ namespace Opc.Ua.Edge.Translator
 
                                 string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-                                if ((addressParts.Length > 4) && (addressParts[1] == "address") && (addressParts[3] == "quantity"))
+                                if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
                                 {
                                     // read tag
-                                    byte unitID = byte.Parse(addressParts[0].TrimStart('/'));
-                                    uint address = uint.Parse(addressParts[2]);
-                                    ushort quantity = ushort.Parse(addressParts[4]);
+                                    byte unitID = tag.UnitID;
+                                    uint address = uint.Parse(addressParts[0]);
+                                    ushort quantity = ushort.Parse(addressParts[2]);
 
                                     byte[] tagBytes = null;
                                     try

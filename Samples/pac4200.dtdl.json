@@ -4,11 +4,11 @@
   "@type": "Interface",
   "displayName": "modbus-pac4200-sn324",
   "description": "Siemens SENTRON PAC4200",
-  "comment": "modbus+tcp://192.168.10.100:502;http://opcfoundation.org/UA/PNEM/;type:nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
+  "comment": "modbus+tcp://192.168.10.100:502/1;http://opcfoundation.org/UA/PNEM/;type:nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
   "contents": [
     {
       "@type": "Telemetry",
-      "name": "/1?address=1&quantity=2",
+      "name": "1?quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
@@ -16,7 +16,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=3&quantity=2",
+      "name": "3?quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
@@ -24,7 +24,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=5&quantity=2",
+      "name": "5?quantity=2",
       "displayName": "VoltageL-N",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
@@ -32,7 +32,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=7&quantity=2",
+      "name": "7?quantity=2",
       "displayName": "VoltageL1-L2",
       "description": "holdingregister;2000",
       "comment": null,
@@ -40,7 +40,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=9&quantity=2",
+      "name": "9?quantity=2",
       "displayName": "VoltageL2-L3",
       "description": "holdingregister;2000",
       "comment": null,
@@ -48,7 +48,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=11&quantity=2",
+      "name": "11?quantity=2",
       "displayName": "VoltageL3-L1",
       "description": "holdingregister;2000",
       "comment": null,
@@ -56,7 +56,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=13&quantity=2",
+      "name": "13?quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
@@ -64,7 +64,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=15&quantity=2",
+      "name": "15?quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
@@ -72,7 +72,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=17&quantity=2",
+      "name": "17?quantity=2",
       "displayName": "Current",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
@@ -80,7 +80,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=37&quantity=2",
+      "name": "37?quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
@@ -88,7 +88,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=39&quantity=2",
+      "name": "39?quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
@@ -96,7 +96,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=41&quantity=2",
+      "name": "41?quantity=2",
       "displayName": "PowerFactor",
       "description": "holdingregister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
@@ -104,7 +104,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=63&quantity=2",
+      "name": "63?quantity=2",
       "displayName": "TotalApparentPower",
       "description": "holdingregister;2000",
       "comment": null,
@@ -112,7 +112,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=65&quantity=2",
+      "name": "65?quantity=2",
       "displayName": "TotalActivePower",
       "description": "holdingregister;2000",
       "comment": null,
@@ -120,7 +120,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=67&quantity=2",
+      "name": "67?quantity=2",
       "displayName": "TotalReactivePower",
       "description": "holdingregister;2000",
       "comment": null,
@@ -128,7 +128,7 @@
     },
     {
       "@type": "Telemetry",
-      "name": "/1?address=69&quantity=2",
+      "name": "69?quantity=2",
       "displayName": "TotalPowerFactor",
       "description": "holdingregister;2000",
       "comment": null,

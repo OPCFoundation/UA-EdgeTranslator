@@ -19,7 +19,7 @@
   "opcua:nodeId": "nsu=http://siemens.com/UA/SentronPAC4200/{{serialnumber}}/;i=6101",
   "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=1010",
   "name": "modbus-pac4200-{{serialnumber}}",
-  "base": "modbus+tcp://{{address}}:{{port}}",
+  "base": "modbus+tcp://{{address}}:{{port}}/1",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL-N": {
@@ -28,7 +28,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=1&quantity=2",
+          "href": "1?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -41,7 +41,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=3&quantity=2",
+          "href": "3?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -54,7 +54,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=5&quantity=2",
+          "href": "5?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -74,7 +74,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=7&quantity=2",
+          "href": "7?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -92,7 +92,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=9&quantity=2",
+          "href": "9?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -110,7 +110,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=11&quantity=2",
+          "href": "11?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -128,7 +128,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=13&quantity=2",
+          "href": "13?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -141,7 +141,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=15&quantity=2",
+          "href": "15?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -154,7 +154,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=17&quantity=2",
+          "href": "17?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -174,7 +174,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=37&quantity=2",
+          "href": "37?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -187,7 +187,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=39&quantity=2",
+          "href": "39?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -200,7 +200,7 @@
           "modv:pollingTime": 2000
         },
         {
-          "href": "/1?address=41&quantity=2",
+          "href": "41?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -220,7 +220,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=63&quantity=2",
+          "href": "63?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -238,7 +238,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=65&quantity=2",
+          "href": "65?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -256,7 +256,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=67&quantity=2",
+          "href": "67?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
@@ -274,7 +274,7 @@
       "observable": true,
       "forms": [
         {
-          "href": "/1?address=69&quantity=2",
+          "href": "69?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
