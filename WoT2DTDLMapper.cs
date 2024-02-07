@@ -104,7 +104,7 @@
 
                 List<Uri> context = new()
                 {
-                    new Uri("https://www.w3.org/2019/wot/td/v1", UriKind.Absolute)
+                    new Uri("https://www.w3.org/2022/wot/td/v1.1", UriKind.Absolute)
                 };
 
                 string[] comments = SplitWithNodeIds(';', dtdl.Comment);

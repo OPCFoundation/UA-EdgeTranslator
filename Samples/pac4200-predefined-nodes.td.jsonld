@@ -1,6 +1,6 @@
 {
   "@context": [
-    "https://www.w3.org/2019/wot/td/v1",
+    "https://www.w3.org/2022/wot/td/v1.1",
     "http://opcfoundation.org/UA/PNEM/",
     "http://siemens.com/UA/SentronPAC4200/SN324/"
   ],
