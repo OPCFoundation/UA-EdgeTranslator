@@ -68,13 +68,13 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("op")]
         public Op[] Op { get; set; }
 
-        [JsonProperty("modbus:type")]
+        [JsonProperty("modv:type")]
         public ModbusType ModbusType { get; set; }
 
-        [JsonProperty("modbus:entity")]
+        [JsonProperty("modv:entity")]
         public ModbusEntity ModbusEntity { get; set; }
 
-        [JsonProperty("modbus:pollingTime")]
+        [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
 
 
