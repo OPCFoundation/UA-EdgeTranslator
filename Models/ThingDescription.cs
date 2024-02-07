@@ -110,7 +110,7 @@ namespace Opc.Ua.Edge.Translator.Models
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum ModbusType
     {
-        [EnumMember(Value = "float")]
+        [EnumMember(Value = "xsd:float")]
         Float
     };
 

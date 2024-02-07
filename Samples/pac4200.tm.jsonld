@@ -33,7 +33,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -45,7 +45,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -57,7 +57,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -74,7 +74,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -91,7 +91,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -108,7 +108,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -127,7 +127,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -139,7 +139,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -151,7 +151,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -170,7 +170,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -182,7 +182,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         },
@@ -194,7 +194,7 @@
           ],
           "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -211,7 +211,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -228,7 +228,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -245,7 +245,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
@@ -262,7 +262,7 @@
             "readproperty",
             "observeproperty"
           ],
-          "modv:type": "float",
+          "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
