@@ -818,7 +818,7 @@ namespace Opc.Ua.Edge.Translator
                             if (_counter * 1000 % tag.PollingInterval == 0)
                             {
                                 ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
-                                if (tag.Entity == "Holdingregister")
+                                if (tag.Entity == "HoldingRegister")
                                 {
                                     functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
                                 }

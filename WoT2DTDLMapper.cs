@@ -207,9 +207,9 @@
                         }
 
                         string[] descriptionParts = content.Description.Split(';');
-                        if ((descriptionParts != null) && (descriptionParts.Length > 0) && descriptionParts[0] == "holdingregister")
+                        if ((descriptionParts != null) && (descriptionParts.Length > 0) && descriptionParts[0] == "holdingRegister")
                         {
-                            form.ModbusEntity = ModbusEntity.Holdingregister;
+                            form.ModbusEntity = ModbusEntity.HoldingRegister;
                         }
 
                         if ((descriptionParts != null) && (descriptionParts.Length > 1) && long.TryParse(descriptionParts[1], out long result))
