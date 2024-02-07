@@ -1,7 +1,9 @@
 {
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1",
-    "http://opcfoundation.org/UA/PNEM/"
+    {
+      "opcua": "http://opcfoundation.org/UA/PNEM/"
+    }
   ],
   "id": "urn:pac4200",
   "securityDefinitions": {

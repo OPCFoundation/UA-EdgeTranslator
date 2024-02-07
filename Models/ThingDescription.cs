@@ -2,14 +2,13 @@
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
-    using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
     public partial class ThingDescription
     {
         [JsonProperty("@context")]
-        public Uri[] Context { get; set; }
+        public object[] Context { get; set; }
 
         [JsonProperty("id")]
         public string Id { get; set; }

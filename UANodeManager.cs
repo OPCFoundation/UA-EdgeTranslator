@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
@@ -69,11 +70,12 @@ namespace Opc.Ua.Edge.Translator
                     ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
                     namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
-                    foreach (Uri ns in td.Context)
+                    foreach (object ns in td.Context)
                     {
                         if (!ns.ToString().Contains("https://www.w3.org/"))
                         {
-                            namespaceUris.Add(ns.ToString());
+                            JObject keyValuePair = (JObject) ns;
+                            namespaceUris.Add(keyValuePair.First.First.Value<string>());
                         }
                     }
 
@@ -92,8 +94,16 @@ namespace Opc.Ua.Edge.Translator
         private void FetchOPCUACompanionSpecs(List<string> namespaceUris, ThingDescription td)
         {
             // check if an OPC UA companion spec is mentioned in the WoT TD file
-            foreach (Uri opcuaCompanionSpecUrl in td.Context)
+            foreach (object ns in td.Context)
             {
+                if (ns.ToString().Contains("https://www.w3.org/"))
+                {
+                    continue;
+                }
+
+                JObject keyValuePair = (JObject)ns;
+                Uri opcuaCompanionSpecUrl = new(keyValuePair.First.First.Value<string>());
+
                 // support local Nodesets
                 if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
                 {
@@ -383,8 +393,16 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            foreach (Uri opcuaCompanionSpecUrl in td.Context)
+            foreach (object ns in td.Context)
             {
+                if (ns.ToString().Contains("https://www.w3.org/"))
+                {
+                    continue;
+                }
+
+                JObject keyValuePair = (JObject)ns;
+                Uri opcuaCompanionSpecUrl = new(keyValuePair.First.First.Value<string>());
+
                 // support local Nodesets
                 if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
                 {

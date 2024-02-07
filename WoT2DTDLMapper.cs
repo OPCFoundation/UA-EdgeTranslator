@@ -1,6 +1,7 @@
 ﻿namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
@@ -24,11 +25,13 @@
                 dtdl.Description = td.Title;
                 dtdl.Comment = td.Base;
 
-                foreach (Uri context in td.Context)
+                foreach (object ns in td.Context)
                 {
-                    if (context.OriginalString.Contains("/UA/"))
+                    if (!ns.ToString().Contains("https://www.w3.org/"))
                     {
-                        dtdl.Comment += ";" + context.OriginalString;
+                        JObject keyValuePair = (JObject)ns;
+                        Uri opcuaCompanionSpecUrl = new(keyValuePair.First.First.Value<string>());
+                        dtdl.Comment += ";" + opcuaCompanionSpecUrl.ToString();
                     }
                 }
 
@@ -134,7 +137,23 @@
                     }
                 }
 
-                td.Context = context.ToArray();
+                td.Context = new object[context.Count];
+                for (int i = 0;i < context.Count; i++)
+                {
+                    if (context[i].ToString().Contains("https://www.w3.org/"))
+                    {
+                        td.Context[i] = context[i];
+                    }
+                    else
+                    {
+                        JObject jsonObject = new()
+                        {
+                            { "opcua", context[i] }
+                        };
+
+                        td.Context[i] = jsonObject;
+                    }
+                }
 
                 string[] idParts = dtdl.Id.Split(":");
                 if (idParts != null && idParts.Length > 1)
