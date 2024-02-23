@@ -1,0 +1,2330 @@
+{
+    "idShort": "AssetInterfacesDescription",
+    "id": "urn:pac4200",
+    "kind": "Instance",
+    "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+            {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Submodel"
+            }
+        ]
+    },
+    "description": [
+        {
+            "language": "en",
+            "text": "Siemens SENTRON PAC4200"
+        }
+    ],
+    "submodelElements": [
+        {
+            "idShort": "InterfaceMODBUS_TCP",
+            "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                    {
+                        "type": "GlobalReference",
+                        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
+                    }
+                ]
+            },
+            "supplementalSemanticIds": [
+                {
+                    "type": "ExternalReference",
+                    "keys": [
+                        {
+                            "type": "GlobalReference",
+                            "value": "https://www.w3.org/2019/wot/td"
+                        }
+                    ]
+                },
+                {
+                    "type": "ExternalReference",
+                    "keys": [
+                        {
+                            "type": "GlobalReference",
+                            "value": "http://www.w3.org/2011/modbus"
+                        }
+                    ]
+                }
+            ],
+            "value": [
+                {
+                    "idShort": "title",
+                    "valueType": "xs:string",
+                    "value": "Siemens SENTRON PAC4200",
+                    "modelType": "Property",
+                    "semanticId": {
+                        "type": "ExternalReference",
+                        "keys": [
+                            {
+                                "type": "GlobalReference",
+                                "value": "https://www.w3.org/2019/wot/td#title"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "idShort": "EndpointMetadata",
+                    "semanticId": {
+                        "type": "ExternalReference",
+                        "keys": [
+                            {
+                                "type": "GlobalReference",
+                                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
+                            }
+                        ]
+                    },
+                    "value": [
+                        {
+                            "idShort": "base",
+                            "semanticId": {
+                                "type": "ExternalReference",
+                                "keys": [
+                                    {
+                                        "type": "GlobalReference",
+                                        "value": "https://www.w3.org/2019/wot/td#baseURI"
+                                    }
+                                ]
+                            },
+                            "valueType": "xs:anyURI",
+                            "value": "modbus+tcp://192.168.178.100:502/1",
+                            "modelType": "Property"
+                        },
+                        {
+                            "idShort": "security",
+                            "semanticId": {
+                                "type": "ExternalReference",
+                                "keys": [
+                                    {
+                                        "type": "GlobalReference",
+                                        "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+                                    }
+                                ]
+                            },
+                            "typeValueListElement": "ReferenceElement",
+                            "value": [
+                                {
+                                    "value": {
+                                        "type": "ModelReference",
+                                        "keys": [
+                                            {
+                                                "type": "Submodel",
+                                                "value": "urn:pac4200"
+                                            },
+                                            {
+                                                "type": "SubmodelElementCollection",
+                                                "value": "InterfaceMODBUS_TCP"
+                                            },
+                                            {
+                                                "type": "SubmodelElementCollection",
+                                                "value": "EndpointMetadata"
+                                            },
+                                            {
+                                                "type": "SubmodelElementCollection",
+                                                "value": "securityDefinitions"
+                                            },
+                                            {
+                                                "type": "SubmodelElementCollection",
+                                                "value": "nosec_sc"
+                                            }
+                                        ]
+                                    },
+                                    "modelType": "ReferenceElement"
+                                }
+                            ],
+                            "modelType": "SubmodelElementList"
+                        },
+                        {
+                            "idShort": "securityDefinitions",
+                            "semanticId": {
+                                "type": "ExternalReference",
+                                "keys": [
+                                    {
+                                        "type": "GlobalReference",
+                                        "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+                                    }
+                                ]
+                            },
+                            "value": [
+                                {
+                                    "idShort": "nosec_sc",
+                                    "value": [
+                                        {
+                                            "idShort": "scheme",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/security#SecurityScheme"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "nosec",
+                                            "modelType": "Property"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                }
+                            ],
+                            "modelType": "SubmodelElementCollection"
+                        }
+                    ],
+                    "modelType": "SubmodelElementCollection"
+                },
+                {
+                    "idShort": "InteractionMetadata",
+                    "semanticId": {
+                        "type": "ExternalReference",
+                        "keys": [
+                            {
+                                "type": "GlobalReference",
+                                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
+                            }
+                        ]
+                    },
+                    "supplementalSemanticIds": [
+                        {
+                            "type": "ExternalReference",
+                            "keys": [
+                                {
+                                    "type": "GlobalReference",
+                                    "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
+                                }
+                            ]
+                        }
+                    ],
+                    "value": [
+                        {
+                            "idShort": "properties",
+                            "semanticId": {
+                                "type": "ExternalReference",
+                                "keys": [
+                                    {
+                                        "type": "GlobalReference",
+                                        "value": "https://www.w3.org/2019/wot/td#PropertyAffordance"
+                                    }
+                                ]
+                            },
+                            "value": [
+                                {
+                                    "idShort": "VoltageL1-N",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "VoltageL2-N",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/3?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "VoltageL3-N",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/5?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "VoltageL1-L2",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/7?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "VoltageL2-L3",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/9?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "VoltageL3-L1",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "1?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "CurrentL1",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "3?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "CurrentL2",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "5?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "CurrentL3",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "7?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "PowerFactorL1",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/37?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "PowerFactorL2",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/39?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "PowerFactorL3",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/41?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "TotalApparentPower",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/63?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "TotalActivePower",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/65?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "TotalReactivePower",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/67?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                },
+                                {
+                                    "idShort": "TotalPowerFactor",
+                                    "semanticId": {
+                                        "type": "ExternalReference",
+                                        "keys": [
+                                            {
+                                                "type": "GlobalReference",
+                                                "value": "https://admin-shell.io/idta/AssetInterfaceDescription/1/0/PropertyDefinition"
+                                            }
+                                        ]
+                                    },
+                                    "supplementalSemanticIds": [
+                                        {
+                                            "type": "ExternalReference",
+                                            "keys": [
+                                                {
+                                                    "type": "GlobalReference",
+                                                    "value": "https://www.w3.org/2019/wot/td#name"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "value": [
+                                        {
+                                            "idShort": "type",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:string",
+                                            "value": "number",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "observable",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#isObservable"
+                                                    }
+                                                ]
+                                            },
+                                            "valueType": "xs:boolean",
+                                            "value": "true",
+                                            "modelType": "Property"
+                                        },
+                                        {
+                                            "idShort": "forms",
+                                            "semanticId": {
+                                                "type": "ExternalReference",
+                                                "keys": [
+                                                    {
+                                                        "type": "GlobalReference",
+                                                        "value": "https://www.w3.org/2019/wot/td#hasForm"
+                                                    }
+                                                ]
+                                            },
+                                            "value": [
+                                                {
+                                                    "idShort": "href",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "modbus+tcp://192.168.178.100:502/69?quantity=2",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_type",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPayloadDataType"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "xsd:float",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_entity",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasEntity"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:string",
+                                                    "value": "holdingRegister",
+                                                    "modelType": "Property"
+                                                },
+                                                {
+                                                    "idShort": "modv_pollingTime",
+                                                    "semanticId": {
+                                                        "type": "ExternalReference",
+                                                        "keys": [
+                                                            {
+                                                                "type": "GlobalReference",
+                                                                "value": "https://www.w3.org/2019/wot/modbus#hasPollingTime"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "valueType": "xs:int",
+                                                    "value": "2000",
+                                                    "modelType": "Property"
+                                                }
+                                            ],
+                                            "modelType": "SubmodelElementCollection"
+                                        }
+                                    ],
+                                    "modelType": "SubmodelElementCollection"
+                                }
+                            ],
+                            "modelType": "SubmodelElementCollection"
+                        },
+                        {
+                            "idShort": "actions",
+                            "value": [],
+                            "modelType": "SubmodelElementCollection"
+                        },
+                        {
+                            "idShort": "events",
+                            "value": [],
+                            "modelType": "SubmodelElementCollection"
+                        }
+                    ],
+                    "modelType": "SubmodelElementCollection"
+                }
+            ],
+            "modelType": "SubmodelElementCollection"
+        }
+    ],
+    "modelType": "Submodel"
+}
