@@ -618,15 +618,15 @@ namespace Opc.Ua.Edge.Translator
             return folder;
         }
 
-        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null, NodeId nodeId = null)
+        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null)
         {
             BaseDataVariableState variable = new BaseDataVariableState(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
-                NodeId = (nodeId == null)? new NodeId(name, namespaceIndex) : nodeId,
+                NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new Opc.Ua.LocalizedText("en", name),
+                DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
