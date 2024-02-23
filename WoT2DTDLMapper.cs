@@ -58,9 +58,9 @@
 
                             content.Comment = $"type:{property.Value.OpcUaType}";
 
-                            if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaFieldPath))
+                            if (!string.IsNullOrWhiteSpace(property.Value.OpcUaFieldPath))
                             {
-                                content.Comment += $";fieldpath:{modbusForm.OpcUaFieldPath}";
+                                content.Comment += $";fieldpath:{property.Value.OpcUaFieldPath}";
                             }
 
                             switch (modbusForm.ModbusType)
@@ -189,7 +189,7 @@
 
                             if (uaDataPart.StartsWith("fieldpath:"))
                             {
-                                form.OpcUaFieldPath = uaDataPart.Substring("fieldpath:".Length);
+                                property.OpcUaFieldPath = uaDataPart.Substring("fieldpath:".Length);
                             }
                         }
 

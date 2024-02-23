@@ -24,9 +24,11 @@
   "base": "modbus+tcp://192.168.178.100:502/1",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
-    "VoltageL-N": {
+    "VoltageL1-N": {
       "type": "number",
+      "opcua:nodeId": "s=VoltageL-N",
       "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -36,29 +38,46 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "A",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
-        },
+        }
+      ]
+    },
+    "VoltageL2-N": {
+      "type": "number",
+      "opcua:nodeId": "s=VoltageL-N",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
         {
           "href": "3?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "B",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
-        },
+        }
+      ]
+    },
+    "VoltageL3-N": {
+      "type": "number",
+      "opcua:nodeId": "s=VoltageL-N",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
         {
           "href": "5?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
@@ -116,9 +135,11 @@
         }
       ]
     },
-    "Current": {
+    "CurrentL1": {
       "type": "number",
+      "opcua:nodeId": "s=Current",
       "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -128,38 +149,57 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "A",
-          "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
-          "modv:pollingTime": 2000
-        },
-        {
-          "href": "15?quantity=2",
-          "op": [
-            "readproperty",
-            "observeproperty"
-          ],
-          "opcua:fieldpath": "B",
-          "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
-          "modv:pollingTime": 2000
-        },
-        {
-          "href": "17?quantity=2",
-          "op": [
-            "readproperty",
-            "observeproperty"
-          ],
-          "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
         }
       ]
     },
-    "PowerFactor": {
+    "CurrentL2": {
       "type": "number",
+      "opcua:nodeId": "s=Current",
       "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "15?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "holdingRegister",
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL3": {
+      "type": "number",
+      "opcua:nodeId": "s=Current",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "17?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "holdingRegister",
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL1": {
+      "type": "number",
+      "opcua:nodeId": "s=PowerFactor",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -169,29 +209,46 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "A",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
-        },
+        }
+      ]
+    },
+    "PowerFactorL2": {
+      "type": "number",
+      "opcua:nodeId": "s=PowerFactor",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
         {
           "href": "39?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "B",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000
-        },
+        }
+      ]
+    },
+    "PowerFactorL3": {
+      "type": "number",
+      "opcua:nodeId": "s=PowerFactor",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "opcua:fieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
         {
           "href": "41?quantity=2",
           "op": [
             "readproperty",
             "observeproperty"
           ],
-          "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
           "modv:pollingTime": 2000

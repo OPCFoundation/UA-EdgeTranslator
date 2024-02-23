@@ -238,7 +238,20 @@ namespace Opc.Ua.Edge.Translator
         private void AddUANodeForModbusRegister(BaseObjectState assetFolder, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
         {
             ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
-            string variableId = $"{assetId}:{property.Key}";
+
+            string variableId;
+            string variableName;
+            if (string.IsNullOrEmpty(property.Value.OpcUaNodeId))
+            {
+                variableId = $"{assetId}:{property.Key}";
+                variableName = property.Key;
+            }
+            else
+            {
+                variableId = $"{assetId}:{property.Value.OpcUaNodeId}";
+                variableName = property.Value.OpcUaNodeId.Substring(property.Value.OpcUaNodeId.IndexOf("=") + 1);
+            }
+
             string fieldPath = string.Empty;
 
             // create an OPC UA variable optionally with a specified type.
@@ -253,7 +266,7 @@ namespace Opc.Ua.Edge.Translator
                     if (NamespaceUris.Contains(namespaceURI))
                     {
                         // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
-                        if (!string.IsNullOrEmpty(modbusForm.OpcUaFieldPath))
+                        if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
                             DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
                             if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
@@ -271,7 +284,7 @@ namespace Opc.Ua.Edge.Translator
                                         default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
                                     }
 
-                                    if (field.Name == modbusForm.OpcUaFieldPath)
+                                    if (field.Name == property.Value.OpcUaFieldPath)
                                     {
                                         // add the field path to make sure we can distinguish the tag during data updates
                                         fieldPath = field.Name;
@@ -283,37 +296,37 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
+                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
                                 }
                             }
                             else
                             {
                                 // OPC UA type info not found, default to float
-                                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                             }
                         }
                         else
                         {
                             // it's an OPC UA built-in type
-                            _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                            _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
                         }
                     }
                     else
                     {
                         // no namespace info, default to float
-                        _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                        _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                     }
                 }
                 else
                 {
                     // can't parse type info, default to float
-                    _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
                 }
             }
             else
             {
                 // no type info, default to float
-                _uaVariables.Add(variableId, CreateVariable(assetFolder, property.Key, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
             }
 
 

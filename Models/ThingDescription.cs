@@ -50,8 +50,14 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }
 
+        [JsonProperty("opcua:nodeId")]
+        public string OpcUaNodeId { get; set; }
+
         [JsonProperty("opcua:type")]
         public string OpcUaType { get; set; }
+
+        [JsonProperty("opcua:fieldPath")]
+        public string OpcUaFieldPath { get; set; }
 
         [JsonProperty("readOnly")]
         public bool ReadOnly { get; set; }
@@ -79,9 +85,6 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
-
-        [JsonProperty("opcua:fieldpath")]
-        public string OpcUaFieldPath { get; set; }
     }
 
     public class SecurityDefinitions
