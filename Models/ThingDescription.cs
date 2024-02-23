@@ -2,10 +2,11 @@
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
+    using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
-    public partial class ThingDescription
+    public class ThingDescription
     {
         [JsonProperty("@context")]
         public object[] Context { get; set; }
@@ -34,20 +35,23 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("properties")]
         public Dictionary<string, Property> Properties { get; set; }
 
-        [JsonProperty("opcua:nodeId")]
-        public string OpcUaObjectNode { get; set; }
-
         [JsonProperty("opcua:type")]
-        public string OpcUaObjectType { get; set; }
-
-        [JsonProperty("opcua:parent")]
-        public string OpcUaParentNode { get; set; }
+        public string OpcUaType { get; set; }
     }
 
-    public partial class Property
+    public class OpcUaNamespaces
+    {
+        [JsonProperty("opcua")]
+        public Uri[] Namespaces { get; set; }
+    }
+
+    public class Property
     {
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }
+
+        [JsonProperty("opcua:type")]
+        public string OpcUaType { get; set; }
 
         [JsonProperty("readOnly")]
         public bool ReadOnly { get; set; }
@@ -59,7 +63,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public object[] Forms { get; set; }
     }
 
-    public partial class ModbusForm
+    public class ModbusForm
     {
         [JsonProperty("href")]
         public string Href { get; set; }
@@ -76,24 +80,17 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
 
-
-        [JsonProperty("opcua:nodeId")]
-        public string OpcUaVariableNode { get; set; }
-
-        [JsonProperty("opcua:type")]
-        public string OpcUaType { get; set; }
-
         [JsonProperty("opcua:fieldpath")]
         public string OpcUaFieldPath { get; set; }
     }
 
-    public partial class SecurityDefinitions
+    public class SecurityDefinitions
     {
         [JsonProperty("nosec_sc")]
         public NosecSc NosecSc { get; set; }
     }
 
-    public partial class NosecSc
+    public class NosecSc
     {
         [JsonProperty("scheme")]
         public string Scheme { get; set; }

@@ -2,7 +2,9 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1",
     {
-      "opcua": "http://opcfoundation.org/UA/PNEM/"
+      "opcua": [
+        "http://opcfoundation.org/UA/PNEM/"
+      ]
     }
   ],
   "id": "urn:pac4200",
@@ -24,6 +26,7 @@
   "properties": {
     "VoltageL-N": {
       "type": "number",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -33,7 +36,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -45,7 +47,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -57,7 +58,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -118,6 +118,7 @@
     },
     "Current": {
       "type": "number",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -127,7 +128,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -139,7 +139,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -151,7 +150,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -161,6 +159,7 @@
     },
     "PowerFactor": {
       "type": "number",
+      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -170,7 +169,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "A",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -182,7 +180,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "B",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",
@@ -194,7 +191,6 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
           "opcua:fieldpath": "C",
           "modv:type": "xsd:float",
           "modv:entity": "holdingRegister",

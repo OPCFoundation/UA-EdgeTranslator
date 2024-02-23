@@ -16,5 +16,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public string Entity { get; set; }
 
         public string MappedUAExpandedNodeID { get; set; }
+
+        public string MappedUAFieldPath { get; set; }
     }
 }

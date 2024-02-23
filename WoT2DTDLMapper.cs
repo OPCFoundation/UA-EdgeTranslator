@@ -27,27 +27,19 @@
 
                 foreach (object ns in td.Context)
                 {
-                    if (!ns.ToString().Contains("https://www.w3.org/"))
+                    if (!ns.ToString().Contains("https://www.w3.org/") && ns.ToString().Contains("opcua"))
                     {
-                        JObject keyValuePair = (JObject)ns;
-                        Uri opcuaCompanionSpecUrl = new(keyValuePair.First.First.Value<string>());
-                        dtdl.Comment += ";" + opcuaCompanionSpecUrl.ToString();
+                        OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
+                        foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                        {
+                            dtdl.Comment += ";" + opcuaCompanionSpecUrl.ToString();
+                        }
                     }
                 }
 
-                if (!string.IsNullOrEmpty(td.OpcUaObjectNode))
+                if (!string.IsNullOrWhiteSpace(td.OpcUaType))
                 {
-                    dtdl.Comment += $";nodeId:{td.OpcUaObjectNode}";
-                }
-
-                if (!string.IsNullOrWhiteSpace(td.OpcUaParentNode))
-                {
-                    dtdl.Comment += $";parent:{td.OpcUaObjectNode}";
-                }
-
-                if (!string.IsNullOrWhiteSpace(td.OpcUaObjectType))
-                {
-                    dtdl.Comment += $";type:{td.OpcUaObjectType}";
+                    dtdl.Comment += $";type:{td.OpcUaType}";
                 }
 
                 dtdl.Contents = new List<Content>();
@@ -64,12 +56,7 @@
                             content.DisplayName = property.Key;
                             content.Description = modbusForm.ModbusEntity.ToString().ToLower() + ";" + modbusForm.ModbusPollingTime.ToString();
 
-                            content.Comment = $"type:{modbusForm.OpcUaType}";
-
-                            if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaVariableNode))
-                            {
-                                content.Comment += $";nodeId:{modbusForm.OpcUaVariableNode}";
-                            }
+                            content.Comment = $"type:{property.Value.OpcUaType}";
 
                             if (!string.IsNullOrWhiteSpace(modbusForm.OpcUaFieldPath))
                             {
@@ -118,17 +105,9 @@
                         var comment = comments[i];
                         Log.Logger.Debug(comment);
 
-                        if (comment.StartsWith("nodeId:"))
+                        if (comment.StartsWith("type:"))
                         {
-                            td.OpcUaObjectNode = comment.Substring("nodeId:".Length);
-                        }
-                        else if (comment.StartsWith("parent:"))
-                        {
-                            td.OpcUaParentNode = comment.Substring("parent:".Length);
-                        }
-                        else if (comment.StartsWith("type:"))
-                        {
-                            td.OpcUaObjectType = comment.Substring("type:".Length);
+                            td.OpcUaType = comment.Substring("type:".Length);
                         }
                         else
                         {
@@ -205,12 +184,7 @@
                         {
                             if (uaDataPart.StartsWith("type:"))
                             {
-                                form.OpcUaType = uaDataPart.Substring("type:".Length);
-                            }
-
-                            if (uaDataPart.StartsWith("nodeId:"))
-                            {
-                                form.OpcUaVariableNode = uaDataPart.Substring("nodeId:".Length);
+                                property.OpcUaType = uaDataPart.Substring("type:".Length);
                             }
 
                             if (uaDataPart.StartsWith("fieldpath:"))
