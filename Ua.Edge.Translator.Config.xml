@@ -51,7 +51,7 @@
     <OperationTimeout>1200000</OperationTimeout>
     <MaxStringLength>1048576</MaxStringLength>
     <MaxByteStringLength>1048576</MaxByteStringLength>
-    <MaxArrayLength>65535</MaxArrayLength>
+    <MaxArrayLength>1048576</MaxArrayLength>
     <MaxMessageSize>4194304</MaxMessageSize>
     <MaxBufferSize>65535</MaxBufferSize>
     <ChannelLifetime>600000</ChannelLifetime>
