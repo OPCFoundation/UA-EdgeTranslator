@@ -10,7 +10,7 @@
       "@type": "Telemetry",
       "name": "1?quantity=2",
       "displayName": "VoltageL1-N",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
@@ -18,7 +18,7 @@
       "@type": "Telemetry",
       "name": "3?quantity=2",
       "displayName": "VoltageL2-N",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
@@ -26,7 +26,7 @@
       "@type": "Telemetry",
       "name": "5?quantity=2",
       "displayName": "VoltageL3-N",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
@@ -34,7 +34,7 @@
       "@type": "Telemetry",
       "name": "7?quantity=2",
       "displayName": "VoltageL1-L2",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -42,7 +42,7 @@
       "@type": "Telemetry",
       "name": "9?quantity=2",
       "displayName": "VoltageL2-L3",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -50,7 +50,7 @@
       "@type": "Telemetry",
       "name": "11?quantity=2",
       "displayName": "VoltageL3-L1",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -58,7 +58,7 @@
       "@type": "Telemetry",
       "name": "13?quantity=2",
       "displayName": "CurrentL1",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
@@ -66,7 +66,7 @@
       "@type": "Telemetry",
       "name": "15?quantity=2",
       "displayName": "CurrentL2",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
@@ -74,7 +74,7 @@
       "@type": "Telemetry",
       "name": "17?quantity=2",
       "displayName": "CurrentL3",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
@@ -82,7 +82,7 @@
       "@type": "Telemetry",
       "name": "37?quantity=2",
       "displayName": "PowerFactorL1",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:A",
       "schema": "float"
     },
@@ -90,7 +90,7 @@
       "@type": "Telemetry",
       "name": "39?quantity=2",
       "displayName": "PowerFactorL2",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:B",
       "schema": "float"
     },
@@ -98,7 +98,7 @@
       "@type": "Telemetry",
       "name": "41?quantity=2",
       "displayName": "PowerFactorL3",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:nsu=http://opcfoundation.org/UA/PNEM/;i=3005;fieldpath:C",
       "schema": "float"
     },
@@ -106,7 +106,7 @@
       "@type": "Telemetry",
       "name": "63?quantity=2",
       "displayName": "TotalApparentPower",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -114,7 +114,7 @@
       "@type": "Telemetry",
       "name": "65?quantity=2",
       "displayName": "TotalActivePower",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -122,7 +122,7 @@
       "@type": "Telemetry",
       "name": "67?quantity=2",
       "displayName": "TotalReactivePower",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     },
@@ -130,7 +130,7 @@
       "@type": "Telemetry",
       "name": "69?quantity=2",
       "displayName": "TotalPowerFactor",
-      "description": "holdingregister;2000",
+      "description": "HoldingRegister;2000",
       "comment": "type:",
       "schema": "float"
     }

@@ -39,7 +39,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -59,7 +59,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -79,7 +79,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -96,7 +96,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -113,7 +113,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -130,7 +130,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -150,7 +150,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -170,7 +170,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -190,7 +190,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -210,7 +210,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -230,7 +230,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -250,7 +250,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -267,7 +267,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -284,7 +284,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -301,7 +301,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]
@@ -318,7 +318,7 @@
             "observeproperty"
           ],
           "modv:type": "xsd:float",
-          "modv:entity": "holdingRegister",
+          "modv:entity": "HoldingRegister",
           "modv:pollingTime": 2000
         }
       ]

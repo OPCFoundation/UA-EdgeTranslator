@@ -102,7 +102,7 @@ namespace Opc.Ua.Edge.Translator.Models
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum ModbusEntity
     {
-        [EnumMember(Value = "holdingRegister")]
+        [EnumMember(Value = "HoldingRegister")]
         HoldingRegister
     };
 

@@ -200,7 +200,7 @@
                         }
 
                         string[] descriptionParts = content.Description.Split(';');
-                        if ((descriptionParts != null) && (descriptionParts.Length > 0) && descriptionParts[0] == "holdingRegister")
+                        if ((descriptionParts != null) && (descriptionParts.Length > 0) && descriptionParts[0] == "HoldingRegister")
                         {
                             form.ModbusEntity = ModbusEntity.HoldingRegister;
                         }
