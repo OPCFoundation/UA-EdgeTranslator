@@ -544,14 +544,6 @@ namespace Opc.Ua.Edge.Translator
             deleteAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(DeleteAsset);
             deleteAssetMethod.InputArguments = CreateInputArguments(deleteAssetMethod, "AssetId", "The ID of the asset to be deleted", DataTypeIds.String, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
 
-            MethodState getAssetsMethod = CreateMethod(assetManagementFolder, "GetAssetsIds", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
-            getAssetsMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetAssetIds);
-            getAssetsMethod.OutputArguments = CreateOutputArguments(getAssetsMethod, "AssetIds", "The IDs of the assets currently defined", DataTypeIds.String, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"), true);
-
-            MethodState getAssetMethod = CreateMethod(assetManagementFolder, "GetAsset", (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
-            getAssetMethod.OnCallMethod = new GenericMethodCalledEventHandler(GetAsset);
-            getAssetMethod.InputArguments = CreateInputArguments(getAssetMethod, "AssetId", "The ID of the asset for which to retrieve the WoT Thing Description", DataTypeIds.String, (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
-
             // add everything to our server namespace
             AddPredefinedNode(SystemContext, assetManagementFolder);
         }
@@ -680,8 +672,10 @@ namespace Opc.Ua.Edge.Translator
                 // parse WoT TD file contents
                 ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
-                List<string> namespaceUris = new(NamespaceUris);
-                namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
+                List<string> namespaceUris = new(NamespaceUris)
+                {
+                    "http://opcfoundation.org/UA/" + td.Name + "/"
+                };
 
                 foreach (object ns in td.Context)
                 {
@@ -754,49 +748,6 @@ namespace Opc.Ua.Edge.Translator
                         File.Delete(file);
 
                         _ = Task.Run(() => HandleServerRestart());
-
-                        return ServiceResult.Good;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-                    return new ServiceResult(ex);
-                }
-            }
-
-            return new ServiceResult(StatusCodes.BadNotFound);
-        }
-
-        private ServiceResult GetAssetIds(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            if (outputArguments.Count == 0)
-            {
-                return new ServiceResult(StatusCodes.BadInvalidArgument);
-            }
-
-            outputArguments[0] = _assets.Keys.ToArray();
-
-            return ServiceResult.Good;
-        }
-
-        private ServiceResult GetAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            if (inputArguments.Count == 0)
-            {
-                return new ServiceResult(StatusCodes.BadInvalidArgument);
-            }
-
-            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
-            foreach (string file in WoTFiles)
-            {
-                try
-                {
-                    string assetId = Path.GetFileNameWithoutExtension(file);
-
-                    if (inputArguments[0].ToString() == assetId)
-                    {
-                        outputArguments[0] = File.ReadAllText(file);
 
                         return ServiceResult.Good;
                     }

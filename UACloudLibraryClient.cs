@@ -35,17 +35,20 @@ namespace Opc.Ua.Edge.Translator
                 HttpResponseMessage response = _client.Send(new HttpRequestMessage(HttpMethod.Get, address));
                 string[] identifiers = JsonConvert.DeserializeObject<string[]>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
 
-                foreach (string nodeset in identifiers)
+                if (identifiers != null)
                 {
-                    string[] tuple = nodeset.Split(",");
+                    foreach (string nodeset in identifiers)
+                    {
+                        string[] tuple = nodeset.Split(",");
 
-                    if (NamespacesInCloudLibrary.ContainsKey(tuple[0]))
-                    {
-                        NamespacesInCloudLibrary[tuple[0]] = tuple[1];
-                    }
-                    else
-                    {
-                        NamespacesInCloudLibrary.Add(tuple[0], tuple[1]);
+                        if (NamespacesInCloudLibrary.ContainsKey(tuple[0]))
+                        {
+                            NamespacesInCloudLibrary[tuple[0]] = tuple[1];
+                        }
+                        else
+                        {
+                            NamespacesInCloudLibrary.Add(tuple[0], tuple[1]);
+                        }
                     }
                 }
             }
