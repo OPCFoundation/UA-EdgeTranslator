@@ -424,6 +424,8 @@ namespace Opc.Ua.Edge.Translator
                     return StatusCodes.BadNodeIdUnknown;
                 }
 
+                string assetName = asset.DisplayName.Text;
+
                 _fileManagers.Remove(assetId);
 
                 DeleteNode(SystemContext, assetId);
@@ -431,22 +433,33 @@ namespace Opc.Ua.Edge.Translator
                 IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
                 foreach (string file in WoTFiles)
                 {
-                    try
+                    string fileName = Path.GetFileNameWithoutExtension(file);
+                    if (fileName == assetName)
                     {
-                        string fileName = Path.GetFileNameWithoutExtension(file);
-                        if (fileName == NodeId.ToExpandedNodeId(assetId, Server.NamespaceUris).ToString())
-                        {
-                            File.Delete(file);
-
-                            _ = Task.Run(() => HandleServerRestart());
-
-                            return ServiceResult.Good;
-                        }
+                        File.Delete(file);
                     }
-                    catch (Exception ex)
+                }
+
+                if (_tags.ContainsKey(assetName))
+                {
+                    _tags.Remove(assetName);
+                }
+
+                if (_assets.ContainsKey(assetName))
+                {
+                    _assets.Remove(assetName);
+                }
+
+                int i = 0;
+                while (i < _uaVariables.Count)
+                {
+                    if (_uaVariables.Keys.ToArray()[i].StartsWith(assetName))
                     {
-                        Log.Logger.Error(ex.Message, ex);
-                        return new ServiceResult(ex);
+                        _uaVariables.Remove(_uaVariables.Keys.ToArray()[i]);
+                    }
+                    else
+                    {
+                        i++;
                     }
                 }
 
@@ -459,9 +472,11 @@ namespace Opc.Ua.Edge.Translator
             // parse WoT TD file contents
             ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
-            List<string> namespaceUris = new(NamespaceUris)
+            string newNamespace = "http://opcfoundation.org/UA/" + td.Name + "/";
+            List<string> namespaceUris = new(NamespaceUris);
+            if (!namespaceUris.Contains(newNamespace))
             {
-                "http://opcfoundation.org/UA/" + td.Name + "/"
+                namespaceUris.Add(newNamespace);
             };
 
             foreach (object ns in td.Context)
@@ -537,8 +552,10 @@ namespace Opc.Ua.Edge.Translator
                             DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
                             if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
                             {
-                                ExtensionObject complexTypeInstance = new();
-                                complexTypeInstance.TypeId = opcuaType.NodeId;
+                                ExtensionObject complexTypeInstance = new()
+                                {
+                                    TypeId = opcuaType.NodeId
+                                };
 
                                 BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
                                 foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
@@ -640,10 +657,9 @@ namespace Opc.Ua.Edge.Translator
                 assetInterface = client;
             }
 
-            string assetId = td.Title + " [" + td.Name + "]";
-            _assets.Add(assetId, assetInterface);
+            _assets.Add(td.Name, assetInterface);
 
-            return assetId;
+            return td.Name;
         }
 
         private ExpandedNodeId ParseExpandedNodeId(string nodeString)
@@ -701,7 +717,8 @@ namespace Opc.Ua.Edge.Translator
 
         private void UpdateNodeValues(object assetNameObject)
         {
-            while (!_shutdown)
+            bool assetDeleted = false;
+            while (!_shutdown && !assetDeleted)
             {
                 Thread.Sleep(1000);
 
@@ -710,7 +727,8 @@ namespace Opc.Ua.Edge.Translator
                 string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
-                    throw new Exception("Cannot find asset: " + assetId);
+                    assetDeleted = true;
+                    continue;
                 }
 
                 foreach (AssetTag tag in _tags[assetId])
