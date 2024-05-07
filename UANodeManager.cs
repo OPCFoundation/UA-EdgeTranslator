@@ -453,7 +453,7 @@ namespace Opc.Ua.Edge.Translator
                 int i = 0;
                 while (i < _uaVariables.Count)
                 {
-                    if (_uaVariables.Keys.ToArray()[i].StartsWith(assetName))
+                    if (_uaVariables.Keys.ToArray()[i].StartsWith(assetName + ":"))
                     {
                         _uaVariables.Remove(_uaVariables.Keys.ToArray()[i]);
                     }
