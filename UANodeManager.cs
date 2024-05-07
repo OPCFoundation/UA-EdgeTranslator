@@ -139,8 +139,7 @@ namespace Opc.Ua.Edge.Translator
                         string contents = File.ReadAllText(file);
                         string fileName = Path.GetFileNameWithoutExtension(file);
 
-                        NodeState assetNode = CreateAssetNode(fileName);
-                        if (assetNode == null)
+                        if (!CreateAssetNode(fileName, out NodeState assetNode))
                         {
                             throw new Exception("Asset already exists");
                         }
@@ -356,18 +355,19 @@ namespace Opc.Ua.Edge.Translator
                 return StatusCodes.BadInvalidArgument;
             }
 
-            NodeState assetNode = CreateAssetNode(assetName);
-            if (assetNode == null)
+            bool success = CreateAssetNode(assetName, out NodeState assetNode);
+            if (!success)
             {
-                return StatusCodes.BadBrowseNameDuplicated;
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
             }
-
-            assetId = assetNode.NodeId;
-
-            return ServiceResult.Good;
+            else
+            {
+                assetId = assetNode.NodeId;
+                return ServiceResult.Good;
+            }
         }
 
-        private NodeState CreateAssetNode(string assetName)
+        private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
             lock (Lock)
             {
@@ -388,7 +388,8 @@ namespace Opc.Ua.Edge.Translator
                     NodeStateReference node = reference as NodeStateReference;
                     if ((node.Target != null) && (node.Target.DisplayName.Text == assetName))
                     {
-                        return null;
+                        assetNode = node.Target;
+                        return false;
                     }
 
                     reference = browser.Next();
@@ -404,7 +405,8 @@ namespace Opc.Ua.Edge.Translator
 
                 AddPredefinedNode(SystemContext, asset);
 
-                return asset;
+                assetNode = asset;
+                return true;
             }
         }
 
@@ -424,7 +426,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _fileManagers.Remove(assetId);
 
-                DeleteNode(Server.DefaultSystemContext, assetId);
+                DeleteNode(SystemContext, assetId);
 
                 IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
                 foreach (string file in WoTFiles)

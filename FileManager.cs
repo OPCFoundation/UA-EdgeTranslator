@@ -280,7 +280,7 @@ namespace Opc.Ua.Edge.Translator
             catch (Exception ex)
             {
                 Log.Logger.Error(ex.Message, ex);
-                return StatusCodes.BadDecodingError;
+                return new ServiceResult(StatusCodes.BadDecodingError, ex);
             }
             finally
             {
