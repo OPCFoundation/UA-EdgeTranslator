@@ -186,6 +186,9 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments = new(null);
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
+            // create a variable listing our supported WoT protocol bindings
+            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[1]{"https://www.w3.org/2019/wot/modbus"});
+
             // add everything to our server namespace
             objectsFolderReferences.Add(new NodeStateReference(ReferenceTypes.Organizes, false, _assetManagement.NodeId));
             AddPredefinedNode(SystemContext, _assetManagement);
