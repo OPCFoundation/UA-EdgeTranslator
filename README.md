@@ -18,7 +18,7 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 
 ## Supported "Southbound" Asset Interfaces
 
-In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (TODO), Rockwell CIP-Ethernet/IP (TODO), and Beckhoff ADS (TODO) are supported. Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variables nodes defined in it) to a WoT Thing Model file.
+In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (TODO), Rockwell CIP-Ethernet/IP (TODO), and Beckhoff ADS (TODO) are supported. Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it) to a WoT Thing Model file.
 
 ## Optional Environment Variables
 
