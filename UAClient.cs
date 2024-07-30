@@ -5,6 +5,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Client;
     using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Edge.Translator.Interfaces;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -14,6 +15,7 @@ namespace Opc.Ua.Edge.Translator
     public class UAClient : IAsset
     {
         private ISession _session = null;
+        private string _endpoint = string.Empty;
 
         private List<SessionReconnectHandler> _reconnectHandlers = new List<SessionReconnectHandler>();
         private object _reconnectHandlersLock = new object();
@@ -21,14 +23,11 @@ namespace Opc.Ua.Edge.Translator
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
         private object _missedKeepAlivesLock = new object();
 
-        private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
-        private object _endpointDescriptionCacheLock = new object();
-
         private readonly Dictionary<ISession, ComplexTypeSystem> _complexTypeList = new Dictionary<ISession, ComplexTypeSystem>();
 
         public void Connect(string ipAddress, int port)
         {
-            string url = ipAddress + ":" + port;
+            string url = "opc.tcp://" + ipAddress + ":" + port;
             string username = Environment.GetEnvironmentVariable("OPCUA_CLIENT_USERNAME");
             string password = Environment.GetEnvironmentVariable("OPCUA_CLIENT_PASSWORD");
             ConnectSessionAsync(url, username, password).GetAwaiter().GetResult();
@@ -39,26 +38,21 @@ namespace Opc.Ua.Edge.Translator
             if (_session != null)
             {
                 _session.Close();
+                _session = null;
             }
         }
 
         public string GetRemoteEndpoint()
         {
-            if (_session != null)
-            {
-                return _session.Endpoint.EndpointUrl;
-            }
-            else
-            {
-                return string.Empty;
-            }
+            return _endpoint;
         }
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             if (_session != null)
             {
-                DataValue value = _session.ReadValue(new NodeId(addressWithinAsset));
+                NodeId nodeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(addressWithinAsset), _session.NamespaceUris);
+                DataValue value = _session.ReadValue(nodeId);
 
                 BinaryFormatter bf = new();
                 using (MemoryStream ms = new())
@@ -123,6 +117,8 @@ namespace Opc.Ua.Edge.Translator
 
         private async Task ConnectSessionAsync(string endpointUrl, string username, string password)
         {
+            _endpoint = endpointUrl;
+
             // check if the required session is already available
             if ((_session != null) && (_session.Endpoint.EndpointUrl == endpointUrl))
             {
@@ -157,8 +153,9 @@ namespace Opc.Ua.Edge.Translator
                     null
                 ).ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Log.Logger.Error(ex.Message, ex);
                 return;
             }
 
@@ -183,9 +180,9 @@ namespace Opc.Ua.Edge.Translator
 
                 await _complexTypeList[_session].Load().ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // do nothing
+                Log.Logger.Error(ex.Message, ex);
             }
         }
 
@@ -250,9 +247,9 @@ namespace Opc.Ua.Edge.Translator
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // do nothing
+                    Log.Logger.Error(ex.Message, ex);
                 }
             }
         }

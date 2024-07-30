@@ -329,9 +329,9 @@ namespace Opc.Ua.Edge.Translator
                     {
                         AddPredefinedNode(SystemContext, predefinedNodes[i]);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // do nothing
+                        Log.Logger.Error(ex.Message, ex);
                     }
                 }
             }
@@ -371,7 +371,7 @@ namespace Opc.Ua.Edge.Translator
 
         private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
-            lock (Lock)
+           lock (Lock)
             {
                 // check if the asset node already exists
                 INodeBrowser browser = _assetManagement.CreateBrowser(
@@ -634,7 +634,7 @@ namespace Opc.Ua.Edge.Translator
                 _tags[assetId].Add(tag);
             }
 
-            if (td.Base.ToLower().StartsWith("opcua+tcp://"))
+            if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
                 // create an asset tag and add to our list
                 OPCUAForm opcuaForm = JsonConvert.DeserializeObject<OPCUAForm>(form.ToString());
@@ -675,12 +675,12 @@ namespace Opc.Ua.Edge.Translator
                 assetInterface = client;
             }
 
-            if (td.Base.ToLower().StartsWith("opcua+tcp://"))
+            if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "opcua+tcp"))
+                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "opc.tcp"))
                 {
-                    throw new Exception("Expected OPC UA server address in the format opcua+tcp://ipaddress:port!");
+                    throw new Exception("Expected OPC UA server address in the format opc.tcp://ipaddress:port!");
                 }
 
                 // check if we can reach the OPC UA asset
@@ -889,7 +889,7 @@ namespace Opc.Ua.Edge.Translator
                 _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
             }
 
-            if ((tagBytes != null) && (tag.Type == "Float"))
+            if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
             {
                 float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
 

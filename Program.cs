@@ -72,7 +72,14 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (e.Arguments != null)
                 {
-                    Log.Logger.Information("OPC UA Stack: " + string.Format(CultureInfo.InvariantCulture, e.Format, e.Arguments).Trim());
+                    try
+                    {
+                        Log.Logger.Information("OPC UA Stack: " + string.Format(CultureInfo.InvariantCulture, e.Format, e.Arguments).Trim());
+                    }
+                    catch (Exception)
+                    {
+                        Log.Logger.Information("OPC UA Stack: " + e.Format.Trim());
+                    }
                 }
                 else
                 {
