@@ -78,9 +78,9 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task<byte[]> Read(byte unitID, string function, string address, ushort count)
+        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            ushort registerAddress = ushort.Parse(address);
+            ushort registerAddress = ushort.Parse(addressWithinAsset);
 
             switch (function)
             {
@@ -97,16 +97,9 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task WriteBit(byte unitID, string address, bool set)
+        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
         {
-            ushort registerAddress = ushort.Parse(address);
-
-            return WriteCoil(unitID, registerAddress, set);
-        }
-
-        public Task Write(byte unitID, string address, byte[] values, bool singleBitOnly)
-        {
-            ushort registerAddress = ushort.Parse(address);
+            ushort registerAddress = ushort.Parse(addressWithinAsset);
 
             if (singleBitOnly && (values.Length > 0))
             {

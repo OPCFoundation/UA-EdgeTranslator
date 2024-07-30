@@ -54,11 +54,11 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task<byte[]> Read(byte unitID, string function, string address, ushort count)
+        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             if (_session != null)
             {
-                DataValue value = _session.ReadValue(new NodeId(address));
+                DataValue value = _session.ReadValue(new NodeId(addressWithinAsset));
 
                 BinaryFormatter bf = new();
                 using (MemoryStream ms = new())
@@ -77,7 +77,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task Write(byte unitID, string address, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
         {
             using (MemoryStream memStream = new(values))
             {
@@ -89,7 +89,7 @@ namespace Opc.Ua.Edge.Translator
 
                 WriteValue nodeToWrite = new()
                 {
-                    NodeId = new NodeId(address),
+                    NodeId = new NodeId(addressWithinAsset),
                     Value = new DataValue(new Variant(value))
                 };
 

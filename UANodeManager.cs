@@ -799,13 +799,11 @@ namespace Opc.Ua.Edge.Translator
             if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
             {
                 // read tag
-                byte unitID = tag.UnitID;
-                ushort quantity = ushort.Parse(addressParts[2]);
-
                 byte[] tagBytes = null;
                 try
                 {
-                    tagBytes = _assets[assetId].Read(unitID, functionCode.ToString(), addressParts[0], quantity).GetAwaiter().GetResult();
+                    ushort quantity = ushort.Parse(addressParts[2]);
+                    tagBytes = _assets[assetId].Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
