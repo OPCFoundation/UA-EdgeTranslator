@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Nodeset2WoTTD": {
+      "commandName": "Project",
+      "commandLineArgs": "Station.Nodeset2.xml"
+    }
+  }
+}
