@@ -10,10 +10,8 @@
 
         public string GetRemoteEndpoint();
 
-        public Task<byte[]> Read(byte unitID, string function, uint address, ushort count);
+        public Task<byte[]> Read(byte unitID, string function, string address, ushort count);
 
-        public Task WriteBit(byte unitID, uint address, bool set);
-
-        public Task Write(byte unitID, uint address, ushort[] values);
+        public Task Write(byte unitID, string address, byte[] values, bool singleBitOnly);
     }
 }

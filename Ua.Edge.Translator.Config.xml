@@ -121,6 +121,18 @@
     <NodeManagerSaveFile>Opc.Ua.Server.nodes.xml</NodeManagerSaveFile>
   </ServerConfiguration>
 
+  <ClientConfiguration>
+    <DefaultSessionTimeout>15000</DefaultSessionTimeout>
+    <WellKnownDiscoveryUrls>
+      <ua:String>opc.tcp://{0}:4840/UADiscovery</ua:String>
+      <ua:String>http://{0}:52601/UADiscovery</ua:String>
+      <ua:String>http://{0}/UADiscovery/Default.svc</ua:String>
+    </WellKnownDiscoveryUrls>
+    <DiscoveryServers/>
+    <EndpointCacheFilePath/>
+    <MinSubscriptionLifetime>10000</MinSubscriptionLifetime>
+  </ClientConfiguration>
+
   <Extensions>
     <ua:XmlElement>
       <MemoryBufferConfiguration xmlns="http://samples.org/UA/memorybuffer">

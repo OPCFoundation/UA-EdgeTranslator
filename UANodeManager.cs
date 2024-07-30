@@ -187,7 +187,7 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
             // create a variable listing our supported WoT protocol bindings
-            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[1]{"https://www.w3.org/2019/wot/modbus"});
+            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[2] { "https://www.w3.org/2019/wot/modbus", "https://www.w3.org/2019/wot/opcua" });
 
             // add everything to our server namespace
             objectsFolderReferences.Add(new NodeStateReference(ReferenceTypes.Organizes, false, _assetManagement.NodeId));
@@ -510,6 +510,11 @@ namespace Opc.Ua.Edge.Translator
                     {
                         AddNodeForModbusRegister(parent, property, form, assetId, unitId);
                     }
+
+                    if (td.Base.ToLower().StartsWith("opcua+tcp://"))
+                    {
+                        AddNodeForOPCUANode(parent, property, form, assetId, unitId);
+                    }
                 }
             }
 
@@ -638,6 +643,12 @@ namespace Opc.Ua.Edge.Translator
             _tags[assetId].Add(tag);
         }
 
+        private void AddNodeForOPCUANode(NodeState assetFolder, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
+        {
+            // TODO
+            throw new NotImplementedException();
+        }
+
         private string AssetConnectionTest(ThingDescription td, out byte unitId)
         {
             unitId = 1;
@@ -645,16 +656,31 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
-                string[] modbusAddress = td.Base.Split(new char[] { ':','/' });
+                string[] modbusAddress = td.Base.Split(new char[] { ':', '/' });
                 if ((modbusAddress.Length != 6) && (modbusAddress[0] != "modbus+tcp"))
                 {
-                    throw new Exception("Expected Modbus address in the format modbus+tcp://ipaddress:port/unitID!");
+                    throw new Exception("Expected Modbus server address in the format modbus+tcp://ipaddress:port/unitID!");
                 }
 
                 // check if we can reach the Modbus asset
                 unitId = byte.Parse(modbusAddress[5]);
                 ModbusTCPClient client = new();
                 client.Connect(modbusAddress[3], int.Parse(modbusAddress[4]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("opcua+tcp://"))
+            {
+                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
+                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "opcua+tcp"))
+                {
+                    throw new Exception("Expected OPC UA server address in the format opcua+tcp://ipaddress:port!");
+                }
+
+                // check if we can reach the OPC UA asset
+                UAClient client = new();
+                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
 
                 assetInterface = client;
             }
@@ -738,89 +764,16 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        if (_assets[assetId] is ModbusTCPClient)
+                        if (_ticks * 1000 % tag.PollingInterval == 0)
                         {
-                            if (_ticks * 1000 % tag.PollingInterval == 0)
+                            if (_assets[assetId] is ModbusTCPClient)
                             {
-                                ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
-                                if (tag.Entity == "HoldingRegister")
-                                {
-                                    functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
-                                }
+                                HandleModbusDataUpdate(tag, assetId);
+                            }
 
-                                string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
-
-                                if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
-                                {
-                                    // read tag
-                                    byte unitID = tag.UnitID;
-                                    uint address = uint.Parse(addressParts[0]);
-                                    ushort quantity = ushort.Parse(addressParts[2]);
-
-                                    byte[] tagBytes = null;
-                                    try
-                                    {
-                                        tagBytes = _assets[assetId].Read(unitID, functionCode.ToString(), address, quantity).GetAwaiter().GetResult();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Log.Logger.Error(ex.Message, ex);
-
-                                        // try reconnecting
-                                        string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                                        _assets[assetId].Disconnect();
-                                        _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-                                    }
-
-                                    if ((tagBytes != null) && (tag.Type == "Float"))
-                                    {
-                                        float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-
-                                        // check for complex type
-                                        if (_uaVariables[tag.Name].Value is ExtensionObject)
-                                        {
-                                            // decode existing values and re-encode them with our updated value
-                                            BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
-                                            BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
-
-                                            DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
-                                            if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
-                                            {
-                                                foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
-                                                {
-                                                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                                                    switch (field.DataType.ToString())
-                                                    {
-                                                        case "i=10":
-                                                            {
-                                                                float newValue = decoder.ReadFloat(field.Name);
-
-                                                                if (field.Name == tag.MappedUAFieldPath)
-                                                                {
-                                                                    // overwrite existing value with our upated value
-                                                                    newValue = value;
-                                                                }
-
-                                                                encoder.WriteFloat(field.Name, newValue);
-
-                                                                break;
-                                                            }
-                                                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                                                    }
-                                                }
-
-                                                ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
-                                            }
-                                        }
-                                        else
-                                        {
-                                            _uaVariables[tag.Name].Value = value;
-                                        }
-
-                                        _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                                        _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
-                                    }
-                                }
+                            if (_assets[assetId] is UAClient)
+                            {
+                                HandleOPCUADataUpdate(tag, assetId);
                             }
                         }
                     }
@@ -831,6 +784,94 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
+        }
+
+        private void HandleModbusDataUpdate(AssetTag tag, string assetId)
+        {
+            ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
+            if (tag.Entity == "HoldingRegister")
+            {
+                functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
+            }
+
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+
+            if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
+            {
+                // read tag
+                byte unitID = tag.UnitID;
+                ushort quantity = ushort.Parse(addressParts[2]);
+
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(unitID, functionCode.ToString(), addressParts[0], quantity).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                }
+
+                if ((tagBytes != null) && (tag.Type == "Float"))
+                {
+                    float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+
+                    // check for complex type
+                    if (_uaVariables[tag.Name].Value is ExtensionObject)
+                    {
+                        // decode existing values and re-encode them with our updated value
+                        BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
+                        BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+
+                        DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
+                        if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                        {
+                            foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                            {
+                                // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                                switch (field.DataType.ToString())
+                                {
+                                    case "i=10":
+                                        {
+                                            float newValue = decoder.ReadFloat(field.Name);
+
+                                            if (field.Name == tag.MappedUAFieldPath)
+                                            {
+                                                // overwrite existing value with our upated value
+                                                newValue = value;
+                                            }
+
+                                            encoder.WriteFloat(field.Name, newValue);
+
+                                            break;
+                                        }
+                                    default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                                }
+                            }
+
+                            ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
+                        }
+                    }
+                    else
+                    {
+                        _uaVariables[tag.Name].Value = value;
+                    }
+
+                    _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                    _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                }
+            }
+        }
+
+        private void HandleOPCUADataUpdate(AssetTag tag, string assetId)
+        {
+            // TODO
+            throw new NotImplementedException();
         }
     }
 }

@@ -18,10 +18,12 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 
 ## Supported "Southbound" Asset Interfaces
 
-In this reference implementation, only Modbus TCP is supported, but other interfaces can easily be added by implementing the IAsset interface.
+In this reference implementation, Modbus TCP, OPC UA (work in progress), Siemens S7Comm (TODO), Rockwell CIP-Ethernet/IP (TODO), and Beckhoff ADS (TODO) is supported, but other interfaces can easily be added by implementing the IAsset interface.
 
 ## Optional Environment Variables
 
 * UACLURL - UA Cloud Library URL (e.g. https://uacloudlibrary.opcfoundation.org or https://cloudlib.cesmii.net)
 * UACLUsername - UA Cloud Library Username
 * UACLPassword - UA Cloud Library Password
+* OPCUA_CLIENT_USERNAME - OPC UA client username to connect to an OPC UA asset
+* OPCUA_CLIENT_PASSWORD - OPC UA client password to connect to an OPC UA asset

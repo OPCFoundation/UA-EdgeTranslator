@@ -20,7 +20,7 @@
     "Thing"
   ],
   "name": "modbus-pac4200-sn324",
-  "base": "modbus+tcp://192.168.178.94:502/1",
+  "base": "modbus+tcp://192.168.178.24:502/1",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL1-N": {

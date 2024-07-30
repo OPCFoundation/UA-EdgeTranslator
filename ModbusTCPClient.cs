@@ -78,31 +78,52 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task<byte[]> Read(byte unitID, string function, uint address, ushort count)
+        public Task<byte[]> Read(byte unitID, string function, string address, ushort count)
         {
+            ushort registerAddress = ushort.Parse(address);
+
             switch (function)
             {
-                case "ForceMultipleCoils": return ReadInternal(unitID, FunctionCode.ForceMultipleCoils, (ushort)address, count);
-                case "ForceSingleCoil": return ReadInternal(unitID, FunctionCode.ForceSingleCoil, (ushort)address, count);
-                case "PresetMultipleRegisters": return ReadInternal(unitID, FunctionCode.PresetMultipleRegisters, (ushort)address, count);
-                case "PresetSingleRegister": return ReadInternal(unitID, FunctionCode.PresetSingleRegister, (ushort)address, count);
-                case "ReadCoilStatus": return ReadInternal(unitID, FunctionCode.ReadCoilStatus, (ushort)address, count);
-                case "ReadExceptionStatus": return ReadInternal(unitID, FunctionCode.ReadExceptionStatus, (ushort)address, count);
-                case "ReadHoldingRegisters": return ReadInternal(unitID, FunctionCode.ReadHoldingRegisters, (ushort)address, count);
-                case "ReadInputRegisters": return ReadInternal(unitID, FunctionCode.ReadInputRegisters, (ushort)address, count);
-                case "ReadInputStatus": return ReadInternal(unitID, FunctionCode.ReadInputStatus, (ushort)address, count);
+                case "ForceMultipleCoils": return ReadInternal(unitID, FunctionCode.ForceMultipleCoils, registerAddress, count);
+                case "ForceSingleCoil": return ReadInternal(unitID, FunctionCode.ForceSingleCoil, registerAddress, count);
+                case "PresetMultipleRegisters": return ReadInternal(unitID, FunctionCode.PresetMultipleRegisters, registerAddress, count);
+                case "PresetSingleRegister": return ReadInternal(unitID, FunctionCode.PresetSingleRegister, registerAddress, count);
+                case "ReadCoilStatus": return ReadInternal(unitID, FunctionCode.ReadCoilStatus, registerAddress, count);
+                case "ReadExceptionStatus": return ReadInternal(unitID, FunctionCode.ReadExceptionStatus, registerAddress, count);
+                case "ReadHoldingRegisters": return ReadInternal(unitID, FunctionCode.ReadHoldingRegisters, registerAddress, count);
+                case "ReadInputRegisters": return ReadInternal(unitID, FunctionCode.ReadInputRegisters, registerAddress, count);
+                case "ReadInputStatus": return ReadInternal(unitID, FunctionCode.ReadInputStatus, registerAddress, count);
                 default: return Task.FromResult(Array.Empty<byte>());
             }
         }
 
-        public Task WriteBit(byte unitID, uint address, bool set)
+        public Task WriteBit(byte unitID, string address, bool set)
         {
-            return WriteCoil(unitID, (ushort)address, set);
+            ushort registerAddress = ushort.Parse(address);
+
+            return WriteCoil(unitID, registerAddress, set);
         }
 
-        public Task Write(byte unitID, uint address, ushort[] values)
+        public Task Write(byte unitID, string address, byte[] values, bool singleBitOnly)
         {
-            return WriteHoldingRegisters(unitID, (ushort)address, values);
+            ushort registerAddress = ushort.Parse(address);
+
+            if (singleBitOnly && (values.Length > 0))
+            {
+                return WriteCoil(unitID, registerAddress, values[0] != 0);
+            }
+            else
+            {
+                int ushortArrayLength = values.Length / 2;
+                ushort[] ushortArray = new ushort[ushortArrayLength];
+
+                for (int i = 0; i < ushortArrayLength; i++)
+                {
+                    ushortArray[i] = BitConverter.ToUInt16(values, i * 2);
+                }
+
+                return WriteHoldingRegisters(unitID, registerAddress, ushortArray);
+            }
         }
 
         public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)

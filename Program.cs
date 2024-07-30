@@ -35,7 +35,7 @@ namespace Opc.Ua.Edge.Translator
             App = new ApplicationInstance
             {
                 ApplicationName = appName,
-                ApplicationType = ApplicationType.Server,
+                ApplicationType = ApplicationType.ClientAndServer,
                 ConfigSectionName = "Ua.Edge.Translator"
             };
 
