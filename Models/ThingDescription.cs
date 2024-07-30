@@ -66,6 +66,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public object[] Forms { get; set; }
     }
 
+    // see https://github.com/eclipse-thingweb/node-wot/tree/master/packages/binding-modbus
     public class ModbusForm
     {
         [JsonProperty("href")]
@@ -82,6 +83,22 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
+    }
+
+    // see https://github.com/eclipse-thingweb/node-wot/tree/master/packages/binding-opcua
+    public class OPCUAForm
+    {
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[] Op { get; set; }
+
+        [JsonProperty("opcua:type")]
+        public OPCUAType OPCUAType { get; set; }
+
+        [JsonProperty("opcua:pollingTime")]
+        public long OPCUAPollingTime { get; set; }
     }
 
     public class SecurityDefinitions
@@ -105,6 +122,13 @@ namespace Opc.Ua.Edge.Translator.Models
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum ModbusType
+    {
+        [EnumMember(Value = "xsd:float")]
+        Float
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum OPCUAType
     {
         [EnumMember(Value = "xsd:float")]
         Float

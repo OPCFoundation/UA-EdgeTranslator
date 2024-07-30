@@ -506,15 +506,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 foreach (object form in property.Value.Forms)
                 {
-                    if (td.Base.ToLower().StartsWith("modbus+tcp://"))
-                    {
-                        AddNodeForModbusRegister(parent, property, form, assetId, unitId);
-                    }
-
-                    if (td.Base.ToLower().StartsWith("opcua+tcp://"))
-                    {
-                        AddNodeForOPCUANode(parent, property, form, assetId, unitId);
-                    }
+                    AddNodeForWoTForm(parent, td, property, form, assetId, unitId);
                 }
             }
 
@@ -523,10 +515,8 @@ namespace Opc.Ua.Edge.Translator
             Log.Logger.Information($"Successfully parsed WoT file for asset: {assetId}");
         }
 
-        private void AddNodeForModbusRegister(NodeState assetFolder, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
+        private void AddNodeForWoTForm(NodeState assetFolder, ThingDescription td, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
         {
-            ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
-
             string variableId;
             string variableName;
             if (string.IsNullOrEmpty(property.Value.OpcUaNodeId))
@@ -619,34 +609,49 @@ namespace Opc.Ua.Edge.Translator
                 _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
             }
 
-
-            // create an asset tag and add to our list
-            AssetTag tag = new()
-            {
-                Name = variableId,
-                Address = modbusForm.Href,
-                UnitID = unitId,
-                Type = modbusForm.ModbusType.ToString(),
-                PollingInterval = (int)modbusForm.ModbusPollingTime,
-                Entity = modbusForm.ModbusEntity.ToString(),
-                MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
-                MappedUAFieldPath = fieldPath
-            };
-
             // check if we need to create a new asset first
             if (!_tags.ContainsKey(assetId))
             {
                 _tags.Add(assetId, new List<AssetTag>());
             }
 
-            // add the tag to the asset
-            _tags[assetId].Add(tag);
-        }
+            if (td.Base.ToLower().StartsWith("modbus+tcp://"))
+            {
+                // create an asset tag and add to our list
+                ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = modbusForm.Href,
+                    UnitID = unitId,
+                    Type = modbusForm.ModbusType.ToString(),
+                    PollingInterval = (int)modbusForm.ModbusPollingTime,
+                    Entity = modbusForm.ModbusEntity.ToString(),
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
 
-        private void AddNodeForOPCUANode(NodeState assetFolder, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
-        {
-            // TODO
-            throw new NotImplementedException();
+                _tags[assetId].Add(tag);
+            }
+
+            if (td.Base.ToLower().StartsWith("opcua+tcp://"))
+            {
+                // create an asset tag and add to our list
+                OPCUAForm opcuaForm = JsonConvert.DeserializeObject<OPCUAForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = opcuaForm.Href,
+                    UnitID = unitId,
+                    Type = opcuaForm.OPCUAType.ToString(),
+                    PollingInterval = (int)opcuaForm.OPCUAPollingTime,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
         }
 
         private string AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -868,8 +873,70 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleOPCUADataUpdate(AssetTag tag, string assetId)
         {
-            // TODO
-            throw new NotImplementedException();
+            // read tag
+            byte[] tagBytes = null;
+            try
+            {
+                tagBytes = _assets[assetId].Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex.Message, ex);
+
+                // try reconnecting
+                string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                _assets[assetId].Disconnect();
+                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+            }
+
+            if ((tagBytes != null) && (tag.Type == "Float"))
+            {
+                float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+
+                // check for complex type
+                if (_uaVariables[tag.Name].Value is ExtensionObject)
+                {
+                    // decode existing values and re-encode them with our updated value
+                    BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
+                    BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+
+                    DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
+                    if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                    {
+                        foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                        {
+                            // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                            switch (field.DataType.ToString())
+                            {
+                                case "i=10":
+                                    {
+                                        float newValue = decoder.ReadFloat(field.Name);
+
+                                        if (field.Name == tag.MappedUAFieldPath)
+                                        {
+                                            // overwrite existing value with our upated value
+                                            newValue = value;
+                                        }
+
+                                        encoder.WriteFloat(field.Name, newValue);
+
+                                        break;
+                                    }
+                                default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                            }
+                        }
+
+                        ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
+                    }
+                }
+                else
+                {
+                    _uaVariables[tag.Name].Value = value;
+                }
+
+                _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+            }
         }
     }
 }
