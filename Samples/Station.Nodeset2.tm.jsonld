@@ -1,0 +1,212 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Station.Nodeset2",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "tm:ThingModel"
+  ],
+  "name": "{{name}}",
+  "base": "opc.tcp://{{address}}:{{port}}",
+  "title": "Station.Nodeset2",
+  "properties": {
+    "ProductSerialNumber": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=379",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "NumberOfManufacturedProducts": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=385",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "NumberOfDiscardedProducts": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=391",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "OverallRunningTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=398",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "FaultyTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=399",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "Status": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=400",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "EnergyConsumption": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=406",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "Pressure": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=434",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "IdealCycleTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=412",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    },
+    "ActualCycleTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "nsu=http://opcfoundation.org/UA/Station/;i=418",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "xsd:float",
+          "opcua:pollingTime": 1000
+        }
+      ]
+    }
+  }
+}
