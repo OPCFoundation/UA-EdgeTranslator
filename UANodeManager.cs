@@ -652,6 +652,63 @@ namespace Opc.Ua.Edge.Translator
 
                 _tags[assetId].Add(tag);
             }
+
+            if (td.Base.ToLower().StartsWith("s7://"))
+            {
+                // create an asset tag and add to our list
+                S7Form opcuaForm = JsonConvert.DeserializeObject<S7Form>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = opcuaForm.Href,
+                    UnitID = unitId,
+                    Type = opcuaForm.S7Type.ToString(),
+                    PollingInterval = (int)opcuaForm.S7PollingTime,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+
+            if (td.Base.ToLower().StartsWith("eip://"))
+            {
+                // create an asset tag and add to our list
+                EIPForm opcuaForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = opcuaForm.Href,
+                    UnitID = unitId,
+                    Type = opcuaForm.EIPType.ToString(),
+                    PollingInterval = (int)opcuaForm.EIPPollingTime,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+
+            if (td.Base.ToLower().StartsWith("aid://"))
+            {
+                // create an asset tag and add to our list
+                AIDForm opcuaForm = JsonConvert.DeserializeObject<AIDForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = opcuaForm.Href,
+                    UnitID = unitId,
+                    Type = opcuaForm.AIDType.ToString(),
+                    PollingInterval = (int)opcuaForm.AIDPollingTime,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
         }
 
         private string AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -685,6 +742,51 @@ namespace Opc.Ua.Edge.Translator
 
                 // check if we can reach the OPC UA asset
                 UAClient client = new();
+                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("s7://"))
+            {
+                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
+                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "s7"))
+                {
+                    throw new Exception("Expected S7 PLC address in the format s7://ipaddress:port!");
+                }
+
+                // check if we can reach the OPC UA asset
+                SiemensClient client = new();
+                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("eip://"))
+            {
+                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
+                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "eip"))
+                {
+                    throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress:port!");
+                }
+
+                // check if we can reach the OPC UA asset
+                RockwellClient client = new();
+                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("aid://"))
+            {
+                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
+                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "aid"))
+                {
+                    throw new Exception("Expected Beckhoff PLC address in the format aid://ipaddress:port!");
+                }
+
+                // check if we can reach the OPC UA asset
+                BeckhoffClient client = new();
                 client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
 
                 assetInterface = client;
@@ -779,6 +881,21 @@ namespace Opc.Ua.Edge.Translator
                             if (_assets[assetId] is UAClient)
                             {
                                 HandleOPCUADataUpdate(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is SiemensClient)
+                            {
+                                HandleSiemensDataUpdate(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is RockwellClient)
+                            {
+                                HandleRockwellDataUpdate(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is BeckhoffClient)
+                            {
+                                HandleBeckhoffDataUpdate(tag, assetId);
                             }
                         }
                     }
@@ -937,6 +1054,24 @@ namespace Opc.Ua.Edge.Translator
                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
             }
+        }
+
+        private void HandleSiemensDataUpdate(AssetTag tag, string assetId)
+        {
+            // TODO
+            throw new NotImplementedException();
+        }
+
+        private void HandleRockwellDataUpdate(AssetTag tag, string assetId)
+        {
+            // TODO
+            throw new NotImplementedException();
+        }
+
+        private void HandleBeckhoffDataUpdate(AssetTag tag, string assetId)
+        {
+            // TODO
+            throw new NotImplementedException();
         }
     }
 }

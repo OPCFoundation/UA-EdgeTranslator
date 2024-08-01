@@ -66,7 +66,6 @@ namespace Opc.Ua.Edge.Translator.Models
         public object[] Forms { get; set; }
     }
 
-    // see https://github.com/eclipse-thingweb/node-wot/tree/master/packages/binding-modbus
     public class ModbusForm
     {
         [JsonProperty("href")]
@@ -85,7 +84,6 @@ namespace Opc.Ua.Edge.Translator.Models
         public long ModbusPollingTime { get; set; }
     }
 
-    // see https://github.com/eclipse-thingweb/node-wot/tree/master/packages/binding-opcua
     public class OPCUAForm
     {
         [JsonProperty("href")]
@@ -99,6 +97,78 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("opcua:pollingTime")]
         public long OPCUAPollingTime { get; set; }
+    }
+
+    public class S7Form
+    {
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[] Op { get; set; }
+
+        [JsonProperty("s7:rack")]
+        public int S7Rack { get; set; }
+
+        [JsonProperty("s7:slot")]
+        public int S7Slot { get; set; }
+
+        [JsonProperty("s7:dbnumber")]
+        public int S7DBNumber { get; set; }
+
+        [JsonProperty("s7:start")]
+        public int S7Start { get; set; }
+
+        [JsonProperty("s7:size")]
+        public int S7Size { get; set; }
+
+        [JsonProperty("s7:pos")]
+        public int S7Pos { get; set; }
+
+        [JsonProperty("s7:maxlen")]
+        public int S7MaxLen { get; set; }
+
+        [JsonProperty("s7:type")]
+        public S7Type S7Type { get; set; }
+
+        [JsonProperty("s7:target")]
+        public S7Target S7Target { get; set; }
+
+        [JsonProperty("s7:address")]
+        public string S7Address { get; set; }
+
+        [JsonProperty("s7:pollingTime")]
+        public long S7PollingTime { get; set; }
+    }
+
+    public class EIPForm
+    {
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[] Op { get; set; }
+
+        [JsonProperty("eip:type")]
+        public EIPType EIPType { get; set; }
+
+        [JsonProperty("eip:pollingTime")]
+        public long EIPPollingTime { get; set; }
+    }
+
+    public class AIDForm
+    {
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[] Op { get; set; }
+
+        [JsonProperty("aid:type")]
+        public AIDType AIDType { get; set; }
+
+        [JsonProperty("aid:pollingTime")]
+        public long AIDPollingTime { get; set; }
     }
 
     public class SecurityDefinitions
@@ -129,6 +199,49 @@ namespace Opc.Ua.Edge.Translator.Models
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum OPCUAType
+    {
+        [EnumMember(Value = "xsd:float")]
+        Float
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum S7Type
+    {
+        [EnumMember(Value = "xsd:float")]
+        Float
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum S7Target
+    {
+        [EnumMember(Value = "DB")]
+        DataBlock,
+
+        [EnumMember(Value = "MB")]
+        Merker,
+
+        [EnumMember(Value = "EB")]
+        IPIProcessInput,
+
+        [EnumMember(Value = "AB")]
+        IPUProcessInput,
+
+        [EnumMember(Value = "TM")]
+        Timer,
+
+        [EnumMember(Value = "CT")]
+        Counter
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum EIPType
+    {
+        [EnumMember(Value = "xsd:float")]
+        Float
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum AIDType
     {
         [EnumMember(Value = "xsd:float")]
         Float
