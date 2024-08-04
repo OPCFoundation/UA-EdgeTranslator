@@ -908,6 +908,53 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        private void UpdateUAServerVariable(AssetTag tag, float value)
+        {
+            // check for complex type
+            if (_uaVariables[tag.Name].Value is ExtensionObject)
+            {
+                // decode existing values and re-encode them with our updated value
+                BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
+                BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+
+                DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
+                if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                {
+                    foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                    {
+                        // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                        switch (field.DataType.ToString())
+                        {
+                            case "i=10":
+                                {
+                                    float newValue = decoder.ReadFloat(field.Name);
+
+                                    if (field.Name == tag.MappedUAFieldPath)
+                                    {
+                                        // overwrite existing value with our upated value
+                                        newValue = value;
+                                    }
+
+                                    encoder.WriteFloat(field.Name, newValue);
+
+                                    break;
+                                }
+                            default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                        }
+                    }
+
+                    ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
+                }
+            }
+            else
+            {
+                _uaVariables[tag.Name].Value = value;
+            }
+
+            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+        }
+
         private void HandleModbusDataUpdate(AssetTag tag, string assetId)
         {
             ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
@@ -940,50 +987,7 @@ namespace Opc.Ua.Edge.Translator
                 if ((tagBytes != null) && (tag.Type == "Float"))
                 {
                     float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-
-                    // check for complex type
-                    if (_uaVariables[tag.Name].Value is ExtensionObject)
-                    {
-                        // decode existing values and re-encode them with our updated value
-                        BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
-                        BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
-
-                        DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
-                        if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
-                        {
-                            foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
-                            {
-                                // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                                switch (field.DataType.ToString())
-                                {
-                                    case "i=10":
-                                        {
-                                            float newValue = decoder.ReadFloat(field.Name);
-
-                                            if (field.Name == tag.MappedUAFieldPath)
-                                            {
-                                                // overwrite existing value with our upated value
-                                                newValue = value;
-                                            }
-
-                                            encoder.WriteFloat(field.Name, newValue);
-
-                                            break;
-                                        }
-                                    default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                                }
-                            }
-
-                            ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
-                        }
-                    }
-                    else
-                    {
-                        _uaVariables[tag.Name].Value = value;
-                    }
-
-                    _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                    _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                    UpdateUAServerVariable(tag, value);
                 }
             }
         }
@@ -1008,51 +1012,8 @@ namespace Opc.Ua.Edge.Translator
 
             if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
             {
-                float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-
-                // check for complex type
-                if (_uaVariables[tag.Name].Value is ExtensionObject)
-                {
-                    // decode existing values and re-encode them with our updated value
-                    BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
-                    BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
-
-                    DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
-                    if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
-                    {
-                        foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
-                        {
-                            // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                            switch (field.DataType.ToString())
-                            {
-                                case "i=10":
-                                    {
-                                        float newValue = decoder.ReadFloat(field.Name);
-
-                                        if (field.Name == tag.MappedUAFieldPath)
-                                        {
-                                            // overwrite existing value with our upated value
-                                            newValue = value;
-                                        }
-
-                                        encoder.WriteFloat(field.Name, newValue);
-
-                                        break;
-                                    }
-                                default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                            }
-                        }
-
-                        ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
-                    }
-                }
-                else
-                {
-                    _uaVariables[tag.Name].Value = value;
-                }
-
-                _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                float value = BitConverter.ToSingle(tagBytes);
+                UpdateUAServerVariable(tag, value);
             }
         }
 
