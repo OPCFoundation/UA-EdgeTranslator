@@ -675,14 +675,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 // create an asset tag and add to our list
-                EIPForm opcuaForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
+                EIPForm eipForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = opcuaForm.Href,
+                    Address = eipForm.Href,
                     UnitID = unitId,
-                    Type = opcuaForm.EIPType.ToString(),
-                    PollingInterval = (int)opcuaForm.EIPPollingTime,
+                    Type = eipForm.EIPType.ToString(),
+                    PollingInterval = (int)eipForm.EIPPollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -694,14 +694,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("aid://"))
             {
                 // create an asset tag and add to our list
-                AIDForm opcuaForm = JsonConvert.DeserializeObject<AIDForm>(form.ToString());
+                AIDForm aidForm = JsonConvert.DeserializeObject<AIDForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = opcuaForm.Href,
+                    Address = aidForm.Href,
                     UnitID = unitId,
-                    Type = opcuaForm.AIDType.ToString(),
-                    PollingInterval = (int)opcuaForm.AIDPollingTime,
+                    Type = aidForm.AIDType.ToString(),
+                    PollingInterval = (int)aidForm.AIDPollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -780,14 +780,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("aid://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "aid"))
+                if ((opcuaAddress.Length != 6) && (opcuaAddress[0] != "aid"))
                 {
                     throw new Exception("Expected Beckhoff PLC address in the format aid://ipaddress:port!");
                 }
 
                 // check if we can reach the OPC UA asset
                 BeckhoffClient client = new();
-                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+                client.Connect(opcuaAddress[3] + ":" + opcuaAddress[4], int.Parse(opcuaAddress[5]));
 
                 assetInterface = client;
             }

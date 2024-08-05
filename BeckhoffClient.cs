@@ -5,14 +5,15 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Threading.Tasks;
-    using TwinCAT.Ads;
+    using Viscon.Communication.Ads;
+    using Viscon.Communication.Ads.Common;
 
     /*
-    Authorise your ADS client for the TwinCAT target by adding an AMS route.
-    ------------------------------------------------------------------------
+    Authorise this Beckhoff ADS client for accessing the Beckhoff PLC by adding an AMS route.
+    -----------------------------------------------------------------------------------------
 
     TwinCAT Engineering: Go to the tree item SYSTEM/Routes and add a static route.
-    TwinCAT Systray: Open the context menue by right click the TwinCAT systray icon. (not available on Windows CE devices)
+    TwinCAT Systray: Open the context menu by right clicking the TwinCAT systray icon. (not available on Windows CE devices)
     TC2: Go to Properties/AMS Router/Remote Computers and restart TwinCAT
     TC3: Go to Router/Edit routes.
     TcAmsRemoteMgr: Windows CE devices can be configured locally (TC2 requires a TwinCAT restart). Tool location: /Hard Disk/System/TcAmsRemoteMgr.exe
@@ -20,9 +21,9 @@ namespace Opc.Ua.Edge.Translator
     Further information: http://infosys.beckhoff.de/content/1033/devicemanager/index.html?id=286
 
     Sample AMS route:
-      Name:           MyAdsClient
-      AMS Net Id:     192.168.0.1.1.1 # NetId of your ADS client, derived from its IP address or set by bhf::ads:SetLocalAdress().
-      Address:        192.168.0.1     # Use the IP of the ADS client, which is connected to your TwinCAT target
+      Name:           UA-EdgeTranslator
+      AMS Net Id:     192.168.0.1.1.1 # NetId of UA-EdgeTranslator, derived from its IP address
+      Address:        192.168.0.1     # IP address of UA-EdgeTranslator
       Transport Type: TCP/IP
       Remote Route:   None / Server
       Unidirectional: false
@@ -38,10 +39,20 @@ namespace Opc.Ua.Edge.Translator
         {
             try
             {
-                _endpoint = ipAddress + ".1.1";
-                _adsClient = new AdsClient();
-                _adsClient.Connect(AmsNetId.Parse(_endpoint), port);
-                StateInfo result = _adsClient.ReadState();
+                _endpoint = ipAddress;
+                string[] addresses = ipAddress.Split(':');
+                if (addresses.Length == 2)
+                {
+                    string localEndpoint = addresses[0] + ".1.1";
+                    string remoteEndpoint = addresses[1] + ".1.1";
+                    _adsClient = new AdsClient(localEndpoint, addresses[1], remoteEndpoint, (ushort)port);
+                    _adsClient.Ams.ConnectAsync().GetAwaiter().GetResult();
+                    AdsDeviceInfo result = _adsClient.ReadDeviceInfoAsync().GetAwaiter().GetResult();
+                }
+                else
+                {
+                    throw new ArgumentException("Expected ipAddress to contain both the local and remote AMS ip addresses, seperated by a ':'");
+                }
             }
             catch (Exception ex)
             {
@@ -53,7 +64,6 @@ namespace Opc.Ua.Edge.Translator
         {
             if (_adsClient != null)
             {
-                _adsClient.Disconnect();
                 _adsClient.Dispose();
                 _adsClient = null;
             }
@@ -68,9 +78,8 @@ namespace Opc.Ua.Edge.Translator
         {
             try
             {
-                byte[] buffer = new byte[count];
-                _adsClient.Read(unitID, uint.Parse(addressWithinAsset), buffer);
-                return Task.FromResult(buffer);
+                byte[] result = _adsClient.ReadBytesAsync(uint.Parse(addressWithinAsset), count).GetAwaiter().GetResult();
+                return Task.FromResult(result);
             }
             catch (Exception ex)
             {
@@ -83,7 +92,7 @@ namespace Opc.Ua.Edge.Translator
         {
             try
             {
-                _adsClient.Write(unitID, uint.Parse(addressWithinAsset), values);
+                _adsClient.WriteBytesAsync(uint.Parse(addressWithinAsset), values);
             }
             catch (Exception ex)
             {
