@@ -29,7 +29,7 @@ The following folders within the container store logs, certificates, secrets and
 
 E.g. -v c:/translator/pki:/app/pki, etc.
 
-Client certificates need to be manually copied from the /pki/rejected/certs folder to the /pki/trusted/certs folder to trust an OPC UA client trying to connect.
+Client certificates need to be manually moved from the /pki/rejected/certs folder to the /pki/trusted/certs folder to trust an OPC UA client trying to connect.
 
 ## Optional Environment Variables
 
