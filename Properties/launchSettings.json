@@ -7,7 +7,8 @@
       "commandName": "Docker",
       "publishAllPorts": true,
       "environmentVariables": {
-        "LOG_FILE_PATH": "/logs"
+        "OPCUA_USERNAME": "myUsername",
+        "OPCUA_PASSWORD": "myPassword"
       }
     }
   }

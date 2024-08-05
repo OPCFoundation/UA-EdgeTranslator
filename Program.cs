@@ -17,7 +17,7 @@ namespace Opc.Ua.Edge.Translator
         public static async Task Main()
         {
             // setup logging
-            string pathToLogFile = Directory.GetCurrentDirectory();
+            string pathToLogFile = Path.Combine(Directory.GetCurrentDirectory(), "logs");
             if (Environment.GetEnvironmentVariable("LOG_FILE_PATH") != null)
             {
                 pathToLogFile = Environment.GetEnvironmentVariable("LOG_FILE_PATH");
