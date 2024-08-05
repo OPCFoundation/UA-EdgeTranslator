@@ -20,6 +20,16 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 
 In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (experimental), Rockwell CIP-Ethernet/IP (experimental), and Beckhoff ADS (experimental) are supported. Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it) to a WoT Thing Model file.
 
+## Running UA Edge Translator from a Docker environment
+
+The following folders within the container store logs, certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the host to a encrypted folder, e.g. using BitLocker:
+* /logs
+* /app/settings
+* /app/pki
+E.g. -v c:/translator/pki:/app/pki, etc.
+
+Client certificates need to be manually copied from the /pki/rejected/certs folder to the /pki/trusted/certs folder to trust an OPC UA client trying to connect.
+
 ## Optional Environment Variables
 
 * `LOG_FILE_PATH` - path to the log file to use. Default is /logs/uaedgetranslator.logfile.txt (in the Docker container).

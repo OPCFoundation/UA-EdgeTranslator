@@ -45,25 +45,11 @@ namespace Opc.Ua.Edge.Translator
 
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
 
-            // create OPC UA cert validator
-            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
-            App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
-            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration.SecurityConfiguration).GetAwaiter().GetResult();
-
             // start the server
             await App.Start(new UAServer()).ConfigureAwait(false);
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
-        }
-
-        private static void OPCUAClientCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
-        {
-            // always trust the OPC UA client certificate (NOT recommended for production!)
-            if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
-            {
-                e.Accept = true;
-            }
         }
 
         private static void OpcStackLoggingHandler(object sender, TraceEventArgs e)

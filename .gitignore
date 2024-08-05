@@ -351,3 +351,4 @@ MigrationBackup/
 *.jsonld
 /*.nodeset2.xml
 /uaedgetranslator.logfile.txt
+/pki
