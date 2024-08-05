@@ -22,8 +22,10 @@ In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (experiment
 
 ## Optional Environment Variables
 
-* UACLURL - UA Cloud Library URL (e.g. https://uacloudlibrary.opcfoundation.org or https://cloudlib.cesmii.net)
-* UACLUsername - UA Cloud Library Username
-* UACLPassword - UA Cloud Library Password
-* OPCUA_CLIENT_USERNAME - OPC UA client username to connect to an OPC UA asset
-* OPCUA_CLIENT_PASSWORD - OPC UA client password to connect to an OPC UA asset
+* `LOG_FILE_PATH` - path to the log file to use. Default is /logs/uaedgetranslator.logfile.txt (in the Docker container).
+* `APP_NAME` - OPC UA application name to use. Default is UAEdgeTranslator.
+* `UACLURL` - UA Cloud Library URL (e.g. https://uacloudlibrary.opcfoundation.org or https://cloudlib.cesmii.net).
+* `UACLUsername` - UA Cloud Library Username.
+* `UACLPassword` - UA Cloud Library Password.
+* `OPCUA_CLIENT_USERNAME` - OPC UA client username to connect to an OPC UA asset.
+* `OPCUA_CLIENT_PASSWORD` - OPC UA client password to connect to an OPC UA asset.
