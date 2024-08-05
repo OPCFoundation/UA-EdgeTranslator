@@ -22,12 +22,12 @@ In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (experiment
 
 ## Running UA Edge Translator from a Docker environment
 
-The following folders within the container store logs, certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the host to a encrypted folder, e.g. using BitLocker:
+The following folders within the Docker container store logs, certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
 * /logs
 * /app/settings
 * /app/pki
 
-E.g. -v c:/translator/pki:/app/pki, etc.
+E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 
 Client certificates need to be manually moved from the /pki/rejected/certs folder to the /pki/trusted/certs folder to trust an OPC UA client trying to connect.
 
