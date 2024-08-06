@@ -69,6 +69,30 @@
       </ua:UserTokenPolicy>
     </UserTokenPolicies>
 
+    <!-- see https://opcfoundation-onlineapplications.org/profilereporting/ for list of available profiles -->
+    <ServerProfileArray>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/StandardUA2017</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/DataAccess</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/Methods</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/ReverseConnect</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/ClientRedundancy</ua:String>
+    </ServerProfileArray>
+
+    <!--
+    <ReverseConnect>
+      <Clients>
+        <ReverseConnectClient>
+          <EndpointUrl>opc.tcp://localhost:65300</EndpointUrl>
+          <MaxSessionCount>0</MaxSessionCount>
+          <Enabled>true</Enabled>
+        </ReverseConnectClient>
+      </Clients>
+      <ConnectInterval>15000</ConnectInterval>
+      <ConnectTimeout>30000</ConnectTimeout>
+      <RejectTimeout>60000</RejectTimeout>
+    </ReverseConnect>
+    -->
+
     <DiagnosticsEnabled>true</DiagnosticsEnabled>
     <MaxSessionCount>100</MaxSessionCount>
     <MinSessionTimeout>10000</MinSessionTimeout>

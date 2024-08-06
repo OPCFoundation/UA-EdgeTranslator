@@ -6,7 +6,7 @@ namespace Opc.Ua.Edge.Translator
     using System;
     using System.Collections.Generic;
 
-    public partial class UAServer : StandardServer
+    public partial class UAServer : ReverseConnectServer
     {
         protected override MasterNodeManager CreateMasterNodeManager(IServerInternal server, ApplicationConfiguration configuration)
         {
