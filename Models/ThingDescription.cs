@@ -156,7 +156,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public long EIPPollingTime { get; set; }
     }
 
-    public class AIDForm
+    public class ADSForm
     {
         [JsonProperty("href")]
         public string Href { get; set; }
@@ -164,11 +164,11 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("op")]
         public Op[] Op { get; set; }
 
-        [JsonProperty("aid:type")]
-        public AIDType AIDType { get; set; }
+        [JsonProperty("ads:type")]
+        public ADSType ADSType { get; set; }
 
-        [JsonProperty("aid:pollingTime")]
-        public long AIDPollingTime { get; set; }
+        [JsonProperty("ads:pollingTime")]
+        public long ADSPollingTime { get; set; }
     }
 
     public class SecurityDefinitions
@@ -241,7 +241,7 @@ namespace Opc.Ua.Edge.Translator.Models
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum AIDType
+    public enum ADSType
     {
         [EnumMember(Value = "xsd:float")]
         Float

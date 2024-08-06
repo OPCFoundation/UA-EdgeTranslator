@@ -192,7 +192,7 @@ namespace Opc.Ua.Edge.Translator
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
                 "https://www.w3.org/2019/wot/eip",
-                "https://www.w3.org/2019/wot/aid"
+                "https://www.w3.org/2019/wot/ads"
             });
 
             // add everything to our server namespace
@@ -697,17 +697,17 @@ namespace Opc.Ua.Edge.Translator
                 _tags[assetId].Add(tag);
             }
 
-            if (td.Base.ToLower().StartsWith("aid://"))
+            if (td.Base.ToLower().StartsWith("ads://"))
             {
                 // create an asset tag and add to our list
-                AIDForm aidForm = JsonConvert.DeserializeObject<AIDForm>(form.ToString());
+                ADSForm adsForm = JsonConvert.DeserializeObject<ADSForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = aidForm.Href,
+                    Address = adsForm.Href,
                     UnitID = unitId,
-                    Type = aidForm.AIDType.ToString(),
-                    PollingInterval = (int)aidForm.AIDPollingTime,
+                    Type = adsForm.ADSType.ToString(),
+                    PollingInterval = (int)adsForm.ADSPollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -783,12 +783,12 @@ namespace Opc.Ua.Edge.Translator
                 assetInterface = client;
             }
 
-            if (td.Base.ToLower().StartsWith("aid://"))
+            if (td.Base.ToLower().StartsWith("ads://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 6) && (opcuaAddress[0] != "aid"))
+                if ((opcuaAddress.Length != 6) && (opcuaAddress[0] != "ads"))
                 {
-                    throw new Exception("Expected Beckhoff PLC address in the format aid://ipaddress:port!");
+                    throw new Exception("Expected Beckhoff PLC address in the format ads://ipaddress:port!");
                 }
 
                 // check if we can reach the OPC UA asset
