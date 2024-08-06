@@ -45,9 +45,12 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string localEndpoint = addresses[0] + ".1.1";
                     string remoteEndpoint = addresses[1] + ".1.1";
+
                     _adsClient = new AdsClient(localEndpoint, addresses[1], remoteEndpoint, (ushort)port);
                     _adsClient.Ams.ConnectAsync().GetAwaiter().GetResult();
+
                     AdsDeviceInfo result = _adsClient.ReadDeviceInfoAsync().GetAwaiter().GetResult();
+                    Log.Logger.Information("Connected to Beckhoff TwinCAT ADS PLC: " + result.ToString());
                 }
                 else
                 {

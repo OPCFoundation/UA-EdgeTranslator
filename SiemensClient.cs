@@ -25,6 +25,8 @@ namespace Opc.Ua.Edge.Translator
                 {
                     throw new Exception("S7 status error: " + result.ToString());
                 }
+
+                Log.Logger.Information("Connected to Siemens S7: " + result.ToString());
             }
             catch (Exception ex)
             {
