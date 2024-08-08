@@ -1,0 +1,360 @@
+﻿<CAEXFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.dke.de/CAEX" SchemaVersion="3.0" FileName="AMLSimpleExample.aml" xsi:schemaLocation="http://www.dke.de/CAEX CAEX_ClassModel_V.3.0.xsd">
+  <AdditionalInformation AutomationMLVersion="2.0" />
+  <SuperiorStandardVersion>AutomationML 2.10</SuperiorStandardVersion>
+  <SourceDocumentInformation OriginName="" OriginID="" OriginVersion="" LastWritingDateTime="2021-12-17T11:25:03.3531143+01:00" />
+  <SourceDocumentInformation OriginName="AutomationML Editor" OriginID="916578CA-FE0D-474E-A4FC-9E1719892369" OriginVersion="5.6.10.0" LastWritingDateTime="2021-12-17T11:35:58.8330511+01:00" OriginProjectID="unspecified" OriginProjectTitle="unspecified" OriginRelease="5.6.10.0" OriginVendor="AutomationML e.V." OriginVendorURL="www.AutomationML.org" />
+  <InstanceHierarchy Name="RoleExample">
+    <InternalElement Name="Cell" ID="{d6d584a2-4f97-42a8-9354-c9b3ee7d5362}">
+      <InternalElement Name="Ressource" ID="{39eb3ed9-c6ea-44c8-8227-ab4b1667c593}">
+        <InternalElement Name="RB1" RefBaseSystemUnitPath="ExampleSystemUnitClassLib/Roboter" ID="{a62705df-2951-4a2f-8562-f65cdc4eabc4}">
+          <Attribute Name="Frame">
+            <Attribute Name="x">
+              <Value>-10550</Value>
+            </Attribute>
+            <Attribute Name="y">
+              <Value>3550</Value>
+            </Attribute>
+            <Attribute Name="z">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rx">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="ry">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rz">
+              <Value>0</Value>
+            </Attribute>
+          </Attribute>
+          <ExternalInterface Name="Roboter1-PPRConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/PPRConnector" ID="{b2151fb7-67ce-421d-adb2-29d4debe4ac4}" />
+          <ExternalInterface Name="ColladaRepresentationInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/COLLADAInterface/RepresentationInterface" ID="{d6ea0d01-3db7-4263-bd8f-f8ee05dc55f3}">
+            <Attribute Name="refType" AttributeDataType="xs:string">
+              <Value>Explicite</Value>
+            </Attribute>
+            <Attribute Name="refURI" AttributeDataType="xs:anyURI">
+              <Value>kr125_3.co.dae#extraTag</Value>
+            </Attribute>
+          </ExternalInterface>
+          <RoleRequirements RefBaseRoleClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Robot" />
+        </InternalElement>
+        <InternalElement Name="DT2" RefBaseSystemUnitPath="ExampleSystemUnitClassLib/Drehtisch" ID="{96488744-500a-42d0-8999-53d4f7a923cb}">
+          <Attribute Name="Frame">
+            <Attribute Name="x">
+              <Value>-8450</Value>
+            </Attribute>
+            <Attribute Name="y">
+              <Value>10400</Value>
+            </Attribute>
+            <Attribute Name="z">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rx">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="ry">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rz">
+              <Value>0</Value>
+            </Attribute>
+          </Attribute>
+          <ExternalInterface Name="Drehtisch2-PPRConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/PPRConnector" ID="{518daa6b-32cf-4ffa-b97e-9e5305675d33}" />
+          <ExternalInterface Name="ColladaRepresentationInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/COLLADAInterface/RepresentationInterface" ID="{fda6b860-76fb-48dc-a69c-02e0e9c7b0c5}">
+            <Attribute Name="refType" AttributeDataType="xs:string">
+              <Value>Explicite</Value>
+            </Attribute>
+            <Attribute Name="refURI" AttributeDataType="xs:anyURI">
+              <Value>dreh_vor.dae#extraTag</Value>
+            </Attribute>
+          </ExternalInterface>
+          <RoleRequirements RefBaseRoleClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Fixture" />
+          <RoleRequirements RefBaseRoleClassPath="AutomationMLExtendedRoleClassLib/Turntable" />
+        </InternalElement>
+        <InternalElement Name="TB3" RefBaseSystemUnitPath="ExampleSystemUnitClassLib/Transportband" ID="{72859d01-bf57-468c-80aa-06f82d755eeb}">
+          <Attribute Name="Frame">
+            <Attribute Name="x">
+              <Value>-8500</Value>
+            </Attribute>
+            <Attribute Name="y">
+              <Value>2000</Value>
+            </Attribute>
+            <Attribute Name="z">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rx">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="ry">
+              <Value>0</Value>
+            </Attribute>
+            <Attribute Name="rz">
+              <Value>90</Value>
+            </Attribute>
+          </Attribute>
+          <ExternalInterface Name="Transportband3-PPRConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/PPRConnector" ID="ad4068ac-a03b-4709-b10e-1dcb60a8d25a" />
+          <ExternalInterface Name="ColladaRepresentationInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/COLLADAInterface/RepresentationInterface" ID="1825693f-c5a0-413c-8072-95ec46c57e97">
+            <Attribute Name="refType" AttributeDataType="xs:string">
+              <Value>Explicite</Value>
+            </Attribute>
+            <Attribute Name="refURI" AttributeDataType="xs:anyURI">
+              <Value>Staurollenf_Mittelst_L6m_B800_aufgst.dae#extraTag</Value>
+            </Attribute>
+          </ExternalInterface>
+        </InternalElement>
+        <RoleRequirements RefBaseRoleClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Resource" />
+      </InternalElement>
+      <RoleRequirements RefBaseRoleClassPath="AutomationMLExtendedRoleClassLib/Site/Area/ProductionLine/WorkCell" />
+      <RoleRequirements RefBaseRoleClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+    </InternalElement>
+  </InstanceHierarchy>
+  <InterfaceClassLib Name="AutomationMLInterfaceClassLib">
+    <Description>Standard AutomationML Interface Class Library</Description>
+    <Version>2.1</Version>
+    <InterfaceClass Name="AutomationMLBaseInterface">
+      <InterfaceClass Name="Order" RefBaseClassPath="AutomationMLBaseInterface">
+        <Attribute Name="Direction" AttributeDataType="xs:complex">
+          <Description>The attribute “Direction” shall be used in order to specify the direction. Permitted values are “In”, “Out” or “InOut”.</Description>
+          <Constraint Name="DirectionConstraint">
+            <NominalScaledType>
+              <RequiredValue>In</RequiredValue>
+              <RequiredValue>Out</RequiredValue>
+              <RequiredValue>InOut</RequiredValue>
+            </NominalScaledType>
+          </Constraint>
+        </Attribute>
+      </InterfaceClass>
+      <InterfaceClass Name="PortConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface" />
+      <InterfaceClass Name="InterlockingConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface" />
+      <InterfaceClass Name="PPRConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface" />
+      <InterfaceClass Name="ExternalDataConnector" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface">
+        <Attribute Name="refURI" AttributeDataType="xs:anyURI" />
+        <InterfaceClass Name="COLLADAInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector">
+          <Attribute Name="refType" AttributeDataType="xs:string" />
+          <InterfaceClass Name="AttachmentPointInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/COLLADAInterface" />
+          <InterfaceClass Name="RepresentationInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/COLLADAInterface" />
+        </InterfaceClass>
+        <InterfaceClass Name="PLCopenXMLInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector">
+          <InterfaceClass Name="LogicInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/PLCopenXMLInterface" />
+          <InterfaceClass Name="VariableInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector/PLCopenXMLInterface" />
+        </InterfaceClass>
+        <InterfaceClass Name="DocumentInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/ExternalDataConnector" />
+      </InterfaceClass>
+      <InterfaceClass Name="Communication" RefBaseClassPath="AutomationMLBaseInterface">
+        <InterfaceClass Name="SignalInterface" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/Communication">
+          <Attribute Name="Type" AttributeDataType="xs:string">
+            <Description>The attribute „Type“ specifies the type of the signal. Permitted values are "analog" and "digital". </Description>
+          </Attribute>
+          <Attribute Name="Direction" AttributeDataType="xs:string">
+            <Description>The attribute “Direction” shall be used in order to specify the direction. Permitted values are “In” or “Out” or "InOut".</Description>
+          </Attribute>
+          <Attribute Name="BitCount" AttributeDataType="xs:uint">
+            <Description>The attribute “BitCount” describes the number of bits in the digital signal. If BitCount=1, the digital signal is a binary signal. A higher BitCount allows the digital description of an analog signal with a resolution of 2n. If this attribute is not given, the default value is 1.</Description>
+          </Attribute>
+          <Attribute Name="Orientation" AttributeDataType="xs:string">
+            <Description>If multiple binary signals are bundled, the attribute “Orientation” describes in which order the bits are delivered. Permitted values are “HighFirst” or “LowFirst”.</Description>
+          </Attribute>
+          <Attribute Name="Range" AttributeDataType="xs:complex">
+            <Description>The attribute “Range” is a complex attribute comprising the sub attributes “min” and “max”. If required, a unit shall be defined using the CAEX attribute "Unit". With the Range attribute, signals value ranges as 4-20mA, 5-10V etc. can be described.</Description>
+            <Attribute Name="min" AttributeDataType="xs:float" />
+            <Attribute Name="max" AttributeDataType="xs:float" />
+          </Attribute>
+        </InterfaceClass>
+      </InterfaceClass>
+    </InterfaceClass>
+  </InterfaceClassLib>
+  <RoleClassLib Name="AutomationMLBaseRoleClassLib">
+    <Description>AutomationML base role library</Description>
+    <Version>2.1</Version>
+    <RoleClass Name="AutomationMLBaseRole">
+      <RoleClass Name="Group" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole">
+        <Attribute Name="AssociatedFacet" AttributeDataType="xs:string" />
+      </RoleClass>
+      <RoleClass Name="Facet" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole" />
+      <RoleClass Name="Port" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole">
+        <Attribute Name="Direction" AttributeDataType="xs:string" />
+        <Attribute Name="Cardinality" AttributeDataType="xs:complexType">
+          <Attribute Name="MinOccur" AttributeDataType="xs:uint" />
+          <Attribute Name="MaxOccur" AttributeDataType="xs:uint" />
+        </Attribute>
+        <Attribute Name="Category" AttributeDataType="xs:string" />
+        <ExternalInterface Name="ConnectionPoint" RefBaseClassPath="AutomationMLInterfaceClassLib/AutomationMLBaseInterface/PortConnector" ID="8d33d0e4-6016-4877-9d01-95b6b8f8d2cf" />
+      </RoleClass>
+      <RoleClass Name="Resource" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole" />
+      <RoleClass Name="Product" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole" />
+      <RoleClass Name="Process" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole" />
+      <RoleClass Name="Structure" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole">
+        <RoleClass Name="Product_Structure" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure" />
+        <RoleClass Name="Process_Structure" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure" />
+        <RoleClass Name="Resource_Structure" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure">
+          <RoleClass Name="Cell" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="MainGroup" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="FunctionGroup" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="SubFunctionGroup" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="MechatronicAssembly" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="MechanicalAssembly" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="MechanicalPart" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+          <RoleClass Name="Device" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure" />
+        </RoleClass>
+      </RoleClass>
+      <RoleClass Name="PropertySet" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole" />
+    </RoleClass>
+  </RoleClassLib>
+  <RoleClassLib Name="AutomationMLMIRoleClassLib">
+    <Description>AutomationML Manufacturing Industry Role Class Library</Description>
+    <Version>2.3</Version>
+    <RoleClass Name="ManufacturingEquipment" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Resource">
+      <RoleClass Name="Transport" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Storage" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Fixture" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment">
+        <Description>Fixierelement, Spanner</Description>
+      </RoleClass>
+      <RoleClass Name="Gate" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Robot" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Tool" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Carrier" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="Machine" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+      <RoleClass Name="StaticObject" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+    </RoleClass>
+  </RoleClassLib>
+  <RoleClassLib Name="AutomationMLExtendedRoleClassLib">
+    <Version>2.5</Version>
+    <RoleClass Name="SignalGroup" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Group" />
+    <RoleClass Name="ComponentGroup" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Group" />
+    <RoleClass Name="PLCFacet" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Facet" />
+    <RoleClass Name="HMIFacet" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Facet" />
+    <RoleClass Name="Measurement Equipment" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Resource" />
+    <RoleClass Name="Site" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Structure/Resource_Structure">
+      <RoleClass Name="Area" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site">
+        <Description>e.g. Hall</Description>
+        <RoleClass Name="ProductionLine" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site/Area">
+          <RoleClass Name="WorkCell" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site/Area/ProductionLine" />
+        </RoleClass>
+        <RoleClass Name="ProcessCell" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site/Area">
+          <RoleClass Name="Unit" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site/Area/ProcessCell" />
+        </RoleClass>
+        <RoleClass Name="ProductionUnit" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Site/Area" />
+      </RoleClass>
+    </RoleClass>
+    <RoleClass Name="WarningEquipment" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment" />
+    <RoleClass Name="Clamp" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Fixture" />
+    <RoleClass Name="BodyStore" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Storage" />
+    <RoleClass Name="Loader" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Storage" />
+    <RoleClass Name="Unloader" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Storage" />
+    <RoleClass Name="Turntable" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="Conveyor" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport">
+      <RoleClass Name="BeltConveyor" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Conveyor" />
+      <RoleClass Name="RollConveyor" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Conveyor" />
+      <RoleClass Name="ChainConveyor" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Conveyor" />
+      <RoleClass Name="PalletConveyor" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Conveyor" />
+      <RoleClass Name="OverheadConveyor" RefBaseClassPath="AutomationMLExtendedRoleClassLib/Conveyor" />
+    </RoleClass>
+    <RoleClass Name="LiftingTable" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="AGV" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="Transposer" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="CarrierHandlingSystem" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="Lift" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="Rollerbed" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    <RoleClass Name="StationaryTool" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Tool" />
+    <RoleClass Name="MovableTool" RefBaseClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Tool" />
+    <RoleClass Name="ControlCabinet" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment" />
+    <RoleClass Name="IODevice" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment" />
+    <RoleClass Name="HMI" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment" />
+    <RoleClass Name="DriveControlSystem" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment" />
+    <RoleClass Name="ActuatingDrive" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment/Actuator" />
+    <RoleClass Name="Panel" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment/ControlHardware" />
+    <RoleClass Name="ProcessControl" RefBaseClassPath="AutomationMLCSRoleClassLib/ControlEquipment/Controller" />
+  </RoleClassLib>
+  <RoleClassLib Name="AutomationMLCSRoleClassLib">
+    <Description>Automation Markup Language Control Industry Role Class Library</Description>
+    <Version>2.3.1</Version>
+    <RoleClass Name="ControlEquipment" RefBaseClassPath="AutomationMLBaseRoleClassLib/AutomationMLBaseRole/Resource">
+      <RoleClass Name="Communication" RefBaseClassPath="ControlEquipment" />
+      <RoleClass Name="ControlHardware" RefBaseClassPath="ControlEquipment">
+        <RoleClass Name="PC" RefBaseClassPath="ControlHardware" />
+        <RoleClass Name="IPC" RefBaseClassPath="ControlHardware" />
+        <RoleClass Name="EmbeddedDevice" RefBaseClassPath="ControlHardware" />
+        <RoleClass Name="Handheld" RefBaseClassPath="ControlHardware" />
+      </RoleClass>
+      <RoleClass Name="Sensor" RefBaseClassPath="ControlEquipment" />
+      <RoleClass Name="Actuator" RefBaseClassPath="ControlEquipment" />
+      <RoleClass Name="Controller" RefBaseClassPath="ControlEquipment">
+        <RoleClass Name="PLC" RefBaseClassPath="Controller" />
+        <RoleClass Name="NC" RefBaseClassPath="Controller" />
+        <RoleClass Name="RC" RefBaseClassPath="Controller" />
+      </RoleClass>
+    </RoleClass>
+  </RoleClassLib>
+  <SystemUnitClassLib Name="ExampleSystemUnitClassLib">
+    <SystemUnitClass Name="Transportband">
+      <Attribute Name="Frame">
+        <Attribute Name="x">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="y">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="z">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rx">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="ry">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rz">
+          <Value>0</Value>
+        </Attribute>
+      </Attribute>
+      <SupportedRoleClass RefRoleClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Transport" />
+    </SystemUnitClass>
+    <SystemUnitClass Name="Roboter">
+      <Attribute Name="Frame">
+        <Attribute Name="x">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="y">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="z">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rx">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="ry">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rz">
+          <Value>0</Value>
+        </Attribute>
+      </Attribute>
+      <SupportedRoleClass RefRoleClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Robot" />
+    </SystemUnitClass>
+    <SystemUnitClass Name="Drehtisch">
+      <Attribute Name="Frame">
+        <Attribute Name="x">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="y">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="z">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rx">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="ry">
+          <Value>0</Value>
+        </Attribute>
+        <Attribute Name="rz">
+          <Value>0</Value>
+        </Attribute>
+      </Attribute>
+      <SupportedRoleClass RefRoleClassPath="AutomationMLExtendedRoleClassLib/Turntable" />
+      <SupportedRoleClass RefRoleClassPath="AutomationMLMIRoleClassLib/ManufacturingEquipment/Fixture" />
+    </SystemUnitClass>
+  </SystemUnitClassLib>
+</CAEXFile>

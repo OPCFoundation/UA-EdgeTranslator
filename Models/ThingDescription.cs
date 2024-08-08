@@ -6,40 +6,41 @@ namespace Opc.Ua.Edge.Translator.Models
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
+#nullable enable
     public class ThingDescription
     {
         [JsonProperty("@context")]
-        public object[] Context { get; set; }
+        public object[]? Context { get; set; }
 
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         [JsonProperty("securityDefinitions")]
-        public SecurityDefinitions SecurityDefinitions { get; set; }
+        public SecurityDefinitions? SecurityDefinitions { get; set; }
 
         [JsonProperty("security")]
-        public string[] Security { get; set; }
+        public string[]? Security { get; set; }
 
         [JsonProperty("@type")]
-        public string[] Type { get; set; }
+        public string[]? Type { get; set; }
 
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [JsonProperty("base")]
-        public string Base { get; set; }
+        public string? Base { get; set; }
 
         [JsonProperty("title")]
-        public string Title { get; set; }
+        public string? Title { get; set; }
 
         [JsonProperty("properties")]
-        public Dictionary<string, Property> Properties { get; set; }
+        public Dictionary<string, Property>? Properties { get; set; }
     }
 
     public class OpcUaNamespaces
     {
         [JsonProperty("opcua")]
-        public Uri[] Namespaces { get; set; }
+        public Uri[]? Namespaces { get; set; }
     }
 
     public class Property
@@ -48,13 +49,13 @@ namespace Opc.Ua.Edge.Translator.Models
         public TypeEnum Type { get; set; }
 
         [JsonProperty("opcua:nodeId")]
-        public string OpcUaNodeId { get; set; }
+        public string? OpcUaNodeId { get; set; }
 
         [JsonProperty("opcua:type")]
-        public string OpcUaType { get; set; }
+        public string? OpcUaType { get; set; }
 
         [JsonProperty("opcua:fieldPath")]
-        public string OpcUaFieldPath { get; set; }
+        public string? OpcUaFieldPath { get; set; }
 
         [JsonProperty("readOnly")]
         public bool ReadOnly { get; set; }
@@ -63,16 +64,16 @@ namespace Opc.Ua.Edge.Translator.Models
         public bool Observable { get; set; }
 
         [JsonProperty("forms")]
-        public object[] Forms { get; set; }
+        public object[]? Forms { get; set; }
     }
 
     public class ModbusForm
     {
         [JsonProperty("href")]
-        public string Href { get; set; }
+        public string? Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[] Op { get; set; }
+        public Op[]? Op { get; set; }
 
         [JsonProperty("modv:type")]
         public ModbusType ModbusType { get; set; }
@@ -84,13 +85,22 @@ namespace Opc.Ua.Edge.Translator.Models
         public long ModbusPollingTime { get; set; }
     }
 
+    public class GenericForm
+    {
+        [JsonProperty("href")]
+        public string? Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[]? Op { get; set; }
+    }
+
     public class OPCUAForm
     {
         [JsonProperty("href")]
-        public string Href { get; set; }
+        public string? Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[] Op { get; set; }
+        public Op[]? Op { get; set; }
 
         [JsonProperty("opcua:type")]
         public OPCUAType OPCUAType { get; set; }
@@ -102,10 +112,10 @@ namespace Opc.Ua.Edge.Translator.Models
     public class S7Form
     {
         [JsonProperty("href")]
-        public string Href { get; set; }
+        public string? Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[] Op { get; set; }
+        public Op[]? Op { get; set; }
 
         [JsonProperty("s7:rack")]
         public int S7Rack { get; set; }
@@ -135,7 +145,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public S7Target S7Target { get; set; }
 
         [JsonProperty("s7:address")]
-        public string S7Address { get; set; }
+        public string? S7Address { get; set; }
 
         [JsonProperty("s7:pollingTime")]
         public long S7PollingTime { get; set; }
@@ -144,10 +154,10 @@ namespace Opc.Ua.Edge.Translator.Models
     public class EIPForm
     {
         [JsonProperty("href")]
-        public string Href { get; set; }
+        public string? Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[] Op { get; set; }
+        public Op[]? Op { get; set; }
 
         [JsonProperty("eip:type")]
         public EIPType EIPType { get; set; }
@@ -159,10 +169,10 @@ namespace Opc.Ua.Edge.Translator.Models
     public class ADSForm
     {
         [JsonProperty("href")]
-        public string Href { get; set; }
+        public string? Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[] Op { get; set; }
+        public Op[]? Op { get; set; }
 
         [JsonProperty("ads:type")]
         public ADSType ADSType { get; set; }
@@ -174,13 +184,13 @@ namespace Opc.Ua.Edge.Translator.Models
     public class SecurityDefinitions
     {
         [JsonProperty("nosec_sc")]
-        public NosecSc NosecSc { get; set; }
+        public NosecSc? NosecSc { get; set; }
     }
 
     public class NosecSc
     {
         [JsonProperty("scheme")]
-        public string Scheme { get; set; }
+        public string? Scheme { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

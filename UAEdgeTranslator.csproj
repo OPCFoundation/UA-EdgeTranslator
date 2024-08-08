@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Tools\**" />
-    <EmbeddedResource Remove="Tools\**" />
-    <None Remove="Tools\**" />
+    <Compile Remove="WoTThingModelGenerator\**" />
+    <EmbeddedResource Remove="WoTThingModelGenerator\**" />
+    <None Remove="WoTThingModelGenerator\**" />
   </ItemGroup>
 
   <ItemGroup>

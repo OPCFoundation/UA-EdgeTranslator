@@ -8,16 +8,27 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Properties\**" />
+    <EmbeddedResource Remove="Properties\**" />
+    <None Remove="Properties\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="AMLSimpleExample.aml" />
     <None Remove="Station.NodeSet2.xml" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="AMLSimpleExample.aml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Station.NodeSet2.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aml.Engine" Version="3.3.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.374.78" />
   </ItemGroup>
