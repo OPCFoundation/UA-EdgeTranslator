@@ -15,18 +15,43 @@
     {
         static void Main()
         {
-            foreach (string filePath in Directory.GetFiles(Directory.GetCurrentDirectory()))
+            foreach (string filename in Directory.GetFiles(Directory.GetCurrentDirectory()))
             {
-                if (filePath.EndsWith(".nodeset2.xml"))
+                if (filename.EndsWith(".nodeset2.xml"))
                 {
-                    ImportNodeset2Xml(filePath);
+                    ImportNodeset2Xml(filename);
                 }
 
-                if (filePath.EndsWith(".aml"))
+                if (filename.EndsWith(".aml"))
                 {
-                    ImportAutomationML(filePath);
+                    ImportAutomationML(filename);
+                }
+ 
+                if (filename.EndsWith(".aas.json"))
+                {
+                    ImportAASAID(filename);
                 }
             }
+        }
+
+        private static void ImportAASAID(string filename)
+        {
+            AAS_AID? aid = JsonConvert.DeserializeObject<AAS_AID>(File.ReadAllText(filename));
+
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "tm:ThingModel" },
+                Name = "{{name}}",
+                Base = "{{protocol}}://{{address}}:{{port}}",
+                Title = Path.GetFileNameWithoutExtension(filename),
+                Properties = new Dictionary<string, Property>()
+            };
+
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Formatting.Indented));
         }
 
         private static void ImportAutomationML(string filename)
@@ -116,6 +141,8 @@
         // see https://support.industry.siemens.com/cs/document/109755133/siemens-opc-ua-modeling-editor-(siome)-for-implementing-opc-ua-companion-specification
         private static void ImportNodeset2Xml(string filename)
         {
+            Stream stream = new FileStream(filename, FileMode.Open);
+            
             ThingDescription td = new() {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
@@ -128,9 +155,8 @@
                 Properties = new Dictionary<string, Property>()
             };
 
-            Stream stream = new FileStream(filename, FileMode.Open);
-            UANodeSet nodeSet = UANodeSet.Read(stream);
 
+            UANodeSet nodeSet = UANodeSet.Read(stream);
             foreach (UANode node in nodeSet.Items)
             {
                 AddPredefinedNode(node, nodeSet.NamespaceUris[0], td.Properties);

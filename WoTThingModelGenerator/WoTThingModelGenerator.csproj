@@ -15,11 +15,15 @@
 
   <ItemGroup>
     <None Remove="AMLSimpleExample.aml" />
+    <None Remove="Siemens SENTRON PAC4200.aas.json" />
     <None Remove="Station.NodeSet2.xml" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="AMLSimpleExample.aml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Siemens SENTRON PAC4200.aas.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Station.NodeSet2.xml">

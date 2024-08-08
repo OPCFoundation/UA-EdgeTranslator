@@ -6,8 +6,6 @@ namespace Opc.Ua.Edge.Translator.Models
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
-#nullable enable
-
     public class ThingDescription
     {
         [JsonProperty("@context")]
