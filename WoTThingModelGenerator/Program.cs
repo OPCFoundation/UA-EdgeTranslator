@@ -51,7 +51,32 @@
                 Properties = new Dictionary<string, Property>()
             };
 
+            if (aid?.SubmodelElements != null)
+            {
+                ImportSubmodelElementCollection(aid.SubmodelElements);
+            }
+
             File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Formatting.Indented));
+        }
+
+        private static void ImportSubmodelElementCollection(List<SubmodelElement> smec)
+        {
+            foreach (SubmodelElement submodelElement in smec)
+            {
+                if (submodelElement.ValueType == null)
+                {
+                    List<SubmodelElement>? nestedSMEC = JsonConvert.DeserializeObject<List<SubmodelElement>>(submodelElement?.Value?.ToString());
+
+                    if (nestedSMEC != null)
+                    {
+                        ImportSubmodelElementCollection(nestedSMEC);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Name: " + submodelElement?.IdShort + " Value: " + submodelElement?.Value?.ToString());
+                }
+            }
         }
 
         private static void ImportAutomationML(string filename)

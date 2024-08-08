@@ -64,42 +64,15 @@ namespace Opc.Ua.Edge.Translator.Models
         public SemanticId? SemanticId { get; set; }
 
         [JsonProperty("supplementalSemanticIds")]
-        public List<SupplementalSemanticId>? SupplementalSemanticIds { get; set; }
-
-        [JsonProperty("value")]
-        public List<AASValue>? Value { get; set; }
-
-        [JsonProperty("modelType")]
-        public string? ModelType { get; set; }
-    }
-
-    public class SupplementalSemanticId
-    {
-        [JsonProperty("type")]
-        public string? Type { get; set; }
-
-        [JsonProperty("keys")]
-        public List<Key>? Keys { get; set; }
-    }
-
-    public class AASValue
-    {
-        [JsonProperty("idShort")]
-        public string? IdShort { get; set; }
-
-        [JsonProperty("valueType")]
-        public string? ValueType { get; set; }
+        public List<SemanticId>? SupplementalSemanticIds { get; set; }
 
         [JsonProperty("value")]
         public object? Value { get; set; }
 
+        [JsonProperty("valueType")]
+        public string? ValueType { get; set; }
+
         [JsonProperty("modelType")]
         public string? ModelType { get; set; }
-
-        [JsonProperty("semanticId")]
-        public SemanticId? SemanticId { get; set; }
-
-        [JsonProperty("supplementalSemanticIds")]
-        public List<SupplementalSemanticId>? SupplementalSemanticIds { get; set; }
     }
 }
