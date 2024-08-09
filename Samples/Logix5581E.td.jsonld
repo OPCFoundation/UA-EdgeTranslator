@@ -29,8 +29,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "eip:type": "xsd:float",
+          "eip:pollingTime": 1000
         }
       ]
     }

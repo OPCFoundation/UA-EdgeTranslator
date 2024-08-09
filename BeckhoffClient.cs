@@ -51,6 +51,7 @@ namespace Opc.Ua.Edge.Translator
                     _adsClient.Ams.ConnectAsync().GetAwaiter().GetResult();
 
                     AdsDeviceInfo result = _adsClient.ReadDeviceInfoAsync().GetAwaiter().GetResult();
+
                     Log.Logger.Information("Connected to Beckhoff TwinCAT ADS PLC: " + result.ToString());
                 }
                 else

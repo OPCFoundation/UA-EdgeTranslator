@@ -725,7 +725,7 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
                 string[] modbusAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((modbusAddress.Length != 6) && (modbusAddress[0] != "modbus+tcp"))
+                if ((modbusAddress.Length != 6) || (modbusAddress[0] != "modbus+tcp"))
                 {
                     throw new Exception("Expected Modbus server address in the format modbus+tcp://ipaddress:port/unitID!");
                 }
@@ -741,7 +741,7 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "opc.tcp"))
+                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "opc.tcp"))
                 {
                     throw new Exception("Expected OPC UA server address in the format opc.tcp://ipaddress:port!");
                 }
@@ -756,7 +756,7 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("s7://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "s7"))
+                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "s7"))
                 {
                     throw new Exception("Expected S7 PLC address in the format s7://ipaddress:port!");
                 }
@@ -771,14 +771,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) && (opcuaAddress[0] != "eip"))
+                if ((opcuaAddress.Length != 4) || (opcuaAddress[0] != "eip"))
                 {
                     throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress:port!");
                 }
 
                 // check if we can reach the OPC UA asset
                 RockwellClient client = new();
-                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+                client.Connect(opcuaAddress[3], 0);
 
                 assetInterface = client;
             }
@@ -786,7 +786,7 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("ads://"))
             {
                 string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 6) && (opcuaAddress[0] != "ads"))
+                if ((opcuaAddress.Length != 6) || (opcuaAddress[0] != "ads"))
                 {
                     throw new Exception("Expected Beckhoff PLC address in the format ads://ipaddress:port!");
                 }
@@ -1070,9 +1070,9 @@ namespace Opc.Ua.Edge.Translator
                     Log.Logger.Error(ex.Message, ex);
 
                     // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    string remoteEndpoint = _assets[assetId].GetRemoteEndpoint();
                     _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                    _assets[assetId].Connect(remoteEndpoint, 0);
                 }
 
                 if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
