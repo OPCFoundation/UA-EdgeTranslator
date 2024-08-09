@@ -50,28 +50,12 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            try
-            {
-                return Task.FromResult(_S7.ReadBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), count));
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-                return Task.FromResult(new byte[0]);
-            }
+            return Task.FromResult(_S7.ReadBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), count));
         }
 
         public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
         {
-            try
-            {
-                _S7.WriteBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), values);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-            }
-
+            _S7.WriteBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), values);
             return Task.CompletedTask;
         }
     }

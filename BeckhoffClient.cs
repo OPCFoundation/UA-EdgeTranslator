@@ -39,7 +39,7 @@ namespace Opc.Ua.Edge.Translator
         {
             try
             {
-                _endpoint = ipAddress;
+                _endpoint = ipAddress + ":" + port.ToString();
                 string[] addresses = ipAddress.Split(':');
                 if (addresses.Length == 2)
                 {
@@ -47,6 +47,7 @@ namespace Opc.Ua.Edge.Translator
                     string remoteEndpoint = addresses[1] + ".1.1";
 
                     _adsClient = new AdsClient(localEndpoint, addresses[1], remoteEndpoint, (ushort)port);
+                    _adsClient.RequestTimeout = AdsClient.DefaultRequestTimeout * 2;
                     _adsClient.Ams.ConnectAsync().GetAwaiter().GetResult();
 
                     AdsDeviceInfo result = _adsClient.ReadDeviceInfoAsync().GetAwaiter().GetResult();
@@ -67,7 +68,6 @@ namespace Opc.Ua.Edge.Translator
         {
             if (_adsClient != null)
             {
-                _adsClient.Dispose();
                 _adsClient = null;
             }
         }
@@ -79,29 +79,14 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            try
-            {
-                byte[] result = _adsClient.ReadBytesAsync(uint.Parse(addressWithinAsset), count).GetAwaiter().GetResult();
-                return Task.FromResult(result);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-                return Task.FromResult(new byte[0]);
-            }
+            uint varHandle = _adsClient.GetSymhandleByNameAsync(addressWithinAsset).GetAwaiter().GetResult();
+            byte[] result = _adsClient.ReadBytesAsync(varHandle, count).GetAwaiter().GetResult();
+            return Task.FromResult(result);
         }
 
         public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
         {
-            try
-            {
-                _adsClient.WriteBytesAsync(uint.Parse(addressWithinAsset), values);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-            }
-
+            _adsClient.WriteBytesAsync(uint.Parse(addressWithinAsset), values);
             return Task.CompletedTask;
         }
     }

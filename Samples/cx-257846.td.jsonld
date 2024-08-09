@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Beckhoff.CX-257846",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "name": "Beckhoff.CX-257846",
+  "base": "ads://192.168.178.45:192.168.178.26:851",
+  "title": "Beckhoff CX PLC",
+  "properties": {
+    "Sine": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "MAIN.sine?4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    }
+  }
+}

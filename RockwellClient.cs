@@ -43,28 +43,12 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            try
-            {
-                return Task.FromResult(_eeipClient.GetAttributeSingle(int.Parse(addressWithinAsset), unitID, int.Parse(function)));
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-                return Task.FromResult(new byte[0]);
-            }
+            return Task.FromResult(_eeipClient.GetAttributeSingle(int.Parse(addressWithinAsset), unitID, int.Parse(function)));
         }
 
         public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
         {
-            try
-            {
-                _eeipClient.SetAttributeSingle(int.Parse(addressWithinAsset),  unitID, 1, values);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-            }
-
+            _eeipClient.SetAttributeSingle(int.Parse(addressWithinAsset),  unitID, 1, values);
             return Task.CompletedTask;
         }
     }

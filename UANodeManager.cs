@@ -1025,76 +1025,91 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleSiemensDataUpdate(AssetTag tag, string assetId)
         {
-            // read tag
-            byte[] tagBytes = null;
-            try
-            {
-                tagBytes = _assets[assetId].Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-                // try reconnecting
-                string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                _assets[assetId].Disconnect();
-                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-            }
-
-            if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+            if (addressParts.Length == 2)
             {
-                float value = BitConverter.ToSingle(tagBytes);
-                UpdateUAServerVariable(tag, value);
+                // read tag
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                {
+                    float value = BitConverter.ToSingle(tagBytes);
+                    UpdateUAServerVariable(tag, value);
+                }
             }
         }
 
         private void HandleRockwellDataUpdate(AssetTag tag, string assetId)
         {
-            // read tag
-            byte[] tagBytes = null;
-            try
-            {
-                tagBytes = _assets[assetId].Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-                // try reconnecting
-                string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                _assets[assetId].Disconnect();
-                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-            }
-
-            if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+            if (addressParts.Length == 2)
             {
-                float value = BitConverter.ToSingle(tagBytes);
-                UpdateUAServerVariable(tag, value);
+                // read tag
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                {
+                    float value = BitConverter.ToSingle(tagBytes);
+                    UpdateUAServerVariable(tag, value);
+                }
             }
         }
 
         private void HandleBeckhoffDataUpdate(AssetTag tag, string assetId)
         {
-            // read tag
-            byte[] tagBytes = null;
-            try
-            {
-                tagBytes = _assets[assetId].Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-                // try reconnecting
-                string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                _assets[assetId].Disconnect();
-                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-            }
-
-            if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+            if (addressParts.Length == 2)
             {
-                float value = BitConverter.ToSingle(tagBytes);
-                UpdateUAServerVariable(tag, value);
+                // read tag
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                {
+                    float value = BitConverter.ToSingle(tagBytes);
+                    UpdateUAServerVariable(tag, value);
+                }
             }
         }
     }

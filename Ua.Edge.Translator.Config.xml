@@ -69,30 +69,6 @@
       </ua:UserTokenPolicy>
     </UserTokenPolicies>
 
-    <!-- see https://opcfoundation-onlineapplications.org/profilereporting/ for list of available profiles -->
-    <ServerProfileArray>
-      <ua:String>http://opcfoundation.org/UA-Profile/Server/StandardUA2017</ua:String>
-      <ua:String>http://opcfoundation.org/UA-Profile/Server/DataAccess</ua:String>
-      <ua:String>http://opcfoundation.org/UA-Profile/Server/Methods</ua:String>
-      <ua:String>http://opcfoundation.org/UA-Profile/Server/ReverseConnect</ua:String>
-      <ua:String>http://opcfoundation.org/UA-Profile/Server/ClientRedundancy</ua:String>
-    </ServerProfileArray>
-
-    <!--
-    <ReverseConnect>
-      <Clients>
-        <ReverseConnectClient>
-          <EndpointUrl>opc.tcp://localhost:65300</EndpointUrl>
-          <MaxSessionCount>0</MaxSessionCount>
-          <Enabled>true</Enabled>
-        </ReverseConnectClient>
-      </Clients>
-      <ConnectInterval>15000</ConnectInterval>
-      <ConnectTimeout>30000</ConnectTimeout>
-      <RejectTimeout>60000</RejectTimeout>
-    </ReverseConnect>
-    -->
-
     <DiagnosticsEnabled>true</DiagnosticsEnabled>
     <MaxSessionCount>100</MaxSessionCount>
     <MinSessionTimeout>10000</MinSessionTimeout>
@@ -110,17 +86,81 @@
     <MaxNotificationsPerPublish>1000</MaxNotificationsPerPublish>
     <MinMetadataSamplingInterval>1000</MinMetadataSamplingInterval>
     <AvailableSamplingRates />
+
+    <RegistrationEndpoint>
+      <ua:EndpointUrl>opc.tcp://localhost:4840</ua:EndpointUrl>
+      <ua:Server>
+        <ua:ApplicationUri>opc.tcp://localhost:4840</ua:ApplicationUri>
+        <ua:ApplicationType>DiscoveryServer_3</ua:ApplicationType>
+        <ua:DiscoveryUrls>
+          <ua:String>opc.tcp://localhost:4840</ua:String>
+        </ua:DiscoveryUrls>
+      </ua:Server>
+      <ua:SecurityMode>SignAndEncrypt_3</ua:SecurityMode>
+      <ua:SecurityPolicyUri />
+      <ua:UserIdentityTokens />
+    </RegistrationEndpoint>
+
     <MaxRegistrationInterval>0</MaxRegistrationInterval>
     <NodeManagerSaveFile>Opc.Ua.Server.nodes.xml</NodeManagerSaveFile>
+    <MinSubscriptionLifetime>10000</MinSubscriptionLifetime>
+    <MaxPublishRequestCount>20</MaxPublishRequestCount>
+    <MaxSubscriptionCount>100</MaxSubscriptionCount>
+    <MaxEventQueueSize>10000</MaxEventQueueSize>
+
+    <!-- see https://opcfoundation-onlineapplications.org/profilereporting/ for list of available profiles -->
+    <ServerProfileArray>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/StandardUA2017</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/DataAccess</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/Methods</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/ReverseConnect</ua:String>
+      <ua:String>http://opcfoundation.org/UA-Profile/Server/ClientRedundancy</ua:String>
+    </ServerProfileArray>
+
+    <ShutdownDelay>5</ShutdownDelay>
+    <ServerCapabilities>
+      <ua:String>DA</ua:String>
+    </ServerCapabilities>
+    <SupportedPrivateKeyFormats>
+      <ua:String>PFX</ua:String>
+      <ua:String>PEM</ua:String>
+    </SupportedPrivateKeyFormats>
+    <MaxTrustListSize>0</MaxTrustListSize>
+    <MultiCastDnsEnabled>false</MultiCastDnsEnabled>
+
+    <!--
+    <ReverseConnect>
+      <Clients>
+        <ReverseConnectClient>
+          <EndpointUrl>opc.tcp://localhost:65300</EndpointUrl>
+          <MaxSessionCount>0</MaxSessionCount>
+          <Enabled>true</Enabled>
+        </ReverseConnectClient>
+      </Clients>
+      <ConnectInterval>15000</ConnectInterval>
+      <ConnectTimeout>30000</ConnectTimeout>
+      <RejectTimeout>60000</RejectTimeout>
+    </ReverseConnect>
+    -->
+
+    <OperationLimits>
+      <MaxNodesPerRead>2500</MaxNodesPerRead>
+      <MaxNodesPerHistoryReadData>1000</MaxNodesPerHistoryReadData>
+      <MaxNodesPerWrite>2500</MaxNodesPerWrite>
+      <MaxNodesPerMethodCall>2500</MaxNodesPerMethodCall>
+      <MaxNodesPerBrowse>2500</MaxNodesPerBrowse>
+      <MaxNodesPerRegisterNodes>2500</MaxNodesPerRegisterNodes>
+      <MaxNodesPerTranslateBrowsePathsToNodeIds>2500</MaxNodesPerTranslateBrowsePathsToNodeIds>
+      <MaxNodesPerNodeManagement>2500</MaxNodesPerNodeManagement>
+      <MaxMonitoredItemsPerCall>2500</MaxMonitoredItemsPerCall>
+    </OperationLimits>
+
+    <AuditingEnabled>true</AuditingEnabled>
   </ServerConfiguration>
 
   <ClientConfiguration>
     <DefaultSessionTimeout>15000</DefaultSessionTimeout>
-    <WellKnownDiscoveryUrls>
-      <ua:String>opc.tcp://{0}:4840/UADiscovery</ua:String>
-      <ua:String>http://{0}:52601/UADiscovery</ua:String>
-      <ua:String>http://{0}/UADiscovery/Default.svc</ua:String>
-    </WellKnownDiscoveryUrls>
+    <WellKnownDiscoveryUrls/>
     <DiscoveryServers/>
     <EndpointCacheFilePath/>
     <MinSubscriptionLifetime>10000</MinSubscriptionLifetime>
