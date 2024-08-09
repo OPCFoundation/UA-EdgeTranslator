@@ -1,0 +1,212 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Simple PLC",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "tm:ThingModel"
+  ],
+  "name": "{{name}}",
+  "base": "ads://{{address}}:{{port}}",
+  "title": "Untitled1",
+  "properties": {
+    "Global_Version.stLibVersion_Tc2_Standard": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Global_Version.stLibVersion_Tc2_Standard?36",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "Global_Version.stLibVersion_Tc2_System": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Global_Version.stLibVersion_Tc2_System?36",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "Global_Version.stLibVersion_Tc3_Module": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Global_Version.stLibVersion_Tc3_Module?36",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "GVL_VAR.temp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "GVL_VAR.temp?4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "MAIN.myCounter": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "MAIN.myCounter?2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "TwinCAT_SystemInfoVarList._AppInfo": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TwinCAT_SystemInfoVarList._AppInfo?256",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "TwinCAT_SystemInfoVarList._TaskInfo": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TwinCAT_SystemInfoVarList._TaskInfo?128",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "TwinCAT_SystemInfoVarList._TaskPouOid_PlcTask": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TwinCAT_SystemInfoVarList._TaskPouOid_PlcTask?4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "TwinCAT_SystemInfoVarList._TaskOid_PlcTask": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TwinCAT_SystemInfoVarList._TaskOid_PlcTask?4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    },
+    "TwinCAT_SystemInfoVarList.__PlcTask": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TwinCAT_SystemInfoVarList.__PlcTask?112",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    }
+  }
+}

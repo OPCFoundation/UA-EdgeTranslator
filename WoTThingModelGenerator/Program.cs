@@ -1,15 +1,17 @@
 ﻿namespace Opc.Ua.Edge.Translator.Tools
 {
-    using Newtonsoft.Json;
-    using Opc.Ua.Export;
     using Aml.Engine.CAEX;
-    using System;
+    using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Models;
-    using Aml.Engine.CAEX.Extensions;
-    using System.Runtime.InteropServices;
-    using Org.BouncyCastle.Asn1.Cms;
+    using Opc.Ua.Export;
+    using System;
+    using System.IO;
+    using System.Xml;
+    using System.Xml.Serialization;
+    using WoTThingModelGenerator.TwinCAT;
+    using Property = Models.Property;
 
-#nullable enable
+#nullable disable
 
     internal class Program
     {
@@ -26,17 +28,73 @@
                 {
                     ImportAutomationML(filename);
                 }
- 
+
                 if (filename.EndsWith(".aas.json"))
                 {
                     ImportAASAID(filename);
                 }
+
+                if (filename.EndsWith(".tmc"))
+                {
+                    ImportTwinCAT(filename);
+                }
             }
+        }
+
+        private static void ImportTwinCAT(string filename)
+        {
+            XmlSerializer serializer = new XmlSerializer(typeof(TwinCAT));
+            TwinCAT twinCAT = null;
+            using (XmlReader reader = XmlReader.Create(filename))
+            {
+                twinCAT = serializer.Deserialize(reader) as TwinCAT;
+            }
+
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "tm:ThingModel" },
+                Name = "{{name}}",
+                Base = "ads://{{address}}:{{port}}",
+                Title = twinCAT.Modules.Module.Name,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            foreach (Symbol symbol in twinCAT.Modules.Module.DataAreas.DataArea.Symbol)
+            {
+                string reference = symbol.Name;
+
+                ADSForm form = new()
+                {
+                    Href = reference + "?" + symbol.BitSize/8,
+                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                    ADSPollingTime = 1000,
+                    ADSType = ADSType.Float
+                };
+
+                Property property = new()
+                {
+                    Type = TypeEnum.Number,
+                    ReadOnly = true,
+                    Observable = true,
+                    Forms = new object[1] { form }
+                };
+
+                if (!td.Properties.ContainsKey(reference))
+                {
+                    td.Properties.Add(reference, property);
+                }
+            }
+
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
         }
 
         private static void ImportAASAID(string filename)
         {
-            AAS_AID? aid = JsonConvert.DeserializeObject<AAS_AID>(File.ReadAllText(filename));
+            AAS_AID aid = JsonConvert.DeserializeObject<AAS_AID>(File.ReadAllText(filename));
 
             ThingDescription td = new()
             {
@@ -51,30 +109,120 @@
                 Properties = new Dictionary<string, Property>()
             };
 
+            Dictionary<string, string> subModelElements = new();
             if (aid?.SubmodelElements != null)
             {
-                ImportSubmodelElementCollection(aid.SubmodelElements);
+                ImportSubmodelElementCollection(aid.Id, aid.SubmodelElements, subModelElements);
             }
 
-            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Formatting.Indented));
+            foreach( KeyValuePair<string, string> pair in subModelElements)
+            {
+                if (pair.Key.EndsWith(":title"))
+                {
+                    td.Title = pair.Value;
+                }
+
+                if (pair.Key.EndsWith(":base"))
+                {
+                    td.Base = pair.Value;
+                }
+
+                if (pair.Key.Contains(":properties:"))
+                {
+                    string propertyName = pair.Key.Substring(pair.Key.IndexOf(":properties:") + 12);
+                    propertyName = propertyName.Substring(0, propertyName.IndexOf(":"));
+
+                    // check if we have to create a new property
+                    CreateNewProperty(td, pair.Key, propertyName);
+
+                    if (pair.Key.EndsWith(":href"))
+                    {
+                        if (pair.Key.Contains(":InterfaceMODBUS_TCP:"))
+                        {
+                            ModbusForm form = (ModbusForm)td.Properties[propertyName].Forms[0];
+                            form.Href = pair.Value;
+                        }
+                        else
+                        {
+                            GenericForm form = (GenericForm)td.Properties[propertyName].Forms[0];
+                            form.Href = pair.Value;
+                        }
+                    }
+
+                    if (pair.Key.EndsWith(":modv_pollingTime"))
+                    {
+                        if (pair.Key.Contains(":InterfaceMODBUS_TCP:"))
+                        {
+                            ModbusForm form = (ModbusForm)td.Properties[propertyName].Forms[0];
+                            form.ModbusPollingTime = long.Parse(pair.Value);
+                        }
+                    }
+                }
+            }
+
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
         }
 
-        private static void ImportSubmodelElementCollection(List<SubmodelElement> smec)
+        private static void CreateNewProperty(ThingDescription td, string key, string propertyName)
+        {
+
+
+            if (!td.Properties.ContainsKey(propertyName))
+            {
+                object form = null;
+                if (key.Contains(":InterfaceMODBUS_TCP:"))
+                {
+                    ModbusForm modbusForm = new()
+                    {
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        ModbusEntity = ModbusEntity.HoldingRegister,
+                        ModbusType = ModbusType.Float
+                    };
+                    form = modbusForm;
+                }
+                else
+                {
+                    GenericForm genericForm = new()
+                    {
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty }
+                    };
+                    form = genericForm;
+                }
+
+                Property property = new()
+                {
+                    Type = TypeEnum.Number,
+                    ReadOnly = true,
+                    Observable = true,
+                    Forms = new object[1] { form }
+                };
+
+                td.Properties.Add(propertyName, property);
+            }
+        }
+
+        private static void ImportSubmodelElementCollection(string parentName, List<SubmodelElement> smec, Dictionary<string, string> subModelElements)
         {
             foreach (SubmodelElement submodelElement in smec)
             {
                 if (submodelElement.ValueType == null)
                 {
-                    List<SubmodelElement>? nestedSMEC = JsonConvert.DeserializeObject<List<SubmodelElement>>(submodelElement?.Value?.ToString());
-
-                    if (nestedSMEC != null)
+                    try
                     {
-                        ImportSubmodelElementCollection(nestedSMEC);
+                        List<SubmodelElement> nestedSMEC = JsonConvert.DeserializeObject<List<SubmodelElement>>(submodelElement.Value.ToString());
+                        if (nestedSMEC.Count > 0)
+                        {
+                            ImportSubmodelElementCollection(parentName + ":" + submodelElement.IdShort, nestedSMEC, subModelElements);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("Ignoring SubmodelElement " + submodelElement.IdShort);
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Name: " + submodelElement?.IdShort + " Value: " + submodelElement?.Value?.ToString());
+                    subModelElements.Add(parentName + ":" + submodelElement.IdShort, submodelElement.Value.ToString());
                 }
             }
         }
@@ -104,7 +252,7 @@
                 }
             }
 
-            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Formatting.Indented));
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
         }
 
         private static void ImportInternalElement(string parent, InternalElementType internalElement, Dictionary<string, Property> tdProperties)
@@ -144,7 +292,7 @@
                 GenericForm form = new()
                 {
                     Href = reference,
-                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty }
                 };
 
                 Property property = new()
@@ -167,7 +315,7 @@
         private static void ImportNodeset2Xml(string filename)
         {
             Stream stream = new FileStream(filename, FileMode.Open);
-            
+
             ThingDescription td = new() {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
@@ -187,7 +335,7 @@
                 AddPredefinedNode(node, nodeSet.NamespaceUris[0], td.Properties);
             }
 
-            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Formatting.Indented));
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
         }
 
         private static void AddPredefinedNode(UANode predefinedNode, string namespaceUri, Dictionary<string, Property> tdProperties)
@@ -204,7 +352,7 @@
                     OPCUAPollingTime = 1000
                 };
 
-                foreach( Reference reference in variable.References)
+                foreach( Export.Reference reference in variable.References)
                 {
                     if (reference.ReferenceType == "HasModellingRule")
                     {
