@@ -1057,13 +1057,13 @@ namespace Opc.Ua.Edge.Translator
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
-            if (addressParts.Length == 2)
+            if (addressParts.Length == 3)
             {
                 // read tag
                 byte[] tagBytes = null;
                 try
                 {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                    tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1]), addressParts[2], 0).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {

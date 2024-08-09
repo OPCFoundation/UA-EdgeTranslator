@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:AB.Logix5581E",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "name": "AB.Logix5581E",
+  "base": "eip://192.168.178.20",
+  "title": "AB Logix5581E PLC",
+  "properties": {
+    "Tag1": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "66?1&325",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "ads:type": "xsd:float",
+          "ads:pollingTime": 1000
+        }
+      ]
+    }
+  }
+}
