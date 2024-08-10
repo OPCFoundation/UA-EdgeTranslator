@@ -17,6 +17,7 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 _endpoint = ipAddress;
+
                 _S7 = new Plc(CpuType.S71500, _endpoint, 0, (short)port);
                 _S7.Open();
 

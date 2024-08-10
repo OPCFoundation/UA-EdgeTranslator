@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <PackageReference Include="EEIP" Version="1.6.0.26419" />
+    <PackageReference Include="McProtocol" Version="1.2.5" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.374.78" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.78" />

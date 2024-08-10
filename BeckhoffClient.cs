@@ -40,6 +40,7 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 _endpoint = ipAddress + ":" + port.ToString();
+
                 string[] addresses = ipAddress.Split(':');
                 if (addresses.Length == 2)
                 {

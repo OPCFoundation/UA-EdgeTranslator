@@ -17,6 +17,7 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 _endpoint = ipAddress;
+
                 EEIPClient eeipClient = new EEIPClient();
                 eeipClient.IPAddress = _endpoint;
                 uint result = eeipClient.RegisterSession();

@@ -187,10 +187,11 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
             // create a variable listing our supported WoT protocol bindings
-            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[5] {
+            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[6] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
+                "https://www.w3.org/2019/wot/mcp",
                 "https://www.w3.org/2019/wot/eip",
                 "https://www.w3.org/2019/wot/ads"
             });
@@ -678,6 +679,25 @@ namespace Opc.Ua.Edge.Translator
                 _tags[assetId].Add(tag);
             }
 
+            if (td.Base.ToLower().StartsWith("mcp://"))
+            {
+                // create an asset tag and add to our list
+                GenericForm genForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = genForm.Href,
+                    UnitID = unitId,
+                    Type = "xsd:float",
+                    PollingInterval = 1000,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+            
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 // create an asset tag and add to our list
@@ -763,6 +783,21 @@ namespace Opc.Ua.Edge.Translator
 
                 // check if we can reach the OPC UA asset
                 SiemensClient client = new();
+                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("mcp://"))
+            {
+                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
+                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "mcp"))
+                {
+                    throw new Exception("Expected Mitsubishi PLC address in the format mcp://ipaddress:port!");
+                }
+
+                // check if we can reach the OPC UA asset
+                MitsubishiClient client = new();
                 client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
 
                 assetInterface = client;
@@ -892,6 +927,11 @@ namespace Opc.Ua.Edge.Translator
                             if (_assets[assetId] is SiemensClient)
                             {
                                 HandleSiemensDataUpdate(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is MitsubishiClient)
+                            {
+                                HandleMitsubishiDataUpdate(tag, assetId);
                             }
 
                             if (_assets[assetId] is RockwellClient)
@@ -1024,6 +1064,36 @@ namespace Opc.Ua.Edge.Translator
         }
 
         private void HandleSiemensDataUpdate(AssetTag tag, string assetId)
+        {
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+
+            if (addressParts.Length == 2)
+            {
+                // read tag
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                {
+                    float value = BitConverter.ToSingle(tagBytes);
+                    UpdateUAServerVariable(tag, value);
+                }
+            }
+        }
+
+        private void HandleMitsubishiDataUpdate(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
