@@ -56,20 +56,20 @@ namespace Opc.Ua.Edge.Translator
         {
             if ((e.TraceMask & App.ApplicationConfiguration.TraceConfiguration.TraceMasks) != 0)
             {
-                if (e.Arguments != null)
+                if (e.Exception != null)
                 {
-                    try
-                    {
-                        Log.Logger.Information("OPC UA Stack: " + string.Format(CultureInfo.InvariantCulture, e.Format, e.Arguments).Trim());
-                    }
-                    catch (Exception)
-                    {
-                        Log.Logger.Information("OPC UA Stack: " + e.Format.Trim());
-                    }
+                    Log.Logger.Error(e.Exception, e.Format, e.Arguments);
+                    return;
                 }
-                else
+
+                switch (e.TraceMask)
                 {
-                    Log.Logger.Information("OPC UA Stack: " + e.Format.Trim());
+                    case Utils.TraceMasks.StartStop:
+                    case Utils.TraceMasks.Information: Log.Logger.Information(e.Format, e.Arguments); break;
+                    case Utils.TraceMasks.Error: Log.Logger.Error(e.Format, e.Arguments); break;
+                    case Utils.TraceMasks.StackTrace:
+                    case Utils.TraceMasks.Security: Log.Logger.Warning(e.Format, e.Arguments); break;
+                    default: Log.Logger.Verbose(e.Format, e.Arguments); break;
                 }
             }
         }
