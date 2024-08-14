@@ -554,7 +554,7 @@ namespace Opc.Ua.Edge.Translator
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
                             DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
-                            if (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                            if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
                                 ExtensionObject complexTypeInstance = new()
                                 {
@@ -697,7 +697,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _tags[assetId].Add(tag);
             }
-            
+
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 // create an asset tag and add to our list
