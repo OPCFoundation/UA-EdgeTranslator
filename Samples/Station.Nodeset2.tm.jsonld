@@ -2,7 +2,7 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1"
   ],
-  "id": "urn:Station.Nodeset2",
+  "id": "urn:Station.NodeSet2",
   "securityDefinitions": {
     "nosec_sc": {
       "scheme": "nosec"
@@ -16,7 +16,7 @@
   ],
   "name": "{{name}}",
   "base": "opc.tcp://{{address}}:{{port}}",
-  "title": "Station.Nodeset2",
+  "title": "Station.NodeSet2",
   "properties": {
     "ProductSerialNumber": {
       "type": "number",
@@ -32,8 +32,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -51,8 +51,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -70,8 +70,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -89,8 +89,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -108,8 +108,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -127,8 +127,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -146,8 +146,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -165,8 +165,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -184,8 +184,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -203,8 +203,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "opcua:type": "xsd:float",
-          "opcua:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     }

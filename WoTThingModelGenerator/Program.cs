@@ -19,27 +19,27 @@
         {
             foreach (string filename in Directory.GetFiles(Directory.GetCurrentDirectory()))
             {
-                if (filename.EndsWith(".nodeset2.xml"))
+                if (filename.ToLower().EndsWith(".nodeset2.xml"))
                 {
                     ImportNodeset2Xml(filename);
                 }
 
-                if (filename.EndsWith(".aml"))
+                if (filename.ToLower().EndsWith(".aml"))
                 {
                     ImportAutomationML(filename);
                 }
 
-                if (filename.EndsWith(".aas.json"))
+                if (filename.ToLower().EndsWith(".aas.json"))
                 {
                     ImportAASAID(filename);
                 }
 
-                if (filename.EndsWith(".tmc"))
+                if (filename.ToLower().EndsWith(".tmc"))
                 {
                     ImportTwinCAT(filename);
                 }
 
-                if (filename.EndsWith(".csv"))
+                if (filename.ToLower().EndsWith(".csv"))
                 {
                     ImportCSV(filename);
                 }
@@ -368,7 +368,9 @@
                 GenericForm form = new()
                 {
                     Href = reference,
-                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty }
+                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                    Type = TypeString.Float,
+                    PollingTime = 1000
                 };
 
                 Property property = new()
