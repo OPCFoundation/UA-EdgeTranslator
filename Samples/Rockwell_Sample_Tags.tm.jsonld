@@ -1,0 +1,4373 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Rockwell_Sample_Tags",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "tm:ThingModel"
+  ],
+  "name": "{{name}}",
+  "base": "eip://{{address}}:{{port}}",
+  "title": "Rockwell_Sample_Tags",
+  "properties": {
+    "a": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "a0": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a0",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "a1": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "a2": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "a3": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a3",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "a4": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "a4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Carrier_Value": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Carrier_Value",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "cavdetect": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "cavdetect",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "EnergyIntensityLine": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "EnergyIntensityLine",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Cooling_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Cooling_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Cooling_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Cooling_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Deposit_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Deposit_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Deposit_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Deposit_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Loader_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Loader_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Loader_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Loader_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_0_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_0_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_0_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_0_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_10_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_10_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_10_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_10_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_11_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_11_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_11_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_11_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_12_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_12_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_12_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_12_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_13_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_13_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_13_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_13_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_14_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_14_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_14_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_14_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_1_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_1_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_1_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_1_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_2_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_2_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_2_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_2_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_3_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_3_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_3_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_3_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_4_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_4_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_4_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_4_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_5_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_5_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_5_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_5_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_6_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_6_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_6_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_6_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_7_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_7_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_7_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_7_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_8_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_8_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_8_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_8_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_9_Actual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_9_Actual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Mixer_BMC_9_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Mixer_BMC_9_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Oven_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Oven_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Oven_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Oven_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Packer_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Packer_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Packer_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Packer_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Palletizer_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Palletizer_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Palletizer_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Palletizer_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_ShrinkWrapper_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_ShrinkWrapper_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_ShrinkWrapper_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_ShrinkWrapper_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Wrapper_BCT_TotalActual": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Wrapper_BCT_TotalActual",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "fta_Wrapper_BCT_TotalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "fta_Wrapper_BCT_TotalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Humidity_pc": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Humidity_pc",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Humidity_Predict": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Humidity_Predict",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Inlet_Water_Content": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Inlet_Water_Content",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Lab_Moisture": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Lab_Moisture",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mDemandFactor": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mDemandFactor",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mDemandStart": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mDemandStart",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Mixer_TimeFactor": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Mixer_TimeFactor",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLineDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLineDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLineGasTherm": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLineGasTherm",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLinekWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLinekWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLineTotalEnergykWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLineTotalEnergykWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Moisture": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Moisture",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Sample_REAL": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Sample_REAL",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temp_F": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temp_F",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temp_Predict": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temp_Predict",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "x": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "x",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "y": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "y",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "y2": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "y2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "z": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "z",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Zone1_Temp_PV": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Zone1_Temp_PV",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Zone2_Temp_PV": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Zone2_Temp_PV",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "ZPredictCycleTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ZPredictCycleTime",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Ambient": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Ambient",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "AR": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "AR",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "ARB": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ARB",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "BTUs": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "BTUs",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "cp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "cp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "cp_therm": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "cp_therm",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mCoolingDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mCoolingDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mCoolingKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mCoolingKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mDemandHold": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mDemandHold",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mEnergyTransferIN": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mEnergyTransferIN",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mEnergyTransferOUT": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mEnergyTransferOUT",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mIdealCycleTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mIdealCycleTime",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInCoolSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInCoolSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInCoolTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInCoolTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "MODN": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "MODN",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mStartEnergy": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mStartEnergy",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mStepEnergy": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mStepEnergy",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mTransfer_Energy": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mTransfer_Energy",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "PerCentLoad": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "PerCentLoad",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "R": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "R",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RANDOM": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RANDOM",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RANDOM1M": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RANDOM1M",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RANDOM1P": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RANDOM1P",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RANDOMP1": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RANDOMP1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Recipe_IdealCT": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Recipe_IdealCT",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "cpBT": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "cpBT",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "cpDeposit": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "cpDeposit",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mDepositorDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mDepositorDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mDepositorKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mDepositorKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInBTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInBTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInBTSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInBTSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInDepositPressure": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInDepositPressure",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInDepositSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInDepositSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInLoaderSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInLoaderSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInLoaderTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInLoaderTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLoaderDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLoaderDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLoaderKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLoaderKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_PRESSUREOSPlusAmp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_PRESSUREOSPlusAmp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_PRESSUREOSSubAmp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_PRESSUREOSSubAmp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mLineDemandHold": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mLineDemandHold",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Carrier_Predict": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Carrier_Predict",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "EnergyIntensityKG": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "EnergyIntensityKG",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mCIPSanitizeTempSP": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mCIPSanitizeTempSP",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mGoodKG": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mGoodKG",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mIdealCycleTimeKG": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mIdealCycleTimeKG",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mMassBal_CT": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mMassBal_CT",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mMixerDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mMixerDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mMixerKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mMixerKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mMixerWTInternal": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mMixerWTInternal",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mMixerWTInternalTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mMixerWTInternalTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPredictLowFlow": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPredictLowFlow",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mRecipeActualParameters_Deviation": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mRecipeActualParameters_Deviation",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mScrapKG": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mScrapKG",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mTotalKG": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mTotalKG",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mTotalLBS": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mTotalLBS",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RM1M": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RM1M",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "RM1P": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "RM1P",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Ambient2": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Ambient2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Ambient4": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Ambient4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInOvenSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInOvenSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInOvenTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInOvenTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mOvenDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mOvenDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mOvenKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mOvenKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPerMixGas": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPerMixGas",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPerMixGas_KWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPerMixGas_KWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mStart_Gas": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mStart_Gas",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mTotal_Gas": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mTotal_Gas",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInPackerSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInPackerSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInPackerTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInPackerTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPackerDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPackerDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPackerKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPackerKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPalletizerDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPalletizerDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mPalletizerKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mPalletizerKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mShrinkConsume": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mShrinkConsume",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mShrinkTarget": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mShrinkTarget",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mShrinkWrapperDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mShrinkWrapperDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mShrinkWrapperKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mShrinkWrapperKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Carrier_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Carrier_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Humidity_Percent": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Humidity_Percent",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Humidity_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Humidity_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "PI": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "PI",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Reduced": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Reduced",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "ReducedFactor": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ReducedFactor",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Reduced_Holding": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Reduced_Holding",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temperature_C": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temperature_C",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temperature_F": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temperature_F",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temperature_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temperature_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "TimeFactor": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "TimeFactor",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "ValAt180": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ValAt180",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInWrapperSetPoint": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInWrapperSetPoint",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mInWrapperTemp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mInWrapperTemp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapperDemand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapperDemand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapperKWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapperKWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapper_CurrentIN_Amps": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapper_CurrentIN_Amps",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapper_CurrentIN_SetPt": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapper_CurrentIN_SetPt",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapper_Current_cp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapper_Current_cp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "mWrapper_Current_Target": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "mWrapper_Current_Target",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_YValue": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_YValue",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_ActualOffset": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_ActualOffset",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_OffsetDiff": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_OffsetDiff",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_OffsetDiffABS": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_OffsetDiffABS",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_1Percent": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_1Percent",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_LastCommandedSP": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_LastCommandedSP",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_TimeWindow": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_TimeWindow",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_YValue": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_YValue",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_ScratchPad2": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_ScratchPad2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_ScratchPad1": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_ScratchPad1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Wrk_Pi": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Wrk_Pi",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Inp_Meter_Analog_Value": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Inp_Meter_Analog_Value",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_Demand_Interval": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_Demand_Interval",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Sts_Value1": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Sts_Value1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Sts_Value2": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Sts_Value2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_High_Demand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_High_Demand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_Critical_Demand": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_Critical_Demand",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Sts_Value3": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Sts_Value3",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Sts_Value4": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Sts_Value4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Total_kWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Total_kWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Demand_Electric": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Demand_Electric",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Demand_Interval_Time": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Demand_Interval_Time",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Buffered_Flow": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Buffered_Flow",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Temp_Buffer": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Temp_Buffer",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Previous_KWh": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Previous_KWh",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_Calc_Interval": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_Calc_Interval",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_High_Flow": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_High_Flow",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Set_Critical_Flow": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Set_Critical_Flow",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Total_Gas": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Total_Gas",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Gas_Per_Hr": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Gas_Per_Hr",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Gas_Per_Calc_Interval": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Gas_Per_Calc_Interval",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Total_Gas_Previous": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Total_Gas_Previous",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Val_Gas_Per_Min": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Val_Gas_Per_Min",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Par_Accel_Time": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Par_Accel_Time",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Par_Decel_Time": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Par_Decel_Time",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Par_Max_ConvSpeed_mpm": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Par_Max_ConvSpeed_mpm",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "In_Speed": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "In_Speed",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Out_Ramped": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Out_Ramped",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "In": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "In",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "AmpFraction": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "AmpFraction",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "FreqHz": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "FreqHz",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "ScanTime": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ScanTime",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Out": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Out",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "r": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "r",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Period": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Period",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Amp": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Amp",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Inp_Data": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Inp_Data",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Cfg_ChangeDeltaLimit": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Cfg_ChangeDeltaLimit",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "_TempReal01": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "_TempReal01",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "_OldValue": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "_OldValue",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "O": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "O",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    }
+  }
+}

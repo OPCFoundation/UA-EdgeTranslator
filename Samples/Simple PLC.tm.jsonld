@@ -32,8 +32,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -51,8 +51,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -70,8 +70,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -89,8 +89,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -108,8 +108,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -127,8 +127,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -146,8 +146,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -165,8 +165,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -184,8 +184,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     },
@@ -203,8 +203,8 @@
             "readproperty",
             "observeproperty"
           ],
-          "ads:type": "xsd:float",
-          "ads:pollingTime": 1000
+          "type": "xsd:float",
+          "pollingTime": 1000
         }
       ]
     }

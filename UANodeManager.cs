@@ -644,14 +644,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
                 // create an asset tag and add to our list
-                OPCUAForm opcuaForm = JsonConvert.DeserializeObject<OPCUAForm>(form.ToString());
+                GenericForm opcuaForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
                     Address = opcuaForm.Href,
                     UnitID = unitId,
-                    Type = opcuaForm.OPCUAType.ToString(),
-                    PollingInterval = (int)opcuaForm.OPCUAPollingTime,
+                    Type = opcuaForm.Type.ToString(),
+                    PollingInterval = (int)opcuaForm.PollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -669,8 +669,8 @@ namespace Opc.Ua.Edge.Translator
                     Name = variableId,
                     Address = opcuaForm.Href,
                     UnitID = unitId,
-                    Type = opcuaForm.S7Type.ToString(),
-                    PollingInterval = (int)opcuaForm.S7PollingTime,
+                    Type = opcuaForm.Type.ToString(),
+                    PollingInterval = (int)opcuaForm.PollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -701,14 +701,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 // create an asset tag and add to our list
-                EIPForm eipForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
+                GenericForm eipForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
                     Address = eipForm.Href,
                     UnitID = unitId,
-                    Type = eipForm.EIPType.ToString(),
-                    PollingInterval = (int)eipForm.EIPPollingTime,
+                    Type = eipForm.Type.ToString(),
+                    PollingInterval = (int)eipForm.PollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -720,14 +720,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("ads://"))
             {
                 // create an asset tag and add to our list
-                ADSForm adsForm = JsonConvert.DeserializeObject<ADSForm>(form.ToString());
+                GenericForm adsForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
                     Address = adsForm.Href,
                     UnitID = unitId,
-                    Type = adsForm.ADSType.ToString(),
-                    PollingInterval = (int)adsForm.ADSPollingTime,
+                    Type = adsForm.Type.ToString(),
+                    PollingInterval = (int)adsForm.PollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath

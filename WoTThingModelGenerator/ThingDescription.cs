@@ -6,6 +6,8 @@ namespace Opc.Ua.Edge.Translator.Models
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
+#nullable enable
+
     public class ThingDescription
     {
         [JsonProperty("@context")]
@@ -75,7 +77,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public Op[]? Op { get; set; }
 
         [JsonProperty("modv:type")]
-        public ModbusType ModbusType { get; set; }
+        public TypeString ModbusType { get; set; }
 
         [JsonProperty("modv:entity")]
         public ModbusEntity ModbusEntity { get; set; }
@@ -91,21 +93,12 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("op")]
         public Op[]? Op { get; set; }
-    }
 
-    public class OPCUAForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
+        [JsonProperty("type")]
+        public TypeString Type { get; set; }
 
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("opcua:type")]
-        public OPCUAType OPCUAType { get; set; }
-
-        [JsonProperty("opcua:pollingTime")]
-        public long OPCUAPollingTime { get; set; }
+        [JsonProperty("pollingTime")]
+        public long PollingTime { get; set; }
     }
 
     public class S7Form
@@ -137,8 +130,8 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("s7:maxlen")]
         public int S7MaxLen { get; set; }
 
-        [JsonProperty("s7:type")]
-        public S7Type S7Type { get; set; }
+        [JsonProperty("type")]
+        public TypeString Type { get; set; }
 
         [JsonProperty("s7:target")]
         public S7Target S7Target { get; set; }
@@ -146,38 +139,8 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("s7:address")]
         public string? S7Address { get; set; }
 
-        [JsonProperty("s7:pollingTime")]
-        public long S7PollingTime { get; set; }
-    }
-
-    public class EIPForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("eip:type")]
-        public EIPType EIPType { get; set; }
-
-        [JsonProperty("eip:pollingTime")]
-        public long EIPPollingTime { get; set; }
-    }
-
-    public class ADSForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("ads:type")]
-        public ADSType ADSType { get; set; }
-
-        [JsonProperty("ads:pollingTime")]
-        public long ADSPollingTime { get; set; }
+        [JsonProperty("pollingTime")]
+        public long PollingTime { get; set; }
     }
 
     public class SecurityDefinitions
@@ -197,27 +160,6 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [EnumMember(Value = "HoldingRegister")]
         HoldingRegister
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ModbusType
-    {
-        [EnumMember(Value = "xsd:float")]
-        Float
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum OPCUAType
-    {
-        [EnumMember(Value = "xsd:float")]
-        Float
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum S7Type
-    {
-        [EnumMember(Value = "xsd:float")]
-        Float
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
@@ -243,20 +185,6 @@ namespace Opc.Ua.Edge.Translator.Models
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum EIPType
-    {
-        [EnumMember(Value = "xsd:float")]
-        Float
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ADSType
-    {
-        [EnumMember(Value = "xsd:float")]
-        Float
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum Op
     {
         [EnumMember(Value = "observeproperty")]
@@ -271,5 +199,12 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [EnumMember(Value = "number")]
         Number
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum TypeString
+    {
+        [EnumMember(Value = "xsd:float")]
+        Float
     };
 }

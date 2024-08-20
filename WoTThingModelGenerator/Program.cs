@@ -38,7 +38,71 @@
                 {
                     ImportTwinCAT(filename);
                 }
+
+                if (filename.EndsWith(".csv"))
+                {
+                    ImportCSV(filename);
+                }
             }
+        }
+
+        private static void ImportCSV(string filename)
+        {
+            IEnumerable<string> content = File.ReadLines(filename);
+
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "tm:ThingModel" },
+                Name = "{{name}}",
+                Base = "eip://{{address}}:{{port}}",
+                Title = Path.GetFileNameWithoutExtension(filename),
+                Properties = new Dictionary<string, Property>()
+            };
+
+            foreach (string line in content)
+            {
+                string[] tokens = line.Split(',');
+
+                // ignore everything but tags in the form TYPE,SCOPE,NAME,DESCRIPTION,DATATYPE,SPECIFIER,ATTRIBUTES, where TYPE must be "TAG"
+                if ((tokens.Length > 6) && tokens[0] == "TAG")
+                {
+                    string reference = tokens[2];
+                    TypeString type = TypeString.Float;
+
+                    if ((tokens[4] != "\"REAL\"") && (tokens[5] != "\"FLOAT\""))
+                    {
+                        // can only handle floats and reals for now
+                        continue;
+                    }
+
+                    GenericForm form = new()
+                    {
+                        Href = reference,
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        PollingTime = 1000,
+                        Type = type
+                    };
+
+                    Property property = new()
+                    {
+                        Type = TypeEnum.Number,
+                        ReadOnly = true,
+                        Observable = true,
+                        Forms = new object[1] { form }
+                    };
+
+                    if (!td.Properties.ContainsKey(reference))
+                    {
+                        td.Properties.Add(reference, property);
+                    }
+                }
+            }
+
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
         }
 
         private static void ImportTwinCAT(string filename)
@@ -67,12 +131,12 @@
             {
                 string reference = symbol.Name;
 
-                ADSForm form = new()
+                GenericForm form = new()
                 {
                     Href = reference + "?" + symbol.BitSize/8,
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
-                    ADSPollingTime = 1000,
-                    ADSType = ADSType.Float
+                    PollingTime = 1000,
+                    Type = TypeString.Float
                 };
 
                 Property property = new()
@@ -165,8 +229,6 @@
 
         private static void CreateNewProperty(ThingDescription td, string key, string propertyName)
         {
-
-
             if (!td.Properties.ContainsKey(propertyName))
             {
                 object form = null;
@@ -176,7 +238,7 @@
                     {
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                         ModbusEntity = ModbusEntity.HoldingRegister,
-                        ModbusType = ModbusType.Float
+                        ModbusType = TypeString.Float
                     };
                     form = modbusForm;
                 }
@@ -328,7 +390,6 @@
                 Properties = new Dictionary<string, Property>()
             };
 
-
             UANodeSet nodeSet = UANodeSet.Read(stream);
             foreach (UANode node in nodeSet.Items)
             {
@@ -344,12 +405,12 @@
             {
                 UAVariable variable = (UAVariable)predefinedNode;
 
-                OPCUAForm form = new()
+                GenericForm form = new()
                 {
                     Href = "nsu=" + namespaceUri + ";" + variable.NodeId.Replace("ns=1;", ""),
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
-                    OPCUAType = OPCUAType.Float,
-                    OPCUAPollingTime = 1000
+                    Type = TypeString.Float,
+                    PollingTime = 1000
                 };
 
                 foreach( Export.Reference reference in variable.References)
