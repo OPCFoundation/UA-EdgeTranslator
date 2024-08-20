@@ -181,17 +181,28 @@
 
             foreach( KeyValuePair<string, string> pair in subModelElements)
             {
-                if (pair.Key.EndsWith(":title"))
+                if (pair.Key.ToLower().EndsWith(":title"))
                 {
                     td.Title = pair.Value;
                 }
 
-                if (pair.Key.EndsWith(":base"))
+                if (pair.Key.ToLower().EndsWith(":base"))
                 {
                     td.Base = pair.Value;
                 }
 
-                if (pair.Key.Contains(":properties:"))
+                if (pair.Key.ToLower().EndsWith(":number"))
+                {
+                    string propertyName = pair.Key.Substring(0, pair.Key.LastIndexOf(":"));
+
+                    // check if we have to create a new property
+                    CreateNewProperty(td, pair.Key, propertyName);
+
+                    GenericForm form = (GenericForm)td.Properties[propertyName].Forms[0];
+                    form.Href = pair.Value;
+                }
+
+                if (pair.Key.ToLower().Contains(":properties:"))
                 {
                     string propertyName = pair.Key.Substring(pair.Key.IndexOf(":properties:") + 12);
                     propertyName = propertyName.Substring(0, propertyName.IndexOf(":"));
@@ -267,24 +278,27 @@
         {
             foreach (SubmodelElement submodelElement in smec)
             {
-                if (submodelElement.ValueType == null)
+                if (submodelElement.Value != null)
                 {
-                    try
+                    if (submodelElement.ValueType == null)
                     {
-                        List<SubmodelElement> nestedSMEC = JsonConvert.DeserializeObject<List<SubmodelElement>>(submodelElement.Value.ToString());
-                        if (nestedSMEC.Count > 0)
+                        try
                         {
-                            ImportSubmodelElementCollection(parentName + ":" + submodelElement.IdShort, nestedSMEC, subModelElements);
+                            List<SubmodelElement> nestedSMEC = JsonConvert.DeserializeObject<List<SubmodelElement>>(submodelElement.Value.ToString());
+                            if (nestedSMEC.Count > 0)
+                            {
+                                ImportSubmodelElementCollection(parentName + ":" + submodelElement.IdShort, nestedSMEC, subModelElements);
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine("Ignoring SubmodelElement " + submodelElement.IdShort);
                         }
                     }
-                    catch (Exception)
+                    else
                     {
-                        Console.WriteLine("Ignoring SubmodelElement " + submodelElement.IdShort);
+                        subModelElements.Add(parentName + ":" + submodelElement.IdShort, submodelElement.Value.ToString());
                     }
-                }
-                else
-                {
-                    subModelElements.Add(parentName + ":" + submodelElement.IdShort, submodelElement.Value.ToString());
                 }
             }
         }

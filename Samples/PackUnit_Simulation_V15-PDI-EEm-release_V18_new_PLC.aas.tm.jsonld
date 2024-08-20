@@ -1,0 +1,117 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "tm:ThingModel"
+  ],
+  "name": "{{name}}",
+  "base": "{{protocol}}://{{address}}:{{port}}",
+  "title": "PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas",
+  "properties": {
+    "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:idbUN01_Labeler": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_OMACPackTags": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "11",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler_PDI_BASIC": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "1001",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler_PDI_PEC": {
+      "type": "number",
+      "opcua:nodeId": null,
+      "opcua:type": null,
+      "opcua:fieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "10300",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    }
+  }
+}

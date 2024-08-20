@@ -1,0 +1,843 @@
+{
+  "modelType": "Submodel",
+  "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+      {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/sandbox/PLCProgramming/0/1"
+      }
+    ]
+  },
+  "idShort": "PLC_Programming",
+  "submodelElements": [
+    {
+      "modelType": "SubmodelElementCollection",
+      "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlocks/0/1"
+          }
+        ]
+      },
+      "idShort": "3_-_Data_blocks",
+      "value": [
+        {
+          "modelType": "SubmodelElementCollection",
+          "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlock/0/1"
+              }
+            ]
+          },
+          "idShort": "dbUN01_Labeler",
+          "value": [
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Number/0/1"
+                  }
+                ]
+              },
+              "value": "2",
+              "valueType": "xs:int",
+              "idShort": "Number"
+            },
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgrammingLanguage/0/1"
+                  }
+                ]
+              },
+              "value": "DB",
+              "valueType": "xs:string",
+              "idShort": "ProgrammingLanguage"
+            },
+            {
+              "modelType": "Operation",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/0/1"
+                  }
+                ]
+              },
+              "inoutputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "PML"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "MSM"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "counter"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "status"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "recipes"
+                  }
+                }
+              ],
+              "idShort": "Interface"
+            }
+          ]
+        },
+        {
+          "modelType": "SubmodelElementCollection",
+          "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlock/0/1"
+              }
+            ]
+          },
+          "idShort": "idbUN01_Labeler",
+          "value": [
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Number/0/1"
+                  }
+                ]
+              },
+              "value": "1",
+              "valueType": "xs:int",
+              "idShort": "Number"
+            },
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgrammingLanguage/0/1"
+                  }
+                ]
+              },
+              "value": "DB",
+              "valueType": "xs:string",
+              "idShort": "ProgrammingLanguage"
+            },
+            {
+              "modelType": "Operation",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/0/1"
+                  }
+                ]
+              },
+              "inoutputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instEM02_Infeed"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instCopyStatesToNodeIDsFB"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instCmUnitInterfaceData"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instCmLightTree"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instEM05_Reject"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instUN_PML_ModuleSumStatus"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instEM04_Outfeed"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instCmModeStateManager"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instEM01_UnitFunctions"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "instEM03_Labeling"
+                  }
+                }
+              ],
+              "inputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/In/0/1"
+                        }
+                      ]
+                    },
+                    "value": "TRUE",
+                    "valueType": "xs:boolean",
+                    "idShort": "enable"
+                  }
+                }
+              ],
+              "idShort": "Interface"
+            }
+          ]
+        },
+        {
+          "modelType": "SubmodelElementCollection",
+          "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlock/0/1"
+              }
+            ]
+          },
+          "idShort": "dbUN01_OMACPackTags",
+          "value": [
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Number/0/1"
+                  }
+                ]
+              },
+              "value": "11",
+              "valueType": "xs:int",
+              "idShort": "Number"
+            },
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgrammingLanguage/0/1"
+                  }
+                ]
+              },
+              "value": "DB",
+              "valueType": "xs:string",
+              "idShort": "ProgrammingLanguage"
+            },
+            {
+              "modelType": "Operation",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/0/1"
+                  }
+                ]
+              },
+              "inoutputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "baseStateAvailableTransitions"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "baseStateAvailableStates"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "command"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "admin"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "status"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "machineStateAvailableTransitions"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "executeStateAvailableTransitions"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "executeStateAvailableStates"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "WSTRING#'execute'",
+                    "valueType": "xs:string",
+                    "idShort": "stateCurrentLocalizedText"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "stateRngBuffer"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "unitSupportedModes"
+                  }
+                },
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "machineStateAvailableStates"
+                  }
+                }
+              ],
+              "idShort": "Interface"
+            }
+          ]
+        },
+        {
+          "modelType": "SubmodelElementCollection",
+          "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlock/0/1"
+              }
+            ]
+          },
+          "idShort": "dbUN01_Labeler_PDI_BASIC",
+          "value": [
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Number/0/1"
+                  }
+                ]
+              },
+              "value": "1001",
+              "valueType": "xs:int",
+              "idShort": "Number"
+            },
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgrammingLanguage/0/1"
+                  }
+                ]
+              },
+              "value": "DB",
+              "valueType": "xs:string",
+              "idShort": "ProgrammingLanguage"
+            },
+            {
+              "modelType": "Operation",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/0/1"
+                  }
+                ]
+              },
+              "inoutputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "PDI_BASIC_OMAC"
+                  }
+                }
+              ],
+              "idShort": "Interface"
+            }
+          ]
+        },
+        {
+          "modelType": "SubmodelElementCollection",
+          "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgramBlock/0/1"
+              }
+            ]
+          },
+          "idShort": "dbUN01_Labeler_PDI_PEC",
+          "value": [
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Number/0/1"
+                  }
+                ]
+              },
+              "value": "10300",
+              "valueType": "xs:int",
+              "idShort": "Number"
+            },
+            {
+              "modelType": "Property",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/ProgrammingLanguage/0/1"
+                  }
+                ]
+              },
+              "value": "DB",
+              "valueType": "xs:string",
+              "idShort": "ProgrammingLanguage"
+            },
+            {
+              "modelType": "Operation",
+              "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/0/1"
+                  }
+                ]
+              },
+              "inoutputVariables": [
+                {
+                  "value": {
+                    "modelType": "Property",
+                    "semanticId": {
+                      "type": "ExternalReference",
+                      "keys": [
+                        {
+                          "type": "GlobalReference",
+                          "value": "https://admin-shell.io/sandbox/PLCProgramming/Interface/Static/0/1"
+                        }
+                      ]
+                    },
+                    "value": "n/a",
+                    "valueType": "xs:string",
+                    "idShort": "PDI_PEC"
+                  }
+                }
+              ],
+              "idShort": "Interface"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "id": "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d"
+}
