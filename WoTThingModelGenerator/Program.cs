@@ -73,7 +73,7 @@
                     string reference = tokens[2];
                     TypeString type = TypeString.Float;
 
-                    if ((tokens[4] != "\"REAL\"") && (tokens[5] != "\"FLOAT\""))
+                    if ((tokens[4] != "\"REAL\"") && (tokens[5] != "\"FLOAT\"") && (tokens[4] != "REAL") && (tokens[5] != "FLOAT"))
                     {
                         // can only handle floats and reals for now
                         continue;

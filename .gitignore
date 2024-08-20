@@ -352,3 +352,5 @@ MigrationBackup/
 /*.nodeset2.xml
 /uaedgetranslator.logfile.txt
 /pki
+/WoTThingModelGenerator/Mondelez
+/WoTThingModelGenerator/MCC1_V33_20240810_Tags.csv
