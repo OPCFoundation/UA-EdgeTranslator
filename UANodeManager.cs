@@ -11,6 +11,7 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using UANodeSet = Export.UANodeSet;
@@ -568,6 +569,9 @@ namespace Opc.Ua.Edge.Translator
                                     switch (field.DataType.ToString())
                                     {
                                         case "i=10": encoder.WriteFloat(field.Name, 0); break;
+                                        case "i=1": encoder.WriteBoolean(field.Name, false); break;
+                                        case "i=6": encoder.WriteInt32(field.Name, 0); break;
+                                        case "i=12": encoder.WriteString(field.Name, string.Empty); break;
                                         default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
                                     }
 
@@ -663,14 +667,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("s7://"))
             {
                 // create an asset tag and add to our list
-                S7Form opcuaForm = JsonConvert.DeserializeObject<S7Form>(form.ToString());
+                S7Form s7Form = JsonConvert.DeserializeObject<S7Form>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = opcuaForm.Href,
+                    Address = s7Form.Href,
                     UnitID = unitId,
-                    Type = opcuaForm.Type.ToString(),
-                    PollingInterval = (int)opcuaForm.PollingTime,
+                    Type = s7Form.Type.ToString(),
+                    PollingInterval = (int)s7Form.PollingTime,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -682,13 +686,13 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("mcp://"))
             {
                 // create an asset tag and add to our list
-                GenericForm genForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                GenericForm mitsubishiForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = genForm.Href,
+                    Address = mitsubishiForm.Href,
                     UnitID = unitId,
-                    Type = "xsd:float",
+                    Type = mitsubishiForm.Type.ToString(),
                     PollingInterval = 1000,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
@@ -1023,7 +1027,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void UpdateUAServerVariable(AssetTag tag, float value)
+        private void UpdateUAServerVariable(AssetTag tag, object value)
         {
             // check for complex type
             if (_uaVariables[tag.Name].Value is ExtensionObject)
@@ -1047,10 +1051,52 @@ namespace Opc.Ua.Edge.Translator
                                     if (field.Name == tag.MappedUAFieldPath)
                                     {
                                         // overwrite existing value with our upated value
-                                        newValue = value;
+                                        newValue = (float)value;
                                     }
 
                                     encoder.WriteFloat(field.Name, newValue);
+
+                                    break;
+                                }
+                            case "i=1":
+                                {
+                                    bool newValue = decoder.ReadBoolean(field.Name);
+
+                                    if (field.Name == tag.MappedUAFieldPath)
+                                    {
+                                        // overwrite existing value with our upated value
+                                        newValue = (bool)value;
+                                    }
+
+                                    encoder.WriteBoolean(field.Name, newValue);
+
+                                    break;
+                                }
+                            case "i=6":
+                                {
+                                    int newValue = decoder.ReadInt32(field.Name);
+
+                                    if (field.Name == tag.MappedUAFieldPath)
+                                    {
+                                        // overwrite existing value with our upated value
+                                        newValue = (int)value;
+                                    }
+
+                                    encoder.WriteInt32(field.Name, newValue);
+
+                                    break;
+                                }
+                            case "i=12":
+                                {
+                                    string newValue = decoder.ReadString(field.Name);
+
+                                    if (field.Name == tag.MappedUAFieldPath)
+                                    {
+                                        // overwrite existing value with our upated value
+                                        newValue = (string)value;
+                                    }
+
+                                    encoder.WriteString(field.Name, newValue);
 
                                     break;
                                 }
@@ -1098,9 +1144,30 @@ namespace Opc.Ua.Edge.Translator
                     _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
                 }
 
-                if ((tagBytes != null) && (tag.Type == "Float"))
+                if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    float value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                    }
+                    else if  (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes));
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Modbus.");
+                    }
+
                     UpdateUAServerVariable(tag, value);
                 }
             }
@@ -1116,9 +1183,21 @@ namespace Opc.Ua.Edge.Translator
             {
                 tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(float.Parse(value)));
             }
+            else if ((tag.Type == "Boolean") && (quantity == 1))
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if ((tag.Type == "Integer") && (quantity == 2))
+            {
+                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(int.Parse(value)));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
             else
             {
-                throw new ArgumentException("Type not supported for Modbus.");
+                throw new ArgumentException("Type not supported by Modbus.");
             }
 
             _assets[assetId].Write(addressParts[0], tag.UnitID, tagBytes, false).GetAwaiter().GetResult();
@@ -1141,9 +1220,30 @@ namespace Opc.Ua.Edge.Translator
                 _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
             }
 
-            if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+            if ((tagBytes != null) && (tagBytes.Length > 0))
             {
-                float value = BitConverter.ToSingle(tagBytes);
+                object value = null;
+                if (tag.Type == "Float")
+                {
+                    value = BitConverter.ToSingle(tagBytes);
+                }
+                else if (tag.Type == "Boolean")
+                {
+                    value = BitConverter.ToBoolean(tagBytes);
+                }
+                else if (tag.Type == "Integer")
+                {
+                    value = BitConverter.ToInt32(tagBytes);
+                }
+                else if (tag.Type == "String")
+                {
+                    value = Encoding.UTF8.GetString(tagBytes);
+                }
+                else
+                {
+                    throw new ArgumentException("Type not supported by OPC UA.");
+                }
+
                 UpdateUAServerVariable(tag, value);
             }
         }
@@ -1153,11 +1253,23 @@ namespace Opc.Ua.Edge.Translator
             byte[] tagBytes = null;
             if (tag.Type == "Float")
             {
-                tagBytes =BitConverter.GetBytes(float.Parse(value));
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
             }
             else
             {
-                throw new ArgumentException("Type not supported for OPC UA.");
+                throw new ArgumentException("Type not supported by OPC UA.");
             }
 
             _assets[assetId].Write(tag.Address, 0, tagBytes, false).GetAwaiter().GetResult();
@@ -1184,9 +1296,30 @@ namespace Opc.Ua.Edge.Translator
                     _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
                 }
 
-                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    float value = BitConverter.ToSingle(tagBytes);
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Siemens.");
+                    }
+
                     UpdateUAServerVariable(tag, value);
                 }
             }
@@ -1201,9 +1334,21 @@ namespace Opc.Ua.Edge.Translator
             {
                 tagBytes = BitConverter.GetBytes(float.Parse(value));
             }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
             else
             {
-                throw new ArgumentException("Type not supported for Siemens.");
+                throw new ArgumentException("Type not supported by Siemens.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
@@ -1230,9 +1375,30 @@ namespace Opc.Ua.Edge.Translator
                     _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
                 }
 
-                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    float value = BitConverter.ToSingle(tagBytes);
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Mitsubishi.");
+                    }
+
                     UpdateUAServerVariable(tag, value);
                 }
             }
@@ -1247,9 +1413,21 @@ namespace Opc.Ua.Edge.Translator
             {
                 tagBytes = BitConverter.GetBytes(float.Parse(value));
             }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
             else
             {
-                throw new ArgumentException("Type not supported for Siemens.");
+                throw new ArgumentException("Type not supported by Mitsubishi.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
@@ -1276,9 +1454,30 @@ namespace Opc.Ua.Edge.Translator
                     _assets[assetId].Connect(remoteEndpoint, 0);
                 }
 
-                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    float value = BitConverter.ToSingle(tagBytes);
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Rockwell.");
+                    }
+
                     UpdateUAServerVariable(tag, value);
                 }
             }
@@ -1293,9 +1492,21 @@ namespace Opc.Ua.Edge.Translator
             {
                 tagBytes = BitConverter.GetBytes(float.Parse(value));
             }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
             else
             {
-                throw new ArgumentException("Type not supported for Siemens.");
+                throw new ArgumentException("Type not supported by Rockwell.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
@@ -1322,9 +1533,30 @@ namespace Opc.Ua.Edge.Translator
                     _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
                 }
 
-                if ((tagBytes != null) && (tagBytes.Length > 0) && (tag.Type == "Float"))
+                if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    float value = BitConverter.ToSingle(tagBytes);
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Beckhoff.");
+                    }
+
                     UpdateUAServerVariable(tag, value);
                 }
             }
@@ -1339,9 +1571,21 @@ namespace Opc.Ua.Edge.Translator
             {
                 tagBytes = BitConverter.GetBytes(float.Parse(value));
             }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
             else
             {
-                throw new ArgumentException("Type not supported for Siemens.");
+                throw new ArgumentException("Type not supported by Beckhoff.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();

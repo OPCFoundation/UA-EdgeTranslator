@@ -201,13 +201,31 @@ namespace Opc.Ua.Edge.Translator.Models
     public enum TypeEnum
     {
         [EnumMember(Value = "number")]
-        Number
+        Number,
+
+        [EnumMember(Value = "boolean")]
+        Boolean,
+
+        [EnumMember(Value = "integer")]
+        Integer,
+
+        [EnumMember(Value = "string")]
+        String
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum TypeString
     {
         [EnumMember(Value = "xsd:float")]
-        Float
+        Float,
+
+        [EnumMember(Value = "xsd:boolean")]
+        Boolean,
+
+        [EnumMember(Value = "xsd:integer")]
+        Integer,
+
+        [EnumMember(Value = "xsd:string")]
+        String
     };
 }

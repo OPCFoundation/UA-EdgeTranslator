@@ -71,29 +71,45 @@
                 if ((tokens.Length > 6) && tokens[0] == "TAG")
                 {
                     string reference = tokens[2];
-                    TypeString type = TypeString.Float;
-
-                    if ((tokens[4] != "\"REAL\"") && (tokens[5] != "\"FLOAT\"") && (tokens[4] != "REAL") && (tokens[5] != "FLOAT"))
-                    {
-                        // can only handle floats and reals for now
-                        continue;
-                    }
 
                     GenericForm form = new()
                     {
                         Href = reference,
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
-                        PollingTime = 1000,
-                        Type = type
+                        PollingTime = 1000
                     };
 
                     Property property = new()
                     {
-                        Type = TypeEnum.Number,
                         ReadOnly = true,
                         Observable = true,
                         Forms = new object[1] { form }
                     };
+
+                    if ((tokens[4] == "\"REAL\"") || (tokens[5] == "\"FLOAT\"") || (tokens[4] == "REAL") || (tokens[5] == "FLOAT"))
+                    {
+                        form.Type = TypeString.Float;
+                        property.Type = TypeEnum.Number;
+                    }
+                    else if ((tokens[4] == "\"INT\"") || (tokens[4] == "INT"))
+                    {
+                        form.Type = TypeString.Integer;
+                        property.Type = TypeEnum.Integer;
+                    }
+                    else if ((tokens[4] == "\"BOOL\"") || (tokens[4] == "BOOL"))
+                    {
+                        form.Type = TypeString.Boolean;
+                        property.Type = TypeEnum.Boolean;
+                    }
+                    else if (tokens[4].Contains("STRING"))
+                    {
+                        form.Type = TypeString.String;
+                        property.Type = TypeEnum.String;
+                    }
+                    else
+                    {
+                        continue;
+                    }
 
                     if (!td.Properties.ContainsKey(reference))
                     {
