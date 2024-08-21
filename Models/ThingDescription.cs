@@ -191,7 +191,10 @@ namespace Opc.Ua.Edge.Translator.Models
         Observeproperty,
 
         [EnumMember(Value = "readproperty")]
-        Readproperty
+        Readproperty,
+
+        [EnumMember(Value = "writeproperty")]
+        Writeproperty
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

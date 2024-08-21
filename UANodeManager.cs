@@ -187,7 +187,7 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
             // create a variable listing our supported WoT protocol bindings
-            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, new string[6] {
+            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[6] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
@@ -583,37 +583,37 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, complexTypeInstance));
+                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly, complexTypeInstance));
                                 }
                             }
                             else
                             {
                                 // OPC UA type info not found, default to float
-                                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
                             }
                         }
                         else
                         {
                             // it's an OPC UA built-in type
-                            _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex));
+                            _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
                         }
                     }
                     else
                     {
                         // no namespace info, default to float
-                        _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                        _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
                     }
                 }
                 else
                 {
                     // can't parse type info, default to float
-                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
                 }
             }
             else
             {
                 // no type info, default to float
-                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex));
+                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
             }
 
             // check if we need to create a new asset first
@@ -869,7 +869,7 @@ namespace Opc.Ua.Edge.Translator
             return null;
         }
 
-        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, object value = null)
+        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
         {
             BaseDataVariableState variable = new BaseDataVariableState(parent)
             {
@@ -884,12 +884,81 @@ namespace Opc.Ua.Edge.Translator
                 DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
                 Value = value
             };
+
+            if (writeable)
+            {
+                variable.AccessLevel = AccessLevels.CurrentReadOrWrite;
+                variable.UserAccessLevel = AccessLevels.CurrentReadOrWrite;
+                variable.UserWriteMask = AttributeWriteMask.ValueForVariableType;
+                variable.WriteMask = AttributeWriteMask.ValueForVariableType;
+                variable.OnWriteValue = OnWriteValue;
+            }
+
             parent?.AddChild(variable);
             parent?.AddReference(ExpandedNodeId.ToNodeId(UAModel.WoT_Con.ReferenceTypeIds.HasWoTComponent, Server.NamespaceUris), false, variable.NodeId);
 
             AddPredefinedNode(SystemContext, variable);
 
             return variable;
+        }
+
+        private ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        {
+            BaseDataVariableState variable = node as BaseDataVariableState;
+
+            foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+            {
+                string assetId = tags.Key;
+
+                foreach (AssetTag tag in tags.Value)
+                {
+                    try
+                    {
+                        if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId,context.NamespaceUris).ToString())
+                        {
+                            if (_assets[assetId] is ModbusTCPClient)
+                            {
+                                HandleModbusDataWrite(tag, assetId, value.ToString());
+                            }
+
+                            if (_assets[assetId] is UAClient)
+                            {
+                                HandleOPCUADataWrite(tag, assetId, value.ToString());
+                            }
+
+                            if (_assets[assetId] is SiemensClient)
+                            {
+                                HandleSiemensDataWrite(tag, assetId, value.ToString());
+                            }
+
+                            if (_assets[assetId] is MitsubishiClient)
+                            {
+                                HandleMitsubishiDataWrite(tag, assetId, value.ToString());
+                            }
+
+                            if (_assets[assetId] is RockwellClient)
+                            {
+                                HandleRockwellDataWrite(tag, assetId, value.ToString());
+                            }
+
+                            if (_assets[assetId] is BeckhoffClient)
+                            {
+                                HandleBeckhoffDataWrite(tag, assetId, value.ToString());
+                            }
+
+                            return ServiceResult.Good;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Error(ex.Message, ex);
+
+                        return new ServiceResult(ex);
+                    }
+                }
+            }
+
+            return ServiceResult.Good;
         }
 
         private void UpdateNodeValues(object assetNameObject)
@@ -916,32 +985,32 @@ namespace Opc.Ua.Edge.Translator
                         {
                             if (_assets[assetId] is ModbusTCPClient)
                             {
-                                HandleModbusDataUpdate(tag, assetId);
+                                HandleModbusDataRead(tag, assetId);
                             }
 
                             if (_assets[assetId] is UAClient)
                             {
-                                HandleOPCUADataUpdate(tag, assetId);
+                                HandleOPCUADataRead(tag, assetId);
                             }
 
                             if (_assets[assetId] is SiemensClient)
                             {
-                                HandleSiemensDataUpdate(tag, assetId);
+                                HandleSiemensDataRead(tag, assetId);
                             }
 
                             if (_assets[assetId] is MitsubishiClient)
                             {
-                                HandleMitsubishiDataUpdate(tag, assetId);
+                                HandleMitsubishiDataRead(tag, assetId);
                             }
 
                             if (_assets[assetId] is RockwellClient)
                             {
-                                HandleRockwellDataUpdate(tag, assetId);
+                                HandleRockwellDataRead(tag, assetId);
                             }
 
                             if (_assets[assetId] is BeckhoffClient)
                             {
-                                HandleBeckhoffDataUpdate(tag, assetId);
+                                HandleBeckhoffDataRead(tag, assetId);
                             }
                         }
                     }
@@ -1001,7 +1070,7 @@ namespace Opc.Ua.Edge.Translator
             _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
         }
 
-        private void HandleModbusDataUpdate(AssetTag tag, string assetId)
+        private void HandleModbusDataRead(AssetTag tag, string assetId)
         {
             ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
             if (tag.Entity == "HoldingRegister")
@@ -1013,7 +1082,6 @@ namespace Opc.Ua.Edge.Translator
 
             if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
             {
-                // read tag
                 byte[] tagBytes = null;
                 try
                 {
@@ -1038,9 +1106,26 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void HandleOPCUADataUpdate(AssetTag tag, string assetId)
+        private void HandleModbusDataWrite(AssetTag tag, string assetId, string value)
         {
-            // read tag
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            ushort quantity = ushort.Parse(addressParts[2]);
+            byte[] tagBytes = null;
+
+            if ((tag.Type == "Float") && (quantity == 2))
+            {
+                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(float.Parse(value)));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for Modbus.");
+            }
+
+            _assets[assetId].Write(addressParts[0], tag.UnitID, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleOPCUADataRead(AssetTag tag, string assetId)
+        {
             byte[] tagBytes = null;
             try
             {
@@ -1063,13 +1148,27 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void HandleSiemensDataUpdate(AssetTag tag, string assetId)
+        private void HandleOPCUADataWrite(AssetTag tag, string assetId, string value)
+        {
+            byte[] tagBytes = null;
+            if (tag.Type == "Float")
+            {
+                tagBytes =BitConverter.GetBytes(float.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for OPC UA.");
+            }
+
+            _assets[assetId].Write(tag.Address, 0, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleSiemensDataRead(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
             if (addressParts.Length == 2)
             {
-                // read tag
                 byte[] tagBytes = null;
                 try
                 {
@@ -1093,13 +1192,29 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void HandleMitsubishiDataUpdate(AssetTag tag, string assetId)
+        private void HandleSiemensDataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for Siemens.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleMitsubishiDataRead(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
             if (addressParts.Length == 2)
             {
-                // read tag
                 byte[] tagBytes = null;
                 try
                 {
@@ -1123,13 +1238,29 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void HandleRockwellDataUpdate(AssetTag tag, string assetId)
+        private void HandleMitsubishiDataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for Siemens.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleRockwellDataRead(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
             if (addressParts.Length == 3)
             {
-                // read tag
                 byte[] tagBytes = null;
                 try
                 {
@@ -1153,13 +1284,29 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void HandleBeckhoffDataUpdate(AssetTag tag, string assetId)
+        private void HandleRockwellDataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for Siemens.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleBeckhoffDataRead(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
 
             if (addressParts.Length == 2)
             {
-                // read tag
                 byte[] tagBytes = null;
                 try
                 {
@@ -1181,6 +1328,23 @@ namespace Opc.Ua.Edge.Translator
                     UpdateUAServerVariable(tag, value);
                 }
             }
+        }
+
+        private void HandleBeckhoffDataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported for Siemens.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
         }
     }
 }
