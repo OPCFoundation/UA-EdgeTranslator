@@ -20,6 +20,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _eeipClient = new EEIPClient();
                 _eeipClient.IPAddress = _endpoint;
+
                 uint result = _eeipClient.RegisterSession();
 
                 Log.Logger.Information("Connected to Rockwell PLC: " + result.ToString());
@@ -46,7 +47,12 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            return Task.FromResult(_eeipClient.GetAttributeSingle(int.Parse(addressWithinAsset), unitID, int.Parse(function)));
+            // the generic input is mapped to Ethernet/IP parameters like so:
+            // address  -> Ethernet/IP class ID
+            // unitID   -> Ethernet/IP instance ID
+            // function -> Ethernet/IP attribute ID
+            byte[] result = _eeipClient.GetAttributeSingle(int.Parse(addressWithinAsset), unitID, int.Parse(function));
+            return Task.FromResult(result);
         }
 
         public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
