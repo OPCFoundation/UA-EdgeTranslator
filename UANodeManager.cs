@@ -626,6 +626,11 @@ namespace Opc.Ua.Edge.Translator
                 _tags.Add(assetId, new List<AssetTag>());
             }
 
+            AddTag(td, form, assetId, unitId, variableId, fieldPath);
+        }
+
+        private void AddTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string fieldPath)
+        {
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
                 // create an asset tag and add to our list
