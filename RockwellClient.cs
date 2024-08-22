@@ -18,9 +18,9 @@ namespace Opc.Ua.Edge.Translator
             {
                 _endpoint = ipAddress;
 
-                EEIPClient eeipClient = new EEIPClient();
-                eeipClient.IPAddress = _endpoint;
-                uint result = eeipClient.RegisterSession();
+                _eeipClient = new EEIPClient();
+                _eeipClient.IPAddress = _endpoint;
+                uint result = _eeipClient.RegisterSession();
 
                 Log.Logger.Information("Connected to Rockwell PLC: " + result.ToString());
             }
