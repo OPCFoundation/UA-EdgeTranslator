@@ -1,5 +1,5 @@
 # UA Edge Translator
-An industrial connectivity edge reference application translating from proprietary protocols to [OPC UA](https://opcfoundation.org/) leveraging the [W3C Web of Things (WoT)](https://www.w3.org/WoT/) thing descriptions. Thing descriptions can be easily edited using the [Eclipse Foundation's edi{TD}or](https://eclipse.github.io/editdor/).
+An industrial connectivity edge reference application translating from proprietary protocols to [OPC UA](https://opcfoundation.org/) leveraging the [W3C Web of Things (WoT)](https://www.w3.org/WoT/) thing descriptions via the new [WoT-Connectivity specification](https://reference.opcfoundation.org/WoT/v100/docs/). Thing Descriptions can be easily edited using the [Eclipse Foundation's edi{TD}or](https://eclipse.github.io/editdor/).
 
 ## How It Works
 
@@ -8,6 +8,9 @@ UA Edge Translator solves the common "brownfield" use case of connecting dispara
 ## Installation
 
 UA Edge Translator is available as a pre-built Docker container and will run on any Docker- or Kubernetes-enabled edge device. See "Packages" in this repo for details.
+
+## Provisioning
+UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auro-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store. These stores can also be found in the /app/pki/ folder.
 
 ## Operation
 

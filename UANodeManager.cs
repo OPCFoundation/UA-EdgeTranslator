@@ -188,14 +188,14 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
             // create a variable listing our supported WoT protocol bindings
-            CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[6] {
+            _uaVariables.Add("SupportedWoTBindings", CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[6] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
                 "https://www.w3.org/2019/wot/mcp",
                 "https://www.w3.org/2019/wot/eip",
                 "https://www.w3.org/2019/wot/ads"
-            });
+            }));
 
             // add everything to our server namespace
             objectsFolderReferences.Add(new NodeStateReference(ReferenceTypes.Organizes, false, _assetManagement.NodeId));
@@ -368,7 +368,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Ua.LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -886,12 +886,13 @@ namespace Opc.Ua.Edge.Translator
                 ReferenceTypeId = ReferenceTypes.Organizes,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
                 DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
-                Value = value
+                Value = value,
+                OnReadValue = OnReadValue
             };
 
             if (writeable)
@@ -911,8 +912,62 @@ namespace Opc.Ua.Edge.Translator
             return variable;
         }
 
+        private ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        {
+            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
+            if (provisioningMode)
+            {
+                return new ServiceResult(StatusCodes.BadNotReadable, "Access to UA Edge Translator is limited while in provisioning mode!");
+            }
+
+            BaseDataVariableState variable = node as BaseDataVariableState;
+
+            if (node.DisplayName.Text == "SupportedWoTBindings")
+            {
+                value = _uaVariables[node.DisplayName.Text].Value;
+                timestamp = _uaVariables[node.DisplayName.Text].Timestamp;
+                statusCode = StatusCodes.Good;
+
+                return ServiceResult.Good;
+            }
+
+            foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+            {
+                string assetId = tags.Key;
+
+                foreach (AssetTag tag in tags.Value)
+                {
+                    try
+                    {
+                        if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
+                        {
+                            value = _uaVariables[tag.Name].Value;
+                            timestamp = _uaVariables[tag.Name].Timestamp;
+                            statusCode = StatusCodes.Good;
+
+                            return ServiceResult.Good;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Error(ex.Message, ex);
+
+                        return new ServiceResult(ex);
+                    }
+                }
+            }
+
+            return ServiceResult.Good;
+        }
+
         private ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
+            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
+            if (provisioningMode)
+            {
+                return new ServiceResult(StatusCodes.BadNotWritable, "Access to UA Edge Translator is limited while in provisioning mode!");
+            }
+
             BaseDataVariableState variable = node as BaseDataVariableState;
 
             foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
@@ -954,6 +1009,10 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 HandleBeckhoffDataWrite(tag, assetId, value.ToString());
                             }
+
+                            _uaVariables[tag.Name].Value = value;
+                            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
 
                             return ServiceResult.Good;
                         }

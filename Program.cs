@@ -5,8 +5,8 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Configuration;
     using Serilog;
     using System;
-    using System.Globalization;
     using System.IO;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -43,6 +43,17 @@ namespace Opc.Ua.Edge.Translator
 
             await App.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
 
+            // create OPC UA cert validator
+            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
+            App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
+            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration.SecurityConfiguration).GetAwaiter().GetResult();
+
+            string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
+            if (!Directory.Exists(issuerPath))
+            {
+                Directory.CreateDirectory(issuerPath);
+            }
+
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
 
             // start the server
@@ -50,6 +61,19 @@ namespace Opc.Ua.Edge.Translator
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
+        }
+
+        private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)
+        {
+            // check if we have a trusted issuer cert yet
+            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
+            
+            // we allow conections in provisoning mode, but limit access to the server
+            if ((e.Error.StatusCode == StatusCodes.BadCertificateUntrusted) && provisioningMode)
+            {
+                Log.Logger.Warning("Auto-accepting certificate while in provisioning mode!");
+                e.Accept = true;
+            }
         }
 
         private static void OpcStackLoggingHandler(object sender, TraceEventArgs e)
