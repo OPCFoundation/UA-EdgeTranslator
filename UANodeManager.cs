@@ -9,6 +9,7 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
     using System.Text;
@@ -1499,14 +1500,14 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleRockwellDataRead(AssetTag tag, string assetId)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 3)
             {
                 byte[] tagBytes = null;
                 try
                 {
-                    tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1]), addressParts[2], 0).GetAwaiter().GetResult();
+                    tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1], NumberStyles.HexNumber), string.Empty, ushort.Parse(addressParts[2])).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
@@ -1523,7 +1524,7 @@ namespace Opc.Ua.Edge.Translator
                     object value = null;
                     if (tag.Type == "Float")
                     {
-                        value = BitConverter.ToSingle(tagBytes);
+                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes, true));
                     }
                     else if (tag.Type == "Boolean")
                     {
@@ -1531,7 +1532,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                     else if (tag.Type == "Integer")
                     {
-                        value = BitConverter.ToInt32(tagBytes);
+                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes, true));
                     }
                     else if (tag.Type == "String")
                     {

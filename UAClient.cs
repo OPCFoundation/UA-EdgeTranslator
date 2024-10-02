@@ -54,11 +54,10 @@ namespace Opc.Ua.Edge.Translator
                 NodeId nodeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(addressWithinAsset), _session.NamespaceUris);
                 DataValue value = _session.ReadValue(nodeId);
 
+#pragma warning disable SYSLIB0011
                 BinaryFormatter bf = new();
                 using (MemoryStream ms = new())
                 {
-
-#pragma warning disable SYSLIB0011
                     bf.Serialize(ms, value.Value);
 #pragma warning restore SYSLIB0011
 
@@ -75,9 +74,9 @@ namespace Opc.Ua.Edge.Translator
         {
             using (MemoryStream memStream = new(values))
             {
+#pragma warning disable SYSLIB0011
                 BinaryFormatter binForm = new();
 
-#pragma warning disable SYSLIB0011
                 object value = binForm.Deserialize(memStream);
 #pragma warning restore SYSLIB0011
 

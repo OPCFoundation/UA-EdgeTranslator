@@ -67,7 +67,7 @@ namespace Opc.Ua.Edge.Translator
         {
             // check if we have a trusted issuer cert yet
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
-            
+
             // we allow conections in provisoning mode, but limit access to the server
             if ((e.Error.StatusCode == StatusCodes.BadCertificateUntrusted) && provisioningMode)
             {
