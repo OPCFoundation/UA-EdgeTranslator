@@ -1581,28 +1581,56 @@ namespace Opc.Ua.Edge.Translator
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
+            if (tag.Type == "BOOL")
             {
                 tagBytes = BitConverter.GetBytes(bool.Parse(value));
             }
-            else if (tag.Type == "Integer")
+            else if (tag.Type == "SINT")
+            {
+                tagBytes = BitConverter.GetBytes(char.Parse(value));
+            }
+            else if (tag.Type == "INT")
+            {
+                tagBytes = BitConverter.GetBytes(short.Parse(value));
+            }
+            else if (tag.Type == "DINT")
             {
                 tagBytes = BitConverter.GetBytes(int.Parse(value));
             }
-            else if (tag.Type == "String")
+            else if (tag.Type == "LINT")
             {
-                tagBytes = Encoding.UTF8.GetBytes(value);
+                tagBytes = BitConverter.GetBytes(Int64.Parse(value));
+            }
+            else if (tag.Type == "USINT")
+            {
+                tagBytes = BitConverter.GetBytes(char.Parse(value));
+            }
+            else if (tag.Type == "UINT")
+            {
+                tagBytes = BitConverter.GetBytes(ushort.Parse(value));
+            }
+            else if (tag.Type == "UDINT")
+            {
+                tagBytes = BitConverter.GetBytes(uint.Parse(value));
+            }
+            else if (tag.Type == "ULINT")
+            {
+                tagBytes = BitConverter.GetBytes(UInt64.Parse(value));
+            }
+            else if (tag.Type == "REAL")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "LREAL")
+            {
+                tagBytes = BitConverter.GetBytes(double.Parse(value));
             }
             else
             {
                 throw new ArgumentException("Type not supported by Rockwell.");
             }
 
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], byte.Parse(addressParts[1]), tag.Type, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleBeckhoffDataRead(AssetTag tag, string assetId)
