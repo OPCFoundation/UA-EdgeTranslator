@@ -70,7 +70,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             using (MemoryStream memStream = new(values))
             {

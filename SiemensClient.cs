@@ -54,7 +54,7 @@ namespace Opc.Ua.Edge.Translator
             return Task.FromResult(_S7.ReadBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), count));
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             _S7.WriteBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), values);
             return Task.CompletedTask;

@@ -9,7 +9,6 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.IO;
     using System.Linq;
     using System.Text;
@@ -711,7 +710,7 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("eip://"))
             {
                 // create an asset tag and add to our list
-                GenericForm eipForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                EIPForm eipForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
@@ -1189,7 +1188,7 @@ namespace Opc.Ua.Edge.Translator
                 functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
             }
 
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
             {
@@ -1240,7 +1239,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleModbusDataWrite(AssetTag tag, string assetId, string value)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
             ushort quantity = ushort.Parse(addressParts[2]);
             byte[] tagBytes = null;
 
@@ -1265,7 +1264,7 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by Modbus.");
             }
 
-            _assets[assetId].Write(addressParts[0], tag.UnitID, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleOPCUADataRead(AssetTag tag, string assetId)
@@ -1337,12 +1336,12 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by OPC UA.");
             }
 
-            _assets[assetId].Write(tag.Address, 0, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(tag.Address, 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleSiemensDataRead(AssetTag tag, string assetId)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
@@ -1392,7 +1391,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleSiemensDataWrite(AssetTag tag, string assetId, string value)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
             if (tag.Type == "Float")
@@ -1416,12 +1415,12 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by Siemens.");
             }
 
-            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleMitsubishiDataRead(AssetTag tag, string assetId)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
@@ -1471,7 +1470,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleMitsubishiDataWrite(AssetTag tag, string assetId, string value)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
             if (tag.Type == "Float")
@@ -1495,19 +1494,19 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by Mitsubishi.");
             }
 
-            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleRockwellDataRead(AssetTag tag, string assetId)
         {
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
-            if (addressParts.Length == 3)
+            if (addressParts.Length == 2)
             {
                 byte[] tagBytes = null;
                 try
                 {
-                    tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1], NumberStyles.HexNumber), string.Empty, ushort.Parse(addressParts[2])).GetAwaiter().GetResult();
+                    tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1]), tag.Type, 0).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
@@ -1522,25 +1521,54 @@ namespace Opc.Ua.Edge.Translator
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes, true));
-                    }
-                    else if (tag.Type == "Boolean")
+
+                    if (tag.Type == "BOOL")
                     {
                         value = BitConverter.ToBoolean(tagBytes);
                     }
-                    else if (tag.Type == "Integer")
+                    else if (tag.Type == "SINT")
                     {
-                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes, true));
+                        value = BitConverter.ToChar(tagBytes);
                     }
-                    else if (tag.Type == "String")
+                    else if (tag.Type == "INT")
                     {
-                        value = Encoding.UTF8.GetString(tagBytes);
+                        value = BitConverter.ToInt16(tagBytes);
+                    }
+                    else if (tag.Type == "DINT")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "LINT")
+                    {
+                        value = BitConverter.ToInt64(tagBytes);
+                    }
+                    else if (tag.Type == "USINT")
+                    {
+                        value = BitConverter.ToChar(tagBytes);
+                    }
+                    else if (tag.Type == "UINT")
+                    {
+                        value = BitConverter.ToUInt16(tagBytes);
+                    }
+                    else if (tag.Type == "UDINT")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "ULINT")
+                    {
+                        value = BitConverter.ToUInt64(tagBytes);
+                    }
+                    else if (tag.Type == "REAL")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "LREAL")
+                    {
+                        value = BitConverter.ToDouble(tagBytes);
                     }
                     else
                     {
-                        throw new ArgumentException("Type not supported by Rockwell.");
+                        throw new ArgumentException("Type not supported by Ethernet/IP.");
                     }
 
                     UpdateUAServerVariable(tag, value);
@@ -1550,7 +1578,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleRockwellDataWrite(AssetTag tag, string assetId, string value)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
             if (tag.Type == "Float")
@@ -1574,12 +1602,12 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by Rockwell.");
             }
 
-            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
 
         private void HandleBeckhoffDataRead(AssetTag tag, string assetId)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
@@ -1629,7 +1657,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void HandleBeckhoffDataWrite(AssetTag tag, string assetId, string value)
         {
-            string[] addressParts = tag.Address.Split(new char[] { '?', '&', '=' });
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
             if (tag.Type == "Float")
@@ -1653,7 +1681,7 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("Type not supported by Beckhoff.");
             }
 
-            _assets[assetId].Write(addressParts[0], 0, tagBytes, false).GetAwaiter().GetResult();
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
     }
 }

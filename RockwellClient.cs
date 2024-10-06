@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator
 {
     using libplctag;
     using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -12,45 +13,6 @@ namespace Opc.Ua.Edge.Translator
 
     public class RockwellClient : IAsset
     {
-        class TagInfo
-        {
-            public uint Id { get; set; }
-
-            public ushort Type { get; set; }
-
-            public string Name { get; set; }
-
-            public ushort Length { get; set; }
-
-            public uint[] Dimensions { get; set; }
-        }
-
-        class UdtFieldInfo
-        {
-            public string Name { get; set; }
-
-            public ushort Type { get; set; }
-
-            public ushort Metadata { get; set; }
-
-            public uint Offset { get; set; }
-        }
-
-        class UdtInfo
-        {
-            public uint Size { get; set; }
-
-            public string Name { get; set; }
-
-            public ushort Id { get; set; }
-
-            public ushort NumFields { get; set; }
-
-            public ushort Handle { get; set; }
-
-            public UdtFieldInfo[] Fields { get; set; }
-        }
-
         private string _endpoint = string.Empty;
 
         public void Connect(string ipAddress, int port)
@@ -306,24 +268,26 @@ namespace Opc.Ua.Edge.Translator
 
             tag.Read();
 
-            switch (unitID)
+            int offset = unitID;
+
+            switch (function)
             {
-                case 0xC1: return Task.FromResult(BitConverter.GetBytes(tag.GetBit(count)));
-                case 0xC2: return Task.FromResult(new byte[] { (byte) tag.GetInt8(count) } );
-                case 0xC3: return Task.FromResult(BitConverter.GetBytes(tag.GetInt16(count)));
-                case 0xC4: return Task.FromResult(BitConverter.GetBytes(tag.GetInt32(count)));
-                case 0xC5: return Task.FromResult(BitConverter.GetBytes(tag.GetInt64(count)));
-                case 0xC6: return Task.FromResult(new byte[] { tag.GetUInt8(count) } );
-                case 0xC7: return Task.FromResult(BitConverter.GetBytes(tag.GetUInt16(count)));
-                case 0xC8: return Task.FromResult(BitConverter.GetBytes(tag.GetUInt32(count)));
-                case 0xC9: return Task.FromResult(BitConverter.GetBytes(tag.GetUInt64(count)));
-                case 0xCA: return Task.FromResult(BitConverter.GetBytes(tag.GetFloat32(count)));
-                case 0xCB: return Task.FromResult(BitConverter.GetBytes(tag.GetFloat64(count)));
+                case "BOOL": return Task.FromResult(BitConverter.GetBytes(tag.GetBit(offset)));
+                case "SINT": return Task.FromResult(new byte[] { (byte) tag.GetInt8(offset) } );
+                case "INT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt16(offset)));
+                case "DINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt32(offset)));
+                case "LINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt64(offset)));
+                case "USINT": return Task.FromResult(new byte[] { tag.GetUInt8(offset) } );
+                case "UINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt16(offset)));
+                case "UDINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt32(offset)));
+                case "ULINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt64(offset)));
+                case "REAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat32(offset)));
+                case "LREAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat64(offset)));
                 default: return Task.FromResult((byte[]) null);
             }
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             var tag = new Tag()
             {
@@ -336,21 +300,21 @@ namespace Opc.Ua.Edge.Translator
 
             tag.Read();
 
-            int offset = 0; // TODO: Allow offsets greater than 0!
+            int offset = unitID;
 
-            switch (unitID)
+            switch (function)
             {
-                case 0xC1: tag.SetBit(offset, BitConverter.ToBoolean(values)); break;
-                case 0xC2: tag.SetInt8(offset, (sbyte) BitConverter.ToChar(values)); break;
-                case 0xC3: tag.SetInt16(offset, BitConverter.ToInt16(values)); break;
-                case 0xC4: tag.SetInt32(offset, BitConverter.ToInt32(values)); break;
-                case 0xC5: tag.SetInt64(offset, BitConverter.ToInt64(values)); break;
-                case 0xC6: tag.SetUInt8(offset, values[0]); break;
-                case 0xC7: tag.SetUInt16(offset, BitConverter.ToUInt16(values)); break;
-                case 0xC8: tag.SetUInt32(offset, BitConverter.ToUInt32(values)); break;
-                case 0xC9: tag.SetUInt64(offset, BitConverter.ToUInt64(values)); break;
-                case 0xCA: tag.SetFloat32(offset, BitConverter.ToSingle(values)); break;
-                case 0xCB: tag.SetFloat64(offset, BitConverter.ToDouble(values)); break;
+                case "BOOL": tag.SetBit(offset, BitConverter.ToBoolean(values)); break;
+                case "SINT": tag.SetInt8(offset, (sbyte) BitConverter.ToChar(values)); break;
+                case "INT": tag.SetInt16(offset, BitConverter.ToInt16(values)); break;
+                case "DINT": tag.SetInt32(offset, BitConverter.ToInt32(values)); break;
+                case "LINT": tag.SetInt64(offset, BitConverter.ToInt64(values)); break;
+                case "USINT": tag.SetUInt8(offset, values[0]); break;
+                case "UINT": tag.SetUInt16(offset, BitConverter.ToUInt16(values)); break;
+                case "UDINT": tag.SetUInt32(offset, BitConverter.ToUInt32(values)); break;
+                case "ULINT": tag.SetUInt64(offset, BitConverter.ToUInt64(values)); break;
+                case "REAL": tag.SetFloat32(offset, BitConverter.ToSingle(values)); break;
+                case "LREAL": tag.SetFloat64(offset, BitConverter.ToDouble(values)); break;
                 default: break;
             }
 

@@ -15,7 +15,7 @@
   "base": "eip://192.168.178.20",
   "title": "AB Logix5581E PLC",
   "properties": {
-    "Production_Data_Product_Count": {
+    "Production_Data.Product_Count": {
       "type": "number",
       "opcua:nodeId": null,
       "opcua:type": null,
@@ -24,12 +24,12 @@
       "observable": true,
       "forms": [
         {
-          "href": "Production_Data?C4&0",
+          "href": "Production_Data?0",
           "op": [
             "readproperty",
             "observeproperty"
           ],
-          "type": "xsd:Integer",
+          "type": "xsd:DINT",
           "pollingTime": 1000
         }
       ]

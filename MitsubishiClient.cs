@@ -57,7 +57,7 @@ namespace Opc.Ua.Edge.Translator
             return Task.FromResult(result);
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             PLCData<byte> data = new PLCData<byte>((Mitsubishi.PlcDeviceType)unitID, int.Parse(addressWithinAsset), values.Length);
 
