@@ -507,20 +507,24 @@ namespace Opc.Ua.Edge.Translator
 
             AddNodesFromCompanionSpecs(td);
 
-            string assetId = AssetConnectionTest(td, out byte unitId);
+            byte unitId = 1;
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
+            {
+                AssetConnectionTest(td, out unitId);
+            }
 
             // create nodes for each TD property
             foreach (KeyValuePair<string, Property> property in td.Properties)
             {
                 foreach (object form in property.Value.Forms)
                 {
-                    AddNodeForWoTForm(parent, td, property, form, assetId, unitId);
+                    AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
                 }
             }
 
-            _ = Task.Factory.StartNew(UpdateNodeValues, assetId, TaskCreationOptions.LongRunning);
+            _ = Task.Factory.StartNew(UpdateNodeValues, td.Name, TaskCreationOptions.LongRunning);
 
-            Log.Logger.Information($"Successfully parsed WoT file for asset: {assetId}");
+            Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
         }
 
         private void AddNodeForWoTForm(NodeState assetFolder, ThingDescription td, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
@@ -746,7 +750,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private string AssetConnectionTest(ThingDescription td, out byte unitId)
+        private void AssetConnectionTest(ThingDescription td, out byte unitId)
         {
             unitId = 1;
             IAsset assetInterface = null;
@@ -843,8 +847,6 @@ namespace Opc.Ua.Edge.Translator
             }
 
             _assets.Add(td.Name, assetInterface);
-
-            return td.Name;
         }
 
         private ExpandedNodeId ParseExpandedNodeId(string nodeString)

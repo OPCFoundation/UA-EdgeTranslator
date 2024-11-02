@@ -48,3 +48,4 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `UACLPassword` - UA Cloud Library Password.
 * `OPCUA_CLIENT_USERNAME` - OPC UA client username to connect to an OPC UA asset.
 * `OPCUA_CLIENT_PASSWORD` - OPC UA client password to connect to an OPC UA asset.
+* `DISABLE_ASSET_CONNECTION_TEST` - Set to `1` to disable the connection test when mapping an asset to OPC UA.
