@@ -30,10 +30,8 @@
   },
   "properties": {
     "temperature_setpoint": {
-      "type": [
-        "brick:Cooling_Zone_Air_Temperature_Setpoint",
-        "number"
-      ],
+      "@type": "brick:Cooling_Zone_Air_Temperature_Setpoint",
+      "type": "number",
       "elem:influences": ":temperature",
       "brick:hasQuantityKind": "brick:Temperature",
       "readOnly": false,
@@ -49,10 +47,8 @@
       ]
     },
     "temperature": {
-      "type": [
-        "brick:Zone_Air_Temperature_Sensor",
-        "number"
-      ],
+      "@type": "brick:Zone_Air_Temperature_Sensor",
+      "type": "number",
       "brick:hasQuantityKind": "brick:Temperature",
       "readOnly": true,
       "forms": [
