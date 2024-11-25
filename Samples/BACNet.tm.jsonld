@@ -1,0 +1,77 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "bacv": "https://example.org/bacnet",
+      "qudt": "http://qudt.org/vocab/quantitykind/",
+      "brick": "https://brickschema.org/schema/Brick#",
+      "elem": "http://w3id.org/elementary#"
+    },
+    "https://www.w3.org/2022/wot/discovery"
+  ],
+  "id": "urn:plugfest-room-thermostat",
+  "@type": [
+    "brick:Thermostat",
+    "Thing"
+  ],
+  "elem:hostsProgram": {
+    "id": "urn:temperature-controller",
+    "elem:hasInput": ":temperature"
+  },
+  "brick:isPartOf": {
+    "id": "urn:plugfest-room",
+    "@type": "brick:Room",
+    "rdfs:label": "plugfest-room"
+  },
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "properties": {
+    "temperature_setpoint": {
+      "type": [
+        "brick:Cooling_Zone_Air_Temperature_Setpoint",
+        "number"
+      ],
+      "elem:influences": ":temperature",
+      "brick:hasQuantityKind": "brick:Temperature",
+      "readOnly": false,
+      "forms": [
+        {
+          "bacv:hasDataType": {
+            "@type": "bacv:Real"
+          },
+          "bacv:usesService": "ReadProperty",
+          "op": "readproperty",
+          "href": "bacnet://1005/1,85"
+        }
+      ]
+    },
+    "temperature": {
+      "type": [
+        "brick:Zone_Air_Temperature_Sensor",
+        "number"
+      ],
+      "brick:hasQuantityKind": "brick:Temperature",
+      "readOnly": true,
+      "forms": [
+        {
+          "bacv:hasDataType": {
+            "@type": "bacv:Real"
+          },
+          "bacv:usesService": "ReadProperty",
+          "op": "readproperty",
+          "href": "bacnet://5/0,85"
+        }
+      ]
+    }
+  },
+  "security": "nosec_sc",
+  "title": "Thermostat in plugfest room",
+  "registration": {
+    "created": "2024-11-25T10:42:34.155016+00:00",
+    "modified": "2024-11-25T10:42:34.155016+00:00",
+    "retrieved": "2024-11-25T10:44:46.930439+00:00"
+  }
+}

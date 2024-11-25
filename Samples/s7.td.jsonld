@@ -1,0 +1,80 @@
+{
+    "@context": [
+        "https://www.w3.org/2019/wot/td/v1",
+        {
+            "opc": "http://opcfoundation.org/UA/",
+            "iec61360": "https://webstore.iec.ch/publication/5381",
+            "eclass": "https://www.eclasscontent.com/owl/v11.1",
+            "@language": "en"
+        }
+    ],
+    "id": "urn:siemens:demo:case:lamp",
+    "title": "Demo Lamp Case",
+    "@type": "eclass:IRDI_0173-1#01-ADP410#010",
+    "securityDefinitions": {
+        "nosec_sc": {
+            "scheme": "nosec"
+        }
+    },
+    "security": "nosec_sc",
+    "base": "opc.tcp://192.168.120.237:4840/",
+    "properties": {
+        "lampOnOff": {
+            "title": "Set lamp status",
+            "description": "True=Lamp is on; False=Lamp is off",
+            "eclass:IRDI_0173-1#01-ADN292#009": {
+                "eclass:IRDI_0173-1#02-AAC314#002": "K"
+            },
+            "writeOnly": true,
+            "type": "boolean",
+            "@type": [
+                "opc:Boolean",
+                "iec61360:BooleanType"
+            ],
+            "forms": [
+                {
+                    "op": "writeproperty",
+                    "href": "ns=3;s=\"LED\".\"State\"",
+                    "contentType": "application/x.opcua-binary",
+                    "opc:method": "WRITE"
+                }
+            ]
+        },
+        "lampStatus": {
+            "title": "Provides lamp status",
+            "description": "True=Lamp is on; False=Lamp is off",
+            "readOnly": true,
+            "type": "boolean",
+            "@type": [
+                "opc:Boolean",
+                "iec61360:BooleanType"
+            ],
+            "forms": [
+                {
+                    "op": "readproperty",
+                    "href": "ns=3;s=\"LED\".\"State\"",
+                    "contentType": "application/x.opcua-binary",
+                    "opc:method": "READ"
+                }
+            ]
+        },
+        "beltOnOff": {
+            "title": "beltOnOff",
+            "observable": false,
+            "readOnly": false,
+            "description": "Start/stop belt",
+            "type": "boolean",
+            "opc:dataType": "Boolean",
+            "forms": [
+                {
+                    "op": [
+                        "writeproperty",
+                        "readproperty"
+                    ],
+                    "href": "ns=3;s=\"Conveyor\".\"BlockOnConveyor\"",
+                    "contentType": "application/x.opcua-binary"
+                }
+            ]
+        }
+    }
+}
