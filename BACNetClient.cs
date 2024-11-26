@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator
     using System;
     using System.Collections.Generic;
     using System.IO.BACnet;
+    using System.Linq;
     using System.Threading.Tasks;
 
     public class BACNetClient : IAsset
@@ -23,7 +24,7 @@ namespace Opc.Ua.Edge.Translator
                 _client = new BacnetClient(transport);
                 _client.OnIam += OnIAm;
                 _client.Start();
-                _client.WhoIs();
+                _client.WhoIs(-1, -1, new BacnetAddress(BacnetAddressTypes.IP, _endpoint));
 
                 Log.Logger.Information("Connected to BACNet device at " + ipAddress);
             }
@@ -37,37 +38,21 @@ namespace Opc.Ua.Edge.Translator
         {
             Log.Logger.Information($"Detected device {deviceid} at {adr}");
 
-            IList<BacnetValue> value_list;
-            sender.ReadPropertyRequest(adr, new BacnetObjectId(BacnetObjectTypes.OBJECT_DEVICE, deviceid), BacnetPropertyIds.PROP_OBJECT_LIST, out value_list);
+            BacnetObjectId deviceObjId = new BacnetObjectId(BacnetObjectTypes.OBJECT_DEVICE, deviceid);
+            sender.ReadPropertyRequest(adr, deviceObjId, BacnetPropertyIds.PROP_OBJECT_LIST, out IList<BacnetValue> value_list, arrayIndex: 0);
 
-            LinkedList<BacnetObjectId> object_list = new LinkedList<BacnetObjectId>();
-            foreach (BacnetValue value in value_list)
+            var objectCount = value_list.First().As<uint>();
+            for (uint i = 1; i <= objectCount; i++)
             {
-                if (Enum.IsDefined(typeof(BacnetObjectTypes), ((BacnetObjectId)value.Value).Type))
-                {
-                    object_list.AddLast((BacnetObjectId)value.Value);
-                }
-            }
+                sender.ReadPropertyRequest(adr, deviceObjId, BacnetPropertyIds.PROP_OBJECT_LIST, out value_list, arrayIndex: i);
+                Log.Logger.Information("Object " + value_list[0].Tag + ": " + value_list[0].Value);
 
-            foreach (BacnetObjectId object_id in object_list)
-            {
-                //read all properties
-                IList<BacnetValue> values = null;
-                try
-                {
-                    if (!sender.ReadPropertyRequest(adr, object_id, BacnetPropertyIds.PROP_PRESENT_VALUE, out values))
-                    {
-                        Log.Logger.Error("Couldn't fetch 'present value' for object: " + object_id.ToString());
-                        continue;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error("Couldn't fetch 'present value' for object: " + object_id.ToString() + ": " + ex.Message);
-                    continue;
-                }
+                BacnetValue Value;
+                ReadScalarValue(sender, adr, deviceObjId.instance, value_list[0].As<BacnetObjectId>(), BacnetPropertyIds.PROP_OBJECT_NAME, out Value);
+                Log.Logger.Information("Name: " + Value.Value.ToString());
 
-                Log.Logger.Information("Object Name: " + object_id.ToString() + ", Property Id: " + values[0].Tag.ToString() + ", Value: " + values[0].Value.ToString());
+                ReadScalarValue(sender, adr, deviceObjId.instance, value_list[0].As<BacnetObjectId>(), BacnetPropertyIds.PROP_PRESENT_VALUE, out Value);
+                Log.Logger.Information("Value: " + Value.Value.ToString());
             }
         }
 
@@ -91,6 +76,25 @@ namespace Opc.Ua.Edge.Translator
         {
             // TODO
             return Task.CompletedTask;
+        }
+
+        bool ReadScalarValue(BacnetClient sender, BacnetAddress adr, uint device_id, BacnetObjectId BacnetObject, BacnetPropertyIds Proprerty, out BacnetValue Value)
+        {
+            Value = new BacnetValue(null);
+
+            if (!sender.ReadPropertyRequest(adr, BacnetObject, Proprerty, out IList<BacnetValue> NoScalarValue))
+            {
+                return false;
+            }
+
+            Value = NoScalarValue[0];
+            return true;
+        }
+
+        bool WriteScalarValue(BacnetClient sender, BacnetAddress adr, uint device_id, BacnetObjectId BacnetObject, BacnetPropertyIds Proprerty, BacnetValue Value)
+        {
+            BacnetValue[] NoScalarValue = { Value };
+            return sender.WritePropertyRequest(adr, BacnetObject, Proprerty, NoScalarValue);
         }
     }
 }

@@ -46,8 +46,4 @@
     <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="settings\" />
-  </ItemGroup>
-
 </Project>

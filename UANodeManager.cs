@@ -214,40 +214,43 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
-                foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                if (namespaces.Namespaces != null)
                 {
-                    // support local Nodesets
-                    if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
+                    foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
                     {
-                        string nodesetFile = string.Empty;
-                        if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
+                        // support local Nodesets
+                        if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
                         {
-                            // absolute file path
-                            nodesetFile = opcuaCompanionSpecUrl.OriginalString;
-                        }
-                        else
-                        {
-                            // relative file path
-                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
-                        }
-
-                        Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
-                        LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
-                    }
-                    else
-                    {
-                        if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), opcuaCompanionSpecUrl.OriginalString))
-                        {
-                            Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
-
-                            foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                            string nodesetFile = string.Empty;
+                            if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
                             {
-                                LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
+                                // absolute file path
+                                nodesetFile = opcuaCompanionSpecUrl.OriginalString;
                             }
+                            else
+                            {
+                                // relative file path
+                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
+                            }
+
+                            Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
+                            LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
                         }
                         else
                         {
-                            Log.Logger.Warning($"Could not load nodeset {opcuaCompanionSpecUrl.OriginalString}");
+                            if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), opcuaCompanionSpecUrl.OriginalString))
+                            {
+                                Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
+
+                                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                                {
+                                    LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
+                                }
+                            }
+                            else
+                            {
+                                Log.Logger.Warning($"Could not load nodeset {opcuaCompanionSpecUrl.OriginalString}");
+                            }
                         }
                     }
                 }
@@ -279,25 +282,28 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
-                foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                if (namespaces.Namespaces != null)
                 {
-                    // support local Nodesets
-                    if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
+                    foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
                     {
-                        string nodesetFile = string.Empty;
-                        if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
+                        // support local Nodesets
+                        if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
                         {
-                            // absolute file path
-                            nodesetFile = opcuaCompanionSpecUrl.OriginalString;
-                        }
-                        else
-                        {
-                            // relative file path
-                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
-                        }
+                            string nodesetFile = string.Empty;
+                            if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
+                            {
+                                // absolute file path
+                                nodesetFile = opcuaCompanionSpecUrl.OriginalString;
+                            }
+                            else
+                            {
+                                // relative file path
+                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
+                            }
 
-                        Log.Logger.Information("Adding node set from local nodeset file");
-                        AddNodesFromNodesetXml(nodesetFile);
+                            Log.Logger.Information("Adding node set from local nodeset file");
+                            AddNodesFromNodesetXml(nodesetFile);
+                        }
                     }
                 }
             }
@@ -753,14 +759,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("bacnet://"))
             {
                 // create an asset tag and add to our list
-                GenericForm adsForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                GenericForm bacnetForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
-                    Address = adsForm.Href,
+                    Address = bacnetForm.Href,
                     UnitID = unitId,
-                    Type = adsForm.Type.ToString(),
-                    PollingInterval = (int)adsForm.PollingTime,
+                    Type = bacnetForm.Type.ToString(),
+                    PollingInterval = 1000,
                     Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
@@ -869,14 +875,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("bacnet://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 6) || (address[0] != "bacnet"))
+                if ((address.Length != 4) || (address[0] != "bacnet"))
                 {
-                    throw new Exception("Expected BACNet device address in the format bacnet://ipaddress:port!");
+                    throw new Exception("Expected BACNet device address in the format bacnet://ipaddress!");
                 }
 
                 // check if we can reach the BACNet asset
-                BeckhoffClient client = new();
-                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+                BACNetClient client = new();
+                client.Connect(address[3], 0);
 
                 assetInterface = client;
             }

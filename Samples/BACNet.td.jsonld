@@ -28,6 +28,7 @@
       "scheme": "nosec"
     }
   },
+  "base": "bacnet://192.168.120.236",
   "properties": {
     "temperature_setpoint": {
       "@type": "brick:Cooling_Zone_Air_Temperature_Setpoint",
@@ -41,7 +42,9 @@
             "@type": "bacv:Real"
           },
           "bacv:usesService": "ReadProperty",
-          "op": "readproperty",
+          "op": [
+            "readproperty"
+          ],
           "href": "bacnet://1005/1,85"
         }
       ]
@@ -57,14 +60,19 @@
             "@type": "bacv:Real"
           },
           "bacv:usesService": "ReadProperty",
-          "op": "readproperty",
+          "op": [
+            "readproperty"
+          ],
           "href": "bacnet://5/0,85"
         }
       ]
     }
   },
-  "security": "nosec_sc",
+  "security": [
+    "nosec_sc"
+  ],
   "title": "Thermostat in plugfest room",
+  "name": "Thermostat in plugfest room",
   "registration": {
     "created": "2024-11-25T10:42:34.155016+00:00",
     "modified": "2024-11-25T10:42:34.155016+00:00",
