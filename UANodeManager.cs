@@ -875,14 +875,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("bacnet://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 4) || (address[0] != "bacnet"))
+                if ((address.Length != 5) || (address[0] != "bacnet"))
                 {
-                    throw new Exception("Expected BACNet device address in the format bacnet://ipaddress!");
+                    throw new Exception("Expected BACNet device address in the format bacnet://ipaddress/deviceId!");
                 }
 
                 // check if we can reach the BACNet asset
                 BACNetClient client = new();
-                client.Connect(address[3], 0);
+                client.Connect(address[3] + "/" + address[4], 0);
 
                 assetInterface = client;
             }

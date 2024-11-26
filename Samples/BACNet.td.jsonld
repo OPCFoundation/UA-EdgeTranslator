@@ -28,7 +28,7 @@
       "scheme": "nosec"
     }
   },
-  "base": "bacnet://192.168.120.236",
+  "base": "bacnet://192.168.120.236/1005",
   "properties": {
     "temperature_setpoint": {
       "@type": "brick:Cooling_Zone_Air_Temperature_Setpoint",
@@ -63,7 +63,7 @@
           "op": [
             "readproperty"
           ],
-          "href": "bacnet://5/0,85"
+          "href": "bacnet://1005/0,85"
         }
       ]
     }
