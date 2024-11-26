@@ -188,13 +188,14 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
             // create a variable listing our supported WoT protocol bindings
-            _uaVariables.Add("SupportedWoTBindings", CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[6] {
+            _uaVariables.Add("SupportedWoTBindings", CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
                 "https://www.w3.org/2019/wot/mcp",
                 "https://www.w3.org/2019/wot/eip",
-                "https://www.w3.org/2019/wot/ads"
+                "https://www.w3.org/2019/wot/ads",
+                "http://www.w3.org/2022/bacnet"
             }));
 
             // add everything to our server namespace
@@ -748,6 +749,25 @@ namespace Opc.Ua.Edge.Translator
 
                 _tags[assetId].Add(tag);
             }
+
+            if (td.Base.ToLower().StartsWith("bacnet://"))
+            {
+                // create an asset tag and add to our list
+                GenericForm adsForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = adsForm.Href,
+                    UnitID = unitId,
+                    Type = adsForm.Type.ToString(),
+                    PollingInterval = (int)adsForm.PollingTime,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
         }
 
         private void AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -757,91 +777,106 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
-                string[] modbusAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((modbusAddress.Length != 6) || (modbusAddress[0] != "modbus+tcp"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "modbus+tcp"))
                 {
                     throw new Exception("Expected Modbus server address in the format modbus+tcp://ipaddress:port/unitID!");
                 }
 
                 // check if we can reach the Modbus asset
-                unitId = byte.Parse(modbusAddress[5]);
+                unitId = byte.Parse(address[5]);
                 ModbusTCPClient client = new();
-                client.Connect(modbusAddress[3], int.Parse(modbusAddress[4]));
+                client.Connect(address[3], int.Parse(address[4]));
 
                 assetInterface = client;
             }
 
             if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
-                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "opc.tcp"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 5) || (address[0] != "opc.tcp"))
                 {
                     throw new Exception("Expected OPC UA server address in the format opc.tcp://ipaddress:port!");
                 }
 
                 // check if we can reach the OPC UA asset
                 UAClient client = new();
-                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+                client.Connect(address[3], int.Parse(address[4]));
 
                 assetInterface = client;
             }
 
             if (td.Base.ToLower().StartsWith("s7://"))
             {
-                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "s7"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 5) || (address[0] != "s7"))
                 {
                     throw new Exception("Expected S7 PLC address in the format s7://ipaddress:port!");
                 }
 
-                // check if we can reach the OPC UA asset
+                // check if we can reach the Siemens asset
                 SiemensClient client = new();
-                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+                client.Connect(address[3], int.Parse(address[4]));
 
                 assetInterface = client;
             }
 
             if (td.Base.ToLower().StartsWith("mcp://"))
             {
-                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 5) || (opcuaAddress[0] != "mcp"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 5) || (address[0] != "mcp"))
                 {
                     throw new Exception("Expected Mitsubishi PLC address in the format mcp://ipaddress:port!");
                 }
 
-                // check if we can reach the OPC UA asset
+                // check if we can reach the Mitsubishi asset
                 MitsubishiClient client = new();
-                client.Connect(opcuaAddress[3], int.Parse(opcuaAddress[4]));
+                client.Connect(address[3], int.Parse(address[4]));
 
                 assetInterface = client;
             }
 
             if (td.Base.ToLower().StartsWith("eip://"))
             {
-                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 4) || (opcuaAddress[0] != "eip"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 4) || (address[0] != "eip"))
                 {
                     throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress:port!");
                 }
 
-                // check if we can reach the OPC UA asset
+                // check if we can reach the Ethernet/IP asset
                 RockwellClient client = new();
-                client.Connect(opcuaAddress[3], 0);
+                client.Connect(address[3], 0);
 
                 assetInterface = client;
             }
 
             if (td.Base.ToLower().StartsWith("ads://"))
             {
-                string[] opcuaAddress = td.Base.Split(new char[] { ':', '/' });
-                if ((opcuaAddress.Length != 6) || (opcuaAddress[0] != "ads"))
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "ads"))
                 {
                     throw new Exception("Expected Beckhoff PLC address in the format ads://ipaddress:port!");
                 }
 
-                // check if we can reach the OPC UA asset
+                // check if we can reach the Beckhoff asset
                 BeckhoffClient client = new();
-                client.Connect(opcuaAddress[3] + ":" + opcuaAddress[4], int.Parse(opcuaAddress[5]));
+                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("bacnet://"))
+            {
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "bacnet"))
+                {
+                    throw new Exception("Expected BACNet device address in the format bacnet://ipaddress:port!");
+                }
+
+                // check if we can reach the BACNet asset
+                BeckhoffClient client = new();
+                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
 
                 assetInterface = client;
             }
@@ -1012,6 +1047,11 @@ namespace Opc.Ua.Edge.Translator
                                 HandleBeckhoffDataWrite(tag, assetId, value.ToString());
                             }
 
+                            if (_assets[assetId] is BACNetClient)
+                            {
+                                HandleBACNetDataWrite(tag, assetId, value.ToString());
+                            }
+
                             _uaVariables[tag.Name].Value = value;
                             _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                             _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
@@ -1081,6 +1121,11 @@ namespace Opc.Ua.Edge.Translator
                             if (_assets[assetId] is BeckhoffClient)
                             {
                                 HandleBeckhoffDataRead(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is BACNetClient)
+                            {
+                                HandleBACNetDataRead(tag, assetId);
                             }
                         }
                     }
@@ -1709,6 +1754,85 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 throw new ArgumentException("Type not supported by Beckhoff.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleBACNetDataRead(AssetTag tag, string assetId)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if (addressParts.Length == 2)
+            {
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0))
+                {
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by BACNet.");
+                    }
+
+                    UpdateUAServerVariable(tag, value);
+                }
+            }
+        }
+
+        private void HandleBACNetDataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by BACNet.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
