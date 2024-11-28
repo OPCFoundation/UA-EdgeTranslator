@@ -26,7 +26,9 @@
     "VoltageL1-N": {
       "type": "number",
       "opcua:nodeId": "s=VoltageL-N",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
@@ -46,7 +48,9 @@
     "VoltageL2-N": {
       "type": "number",
       "opcua:nodeId": "s=VoltageL-N",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "B",
       "readOnly": true,
       "observable": true,
@@ -66,7 +70,9 @@
     "VoltageL3-N": {
       "type": "number",
       "opcua:nodeId": "s=VoltageL-N",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "C",
       "readOnly": true,
       "observable": true,
@@ -137,7 +143,9 @@
     "CurrentL1": {
       "type": "number",
       "opcua:nodeId": "s=Current",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
@@ -157,7 +165,9 @@
     "CurrentL2": {
       "type": "number",
       "opcua:nodeId": "s=Current",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "B",
       "readOnly": true,
       "observable": true,
@@ -177,7 +187,9 @@
     "CurrentL3": {
       "type": "number",
       "opcua:nodeId": "s=Current",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "C",
       "readOnly": true,
       "observable": true,
@@ -197,7 +209,9 @@
     "PowerFactorL1": {
       "type": "number",
       "opcua:nodeId": "s=PowerFactor",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "A",
       "readOnly": true,
       "observable": true,
@@ -217,7 +231,9 @@
     "PowerFactorL2": {
       "type": "number",
       "opcua:nodeId": "s=PowerFactor",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "B",
       "readOnly": true,
       "observable": true,
@@ -237,7 +253,9 @@
     "PowerFactorL3": {
       "type": "number",
       "opcua:nodeId": "s=PowerFactor",
-      "opcua:type": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "@type": [
+        "http://opcfoundation.org/UA/PNEM/;i=3005"
+      ],
       "opcua:fieldPath": "C",
       "readOnly": true,
       "observable": true,
