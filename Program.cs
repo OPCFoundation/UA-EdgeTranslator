@@ -46,7 +46,7 @@ namespace Opc.Ua.Edge.Translator
             // create OPC UA cert validator
             App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
             App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
-            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration.SecurityConfiguration).GetAwaiter().GetResult();
+            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration).GetAwaiter().GetResult();
 
             string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             if (!Directory.Exists(issuerPath))

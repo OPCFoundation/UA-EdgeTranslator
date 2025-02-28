@@ -124,7 +124,7 @@ namespace Opc.Ua.Edge.Translator
                 return;
             }
 
-            EndpointDescription selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
+            EndpointDescription selectedEndpoint = CoreClientUtils.SelectEndpoint(Program.App.ApplicationConfiguration, endpointUrl, true);
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create(Program.App.ApplicationConfiguration));
 
             uint timeout = (uint)Program.App.ApplicationConfiguration.ClientConfiguration.DefaultSessionTimeout;
