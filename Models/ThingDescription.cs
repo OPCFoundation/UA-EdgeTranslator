@@ -38,12 +38,6 @@ namespace Opc.Ua.Edge.Translator.Models
         public Dictionary<string, Property>? Properties { get; set; }
     }
 
-    public class OpcUaNamespaces
-    {
-        [JsonProperty("opcua")]
-        public Uri[]? Namespaces { get; set; }
-    }
-
     public class Property
     {
         [JsonProperty("type")]

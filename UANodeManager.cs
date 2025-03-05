@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
@@ -213,44 +214,41 @@ namespace Opc.Ua.Edge.Translator
                     continue;
                 }
 
-                OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
-                if (namespaces.Namespaces != null)
+                Uri namespaceUri = new (((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
+                if (ns != null)
                 {
-                    foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                    // support local Nodesets
+                    if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
                     {
-                        // support local Nodesets
-                        if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
+                        string nodesetFile = string.Empty;
+                        if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
                         {
-                            string nodesetFile = string.Empty;
-                            if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
-                            {
-                                // absolute file path
-                                nodesetFile = opcuaCompanionSpecUrl.OriginalString;
-                            }
-                            else
-                            {
-                                // relative file path
-                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
-                            }
-
-                            Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
-                            LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
+                            // absolute file path
+                            nodesetFile = namespaceUri.OriginalString;
                         }
                         else
                         {
-                            if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), opcuaCompanionSpecUrl.OriginalString))
-                            {
-                                Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + opcuaCompanionSpecUrl);
+                            // relative file path
+                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
+                        }
 
-                                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
-                                {
-                                    LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
-                                }
-                            }
-                            else
+                        Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
+                        LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
+                    }
+                    else
+                    {
+                        if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
+                        {
+                            Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + namespaceUri);
+
+                            foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
                             {
-                                Log.Logger.Warning($"Could not load nodeset {opcuaCompanionSpecUrl.OriginalString}");
+                                LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
                             }
+                        }
+                        else
+                        {
+                            Log.Logger.Warning($"Could not load nodeset {namespaceUri.OriginalString}");
                         }
                     }
                 }
@@ -281,29 +279,26 @@ namespace Opc.Ua.Edge.Translator
                     continue;
                 }
 
-                OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
-                if (namespaces.Namespaces != null)
+                Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
+                if (namespaceUri != null)
                 {
-                    foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                    // support local Nodesets
+                    if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
                     {
-                        // support local Nodesets
-                        if (!opcuaCompanionSpecUrl.IsAbsoluteUri || (!opcuaCompanionSpecUrl.AbsoluteUri.Contains("http://") && !opcuaCompanionSpecUrl.AbsoluteUri.Contains("https://")))
+                        string nodesetFile = string.Empty;
+                        if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
                         {
-                            string nodesetFile = string.Empty;
-                            if (Path.IsPathFullyQualified(opcuaCompanionSpecUrl.OriginalString))
-                            {
-                                // absolute file path
-                                nodesetFile = opcuaCompanionSpecUrl.OriginalString;
-                            }
-                            else
-                            {
-                                // relative file path
-                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), opcuaCompanionSpecUrl.OriginalString);
-                            }
-
-                            Log.Logger.Information("Adding node set from local nodeset file");
-                            AddNodesFromNodesetXml(nodesetFile);
+                            // absolute file path
+                            nodesetFile = namespaceUri.OriginalString;
                         }
+                        else
+                        {
+                            // relative file path
+                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
+                        }
+
+                        Log.Logger.Information("Adding node set from local nodeset file");
+                        AddNodesFromNodesetXml(nodesetFile);
                     }
                 }
             }
@@ -500,10 +495,10 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (!ns.ToString().Contains("https://www.w3.org/") && ns.ToString().Contains("opcua"))
                 {
-                    OpcUaNamespaces namespaces = JsonConvert.DeserializeObject<OpcUaNamespaces>(ns.ToString());
-                    foreach (Uri opcuaCompanionSpecUrl in namespaces.Namespaces)
+                    Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
+                    if (namespaceUri != null)
                     {
-                        namespaceUris.Add(opcuaCompanionSpecUrl.ToString());
+                        namespaceUris.Add(namespaceUri.ToString());
                     }
                 }
             }
