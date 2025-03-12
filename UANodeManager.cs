@@ -169,13 +169,30 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement = CreateObject(
                 FindNodeInAddressSpace(Ua.ObjectIds.ObjectsFolder),
                 WotCon.BrowseNames.WoTAssetConnectionManagement,
-                WotCon.ObjectTypes.WoTAssetConnectionManagementType);
+                new ExpandedNodeId(WotCon.ObjectTypes.WoTAssetConnectionManagementType, WotCon.Namespaces.WotCon));
 
-            BaseObjectState configuration = CreateObject(
-                _assetManagement,
-                WotCon.BrowseNames.Configuration,
-                WotCon.ObjectTypes.WoTAssetConfigurationType);
-            
+            MethodState createAsset = CreateMethod(_assetManagement, WotCon.BrowseNames.CreateAsset);
+            createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
+            createAsset.InputArguments = AddArguments(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
+            createAsset.OutputArguments = AddArguments(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
+
+            MethodState deleteAsset = CreateMethod(_assetManagement, WotCon.BrowseNames.DeleteAsset);
+            deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
+            deleteAsset.InputArguments = AddArguments(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
+
+            MethodState discoverAssets = CreateMethod(_assetManagement, WotCon.BrowseNames.DiscoverAssets);
+            discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
+            discoverAssets.OutputArguments = AddArguments(discoverAssets, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
+
+            MethodState createAssetForEndpoint = CreateMethod(_assetManagement, WotCon.BrowseNames.CreateAssetForEndpoint);
+            createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
+            createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
+
+            MethodState connectionTest = CreateMethod(_assetManagement, WotCon.BrowseNames.ConnectionTest);
+            connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
+            connectionTest.InputArguments = AddArguments(connectionTest, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
+            connectionTest.OutputArguments = AddArguments(connectionTest, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
+                        
             // create a property listing our supported WoT protocol bindings
             _uaProperties.Add(WotCon.BrowseNames.SupportedWoTBindings, CreateProperty(_assetManagement, WotCon.BrowseNames.SupportedWoTBindings, new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
@@ -186,6 +203,11 @@ namespace Opc.Ua.Edge.Translator
                 "https://www.w3.org/2019/wot/ads",
                 "http://www.w3.org/2022/bacnet"
             }));
+
+            BaseObjectState configuration = CreateObject(
+                _assetManagement,
+                WotCon.BrowseNames.Configuration,
+                new ExpandedNodeId(WotCon.ObjectTypes.WoTAssetConfigurationType, WotCon.Namespaces.WotCon));
 
             // create a property for the license key
             _uaProperties.Add(WotCon.BrowseNames.License, CreateProperty(configuration, WotCon.BrowseNames.License, new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
@@ -334,46 +356,24 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
+        private MethodState CreateMethod(NodeState parent, string name)
         {
-            // add behaviour to our methods
-            MethodState methodState = predefinedNode as MethodState;
-            if ((methodState != null) && (methodState.ModellingRuleId == null))
+            MethodState method = new(parent) {
+                SymbolicName = name,
+                ReferenceTypeId = Ua.ReferenceTypeIds.HasComponent,
+                NodeId = new NodeId(name, NamespaceIndex),
+                BrowseName = new QualifiedName(name, NamespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                Executable = true,
+                UserExecutable = true
+            };
+
+            if (parent != null)
             {
-                if (methodState.BrowseName.Name == WotCon.BrowseNames.CreateAsset)
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-                    methodState.InputArguments = AddArguments(methodState, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = AddArguments(methodState, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
-                }
-
-                if (methodState.BrowseName.Name == WotCon.BrowseNames.DeleteAsset)
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-                    methodState.InputArguments = AddArguments(methodState, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
-                }
-
-                if (methodState.BrowseName.Name == WotCon.BrowseNames.DiscoverAssets)
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-                    methodState.OutputArguments = AddArguments(methodState, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
-                }
-
-                if (methodState.BrowseName.Name == WotCon.BrowseNames.CreateAssetForEndpoint)
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
-                    methodState.InputArguments = AddArguments(methodState, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
-                }
-
-                if (methodState.BrowseName.Name == WotCon.BrowseNames.ConnectionTest)
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-                    methodState.InputArguments = AddArguments(methodState, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = AddArguments(methodState, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
-                }
+                parent.AddChild(method);
             }
 
-            return predefinedNode;
+            return method;
         }
 
         private PropertyState<Argument[]> AddArguments(MethodState methodState, string name, string description, ExpandedNodeId type, bool input, bool array = false)
@@ -994,7 +994,7 @@ namespace Opc.Ua.Edge.Translator
             return null;
         }
 
-        public BaseObjectState CreateObject(NodeState parent, string name, NodeId type)
+        public BaseObjectState CreateObject(NodeState parent, string name, ExpandedNodeId type)
         {
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
             {
@@ -1005,7 +1005,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 BrowseName = name,
                 DisplayName = name,
-                TypeDefinitionId = type
+                TypeDefinitionId = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris)
             };
 
             obj.NodeId = New(SystemContext, obj);
