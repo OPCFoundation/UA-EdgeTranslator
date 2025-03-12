@@ -7,6 +7,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Server;
+    using Opc.Ua.WotCon;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -23,7 +24,7 @@ namespace Opc.Ua.Edge.Translator
 
         private bool _shutdown = false;
 
-        private readonly UAModel.WoT_Con.WoTAssetConnectionManagementTypeState _assetManagement = new(null);
+        private readonly WoTAssetConnectionManagementState _assetManagement = new(null);
 
         private readonly Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
@@ -161,30 +162,30 @@ namespace Opc.Ua.Edge.Translator
 
         private void AddNodesForAssetManagement(IList<IReference> objectsFolderReferences)
         {
-            ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(UAModel.WoT_Con.Namespaces.WoT_Con);
+            ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(WotCon.Namespaces.WotCon);
 
-            BaseObjectState assetManagementPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Objects.WoTAssetConnectionManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
+            BaseObjectState assetManagementPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(WotCon.Objects.WoTAssetConnectionManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
             _assetManagement.Create(SystemContext, assetManagementPassiveNode);
 
-            MethodState createAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Methods.WoTAssetConnectionManagement_CreateAsset, WoTConNamespaceIndex), typeof(MethodState));
+            MethodState createAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagement_CreateAsset, WoTConNamespaceIndex), typeof(MethodState));
             _assetManagement.CreateAsset = new(null);
             _assetManagement.CreateAsset.Create(SystemContext, createAssetPassiveNode);
-            _assetManagement.CreateAsset.OnCall = new UAModel.WoT_Con.CreateAssetMethodStateMethodCallHandler(OnCreateAsset);
+            _assetManagement.CreateAsset.OnCall = new CreateAssetMethodStateMethodCallHandler(OnCreateAsset);
 
-            BaseVariableState createAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Variables.WoTAssetConnectionManagementType_CreateAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            BaseVariableState createAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
             _assetManagement.CreateAsset.InputArguments = new(null);
             _assetManagement.CreateAsset.InputArguments.Create(SystemContext, createAssetInputArgumentsPassiveNode);
 
-            BaseVariableState createAssetOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Variables.WoTAssetConnectionManagementType_CreateAsset_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            BaseVariableState createAssetOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAsset_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
             _assetManagement.CreateAsset.OutputArguments = new(null);
             _assetManagement.CreateAsset.OutputArguments.Create(SystemContext, createAssetOutputArgumentsPassiveNode);
 
-            MethodState deleteAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Methods.WoTAssetConnectionManagement_DeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
+            MethodState deleteAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagement_DeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
             _assetManagement.DeleteAsset = new(null);
             _assetManagement.DeleteAsset.Create(SystemContext, deleteAssetPassiveNode);
-            _assetManagement.DeleteAsset.OnCall = new UAModel.WoT_Con.DeleteAssetMethodStateMethodCallHandler(OnDeleteAsset);
+            _assetManagement.DeleteAsset.OnCall = new DeleteAssetMethodStateMethodCallHandler(OnDeleteAsset);
 
-            BaseVariableState deleteAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(UAModel.WoT_Con.Variables.WoTAssetConnectionManagementType_DeleteAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            BaseVariableState deleteAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_DeleteAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
             _assetManagement.DeleteAsset.InputArguments = new(null);
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
@@ -200,7 +201,7 @@ namespace Opc.Ua.Edge.Translator
             }));
 
             // add everything to our server namespace
-            objectsFolderReferences.Add(new NodeStateReference(ReferenceTypes.Organizes, false, _assetManagement.NodeId));
+            objectsFolderReferences.Add(new NodeStateReference(Ua.ReferenceTypes.Organizes, false, _assetManagement.NodeId));
             AddPredefinedNode(SystemContext, _assetManagement);
         }
 
@@ -407,7 +408,7 @@ namespace Opc.Ua.Edge.Translator
                     reference = browser.Next();
                 }
 
-                UAModel.WoT_Con.IWoTAssetTypeState asset = new(null);
+                IWoTAssetState asset = new(null);
                 asset.Create(SystemContext, new NodeId(), new QualifiedName(assetName), null, true);
 
                 _assetManagement.AddChild(asset);
@@ -430,7 +431,7 @@ namespace Opc.Ua.Edge.Translator
         {
             lock (Lock)
             {
-                NodeState asset = FindPredefinedNode(assetId, typeof(UAModel.WoT_Con.IWoTAssetTypeState));
+                NodeState asset = FindPredefinedNode(assetId, typeof(IWoTAssetState));
                 if (asset == null)
                 {
                     return StatusCodes.BadNodeIdUnknown;
@@ -921,7 +922,7 @@ namespace Opc.Ua.Edge.Translator
             BaseDataVariableState variable = new BaseDataVariableState(parent)
             {
                 SymbolicName = name,
-                ReferenceTypeId = ReferenceTypes.Organizes,
+                ReferenceTypeId = Ua.ReferenceTypes.Organizes,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Ua.LocalizedText("en", name),
@@ -943,7 +944,7 @@ namespace Opc.Ua.Edge.Translator
             }
 
             parent?.AddChild(variable);
-            parent?.AddReference(ExpandedNodeId.ToNodeId(UAModel.WoT_Con.ReferenceTypeIds.HasWoTComponent, Server.NamespaceUris), false, variable.NodeId);
+            parent?.AddReference(ExpandedNodeId.ToNodeId(WotCon.ReferenceTypeIds.HasWoTComponent, Server.NamespaceUris), false, variable.NodeId);
 
             AddPredefinedNode(SystemContext, variable);
 
