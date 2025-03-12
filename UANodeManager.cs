@@ -24,7 +24,7 @@ namespace Opc.Ua.Edge.Translator
 
         private bool _shutdown = false;
 
-        private readonly WoTAssetConnectionManagementState _assetManagement = new(null);
+        private BaseObjectState _assetManagement;
 
         private readonly Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
@@ -166,53 +166,16 @@ namespace Opc.Ua.Edge.Translator
         {
             ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(WotCon.Namespaces.WotCon);
 
-            BaseObjectState assetManagementPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(WotCon.Objects.WoTAssetConnectionManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
-            _assetManagement.Create(SystemContext, assetManagementPassiveNode);
+            _assetManagement = CreateObject(
+                FindNodeInAddressSpace(Ua.ObjectIds.ObjectsFolder),
+                WotCon.BrowseNames.WoTAssetConnectionManagement,
+                WotCon.ObjectTypes.WoTAssetConnectionManagementType);
 
-            BaseObjectState configurationPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(WotCon.Objects.WoTAssetConnectionManagementType_Configuration, WoTConNamespaceIndex), typeof(BaseObjectState));
-            _assetManagement.Configuration = new(null);
-            _assetManagement.Configuration.Create(SystemContext, configurationPassiveNode);
-
-            MethodState deleteAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_DeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
-            _assetManagement.DeleteAsset = new(null);
-            _assetManagement.DeleteAsset.Create(SystemContext, deleteAssetPassiveNode);
-            _assetManagement.DeleteAsset.OnCall = new DeleteAssetMethodStateMethodCallHandler(OnDeleteAsset);
-
-            BaseVariableState deleteAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_DeleteAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.DeleteAsset.InputArguments = new(null);
-            _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
-
-            MethodState discoverAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_DiscoverAssets, WoTConNamespaceIndex), typeof(MethodState));
-            _assetManagement.DiscoverAssets = new(null);
-            _assetManagement.DiscoverAssets.Create(SystemContext, discoverAssetPassiveNode);
-            _assetManagement.DiscoverAssets.OnCall = new DiscoverAssetsMethodStateMethodCallHandler(OnDiscoverAsset);
-
-            BaseVariableState discoverAssetOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_DiscoverAssets_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.DiscoverAssets.OutputArguments = new(null);
-            _assetManagement.DiscoverAssets.OutputArguments.Create(SystemContext, discoverAssetOutputArgumentsPassiveNode);
-
-            MethodState createAssetForEndpointPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_CreateAssetForEndpoint, WoTConNamespaceIndex), typeof(MethodState));
-            _assetManagement.CreateAssetForEndpoint = new(null);
-            _assetManagement.CreateAssetForEndpoint.Create(SystemContext, createAssetForEndpointPassiveNode);
-            _assetManagement.CreateAssetForEndpoint.OnCall = new CreateAssetForEndpointMethodStateMethodCallHandler(OnCreateAssetForEndpoint);
-
-            BaseVariableState createAssetForEndpointInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAssetForEndpoint_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.CreateAssetForEndpoint.InputArguments = new(null);
-            _assetManagement.CreateAssetForEndpoint.InputArguments.Create(SystemContext, createAssetForEndpointInputArgumentsPassiveNode);
-
-            MethodState connectionTestPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_ConnectionTest, WoTConNamespaceIndex), typeof(MethodState));
-            _assetManagement.ConnectionTest = new(null);
-            _assetManagement.ConnectionTest.Create(SystemContext, connectionTestPassiveNode);
-            _assetManagement.ConnectionTest.OnCall = new ConnectionTestMethodStateMethodCallHandler(OnConnectionTest);
-
-            BaseVariableState connectionTestInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_ConnectionTest_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.ConnectionTest.InputArguments = new(null);
-            _assetManagement.ConnectionTest.InputArguments.Create(SystemContext, connectionTestInputArgumentsPassiveNode);
-
-            BaseVariableState connectionTestOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_ConnectionTest_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.ConnectionTest.OutputArguments = new(null);
-            _assetManagement.ConnectionTest.OutputArguments.Create(SystemContext, connectionTestOutputArgumentsPassiveNode);
-
+            BaseObjectState configuration = CreateObject(
+                _assetManagement,
+                WotCon.BrowseNames.Configuration,
+                WotCon.ObjectTypes.WoTAssetConfigurationType);
+            
             // create a property listing our supported WoT protocol bindings
             _uaProperties.Add(WotCon.BrowseNames.SupportedWoTBindings, CreateProperty(_assetManagement, WotCon.BrowseNames.SupportedWoTBindings, new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
@@ -225,11 +188,7 @@ namespace Opc.Ua.Edge.Translator
             }));
 
             // create a property for the license key
-            _uaProperties.Add(WotCon.BrowseNames.License, CreateProperty(_assetManagement.Configuration, WotCon.BrowseNames.License, new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
-
-            // add everything to our server namespace
-            objectsFolderReferences.Add(new NodeStateReference(Ua.ReferenceTypes.Organizes, false, _assetManagement.NodeId));
-            AddPredefinedNode(SystemContext, _assetManagement);
+            _uaProperties.Add(WotCon.BrowseNames.License, CreateProperty(configuration, WotCon.BrowseNames.License, new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
         }
 
         private void AddNamespacesFromCompanionSpecs(List<string> namespaceUris, ThingDescription td)
@@ -381,32 +340,73 @@ namespace Opc.Ua.Edge.Translator
             MethodState methodState = predefinedNode as MethodState;
             if ((methodState != null) && (methodState.ModellingRuleId == null))
             {
-                if (methodState.DisplayName == "CreateAsset")
+                if (methodState.BrowseName.Name == WotCon.BrowseNames.CreateAsset)
                 {
                     methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
+                    methodState.InputArguments = AddArguments(methodState, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
+                    methodState.OutputArguments = AddArguments(methodState, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
+                }
 
-                    // define the method's input argument (the serial number)
-                    methodState.InputArguments = new PropertyState<Argument[]>(methodState)
-                    {
-                        NodeId = new NodeId(methodState.BrowseName.Name + "InArgs", NamespaceIndex),
-                        BrowseName = Ua.BrowseNames.InputArguments
-                    };
-                    methodState.InputArguments.DisplayName = methodState.InputArguments.BrowseName.Name;
-                    methodState.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    methodState.InputArguments.ReferenceTypeId = Ua.ReferenceTypeIds.HasProperty;
-                    methodState.InputArguments.DataType = DataTypeIds.Argument;
-                    methodState.InputArguments.ValueRank = ValueRanks.OneDimension;
+                if (methodState.BrowseName.Name == WotCon.BrowseNames.DeleteAsset)
+                {
+                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
+                    methodState.InputArguments = AddArguments(methodState, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
+                }
 
-                    methodState.InputArguments.Value = new Argument[]
-                    {
-                        new Argument { Name = "arg1", Description = "arg1",  DataType = DataTypeIds.UInt64, ValueRank = ValueRanks.Scalar }
-                    };
+                if (methodState.BrowseName.Name == WotCon.BrowseNames.DiscoverAssets)
+                {
+                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
+                    methodState.OutputArguments = AddArguments(methodState, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
+                }
 
-                    return predefinedNode;
+                if (methodState.BrowseName.Name == WotCon.BrowseNames.CreateAssetForEndpoint)
+                {
+                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
+                    methodState.InputArguments = AddArguments(methodState, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
+                }
+
+                if (methodState.BrowseName.Name == WotCon.BrowseNames.ConnectionTest)
+                {
+                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
+                    methodState.InputArguments = AddArguments(methodState, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
+                    methodState.OutputArguments = AddArguments(methodState, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
                 }
             }
 
             return predefinedNode;
+        }
+
+        private PropertyState<Argument[]> AddArguments(MethodState methodState, string name, string description, ExpandedNodeId type, bool input, bool array = false)
+        {
+            string browseName = methodState.BrowseName.Name;
+            if (input)
+            {
+                browseName += "InArgs";
+            }
+            else
+            {
+                browseName += "OutArgs";
+            }
+
+            PropertyState<Argument[]> arguments = new(methodState) {
+                NodeId = new NodeId(browseName, NamespaceIndex),
+                BrowseName = Ua.BrowseNames.InputArguments,
+                DisplayName = Ua.BrowseNames.InputArguments,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                ReferenceTypeId = Ua.ReferenceTypeIds.HasProperty,
+                DataType = DataTypeIds.Argument,
+                ValueRank = ValueRanks.OneDimension,
+                Value = [
+                    new Argument {
+                        Name = name,
+                        Description = description,
+                        DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
+                        ValueRank = array? ValueRanks.OneDimension : ValueRanks.Scalar
+                    }
+                ]
+            };
+
+            return arguments;
         }
 
         public override void DeleteAddressSpace()
@@ -419,7 +419,7 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
+            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
@@ -479,11 +479,18 @@ namespace Opc.Ua.Edge.Translator
            }
         }
 
-        private ServiceResult OnDeleteAsset(ISystemContext _context, MethodState _method, NodeId _objectId, NodeId assetId)
+        private ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
+            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
+            {
+                return StatusCodes.BadInvalidArgument;
+            }
+
+            NodeId assetId = (NodeId)inputArguments[0];
+
             lock (Lock)
             {
-                NodeState asset = FindPredefinedNode(assetId, typeof(IWoTAssetState));
+                NodeState asset = FindPredefinedNode(assetId, typeof(BaseInterfaceState));
                 if (asset == null)
                 {
                     return StatusCodes.BadNodeIdUnknown;
@@ -532,17 +539,17 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnDiscoverAsset(ISystemContext _context, MethodState _method, NodeId _objectId, ref string[] assetEndpoints)
+        private ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnConnectionTest(ISystemContext _context, MethodState _method, NodeId _objectId, string assetEndpoint, ref bool success, ref string status)
+        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnCreateAssetForEndpoint(ISystemContext _context, MethodState _method, NodeId _objectId, string assetName, string assetEndpoint)
+        private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             lock (Lock)
             {
@@ -985,6 +992,32 @@ namespace Opc.Ua.Edge.Translator
             }
 
             return null;
+        }
+
+        public BaseObjectState CreateObject(NodeState parent, string name, NodeId type)
+        {
+            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
+            {
+                throw new ArgumentNullException("Cannot create UA object with empty browsename or type definition!");
+            }
+
+            BaseObjectState obj = new(parent)
+            {
+                BrowseName = name,
+                DisplayName = name,
+                TypeDefinitionId = type
+            };
+
+            obj.NodeId = New(SystemContext, obj);
+
+            AddPredefinedNode(SystemContext, obj);
+
+            if (parent != null)
+            {
+                parent.AddChild(obj);
+            }
+
+            return obj;
         }
 
         private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
