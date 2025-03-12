@@ -28,6 +28,8 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly Dictionary<string, BaseDataVariableState> _uaVariables = new();
 
+        private readonly Dictionary<string, PropertyState> _uaProperties = new();
+
         private readonly Dictionary<string, IAsset> _assets = new();
 
         private readonly Dictionary<string, List<AssetTag>> _tags = new();
@@ -167,20 +169,11 @@ namespace Opc.Ua.Edge.Translator
             BaseObjectState assetManagementPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(WotCon.Objects.WoTAssetConnectionManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
             _assetManagement.Create(SystemContext, assetManagementPassiveNode);
 
-            MethodState createAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagement_CreateAsset, WoTConNamespaceIndex), typeof(MethodState));
-            _assetManagement.CreateAsset = new(null);
-            _assetManagement.CreateAsset.Create(SystemContext, createAssetPassiveNode);
-            _assetManagement.CreateAsset.OnCall = new CreateAssetMethodStateMethodCallHandler(OnCreateAsset);
+            BaseObjectState configurationPassiveNode = (BaseObjectState)FindPredefinedNode(new NodeId(WotCon.Objects.WoTAssetConnectionManagementType_Configuration, WoTConNamespaceIndex), typeof(BaseObjectState));
+            _assetManagement.Configuration = new(null);
+            _assetManagement.Configuration.Create(SystemContext, configurationPassiveNode);
 
-            BaseVariableState createAssetInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAsset_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.CreateAsset.InputArguments = new(null);
-            _assetManagement.CreateAsset.InputArguments.Create(SystemContext, createAssetInputArgumentsPassiveNode);
-
-            BaseVariableState createAssetOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAsset_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
-            _assetManagement.CreateAsset.OutputArguments = new(null);
-            _assetManagement.CreateAsset.OutputArguments.Create(SystemContext, createAssetOutputArgumentsPassiveNode);
-
-            MethodState deleteAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagement_DeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
+            MethodState deleteAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_DeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
             _assetManagement.DeleteAsset = new(null);
             _assetManagement.DeleteAsset.Create(SystemContext, deleteAssetPassiveNode);
             _assetManagement.DeleteAsset.OnCall = new DeleteAssetMethodStateMethodCallHandler(OnDeleteAsset);
@@ -189,8 +182,39 @@ namespace Opc.Ua.Edge.Translator
             _assetManagement.DeleteAsset.InputArguments = new(null);
             _assetManagement.DeleteAsset.InputArguments.Create(SystemContext, deleteAssetInputArgumentsPassiveNode);
 
-            // create a variable listing our supported WoT protocol bindings
-            _uaVariables.Add("SupportedWoTBindings", CreateVariable(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
+            MethodState discoverAssetPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_DiscoverAssets, WoTConNamespaceIndex), typeof(MethodState));
+            _assetManagement.DiscoverAssets = new(null);
+            _assetManagement.DiscoverAssets.Create(SystemContext, discoverAssetPassiveNode);
+            _assetManagement.DiscoverAssets.OnCall = new DiscoverAssetsMethodStateMethodCallHandler(OnDiscoverAsset);
+
+            BaseVariableState discoverAssetOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_DiscoverAssets_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            _assetManagement.DiscoverAssets.OutputArguments = new(null);
+            _assetManagement.DiscoverAssets.OutputArguments.Create(SystemContext, discoverAssetOutputArgumentsPassiveNode);
+
+            MethodState createAssetForEndpointPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_CreateAssetForEndpoint, WoTConNamespaceIndex), typeof(MethodState));
+            _assetManagement.CreateAssetForEndpoint = new(null);
+            _assetManagement.CreateAssetForEndpoint.Create(SystemContext, createAssetForEndpointPassiveNode);
+            _assetManagement.CreateAssetForEndpoint.OnCall = new CreateAssetForEndpointMethodStateMethodCallHandler(OnCreateAssetForEndpoint);
+
+            BaseVariableState createAssetForEndpointInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_CreateAssetForEndpoint_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            _assetManagement.CreateAssetForEndpoint.InputArguments = new(null);
+            _assetManagement.CreateAssetForEndpoint.InputArguments.Create(SystemContext, createAssetForEndpointInputArgumentsPassiveNode);
+
+            MethodState connectionTestPassiveNode = (MethodState)FindPredefinedNode(new NodeId(WotCon.Methods.WoTAssetConnectionManagementType_ConnectionTest, WoTConNamespaceIndex), typeof(MethodState));
+            _assetManagement.ConnectionTest = new(null);
+            _assetManagement.ConnectionTest.Create(SystemContext, connectionTestPassiveNode);
+            _assetManagement.ConnectionTest.OnCall = new ConnectionTestMethodStateMethodCallHandler(OnConnectionTest);
+
+            BaseVariableState connectionTestInputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_ConnectionTest_InputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            _assetManagement.ConnectionTest.InputArguments = new(null);
+            _assetManagement.ConnectionTest.InputArguments.Create(SystemContext, connectionTestInputArgumentsPassiveNode);
+
+            BaseVariableState connectionTestOutputArgumentsPassiveNode = (BaseVariableState)FindPredefinedNode(new NodeId(WotCon.Variables.WoTAssetConnectionManagementType_ConnectionTest_OutputArguments, WoTConNamespaceIndex), typeof(BaseVariableState));
+            _assetManagement.ConnectionTest.OutputArguments = new(null);
+            _assetManagement.ConnectionTest.OutputArguments.Create(SystemContext, connectionTestOutputArgumentsPassiveNode);
+
+            // create a property listing our supported WoT protocol bindings
+            _uaProperties.Add(WotCon.BrowseNames.SupportedWoTBindings, CreateProperty(_assetManagement, WotCon.BrowseNames.SupportedWoTBindings, new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
@@ -199,6 +223,9 @@ namespace Opc.Ua.Edge.Translator
                 "https://www.w3.org/2019/wot/ads",
                 "http://www.w3.org/2022/bacnet"
             }));
+
+            // create a property for the license key
+            _uaProperties.Add(WotCon.BrowseNames.License, CreateProperty(_assetManagement.Configuration, WotCon.BrowseNames.License, new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
 
             // add everything to our server namespace
             objectsFolderReferences.Add(new NodeStateReference(Ua.ReferenceTypes.Organizes, false, _assetManagement.NodeId));
@@ -348,6 +375,40 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
+        {
+            // add behaviour to our methods
+            MethodState methodState = predefinedNode as MethodState;
+            if ((methodState != null) && (methodState.ModellingRuleId == null))
+            {
+                if (methodState.DisplayName == "CreateAsset")
+                {
+                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
+
+                    // define the method's input argument (the serial number)
+                    methodState.InputArguments = new PropertyState<Argument[]>(methodState)
+                    {
+                        NodeId = new NodeId(methodState.BrowseName.Name + "InArgs", NamespaceIndex),
+                        BrowseName = Ua.BrowseNames.InputArguments
+                    };
+                    methodState.InputArguments.DisplayName = methodState.InputArguments.BrowseName.Name;
+                    methodState.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    methodState.InputArguments.ReferenceTypeId = Ua.ReferenceTypeIds.HasProperty;
+                    methodState.InputArguments.DataType = DataTypeIds.Argument;
+                    methodState.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    methodState.InputArguments.Value = new Argument[]
+                    {
+                        new Argument { Name = "arg1", Description = "arg1",  DataType = DataTypeIds.UInt64, ValueRank = ValueRanks.Scalar }
+                    };
+
+                    return predefinedNode;
+                }
+            }
+
+            return predefinedNode;
+        }
+
         public override void DeleteAddressSpace()
         {
             lock (Lock)
@@ -356,26 +417,21 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnCreateAsset(
-            ISystemContext _context,
-            MethodState _method,
-            NodeId _objectId,
-            string assetName,
-            ref NodeId assetId)
+        private ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            if (string.IsNullOrEmpty(assetName))
+            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
 
-            bool success = CreateAssetNode(assetName, out NodeState assetNode);
+            bool success = CreateAssetNode(inputArguments[0].ToString(), out NodeState assetNode);
             if (!success)
             {
                 return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Ua.LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
-                assetId = assetNode.NodeId;
+                outputArguments[0] = assetNode.NodeId;
                 return ServiceResult.Good;
             }
         }
@@ -383,7 +439,7 @@ namespace Opc.Ua.Edge.Translator
         private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
            lock (Lock)
-            {
+           {
                 // check if the asset node already exists
                 INodeBrowser browser = _assetManagement.CreateBrowser(
                     SystemContext,
@@ -420,14 +476,10 @@ namespace Opc.Ua.Edge.Translator
 
                 assetNode = asset;
                 return true;
-            }
+           }
         }
 
-        private ServiceResult OnDeleteAsset(
-            ISystemContext _context,
-            MethodState _method,
-            NodeId _objectId,
-            NodeId assetId)
+        private ServiceResult OnDeleteAsset(ISystemContext _context, MethodState _method, NodeId _objectId, NodeId assetId)
         {
             lock (Lock)
             {
@@ -476,6 +528,24 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
 
+                return ServiceResult.Good;
+            }
+        }
+
+        private ServiceResult OnDiscoverAsset(ISystemContext _context, MethodState _method, NodeId _objectId, ref string[] assetEndpoints)
+        {
+            return ServiceResult.Good;
+        }
+
+        private ServiceResult OnConnectionTest(ISystemContext _context, MethodState _method, NodeId _objectId, string assetEndpoint, ref bool success, ref string status)
+        {
+            return ServiceResult.Good;
+        }
+
+        private ServiceResult OnCreateAssetForEndpoint(ISystemContext _context, MethodState _method, NodeId _objectId, string assetName, string assetEndpoint)
+        {
+            lock (Lock)
+            {
                 return ServiceResult.Good;
             }
         }
@@ -919,10 +989,11 @@ namespace Opc.Ua.Edge.Translator
 
         private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
         {
-            BaseDataVariableState variable = new BaseDataVariableState(parent)
+            BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = Ua.ReferenceTypes.Organizes,
+                TypeDefinitionId = VariableTypeIds.BaseVariableType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Ua.LocalizedText("en", name),
@@ -951,6 +1022,40 @@ namespace Opc.Ua.Edge.Translator
             return variable;
         }
 
+        private PropertyState CreateProperty(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
+        {
+            PropertyState property = new(parent)
+            {
+                SymbolicName = name,
+                ReferenceTypeId = Ua.ReferenceTypes.Organizes,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
+                DisplayName = new Ua.LocalizedText("en", name),
+                WriteMask = AttributeWriteMask.None,
+                UserWriteMask = AttributeWriteMask.None,
+                AccessLevel = AccessLevels.CurrentRead,
+                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
+                Value = value,
+                OnReadValue = OnReadValue
+            };
+
+            if (writeable)
+            {
+                property.AccessLevel = AccessLevels.CurrentReadOrWrite;
+                property.UserAccessLevel = AccessLevels.CurrentReadOrWrite;
+                property.UserWriteMask = AttributeWriteMask.ValueForVariableType;
+                property.WriteMask = AttributeWriteMask.ValueForVariableType;
+                property.OnWriteValue = OnWriteValue;
+            }
+
+            parent?.AddChild(property);
+
+            AddPredefinedNode(SystemContext, property);
+
+            return property;
+        }
+
         private ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
@@ -959,39 +1064,55 @@ namespace Opc.Ua.Edge.Translator
                 return new ServiceResult(StatusCodes.BadNotReadable, "Access to UA Edge Translator is limited while in provisioning mode!");
             }
 
-            BaseDataVariableState variable = node as BaseDataVariableState;
-
-            if (node.DisplayName.Text == "SupportedWoTBindings")
+            PropertyState property = node as PropertyState;
+            if (property != null)
             {
-                value = _uaVariables[node.DisplayName.Text].Value;
-                timestamp = _uaVariables[node.DisplayName.Text].Timestamp;
-                statusCode = StatusCodes.Good;
+                if (node.DisplayName.Text == WotCon.BrowseNames.SupportedWoTBindings)
+                {
+                    value = _uaProperties[node.DisplayName.Text].Value;
+                    timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
+                    statusCode = StatusCodes.Good;
 
-                return ServiceResult.Good;
+                    return ServiceResult.Good;
+                }
+
+                if (node.DisplayName.Text == WotCon.BrowseNames.License)
+                {
+                    value = _uaProperties[node.DisplayName.Text].Value;
+                    timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
+                    statusCode = StatusCodes.Good;
+
+                    return ServiceResult.Good;
+                }
             }
 
-            foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+            BaseDataVariableState variable = node as BaseDataVariableState;
+            if (variable == null)
             {
-                string assetId = tags.Key;
 
-                foreach (AssetTag tag in tags.Value)
+                foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
                 {
-                    try
+                    string assetId = tags.Key;
+
+                    foreach (AssetTag tag in tags.Value)
                     {
-                        if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
+                        try
                         {
-                            value = _uaVariables[tag.Name].Value;
-                            timestamp = _uaVariables[tag.Name].Timestamp;
-                            statusCode = StatusCodes.Good;
+                            if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
+                            {
+                                value = _uaVariables[tag.Name].Value;
+                                timestamp = _uaVariables[tag.Name].Timestamp;
+                                statusCode = StatusCodes.Good;
 
-                            return ServiceResult.Good;
+                                return ServiceResult.Good;
+                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Error(ex.Message, ex);
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Error(ex.Message, ex);
 
-                        return new ServiceResult(ex);
+                            return new ServiceResult(ex);
+                        }
                     }
                 }
             }
@@ -1007,65 +1128,98 @@ namespace Opc.Ua.Edge.Translator
                 return new ServiceResult(StatusCodes.BadNotWritable, "Access to UA Edge Translator is limited while in provisioning mode!");
             }
 
-            BaseDataVariableState variable = node as BaseDataVariableState;
-
-            foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+            PropertyState property = node as PropertyState;
+            if (property != null)
             {
-                string assetId = tags.Key;
-
-                foreach (AssetTag tag in tags.Value)
+                if (node.DisplayName.Text == WotCon.BrowseNames.SupportedWoTBindings)
                 {
-                    try
+                    return ServiceResult.Good;
+                }
+
+                if (node.DisplayName.Text == WotCon.BrowseNames.License)
+                {
+                    // validate license key provided
+                    if (string.IsNullOrEmpty(value.ToString()))
                     {
-                        if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId,context.NamespaceUris).ToString())
-                        {
-                            if (_assets[assetId] is ModbusTCPClient)
-                            {
-                                HandleModbusDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is UAClient)
-                            {
-                                HandleOPCUADataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is SiemensClient)
-                            {
-                                HandleSiemensDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is MitsubishiClient)
-                            {
-                                HandleMitsubishiDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is RockwellClient)
-                            {
-                                HandleRockwellDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is BeckhoffClient)
-                            {
-                                HandleBeckhoffDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            if (_assets[assetId] is BACNetClient)
-                            {
-                                HandleBACNetDataWrite(tag, assetId, value.ToString());
-                            }
-
-                            _uaVariables[tag.Name].Value = value;
-                            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
-
-                            return ServiceResult.Good;
-                        }
+                        return new ServiceResult(StatusCodes.BadInvalidArgument, "License key cannot be empty!");
                     }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Error(ex.Message, ex);
 
-                        return new ServiceResult(ex);
+                    if (value.ToString() != "themajiclicensekey")
+                    {
+                        // in a commercial product, you would validate the license key here using some algorithm
+                        // and only when the key is valid switch out of provisioning mode
+                        return new ServiceResult(StatusCodes.BadInvalidArgument, "Invalid license key!");
+                    }
+
+                    _uaVariables[WotCon.BrowseNames.License].Value = value;
+                    _uaVariables[WotCon.BrowseNames.License].Timestamp = DateTime.UtcNow;
+                    _uaVariables[WotCon.BrowseNames.License].ClearChangeMasks(SystemContext, false);
+
+                    return ServiceResult.Good;
+                }
+            }
+
+            BaseDataVariableState variable = node as BaseDataVariableState;
+            if (variable == null)
+            {
+                foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+                {
+                    string assetId = tags.Key;
+
+                    foreach (AssetTag tag in tags.Value)
+                    {
+                        try
+                        {
+                            if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
+                            {
+                                if (_assets[assetId] is ModbusTCPClient)
+                                {
+                                    HandleModbusDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is UAClient)
+                                {
+                                    HandleOPCUADataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is SiemensClient)
+                                {
+                                    HandleSiemensDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is MitsubishiClient)
+                                {
+                                    HandleMitsubishiDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is RockwellClient)
+                                {
+                                    HandleRockwellDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is BeckhoffClient)
+                                {
+                                    HandleBeckhoffDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                if (_assets[assetId] is BACNetClient)
+                                {
+                                    HandleBACNetDataWrite(tag, assetId, value.ToString());
+                                }
+
+                                _uaVariables[tag.Name].Value = value;
+                                _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
+                                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+
+                                return ServiceResult.Good;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Error(ex.Message, ex);
+
+                            return new ServiceResult(ex);
+                        }
                     }
                 }
             }
