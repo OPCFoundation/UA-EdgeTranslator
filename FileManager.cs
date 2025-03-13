@@ -2,7 +2,6 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
-    using Opc.Ua.WotCon;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -13,7 +12,7 @@ namespace Opc.Ua.Edge.Translator
     public class FileManager : IDisposable
     {
         private readonly UANodeManager _nodeManager;
-        private readonly WoTAssetFileState _file;
+        private readonly FileState _file;
         private readonly Dictionary<uint, Handle> _handles = new();
         private bool _writing = false;
         private uint _nextHandle = 1;
@@ -26,7 +25,7 @@ namespace Opc.Ua.Edge.Translator
             public bool Writing;
         }
 
-        public FileManager(UANodeManager nodeManager, WoTAssetFileState file)
+        public FileManager(UANodeManager nodeManager, FileState file)
         {
             _nodeManager = nodeManager;
             _file = file;
@@ -42,7 +41,9 @@ namespace Opc.Ua.Edge.Translator
             _file.Write.OnCall = new WriteMethodStateMethodCallHandler(OnWrite);
             _file.GetPosition.OnCall = new GetPositionMethodStateMethodCallHandler(OnGetPosition);
             _file.SetPosition.OnCall = new SetPositionMethodStateMethodCallHandler(OnSetPosition);
-            _file.CloseAndUpdate.OnCall = new WotCon.CloseAndUpdateMethodStateMethodCallHandler(OnCloseAndUpdate);
+            _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnCloseAndUpdate);
+            _file.Close.DisplayName = new LocalizedText("CloseAndUpdate");
+            _file.Close.BrowseName = new QualifiedName("CloseAndUpdate");
         }
 
         public void Dispose()

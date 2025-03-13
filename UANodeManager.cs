@@ -7,7 +7,6 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Server;
-    using Opc.Ua.WotCon;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -40,6 +39,17 @@ namespace Opc.Ua.Edge.Translator
 
         private uint _ticks = 0;
 
+        private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
+
+        private const uint _cHasWoTComponent = 83;
+
+        private const uint _cWoTAssetConnectionManagementType = 38;
+
+        private const uint _cWoTAssetConfigurationType = 113;
+
+        private const uint _cIWoTAssetType = 56;
+
+        private const uint _cWoTAssetFileType = 86;
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
@@ -164,42 +174,42 @@ namespace Opc.Ua.Edge.Translator
 
         private void AddNodesForAssetManagement(IList<IReference> objectsFolderReferences)
         {
-            ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(WotCon.Namespaces.WotCon);
+            ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
 
             _assetManagement = CreateObject(
-                FindNodeInAddressSpace(Ua.ObjectIds.ObjectsFolder),
-                WotCon.BrowseNames.WoTAssetConnectionManagement,
-                new ExpandedNodeId(WotCon.ObjectTypes.WoTAssetConnectionManagementType, WotCon.Namespaces.WotCon));
+                FindNodeInAddressSpace(ObjectIds.ObjectsFolder),
+                "WoTAssetConnectionManagement",
+                new ExpandedNodeId(_cWoTAssetConnectionManagementType, _cWotCon));
 
-            MethodState createAsset = CreateMethod(_assetManagement, WotCon.BrowseNames.CreateAsset);
+            MethodState createAsset = CreateMethod(_assetManagement, "CreateAsset");
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
             createAsset.InputArguments = AddArguments(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
             createAsset.OutputArguments = AddArguments(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
             AddPredefinedNode(SystemContext, createAsset);
 
-            MethodState deleteAsset = CreateMethod(_assetManagement, WotCon.BrowseNames.DeleteAsset);
+            MethodState deleteAsset = CreateMethod(_assetManagement, "DeleteAsset");
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
             deleteAsset.InputArguments = AddArguments(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
             AddPredefinedNode(SystemContext, deleteAsset);
 
-            MethodState discoverAssets = CreateMethod(_assetManagement, WotCon.BrowseNames.DiscoverAssets);
+            MethodState discoverAssets = CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
             discoverAssets.OutputArguments = AddArguments(discoverAssets, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
-            MethodState createAssetForEndpoint = CreateMethod(_assetManagement, WotCon.BrowseNames.CreateAssetForEndpoint);
+            MethodState createAssetForEndpoint = CreateMethod(_assetManagement, "CreateAssetForEndpoint");
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
             createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
-            MethodState connectionTest = CreateMethod(_assetManagement, WotCon.BrowseNames.ConnectionTest);
+            MethodState connectionTest = CreateMethod(_assetManagement, "ConnectionTest");
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
             connectionTest.InputArguments = AddArguments(connectionTest, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
             connectionTest.OutputArguments = AddArguments(connectionTest, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
             AddPredefinedNode(SystemContext, connectionTest);
 
             // create a property listing our supported WoT protocol bindings
-            _uaProperties.Add(WotCon.BrowseNames.SupportedWoTBindings, CreateProperty(_assetManagement, WotCon.BrowseNames.SupportedWoTBindings, new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
+            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
@@ -211,11 +221,11 @@ namespace Opc.Ua.Edge.Translator
 
             BaseObjectState configuration = CreateObject(
                 _assetManagement,
-                WotCon.BrowseNames.Configuration,
-                new ExpandedNodeId(WotCon.ObjectTypes.WoTAssetConfigurationType, WotCon.Namespaces.WotCon));
+                "Configuration",
+                new ExpandedNodeId(_cWoTAssetConfigurationType, _cWotCon));
 
             // create a property for the license key
-            _uaProperties.Add(WotCon.BrowseNames.License, CreateProperty(configuration, WotCon.BrowseNames.License, new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
+            _uaProperties.Add("License", CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
         }
 
         private void AddNamespacesFromCompanionSpecs(List<string> namespaceUris, ThingDescription td)
@@ -469,12 +479,18 @@ namespace Opc.Ua.Edge.Translator
                     reference = browser.Next();
                 }
 
-                IWoTAssetState asset = new(null);
+                BaseInterfaceState asset = new(null);
                 asset.Create(SystemContext, new NodeId(), new QualifiedName(assetName), null, true);
+                asset.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cIWoTAssetType, _cWotCon), Server.NamespaceUris);
+
+                FileState fileNode = new(asset);
+                fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile"), null, true);
+                fileNode.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cWoTAssetFileType, _cWotCon), Server.NamespaceUris);
+                asset.AddChild(fileNode);
 
                 _assetManagement.AddChild(asset);
 
-                FileManager fileManager = new(this, asset.WoTFile);
+                FileManager fileManager = new(this, fileNode);
                 _fileManagers.Add(asset.NodeId, fileManager);
 
                 AddPredefinedNode(SystemContext, asset);
@@ -549,17 +565,17 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            return ServiceResult.Good;
-        }
-
         private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             lock (Lock)
             {
                 return ServiceResult.Good;
             }
+        }
+
+        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            return ServiceResult.Good;
         }
 
         public void AddNodesForWoTProperties(NodeState parent, string contents)
@@ -1053,7 +1069,8 @@ namespace Opc.Ua.Edge.Translator
             }
 
             parent?.AddChild(variable);
-            parent?.AddReference(ExpandedNodeId.ToNodeId(WotCon.ReferenceTypeIds.HasWoTComponent, Server.NamespaceUris), false, variable.NodeId);
+
+            parent?.AddReference(ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cHasWoTComponent, _cWotCon), Server.NamespaceUris), false, variable.NodeId);
 
             AddPredefinedNode(SystemContext, variable);
 
@@ -1105,7 +1122,7 @@ namespace Opc.Ua.Edge.Translator
             PropertyState property = node as PropertyState;
             if (property != null)
             {
-                if (node.DisplayName.Text == WotCon.BrowseNames.SupportedWoTBindings)
+                if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
                     value = _uaProperties[node.DisplayName.Text].Value;
                     timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
@@ -1114,7 +1131,7 @@ namespace Opc.Ua.Edge.Translator
                     return ServiceResult.Good;
                 }
 
-                if (node.DisplayName.Text == WotCon.BrowseNames.License)
+                if (node.DisplayName.Text == "License")
                 {
                     value = _uaProperties[node.DisplayName.Text].Value;
                     timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
@@ -1169,12 +1186,12 @@ namespace Opc.Ua.Edge.Translator
             PropertyState property = node as PropertyState;
             if (property != null)
             {
-                if (node.DisplayName.Text == WotCon.BrowseNames.SupportedWoTBindings)
+                if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
                     return ServiceResult.Good;
                 }
 
-                if (node.DisplayName.Text == WotCon.BrowseNames.License)
+                if (node.DisplayName.Text == "License")
                 {
                     // validate license key provided
                     if (string.IsNullOrEmpty(value.ToString()))
@@ -1189,9 +1206,9 @@ namespace Opc.Ua.Edge.Translator
                         return new ServiceResult(StatusCodes.BadInvalidArgument, "Invalid license key!");
                     }
 
-                    _uaVariables[WotCon.BrowseNames.License].Value = value;
-                    _uaVariables[WotCon.BrowseNames.License].Timestamp = DateTime.UtcNow;
-                    _uaVariables[WotCon.BrowseNames.License].ClearChangeMasks(SystemContext, false);
+                    _uaVariables["License"].Value = value;
+                    _uaVariables["License"].Timestamp = DateTime.UtcNow;
+                    _uaVariables["License"].ClearChangeMasks(SystemContext, false);
 
                     return ServiceResult.Good;
                 }
