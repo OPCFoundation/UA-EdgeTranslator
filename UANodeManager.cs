@@ -152,18 +152,18 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState createAsset = CreateMethod(_assetManagement, "CreateAsset");
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-            createAsset.InputArguments = AddArgument(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
-            createAsset.OutputArguments = AddArgument(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
+            createAsset.InputArguments = AddArguments(createAsset, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true);
+            createAsset.OutputArguments = AddArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
             AddPredefinedNode(SystemContext, createAsset);
 
             MethodState deleteAsset = CreateMethod(_assetManagement, "DeleteAsset");
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-            deleteAsset.InputArguments = AddArgument(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
+            deleteAsset.InputArguments = AddArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true);
             AddPredefinedNode(SystemContext, deleteAsset);
 
             MethodState discoverAssets = CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-            discoverAssets.OutputArguments = AddArgument(discoverAssets, "AssetEndpoints", "The list of discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
+            discoverAssets.OutputArguments = AddArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = CreateMethod(_assetManagement, "CreateAssetForEndpoint");
@@ -173,7 +173,7 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState connectionTest = CreateMethod(_assetManagement, "ConnectionTest");
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-            connectionTest.InputArguments = AddArgument(connectionTest, "AssetEndpoint", "The endpoint description of the asset to test the connection to.", new ExpandedNodeId(DataTypes.String), true);
+            connectionTest.InputArguments = AddArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
             connectionTest.OutputArguments = AddArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
             AddPredefinedNode(SystemContext, connectionTest);
 
@@ -382,39 +382,6 @@ namespace Opc.Ua.Edge.Translator
             }
 
             return method;
-        }
-
-        private PropertyState<Argument[]> AddArgument(MethodState methodState, string name, string description, ExpandedNodeId type, bool input, bool array = false)
-        {
-            string browseName = methodState.BrowseName.Name;
-            if (input)
-            {
-                browseName += "InArgs";
-            }
-            else
-            {
-                browseName += "OutArgs";
-            }
-
-            PropertyState<Argument[]> arguments = new(methodState) {
-                NodeId = new NodeId(browseName, NamespaceIndex),
-                BrowseName = input? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                DisplayName = input? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                TypeDefinitionId = VariableTypeIds.PropertyType,
-                ReferenceTypeId = ReferenceTypeIds.HasProperty,
-                DataType = DataTypeIds.Argument,
-                ValueRank = ValueRanks.OneDimension,
-                Value = [
-                    new Argument {
-                        Name = name,
-                        Description = description,
-                        DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
-                        ValueRank = array? ValueRanks.OneDimension : ValueRanks.Scalar
-                    }
-                ]
-            };
-
-            return arguments;
         }
 
         private PropertyState<Argument[]> AddArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false)
