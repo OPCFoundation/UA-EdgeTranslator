@@ -12,6 +12,7 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Net.NetworkInformation;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -151,29 +152,29 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState createAsset = CreateMethod(_assetManagement, "CreateAsset");
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-            createAsset.InputArguments = AddArguments(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
-            createAsset.OutputArguments = AddArguments(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
+            createAsset.InputArguments = AddArgument(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
+            createAsset.OutputArguments = AddArgument(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
             AddPredefinedNode(SystemContext, createAsset);
 
             MethodState deleteAsset = CreateMethod(_assetManagement, "DeleteAsset");
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-            deleteAsset.InputArguments = AddArguments(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
+            deleteAsset.InputArguments = AddArgument(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
             AddPredefinedNode(SystemContext, deleteAsset);
 
             MethodState discoverAssets = CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-            discoverAssets.OutputArguments = AddArguments(discoverAssets, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
+            discoverAssets.OutputArguments = AddArgument(discoverAssets, "AssetEndpoints", "The list of discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = CreateMethod(_assetManagement, "CreateAssetForEndpoint");
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
-            createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
+            createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
             MethodState connectionTest = CreateMethod(_assetManagement, "ConnectionTest");
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-            connectionTest.InputArguments = AddArguments(connectionTest, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
-            connectionTest.OutputArguments = AddArguments(connectionTest, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
+            connectionTest.InputArguments = AddArgument(connectionTest, "AssetEndpoint", "The endpoint description of the asset to test the connection to.", new ExpandedNodeId(DataTypes.String), true);
+            connectionTest.OutputArguments = AddArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
             AddPredefinedNode(SystemContext, connectionTest);
 
             // create a property listing our supported WoT protocol bindings
@@ -367,7 +368,7 @@ namespace Opc.Ua.Edge.Translator
         {
             MethodState method = new(parent) {
                 SymbolicName = name,
-                ReferenceTypeId = Ua.ReferenceTypeIds.HasComponent,
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 NodeId = new NodeId(name, NamespaceIndex),
                 BrowseName = new QualifiedName(name, NamespaceIndex),
                 DisplayName = new LocalizedText("en", name),
@@ -383,7 +384,7 @@ namespace Opc.Ua.Edge.Translator
             return method;
         }
 
-        private PropertyState<Argument[]> AddArguments(MethodState methodState, string name, string description, ExpandedNodeId type, bool input, bool array = false)
+        private PropertyState<Argument[]> AddArgument(MethodState methodState, string name, string description, ExpandedNodeId type, bool input, bool array = false)
         {
             string browseName = methodState.BrowseName.Name;
             if (input)
@@ -397,10 +398,10 @@ namespace Opc.Ua.Edge.Translator
 
             PropertyState<Argument[]> arguments = new(methodState) {
                 NodeId = new NodeId(browseName, NamespaceIndex),
-                BrowseName = input? Ua.BrowseNames.InputArguments : Ua.BrowseNames.OutputArguments,
-                DisplayName = input? Ua.BrowseNames.InputArguments : Ua.BrowseNames.OutputArguments,
+                BrowseName = input? BrowseNames.InputArguments : BrowseNames.OutputArguments,
+                DisplayName = input? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
-                ReferenceTypeId = Ua.ReferenceTypeIds.HasProperty,
+                ReferenceTypeId = ReferenceTypeIds.HasProperty,
                 DataType = DataTypeIds.Argument,
                 ValueRank = ValueRanks.OneDimension,
                 Value = [
@@ -411,6 +412,45 @@ namespace Opc.Ua.Edge.Translator
                         ValueRank = array? ValueRanks.OneDimension : ValueRanks.Scalar
                     }
                 ]
+            };
+
+            return arguments;
+        }
+
+        private PropertyState<Argument[]> AddArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false)
+        {
+            string browseName = methodState.BrowseName.Name;
+            if (input)
+            {
+                browseName += "InArgs";
+            }
+            else
+            {
+                browseName += "OutArgs";
+            }
+
+            List<Argument> argumentsList = new();
+            for (int i = 0; i < names.Length; i++)
+            {
+                argumentsList.Add(new Argument()
+                {
+                    Name = names[i],
+                    Description = descriptions[i],
+                    DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
+                    ValueRank = array ? ValueRanks.OneDimension : ValueRanks.Scalar
+                });
+            }
+
+            PropertyState<Argument[]> arguments = new(methodState)
+            {
+                NodeId = new NodeId(browseName, NamespaceIndex),
+                BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
+                DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                ReferenceTypeId = ReferenceTypeIds.HasProperty,
+                DataType = DataTypeIds.Argument,
+                ValueRank = ValueRanks.OneDimension,
+                Value = argumentsList.ToArray()
             };
 
             return arguments;
@@ -434,7 +474,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(inputArguments[0].ToString(), out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Ua.LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -494,7 +534,7 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
+            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
@@ -567,7 +607,34 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            return ServiceResult.Good;
+            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
+            {
+                return StatusCodes.BadInvalidArgument;
+            }
+
+            string ipAddress = inputArguments[0].ToString();
+
+            Ping pingSender = new Ping();
+
+            PingReply reply = pingSender.Send(ipAddress);
+            if (reply.Status == IPStatus.Success)
+            {
+                Log.Logger.Information($"Ping to {ipAddress} successful. Roundtrip time: {reply.RoundtripTime} ms.");
+
+                outputArguments[0] = true;
+                outputArguments[1] = $"Ping to {ipAddress} successful. Roundtrip time: {reply.RoundtripTime} ms.";
+
+                return ServiceResult.Good;
+            }
+            else
+            {
+                Log.Logger.Warning($"Ping to {ipAddress} failed: {reply.Status}");
+
+                outputArguments[0] = false;
+                outputArguments[1] = $"Ping to {ipAddress} failed: {reply.Status}";
+
+                return StatusCodes.BadNotFound;
+            }
         }
 
         public void OnboardAssetFromWoTFile(NodeState parent, string contents)
@@ -1035,11 +1102,11 @@ namespace Opc.Ua.Edge.Translator
             BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
-                ReferenceTypeId = Ua.ReferenceTypes.Organizes,
+                ReferenceTypeId = ReferenceTypes.Organizes,
                 TypeDefinitionId = VariableTypeIds.BaseVariableType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new Ua.LocalizedText("en", name),
+                DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
@@ -1071,11 +1138,11 @@ namespace Opc.Ua.Edge.Translator
             PropertyState property = new(parent)
             {
                 SymbolicName = name,
-                ReferenceTypeId = Ua.ReferenceTypes.Organizes,
+                ReferenceTypeId = ReferenceTypes.Organizes,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new Ua.LocalizedText("en", name),
+                DisplayName = new LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
