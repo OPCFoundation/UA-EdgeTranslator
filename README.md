@@ -54,3 +54,4 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `OPCUA_CLIENT_PASSWORD` - OPC UA client password to connect to an OPC UA asset.
 * `DISABLE_ASSET_CONNECTION_TEST` - Set to `1` to disable the connection test when mapping an asset to OPC UA.
 * `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space.`
+* `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.

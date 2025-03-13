@@ -5,6 +5,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Client;
     using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Gds.Client;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -24,6 +25,29 @@ namespace Opc.Ua.Edge.Translator
         private object _missedKeepAlivesLock = new object();
 
         private readonly Dictionary<ISession, ComplexTypeSystem> _complexTypeList = new Dictionary<ISession, ComplexTypeSystem>();
+
+        public List<string> Discover()
+        {
+            List<string> discoveredServers = new();
+
+            // connect to an OPC UA Global Discovery Server
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")))
+            {
+                DiscoveryClient client = DiscoveryClient.Create(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")));
+
+                ApplicationDescriptionCollection servers = client.FindServers(null);
+                foreach (ApplicationDescription server in servers)
+                {
+                    Log.Logger.Information($"Server: {server.ApplicationName}");
+                    foreach (string endpoint in server.DiscoveryUrls)
+                    {
+                        discoveredServers.Add(endpoint);
+                    }
+                }
+            }
+
+            return discoveredServers;
+        }
 
         public void Connect(string ipAddress, int port)
         {

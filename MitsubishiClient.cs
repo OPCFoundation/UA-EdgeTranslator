@@ -5,11 +5,18 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Serilog;
     using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public class MitsubishiClient : IAsset
     {
         private string _endpoint = string.Empty;
+
+        public List<string> Discover()
+        {
+            // MCP does not support discovery
+            return new List<string>();
+        }
 
         public void Connect(string ipAddress, int port)
         {

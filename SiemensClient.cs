@@ -5,12 +5,20 @@ namespace Opc.Ua.Edge.Translator
     using S7.Net;
     using Serilog;
     using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public class SiemensClient : IAsset
     {
         private Plc _S7 = null;
+
         private string _endpoint = string.Empty;
+
+        public List<string> Discover()
+        {
+            // S7Comm does not support discovery
+            return new List<string>();
+        }
 
         public void Connect(string ipAddress, int port)
         {

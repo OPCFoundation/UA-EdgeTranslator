@@ -1,9 +1,13 @@
 ﻿namespace Opc.Ua.Edge.Translator.Interfaces
 {
+    using System.Collections.Generic;
+    using System.Net;
     using System.Threading.Tasks;
 
     public interface IAsset
     {
+        public List<string> Discover();
+
         public void Connect(string ipAddress, int port);
 
         public void Disconnect();

@@ -4,6 +4,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Net.Sockets;
     using System.Threading.Tasks;
@@ -50,6 +51,12 @@ namespace Opc.Ua.Edge.Translator
                 case 11: throw new Exception("Target unit failed to respond");
                 default: throw new Exception("Unknown error");
             }
+        }
+
+        public List<string> Discover()
+        {
+            // ModbusTCP does not support discovery
+            return new List<string>();
         }
 
         public void Connect(string ipAddress, int port)

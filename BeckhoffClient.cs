@@ -4,6 +4,8 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Serilog;
     using System;
+    using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Viscon.Communication.Ads;
     using Viscon.Communication.Ads.Common;
@@ -33,7 +35,14 @@ namespace Opc.Ua.Edge.Translator
     public class BeckhoffClient : IAsset
     {
         private AdsClient _adsClient = null;
+
         private string _endpoint = string.Empty;
+
+        public List<string> Discover()
+        {
+            // ADS does not support discovery
+            return new List<string>();
+        }
 
         public void Connect(string ipAddress, int port)
         {

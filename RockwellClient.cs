@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using libplctag;
+    using libplctag.NativeImport;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
@@ -14,6 +15,31 @@ namespace Opc.Ua.Edge.Translator
     public class RockwellClient : IAsset
     {
         private string _endpoint = string.Empty;
+
+        public List<string> Discover()
+        {
+            List<string> assets = new();
+
+            // Create a tag for discovery
+            Tag tags = new()
+            {
+                Path = "1,0",
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip,
+                Name = "@Discovery",
+                Timeout = TimeSpan.FromSeconds(10),
+            };
+
+            tags.Read();
+
+            TagInfo[] tagInfos = DecodeAllTags(tags);
+            foreach (TagInfo tag in tagInfos)
+            {
+                // TODO: Process results
+            }
+
+            return assets;
+        }
 
         public void Connect(string ipAddress, int port)
         {

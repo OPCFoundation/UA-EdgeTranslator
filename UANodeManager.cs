@@ -561,6 +561,18 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
+            List<string> allAddresses = new();
+
+            allAddresses.AddRange(new BACNetClient().Discover());
+            allAddresses.AddRange(new BeckhoffClient().Discover());
+            allAddresses.AddRange(new MitsubishiClient().Discover());
+            allAddresses.AddRange(new ModbusTCPClient().Discover());
+            allAddresses.AddRange(new RockwellClient().Discover());
+            allAddresses.AddRange(new SiemensClient().Discover());
+            allAddresses.AddRange(new UAClient().Discover());
+
+            outputArguments[0] = allAddresses.ToArray();
+
             return ServiceResult.Good;
         }
 

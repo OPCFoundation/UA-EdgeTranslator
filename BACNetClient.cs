@@ -7,12 +7,37 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO.BACnet;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class BACNetClient : IAsset
     {
         private string _endpoint = string.Empty;
-        private BacnetClient _client;
+        
+        private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false));
+
+        private List<string> _discoverdAssets = new();
+
+        public List<string> Discover()
+        {
+            _client.OnIam += OnIAm;
+            _client.Start();
+            _client.WhoIs();
+
+            Thread.Sleep(10000);
+
+            return _discoverdAssets;
+        }
+
+        private void OnIAm(BacnetClient sender, BacnetAddress adr, uint deviceId, uint maxAPDU, BacnetSegmentations segmentation, ushort vendorId)
+        {
+            string newAddress = adr.ToString() + ":" + 0xBAC0.ToString();
+
+            if (!adr.IsMyRouter(adr) && !_discoverdAssets.Contains(newAddress))
+            {
+                _discoverdAssets.Add(newAddress);
+            }
+        }
 
         public void Connect(string ipAddress, int port)
         {
@@ -24,8 +49,6 @@ namespace Opc.Ua.Edge.Translator
                     _endpoint = addresses[0];
                     uint deviceId = uint.Parse(addresses[1]);
 
-                    BacnetIpUdpProtocolTransport transport = new(0xBAC0, false);
-                    _client = new BacnetClient(transport);
                     _client.Start();
 
                     Connect(new BacnetAddress(BacnetAddressTypes.IP, _endpoint), deviceId, 0, BacnetSegmentations.SEGMENTATION_NONE, 0);
