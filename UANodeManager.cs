@@ -175,24 +175,29 @@ namespace Opc.Ua.Edge.Translator
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
             createAsset.InputArguments = AddArguments(createAsset, "AssetName", "A unique name for the asset.", new ExpandedNodeId(DataTypes.String), true);
             createAsset.OutputArguments = AddArguments(createAsset, "AssetId", "The NodeId of the WoTAsset object, if call was successful.", new ExpandedNodeId(DataTypes.NodeId), false);
+            AddPredefinedNode(SystemContext, createAsset);
 
             MethodState deleteAsset = CreateMethod(_assetManagement, WotCon.BrowseNames.DeleteAsset);
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
             deleteAsset.InputArguments = AddArguments(deleteAsset, "AssetId", "The NodeId of the WoTAsset object.", new ExpandedNodeId(DataTypes.NodeId), true);
+            AddPredefinedNode(SystemContext, deleteAsset);
 
             MethodState discoverAssets = CreateMethod(_assetManagement, WotCon.BrowseNames.DiscoverAssets);
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
             discoverAssets.OutputArguments = AddArguments(discoverAssets, "DiscoveredAssets", "The discovered asset endpoints.", new ExpandedNodeId(DataTypes.String), true, true);
+            AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = CreateMethod(_assetManagement, WotCon.BrowseNames.CreateAssetForEndpoint);
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
             createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, "Endpoint", "The endpoint of the asset.", new ExpandedNodeId(DataTypes.String), true);
+            AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
             MethodState connectionTest = CreateMethod(_assetManagement, WotCon.BrowseNames.ConnectionTest);
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
             connectionTest.InputArguments = AddArguments(connectionTest, "Endpoint", "The endpoint of the asset to test a connection with.", new ExpandedNodeId(DataTypes.String), true);
             connectionTest.OutputArguments = AddArguments(connectionTest, "Status", "The status of the connection test.", new ExpandedNodeId(DataTypes.String), false);
-                        
+            AddPredefinedNode(SystemContext, connectionTest);
+
             // create a property listing our supported WoT protocol bindings
             _uaProperties.Add(WotCon.BrowseNames.SupportedWoTBindings, CreateProperty(_assetManagement, WotCon.BrowseNames.SupportedWoTBindings, new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
                 "https://www.w3.org/2019/wot/modbus",
@@ -390,8 +395,8 @@ namespace Opc.Ua.Edge.Translator
 
             PropertyState<Argument[]> arguments = new(methodState) {
                 NodeId = new NodeId(browseName, NamespaceIndex),
-                BrowseName = Ua.BrowseNames.InputArguments,
-                DisplayName = Ua.BrowseNames.InputArguments,
+                BrowseName = input? Ua.BrowseNames.InputArguments : Ua.BrowseNames.OutputArguments,
+                DisplayName = input? Ua.BrowseNames.InputArguments : Ua.BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
                 ReferenceTypeId = Ua.ReferenceTypeIds.HasProperty,
                 DataType = DataTypeIds.Argument,
@@ -419,7 +424,7 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
+            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
