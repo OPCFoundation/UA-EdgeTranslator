@@ -62,7 +62,6 @@ namespace Opc.Ua.Edge.Translator
                 Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
             }
 
-            // in the node manager constructor, we add all namespaces
             List<string> namespaceUris = new()
             {
                 "http://opcfoundation.org/UA/EdgeTranslator/"
@@ -71,30 +70,7 @@ namespace Opc.Ua.Edge.Translator
             // log into UA Cloud Library and download available namespaces
             _uacloudLibraryClient.Login(Environment.GetEnvironmentVariable("UACLURL"), Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
 
-            LoadNamespaceUrisFromNodesetXml(namespaceUris, "Opc.Ua.WotCon.NodeSet2.xml");
-
-            // add a seperate namespace for each asset from the WoT TD files
-            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
-            foreach (string file in WoTFiles)
-            {
-                try
-                {
-                    string contents = File.ReadAllText(file);
-
-                    // parse WoT TD file contents
-                    ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
-
-
-                    namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
-
-                    AddNamespacesFromCompanionSpecs(namespaceUris, td);
-                }
-                catch (Exception ex)
-                {
-                    // skip this file, but log an error
-                    Log.Logger.Error(ex.Message, ex);
-                }
-            }
+            namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml("Opc.Ua.WotCon.NodeSet2.xml"));
 
             NamespaceUris = namespaceUris;
         }
@@ -121,14 +97,6 @@ namespace Opc.Ua.Edge.Translator
             return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
         }
 
-        public void HandleServerRestart()
-        {
-            _shutdown = true;
-
-            Program.App.Stop();
-            Program.App.Start(new UAServer()).GetAwaiter().GetResult();
-        }
-
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
         {
             lock (Lock)
@@ -136,9 +104,9 @@ namespace Opc.Ua.Edge.Translator
                 // in the create address space call, we add all our nodes
 
                 IList<IReference> objectsFolderReferences = null;
-                if (!externalReferences.TryGetValue(Ua.ObjectIds.ObjectsFolder, out objectsFolderReferences))
+                if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out objectsFolderReferences))
                 {
-                    externalReferences[Ua.ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
+                    externalReferences[ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
                 }
 
                 AddNodesFromNodesetXml("Opc.Ua.WotCon.NodeSet2.xml");
@@ -158,7 +126,7 @@ namespace Opc.Ua.Edge.Translator
                             throw new Exception("Asset already exists");
                         }
 
-                        AddNodesForWoTProperties(assetNode, contents);
+                        OnboardAssetFromWoTFile(assetNode, contents);
                     }
                     catch (Exception ex)
                     {
@@ -228,64 +196,77 @@ namespace Opc.Ua.Edge.Translator
             _uaProperties.Add("License", CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
         }
 
-        private void AddNamespacesFromCompanionSpecs(List<string> namespaceUris, ThingDescription td)
+        private List<string> LoadNamespacesFromThingDescription(ThingDescription td)
         {
+            List<string> namespaceUris = new();
+
+            namespaceUris.Add("http://opcfoundation.org/UA/" + td.Name + "/");
+
             // check if an OPC UA companion spec is mentioned in the WoT TD file
             foreach (object ns in td.Context)
             {
-                if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
+                try
                 {
-                    continue;
-                }
-
-                Uri namespaceUri = new (((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
-                if (ns != null)
-                {
-                    // support local Nodesets
-                    if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
+                    if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
                     {
-                        string nodesetFile = string.Empty;
-                        if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
+                        continue;
+                    }
+
+                    Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
+                    if (ns != null)
+                    {
+                        // support local Nodesets
+                        if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
                         {
-                            // absolute file path
-                            nodesetFile = namespaceUri.OriginalString;
+                            string nodesetFile = string.Empty;
+                            if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
+                            {
+                                // absolute file path
+                                nodesetFile = namespaceUri.OriginalString;
+                            }
+                            else
+                            {
+                                // relative file path
+                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
+                            }
+
+                            Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
+                            namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml(nodesetFile));
                         }
                         else
                         {
-                            // relative file path
-                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
-                        }
-
-                        Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
-                        LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
-                    }
-                    else
-                    {
-                        if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
-                        {
-                            Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + namespaceUri);
-
-                            foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                            if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
                             {
-                                LoadNamespaceUrisFromNodesetXml(namespaceUris, nodesetFile);
+                                Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + namespaceUri);
+
+                                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                                {
+                                    namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml(nodesetFile));
+                                }
+                            }
+                            else
+                            {
+                                Log.Logger.Warning($"Could not load nodeset {namespaceUri.OriginalString}");
                             }
                         }
-                        else
-                        {
-                            Log.Logger.Warning($"Could not load nodeset {namespaceUri.OriginalString}");
-                        }
+                    }
+
+                    string validationError = _uacloudLibraryClient.ValidateNamespacesAndModels(Environment.GetEnvironmentVariable("UACLURL"), true);
+                    if (!string.IsNullOrEmpty(validationError))
+                    {
+                        Log.Logger.Error(validationError);
                     }
                 }
-
-                string validationError = _uacloudLibraryClient.ValidateNamespacesAndModels(Environment.GetEnvironmentVariable("UACLURL"), true);
-                if (!string.IsNullOrEmpty(validationError))
+                catch (Exception ex)
                 {
-                    Log.Logger.Error(validationError);
+                    Log.Logger.Error(ex.Message, ex);
                 }
             }
+
+            return namespaceUris;
         }
 
-        private void AddNodesFromCompanionSpecs(ThingDescription td)
+        private void AddNodesFromNodesetXml(ThingDescription td)
         {
             // we need as many passes as we have nodesetfiles to make sure all references can be resolved
             for (int i = 0; i < _uacloudLibraryClient._nodeSetFilenames.Count; i++)
@@ -298,38 +279,47 @@ namespace Opc.Ua.Edge.Translator
 
             foreach (object ns in td.Context)
             {
-                if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
+                try
                 {
-                    continue;
-                }
-
-                Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
-                if (namespaceUri != null)
-                {
-                    // support local Nodesets
-                    if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
+                    if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
                     {
-                        string nodesetFile = string.Empty;
-                        if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
-                        {
-                            // absolute file path
-                            nodesetFile = namespaceUri.OriginalString;
-                        }
-                        else
-                        {
-                            // relative file path
-                            nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
-                        }
-
-                        Log.Logger.Information("Adding node set from local nodeset file");
-                        AddNodesFromNodesetXml(nodesetFile);
+                        continue;
                     }
+
+                    Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
+                    if (namespaceUri != null)
+                    {
+                        // support local Nodesets
+                        if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
+                        {
+                            string nodesetFile = string.Empty;
+                            if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
+                            {
+                                // absolute file path
+                                nodesetFile = namespaceUri.OriginalString;
+                            }
+                            else
+                            {
+                                // relative file path
+                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
+                            }
+
+                            Log.Logger.Information("Adding node set from local nodeset file");
+                            AddNodesFromNodesetXml(nodesetFile);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
                 }
             }
         }
 
-        private void LoadNamespaceUrisFromNodesetXml(List<string> namespaceUris, string nodesetFile)
+        private List<string> LoadNamespaceUrisFromNodesetXml(string nodesetFile)
         {
+            List<string> namespaceUris = new();
+
             using (FileStream stream = new(nodesetFile, FileMode.Open, FileAccess.Read))
             {
                 UANodeSet nodeSet = UANodeSet.Read(stream);
@@ -345,6 +335,8 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
+
+            return namespaceUris;
         }
 
         private void AddNodesFromNodesetXml(string nodesetFile)
@@ -578,35 +570,32 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        public void AddNodesForWoTProperties(NodeState parent, string contents)
+        public void OnboardAssetFromWoTFile(NodeState parent, string contents)
         {
             // parse WoT TD file contents
             ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
 
-            string newNamespace = "http://opcfoundation.org/UA/" + td.Name + "/";
-            List<string> namespaceUris = new(NamespaceUris);
-            if (!namespaceUris.Contains(newNamespace))
-            {
-                namespaceUris.Add(newNamespace);
-            };
+            List<string> newNamespaceUris = LoadNamespacesFromThingDescription(td);
+            List<string> existingNamespaceUris = NamespaceUris.ToList();
 
-            foreach (object ns in td.Context)
+            foreach (string ns in newNamespaceUris)
             {
-                if (!ns.ToString().Contains("https://www.w3.org/") && ns.ToString().Contains("opcua"))
+                if (!existingNamespaceUris.Contains(ns))
                 {
-                    Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
-                    if (namespaceUri != null)
+                    lock (Lock)
                     {
-                        namespaceUris.Add(namespaceUri.ToString());
+                        existingNamespaceUris.Add(ns);
+
+                        // update the table used by this NodeManager
+                        SetNamespaces(existingNamespaceUris.ToArray());
+
+                        // register the new URI with the MasterNodeManager
+                        Server.NodeManager.RegisterNamespaceManager(ns, this);
                     }
                 }
             }
 
-            AddNamespacesFromCompanionSpecs(namespaceUris, td);
-
-            NamespaceUris = namespaceUris;
-
-            AddNodesFromCompanionSpecs(td);
+            AddNodesFromNodesetXml(td);
 
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
@@ -1114,7 +1103,7 @@ namespace Opc.Ua.Edge.Translator
         private ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
-            if (provisioningMode)
+            if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
                 return new ServiceResult(StatusCodes.BadNotReadable, "Access to UA Edge Translator is limited while in provisioning mode!");
             }
@@ -1178,7 +1167,7 @@ namespace Opc.Ua.Edge.Translator
         private ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
-            if (provisioningMode)
+            if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
                 return new ServiceResult(StatusCodes.BadNotWritable, "Access to UA Edge Translator is limited while in provisioning mode!");
             }

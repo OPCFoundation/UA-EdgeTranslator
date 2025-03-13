@@ -270,11 +270,9 @@ namespace Opc.Ua.Edge.Translator
 
                 string contents = Encoding.UTF8.GetString(handle.Stream.ToArray());
 
-                _nodeManager.AddNodesForWoTProperties(_file.Parent, contents);
+                _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
 
                 File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
-
-                _ = Task.Run(() => _nodeManager.HandleServerRestart());
 
                 return ServiceResult.Good;
             }
