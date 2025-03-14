@@ -2,13 +2,14 @@
 namespace Opc.Ua.Edge.Translator
 {
     using libplctag;
-    using libplctag.NativeImport;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net;
+    using System.Net.Sockets;
     using System.Text;
     using System.Threading.Tasks;
 
@@ -20,25 +21,72 @@ namespace Opc.Ua.Edge.Translator
         {
             List<string> assets = new();
 
-            // Create a tag for discovery
-            Tag tags = new()
-            {
-                Path = "1,0",
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Name = "@Discovery",
-                Timeout = TimeSpan.FromSeconds(10),
-            };
+            // Ethernet/IP uses the boradcast message "ListIdentity" to discover PLCs on the network
+            string broadcastAddress = GetBroadcastAddress();
 
-            tags.Read();
-
-            TagInfo[] tagInfos = DecodeAllTags(tags);
-            foreach (TagInfo tag in tagInfos)
+            // Create a UDP client
+            using (UdpClient udpClient = new UdpClient())
             {
-                // TODO: Process results
+                udpClient.EnableBroadcast = true;
+
+                byte[] listIdentityMessage = new byte[24];
+                for (int i = 0; i < listIdentityMessage.Length; i++)
+                {
+                    listIdentityMessage[i] = 0;
+                }
+                listIdentityMessage[0] = 0x63;
+
+                IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(broadcastAddress), 0xAF12);
+                udpClient.Send(listIdentityMessage, listIdentityMessage.Length, endPoint);
+                udpClient.Client.ReceiveTimeout = 10000;
+
+                try
+                {
+                    while (true)
+                    {
+                        IPEndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0xAF12);
+                        byte[] response = udpClient.Receive(ref receiveEndPoint);
+                        Log.Logger.Information($"Ethernet/IP discovery: Received response from {receiveEndPoint.Address}");
+                        assets.Add(receiveEndPoint.Address.ToString() + ":" + 0xAF12.ToString());
+                    }
+                }
+                catch (SocketException)
+                {
+                    // do nothing
+                }
             }
 
             return assets;
+        }
+
+        private string GetBroadcastAddress()
+        {
+            // try to restricted local broadcast
+            foreach (System.Net.NetworkInformation.NetworkInterface adapter in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                foreach (System.Net.NetworkInformation.UnicastIPAddressInformation ip in adapter.GetIPProperties().UnicastAddresses)
+                {
+                    if ((ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                     && !ip.Address.ToString().StartsWith("169.254.")
+                     && !ip.Address.ToString().StartsWith("127.0."))
+                    {
+                        string[] strCurrentIP = ip.Address.ToString().Split('.');
+                        string[] strIPNetMask = ip.IPv4Mask.ToString().Split('.');
+                        StringBuilder BroadcastStr = new StringBuilder();
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            BroadcastStr.Append(((byte)(int.Parse(strCurrentIP[i]) | ~int.Parse(strIPNetMask[i]))).ToString());
+                            if (i != 3) BroadcastStr.Append('.');
+                        }
+
+                        return BroadcastStr.ToString();
+                    }
+                }
+            }
+
+            // return generic broadcast address
+            return "255.255.255.255";
         }
 
         public void Connect(string ipAddress, int port)

@@ -23,7 +23,8 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 
 In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (experimental), Mitsubishi MC Protocol (experimental), Rockwell CIP-Ethernet/IP (experimental), Beckhoff ADS (experimental) and BACNet (experimental) are supported. 
 
-Note: Since BACNet uses connectionless UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
+> **Note**: Since BACNet uses connectionless UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
+> **Note**: Asset discovery on the network for Rockwell devices only works when running UA Edge Translator natively, i.e. NOT within a Docker container!
 
 Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
 

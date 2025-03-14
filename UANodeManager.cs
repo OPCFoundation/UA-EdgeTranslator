@@ -563,13 +563,21 @@ namespace Opc.Ua.Edge.Translator
         {
             List<string> allAddresses = new();
 
-            allAddresses.AddRange(new BACNetClient().Discover());
-            allAddresses.AddRange(new BeckhoffClient().Discover());
-            allAddresses.AddRange(new MitsubishiClient().Discover());
-            allAddresses.AddRange(new ModbusTCPClient().Discover());
-            allAddresses.AddRange(new RockwellClient().Discover());
-            allAddresses.AddRange(new SiemensClient().Discover());
-            allAddresses.AddRange(new UAClient().Discover());
+            try
+            {
+                allAddresses.AddRange(new BACNetClient().Discover());
+                allAddresses.AddRange(new BeckhoffClient().Discover());
+                allAddresses.AddRange(new MitsubishiClient().Discover());
+                allAddresses.AddRange(new ModbusTCPClient().Discover());
+                allAddresses.AddRange(new RockwellClient().Discover());
+                allAddresses.AddRange(new SiemensClient().Discover());
+                allAddresses.AddRange(new UAClient().Discover());
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex.Message, ex);
+                return new ServiceResult(StatusCodes.BadTimeout, ex);
+            }
 
             outputArguments[0] = allAddresses.ToArray();
 
