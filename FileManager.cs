@@ -7,7 +7,6 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
-    using System.Threading.Tasks;
 
     public class FileManager : IDisposable
     {
@@ -50,13 +49,29 @@ namespace Opc.Ua.Edge.Translator
         {
             lock (_handles)
             {
-                foreach (var handle in _handles.Values)
+                foreach (Handle handle in _handles.Values)
                 {
                     handle.Stream.Close();
                     handle.Stream.Dispose();
                 }
 
                 _handles.Clear();
+            }
+        }
+
+        public void Write(ISystemContext context, byte[] contents)
+        {
+            Handle handle = new()
+            {
+                SessionId = context.SessionId,
+                Stream = new MemoryStream(contents),
+                Position = 0
+            };
+
+            lock (_handles)
+            {
+                uint fileHandle = ++_nextHandle;
+                _handles.Add(fileHandle, handle);
             }
         }
 
@@ -104,7 +119,7 @@ namespace Opc.Ua.Edge.Translator
                     return StatusCodes.BadInvalidState;
                 }
 
-                var handle = new Handle
+                Handle handle = new()
                 {
                     SessionId = _context.SessionId,
                     Stream = new MemoryStream(),
@@ -161,7 +176,7 @@ namespace Opc.Ua.Edge.Translator
         {
             lock (_handles)
             {
-                var handle = Find(_context, fileHandle);
+                Handle handle = Find(_context, fileHandle);
 
                 if (handle.Writing)
                 {
@@ -192,7 +207,7 @@ namespace Opc.Ua.Edge.Translator
         {
             lock (_handles)
             {
-                var handle = Find(_context, fileHandle);
+                Handle handle = Find(_context, fileHandle);
 
                 if (!handle.Writing)
                 {

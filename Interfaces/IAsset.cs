@@ -1,12 +1,14 @@
 ﻿namespace Opc.Ua.Edge.Translator.Interfaces
 {
+    using Opc.Ua.Edge.Translator.Models;
     using System.Collections.Generic;
-    using System.Net;
     using System.Threading.Tasks;
 
     public interface IAsset
     {
         public List<string> Discover();
+
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint);
 
         public void Connect(string ipAddress, int port);
 

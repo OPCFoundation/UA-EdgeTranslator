@@ -57,8 +57,8 @@ namespace Opc.Ua.Edge.Translator
 
         private IUserIdentity VerifyPassword(UserNameIdentityToken userNameToken)
         {
-            var userName = userNameToken.UserName;
-            var password = userNameToken.DecryptedPassword;
+            string userName = userNameToken.UserName;
+            string password = userNameToken.DecryptedPassword;
             if (string.IsNullOrEmpty(userName))
             {
                 throw ServiceResultException.Create(StatusCodes.BadIdentityTokenInvalid,

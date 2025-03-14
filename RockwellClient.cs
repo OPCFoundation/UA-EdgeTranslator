@@ -46,8 +46,10 @@ namespace Opc.Ua.Edge.Translator
                     {
                         IPEndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0xAF12);
                         byte[] response = udpClient.Receive(ref receiveEndPoint);
+
                         Log.Logger.Information($"Ethernet/IP discovery: Received response from {receiveEndPoint.Address}");
-                        assets.Add(receiveEndPoint.Address.ToString() + ":" + 0xAF12.ToString());
+
+                        assets.Add("eip://" + receiveEndPoint.Address.ToString());
                     }
                 }
                 catch (SocketException)
@@ -89,6 +91,123 @@ namespace Opc.Ua.Edge.Translator
             return "255.255.255.255";
         }
 
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
+        {
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + name,
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "Thing" },
+                Name = name,
+                Base = endpoint,
+                Title = name,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            string[] address = td.Base.Split([':', '/']);
+            if ((address.Length != 4) || (address[0] != "eip"))
+            {
+                throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress!");
+            }
+
+            Tag tags = new()
+            {
+                Gateway = address[3],
+                Path = "1,0",
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip,
+                Name = "@tags",
+                Timeout = TimeSpan.FromSeconds(10),
+            };
+
+            tags.Read();
+            TagInfo[] tagInfos = DecodeAllTags(tags);
+            foreach (TagInfo tag in tagInfos)
+            {
+                if (!IsTag(tag))
+                {
+                    // not interested in anything that is not a tag
+                    continue;
+                }
+
+                if (TagIsUdt(tag))
+                {
+                    int udtTypeId = GetUdtId(tag);
+
+                    Tag udtTag = new()
+                    {
+                        Gateway = address[3],
+                        Path = "1,0",
+                        PlcType = PlcType.ControlLogix,
+                        Protocol = Protocol.ab_eip,
+                        Name = $"@udt/{udtTypeId}",
+                    };
+
+                    udtTag.Read();
+
+                    UdtInfo udt = DecodeUdtInfo(udtTag);
+                    foreach (UdtFieldInfo f in udt.Fields)
+                    {
+                        Log.Logger.Information($"EIP Tag: Id={tag.Name} Name={udt.Name} FieldName={f.Name} Offset={f.Offset} Metadata={f.Metadata} Type=" + ParseDataType(f.Type));
+
+                        string reference = tag.Name + "." + udt.Name + "." + f.Name;
+
+                        EIPForm form = new()
+                        {
+                            Href = reference + "?" + f.Offset.ToString(),
+                            Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                            PollingTime = 1000,
+                            Type = ParseDataType(f.Type)
+                        };
+
+                        Property property = new()
+                        {
+                            Type = TypeEnum.Number,
+                            ReadOnly = true,
+                            Observable = true,
+                            Forms = new object[1] { form }
+                        };
+
+                        if (!td.Properties.ContainsKey(reference))
+                        {
+                            td.Properties.Add(reference, property);
+                        }
+                    }
+                }
+                else
+                {
+                    Log.Logger.Information($"EIP Tag: Id={tag.Name} Type=" + ParseDataType(tag.Type));
+
+                    string reference = tag.Name;
+
+                    EIPForm form = new()
+                    {
+                        Href = reference + "?0",
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        PollingTime = 1000,
+                        Type = ParseDataType(tag.Type)
+                    };
+
+                    Property property = new()
+                    {
+                        Type = TypeEnum.Number,
+                        ReadOnly = true,
+                        Observable = true,
+                        Forms = new object[1] { form }
+                    };
+
+                    if (!td.Properties.ContainsKey(reference))
+                    {
+                        td.Properties.Add(reference, property);
+                    }
+                }
+            }
+
+            return td;
+        }
+
         public void Connect(string ipAddress, int port)
         {
             try
@@ -108,42 +227,6 @@ namespace Opc.Ua.Edge.Translator
                 tags.Read();
 
                 Log.Logger.Information("Connected to Rockwell ControlLogix PLC at " + ipAddress);
-
-                TagInfo[] tagInfos = DecodeAllTags(tags);
-                foreach (TagInfo tag in tagInfos)
-                {
-                    if (!IsTag(tag))
-                    {
-                        // not interested in anything that is not a tag
-                        continue;
-                    }
-
-                    if (TagIsUdt(tag))
-                    {
-                        int udtTypeId = GetUdtId(tag);
-
-                        Tag udtTag = new()
-                        {
-                            Gateway = ipAddress,
-                            Path = "1,0",
-                            PlcType = PlcType.ControlLogix,
-                            Protocol = Protocol.ab_eip,
-                            Name = $"@udt/{udtTypeId}",
-                        };
-
-                        udtTag.Read();
-
-                        UdtInfo udt = DecodeUdtInfo(udtTag);
-                        foreach (UdtFieldInfo f in udt.Fields)
-                        {
-                            Log.Logger.Information($"EIP Tag: Id={tag.Name} Name={udt.Name} FieldName={f.Name} Offset={f.Offset} Metadata={f.Metadata} Type=" + ParseDataType(f.Type));
-                        }
-                    }
-                    else
-                    {
-                        Log.Logger.Information($"EIP Tag: Id={tag.Name} Type=" + ParseDataType(tag.Type));
-                    }
-                }
             }
             catch (Exception ex)
             {
@@ -151,29 +234,29 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private string ParseDataType(ushort eipDataTypeId)
+        private EIPTypeString ParseDataType(ushort eipDataTypeId)
         {
             // Data Type:   Tag Type Value:     Size of Transmitted Data:
             // BOOL         0x0nC1              1 byte
             // The BOOL value includes an additional field (n) for specifying the bit position within the SINT (n = 0 - 7).
             if ((eipDataTypeId & 0xC1) == 0xC1)
             {
-                return "BOOL";
+                return EIPTypeString.BOOL;
             }
 
             switch (eipDataTypeId)
             {
-                case 0xC2: return "SINT";
-                case 0xC3: return "INT";
-                case 0xC4: return "DINT";
-                case 0xC5: return "LINT";
-                case 0xC6: return "USINT";
-                case 0xC7: return "UINT";
-                case 0xC8: return "UDINT";
-                case 0xC9: return "ULINT";
-                case 0xCA: return "REAL";
-                case 0xCB: return "LREAL";
-                default: return eipDataTypeId.ToString();
+                case 0xC2: return EIPTypeString.SINT;
+                case 0xC3: return EIPTypeString.INT;
+                case 0xC4: return EIPTypeString.DINT;
+                case 0xC5: return EIPTypeString.LINT;
+                case 0xC6: return EIPTypeString.USINT;
+                case 0xC7: return EIPTypeString.UINT;
+                case 0xC8: return EIPTypeString.UDINT;
+                case 0xC9: return EIPTypeString.ULINT;
+                case 0xCA: return EIPTypeString.REAL;
+                case 0xCB: return EIPTypeString.LREAL;
+                default: return EIPTypeString.REAL;
             }
         }
 
@@ -331,9 +414,11 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
+            string[] addressParts = addressWithinAsset.Split('.');
+
             var tag = new Tag()
             {
-                Name = addressWithinAsset,
+                Name = addressParts[0],
                 Gateway = _endpoint,
                 Path = "1,0",
                 PlcType = PlcType.ControlLogix,

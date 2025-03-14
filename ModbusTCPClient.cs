@@ -59,6 +59,24 @@ namespace Opc.Ua.Edge.Translator
             return new List<string>();
         }
 
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
+        {
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + name,
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "Thing" },
+                Name = name,
+                Base = endpoint,
+                Title = name,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            return td;
+        }
+
         public void Connect(string ipAddress, int port)
         {
             _tcpClient = new TcpClient(ipAddress, port);

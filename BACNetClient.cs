@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace Opc.Ua.Edge.Translator
     public class BACNetClient : IAsset
     {
         private string _endpoint = string.Empty;
-        
+
         private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false));
 
         private List<string> _discoverdAssets = new();
@@ -31,12 +32,30 @@ namespace Opc.Ua.Edge.Translator
 
         private void OnIAm(BacnetClient sender, BacnetAddress adr, uint deviceId, uint maxAPDU, BacnetSegmentations segmentation, ushort vendorId)
         {
-            string newAddress = adr.ToString() + ":" + 0xBAC0.ToString();
+            string newAddress = "bacnet://" + adr.ToString() + ":" + 0xBAC0.ToString();
 
             if (!adr.IsMyRouter(adr) && !_discoverdAssets.Contains(newAddress))
             {
                 _discoverdAssets.Add(newAddress);
             }
+        }
+
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
+        {
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + name,
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "Thing" },
+                Name = name,
+                Base = endpoint,
+                Title = name,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            return td;
         }
 
         public void Connect(string ipAddress, int port)
@@ -67,7 +86,7 @@ namespace Opc.Ua.Edge.Translator
             _client.ReadPropertyRequest(adr, deviceObjId, BacnetPropertyIds.PROP_OBJECT_LIST, out IList<BacnetValue> value_list, arrayIndex: 0);
             if (value_list != null)
             {
-                var objectCount = value_list.First().As<uint>();
+                uint objectCount = value_list.First().As<uint>();
                 for (uint i = 1; i <= objectCount; i++)
                 {
                     _client.ReadPropertyRequest(adr, deviceObjId, BacnetPropertyIds.PROP_OBJECT_LIST, out value_list, arrayIndex: i);

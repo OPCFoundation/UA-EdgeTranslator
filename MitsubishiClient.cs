@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator
 {
     using MCProtocol;
     using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -16,6 +17,24 @@ namespace Opc.Ua.Edge.Translator
         {
             // MCP does not support discovery
             return new List<string>();
+        }
+
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
+        {
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + name,
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "Thing" },
+                Name = name,
+                Base = endpoint,
+                Title = name,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            return td;
         }
 
         public void Connect(string ipAddress, int port)
