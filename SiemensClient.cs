@@ -11,6 +11,26 @@ namespace Opc.Ua.Edge.Translator
 
     public class SiemensClient : IAsset
     {
+        public class FunctionBlock
+        {
+            public int Number { get; set; }
+
+            public List<DataTag> DataTags { get; set; }
+
+            public FunctionBlock(int number)
+            {
+                Number = number;
+                DataTags = new List<DataTag>();
+            }
+        }
+
+        public class DataTag
+        {
+            public string Address { get; set; }
+
+            public object Value { get; set; }
+        }
+
         private Plc _S7 = null;
 
         private string _endpoint = string.Empty;
@@ -36,7 +56,80 @@ namespace Opc.Ua.Edge.Translator
                 Properties = new Dictionary<string, Property>()
             };
 
+            string[] endpointParts = endpoint.Split(':');
+            Connect(endpointParts[1], int.Parse(endpointParts[2]));
+
+            List<FunctionBlock> functionBlocks = EnumerateFunctionBlocks();
+            foreach (FunctionBlock functionBlock in functionBlocks)
+            {
+                foreach (DataTag tag in functionBlock.DataTags)
+                {
+                    string reference = "DB" + functionBlock.Number + "?" + tag.Address;
+
+                    S7Form form = new()
+                    {
+                        Href = reference,
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        PollingTime = 1000
+                    };
+
+                    Property property = new()
+                    {
+                        Type = TypeEnum.Number,
+                        ReadOnly = true,
+                        Observable = true,
+                        Forms = new object[1] { form }
+                    };
+
+                    if (!td.Properties.ContainsKey(reference))
+                    {
+                        td.Properties.Add(reference, property);
+                    }
+                }
+            }
+
             return td;
+        }
+
+        public List<FunctionBlock> EnumerateFunctionBlocks()
+        {
+            List<FunctionBlock> functionBlocks = new List<FunctionBlock>();
+
+            // Assuming you have a way to get the list of function blocks
+            // This part depends on your PLC configuration and setup
+            // For example, you might have predefined function block numbers
+            int[] functionBlockNumbers = { 1, 2, 3, 4, 5 }; // Example function block numbers
+
+            foreach (int fbNumber in functionBlockNumbers)
+            {
+                FunctionBlock fb = new FunctionBlock(fbNumber);
+                fb.DataTags = ParseDataTags(fbNumber);
+                functionBlocks.Add(fb);
+            }
+
+            return functionBlocks;
+        }
+
+        private List<DataTag> ParseDataTags(int functionBlockNumber)
+        {
+            List<DataTag> dataTags = new List<DataTag>();
+
+            // Assuming you have a way to get the data tags for each function block
+            // This part depends on your PLC configuration and setup
+            // For example, you might have predefined data tag addresses
+            string[] dataTagAddresses = { "DB1.DBX0.0", "DB1.DBW2", "DB1.DBD4" }; // Example data tag addresses
+
+            foreach (string address in dataTagAddresses)
+            {
+                DataTag tag = new DataTag
+                {
+                    Address = address,
+                    Value = _S7.Read(address)
+                };
+                dataTags.Add(tag);
+            }
+
+            return dataTags;
         }
 
         public void Connect(string ipAddress, int port)
