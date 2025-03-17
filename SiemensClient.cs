@@ -11,13 +11,13 @@ namespace Opc.Ua.Edge.Translator
 
     public class SiemensClient : IAsset
     {
-        public class FunctionBlock
+        public class DataBlock
         {
             public int Number { get; set; }
 
             public List<DataTag> DataTags { get; set; }
 
-            public FunctionBlock(int number)
+            public DataBlock(int number)
             {
                 Number = number;
                 DataTags = new List<DataTag>();
@@ -59,12 +59,12 @@ namespace Opc.Ua.Edge.Translator
             string[] endpointParts = endpoint.Split(':');
             Connect(endpointParts[1], int.Parse(endpointParts[2]));
 
-            List<FunctionBlock> functionBlocks = EnumerateFunctionBlocks();
-            foreach (FunctionBlock functionBlock in functionBlocks)
+            List<DataBlock> dataBlocks = EnumerateDataBlocks();
+            foreach (DataBlock dataBlock in dataBlocks)
             {
-                foreach (DataTag tag in functionBlock.DataTags)
+                foreach (DataTag tag in dataBlock.DataTags)
                 {
-                    string reference = "DB" + functionBlock.Number + "?" + tag.Address;
+                    string reference = "DB" + dataBlock.Number + "?" + tag.Address;
 
                     S7Form form = new()
                     {
@@ -91,45 +91,30 @@ namespace Opc.Ua.Edge.Translator
             return td;
         }
 
-        public List<FunctionBlock> EnumerateFunctionBlocks()
+        public List<DataBlock> EnumerateDataBlocks()
         {
-            List<FunctionBlock> functionBlocks = new List<FunctionBlock>();
+            List<DataBlock> dataBlocks = new List<DataBlock>();
 
-            // Assuming you have a way to get the list of function blocks
-            // This part depends on your PLC configuration and setup
-            // For example, you might have predefined function block numbers
-            int[] functionBlockNumbers = { 1, 2, 3, 4, 5 }; // Example function block numbers
-
-            foreach (int fbNumber in functionBlockNumbers)
+            // read first 100 data blocks and stop on error
+            for (int i = 0; i < 100; i++)
             {
-                FunctionBlock fb = new FunctionBlock(fbNumber);
-                fb.DataTags = ParseDataTags(fbNumber);
-                functionBlocks.Add(fb);
-            }
-
-            return functionBlocks;
-        }
-
-        private List<DataTag> ParseDataTags(int functionBlockNumber)
-        {
-            List<DataTag> dataTags = new List<DataTag>();
-
-            // Assuming you have a way to get the data tags for each function block
-            // This part depends on your PLC configuration and setup
-            // For example, you might have predefined data tag addresses
-            string[] dataTagAddresses = { "DB1.DBX0.0", "DB1.DBW2", "DB1.DBD4" }; // Example data tag addresses
-
-            foreach (string address in dataTagAddresses)
-            {
-                DataTag tag = new DataTag
+                try
                 {
-                    Address = address,
-                    Value = _S7.Read(address)
-                };
-                dataTags.Add(tag);
+                    // assume data block is 256 bytes long
+                    DataBlock db = new DataBlock(i);
+                    db.DataTags = new List<DataTag>();
+                    db.DataTags[0].Address = "DB" + i.ToString();
+                    db.DataTags[0].Value = _S7.Read(DataType.DataBlock, i, 0, VarType.Byte, 256);
+                    dataBlocks.Add(db);
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+                    break;
+                }
             }
 
-            return dataTags;
+            return dataBlocks;
         }
 
         public void Connect(string ipAddress, int port)
