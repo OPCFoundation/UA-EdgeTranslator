@@ -3,35 +3,15 @@ namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
-    using S7.Net;
     using Serilog;
+    using Sharp7;
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public class SiemensClient : IAsset
     {
-        public class DataBlock
-        {
-            public int Number { get; set; }
-
-            public List<DataTag> DataTags { get; set; }
-
-            public DataBlock(int number)
-            {
-                Number = number;
-                DataTags = new List<DataTag>();
-            }
-        }
-
-        public class DataTag
-        {
-            public string Address { get; set; }
-
-            public object Value { get; set; }
-        }
-
-        private Plc _S7 = null;
+        private S7Client _S7 = null;
 
         private string _endpoint = string.Empty;
 
@@ -59,62 +39,55 @@ namespace Opc.Ua.Edge.Translator
             string[] endpointParts = endpoint.Split(':');
             Connect(endpointParts[1], int.Parse(endpointParts[2]));
 
-            List<DataBlock> dataBlocks = EnumerateDataBlocks();
-            foreach (DataBlock dataBlock in dataBlocks)
-            {
-                foreach (DataTag tag in dataBlock.DataTags)
-                {
-                    string reference = "DB" + dataBlock.Number + "?" + tag.Address;
-
-                    S7Form form = new()
-                    {
-                        Href = reference,
-                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
-                        PollingTime = 1000
-                    };
-
-                    Property property = new()
-                    {
-                        Type = TypeEnum.Number,
-                        ReadOnly = true,
-                        Observable = true,
-                        Forms = new object[1] { form }
-                    };
-
-                    if (!td.Properties.ContainsKey(reference))
-                    {
-                        td.Properties.Add(reference, property);
-                    }
-                }
-            }
-
-            return td;
-        }
-
-        public List<DataBlock> EnumerateDataBlocks()
-        {
-            List<DataBlock> dataBlocks = new List<DataBlock>();
-
-            // read first 100 data blocks and stop on error
+            // read the first 100 blocks until an error is encountered
             for (int i = 0; i < 100; i++)
             {
+                int sizeRead = 0;
+                byte[] buffer = new byte[65536]; // Maximum size for a DB
                 try
                 {
-                    // assume data block is 256 bytes long
-                    DataBlock db = new DataBlock(i);
-                    db.DataTags = new List<DataTag>();
-                    db.DataTags[0].Address = "DB" + i.ToString();
-                    db.DataTags[0].Value = _S7.Read(DataType.DataBlock, i, 0, VarType.Byte, 256);
-                    dataBlocks.Add(db);
+                    int dbResult = _S7.DBGet(1, buffer, ref sizeRead);
+                    if (dbResult != 0)
+                    {
+                        break;
+                    }
                 }
                 catch (Exception ex)
                 {
                     Log.Logger.Error(ex.Message, ex);
                     break;
                 }
+
+                string reference = "DB" + i.ToString() + "?0";
+
+                S7Form form = new()
+                {
+                    Href = reference,
+                    Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                    PollingTime = 1000,
+                    S7DBNumber = i,
+                    S7Start = 0,
+                    S7Size = sizeRead,
+                    Type = TypeString.String,
+                };
+
+                Log.Logger.Information("S7 DB" + i.ToString() + ": " + BitConverter.ToString(buffer, 0, sizeRead));
+
+                Property property = new()
+                {
+                    Type = TypeEnum.String,
+                    ReadOnly = true,
+                    Observable = true,
+                    Forms = new object[1] { form }
+                };
+
+                if (!td.Properties.ContainsKey(reference))
+                {
+                    td.Properties.Add(reference, property);
+                }
             }
 
-            return dataBlocks;
+            return td;
         }
 
         public void Connect(string ipAddress, int port)
@@ -123,16 +96,15 @@ namespace Opc.Ua.Edge.Translator
             {
                 _endpoint = ipAddress;
 
-                _S7 = new Plc(CpuType.S71500, _endpoint, 0, (short)port);
-                _S7.Open();
+                _S7 = new();
 
-                byte result = _S7.ReadStatus();
-                if (result != 0x8)
+                // assume rack 0
+                int result = _S7.ConnectTo(ipAddress, 0, port);
+
+                if (result == 0)
                 {
-                    throw new Exception("S7 status error: " + result.ToString());
+                    Log.Logger.Information("Connected to Siemens S7");
                 }
-
-                Log.Logger.Information("Connected to Siemens S7: " + result.ToString());
             }
             catch (Exception ex)
             {
@@ -144,7 +116,7 @@ namespace Opc.Ua.Edge.Translator
         {
             if (_S7 != null)
             {
-                _S7.Close();
+                _S7.Disconnect();
                 _S7 = null;
             }
         }
@@ -156,12 +128,14 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            return Task.FromResult(_S7.ReadBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), count));
+            byte[] buffer = new byte[count];
+            _S7.DBRead(unitID, int.Parse(addressWithinAsset), count, buffer);
+            return Task.FromResult(buffer);
         }
 
         public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
-            _S7.WriteBytes(DataType.DataBlock, unitID, int.Parse(addressWithinAsset), values);
+            _S7.DBWrite(unitID, int.Parse(addressWithinAsset), values.Length, values);
             return Task.CompletedTask;
         }
     }
