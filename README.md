@@ -21,7 +21,7 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 
 ## Supported "Southbound" Asset Interfaces
 
-In this reference implementation, Modbus TCP, OPC UA, Siemens S7Comm (experimental), Mitsubishi MC Protocol (experimental), Rockwell CIP-Ethernet/IP (experimental), Beckhoff ADS (experimental) and BACNet (experimental) are supported. 
+In this reference implementation, Modbus TCP, OPC UA, Rockwell CIP-Ethernet/IP, Beckhoff ADS, Siemens S7Comm (experimental), Mitsubishi MC Protocol (experimental), BACNet (experimental) and IEC61850 (experimental) are supported. 
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
 
