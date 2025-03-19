@@ -30,7 +30,7 @@ namespace IEC61850
 	namespace SV
 	{
 
-		namespace Subscriber 
+		namespace Subscriber
 		{
 			/// <summary>
 			/// SV receiver.
@@ -98,7 +98,7 @@ namespace IEC61850
 				{
 					SVReceiver_enableDestAddrCheck (self);
 				}
-					
+
 				/// <summary>
 				/// Add a subscriber to handle
 				/// </summary>
@@ -166,7 +166,7 @@ namespace IEC61850
 
 			/// <summary>
 			/// Sampled Values (SV) Subscriber
-			/// 
+			///
 			/// A subscriber is an instance associated with a single stream of measurement data. It is identified
 			/// by the Ethernet destination address, the appID value (both are on SV message level) and the svID value
 			/// that is part of each ASDU.
@@ -200,11 +200,11 @@ namespace IEC61850
 				private void internalSVUpdateListener (IntPtr subscriber, IntPtr parameter, IntPtr asdu)
 				{
 					try {
-					
+
 						if (listener != null) {
 							listener(this, listenerParameter, new SVSubscriberASDU(asdu));
 						}
-					
+
 					}
 					catch (Exception e) {
 						// older versions of mono 2.10 (for linux?) cause this exception
@@ -246,7 +246,7 @@ namespace IEC61850
 					}
 				}
 			}
-		
+
 
 			public class SVSubscriberASDU
 			{
@@ -439,7 +439,12 @@ namespace IEC61850
 				{
 					[MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.I1, SizeConst = 8)]
 					public byte[] val;
-				}
+
+                    public PTimestamp()
+                    {
+                        val = null;
+                    }
+                }
 
 				[DllImport("iec61850", CallingConvention = CallingConvention.Cdecl)]
 				private static extern PTimestamp SVSubscriber_ASDU_getTimestamp(IntPtr self, int index);

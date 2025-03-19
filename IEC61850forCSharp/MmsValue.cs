@@ -194,7 +194,7 @@ namespace IEC61850
 				valueReference = value;
 				this.responsableForDeletion = false;
 			}
-				
+
 			internal MmsValue (IntPtr value, bool responsableForDeletion)
 			{
 				valueReference = value;
@@ -267,7 +267,7 @@ namespace IEC61850
 			/// <param name='bitSize'>
 			/// the size of the bit string in bits.
 			/// </param>
-			public static MmsValue NewBitString(int bitSize) 
+			public static MmsValue NewBitString(int bitSize)
 			{
 				IntPtr newValue = MmsValue_newBitString(bitSize);
 
@@ -291,7 +291,7 @@ namespace IEC61850
 				IntPtr newValue = MmsValue_newOctetString(size, maxSize);
 
 				return new MmsValue(newValue, true);
-			}																												
+			}
 
 			public MmsValue(byte[] octetString)
 			{
@@ -348,14 +348,14 @@ namespace IEC61850
 
 				return new MmsValue (newValue, true);
 			}
-		
+
 
 			/// <summary>
 			/// Create a new MmsValue instance of type MMS_BINARY_TIME
 			/// </summary>
 			/// <returns>the new MmsValue instance.</returns>
 			/// <param name="largeFormat">If set to <c>true</c> large 6 byte format.</param>
-			public static MmsValue NewBinaryTime(bool largeFormat) 
+			public static MmsValue NewBinaryTime(bool largeFormat)
 			{
 				IntPtr newValue = MmsValue_newBinaryTime (largeFormat);
 
@@ -499,7 +499,7 @@ namespace IEC61850
 
 						if (value == IntPtr.Zero)
 							return null;
-						else 
+						else
 							return new MmsValue (value);
 					} else
 						throw new MmsValueException ("Index out of bounds");
@@ -519,13 +519,13 @@ namespace IEC61850
 				MmsType elementType = GetType ();
 
 				if ((elementType == MmsType.MMS_ARRAY) || (elementType == MmsType.MMS_STRUCTURE)) {
-				
+
 					if ((index >= 0) && (index < Size ())) {
 						MmsValue_setElement (valueReference, index, elementValue.valueReference);
-					
+
 					} else
 						throw new MmsValueException ("Index out of bounds");
-				
+
 				} else
 					throw new MmsValueException ("Value is of wrong type");
 
@@ -865,7 +865,7 @@ namespace IEC61850
 				else
 					throw new MmsValueException ("Value type is not float");
 			}
-						
+
 			/// <summary>
 			/// Sets the float/double value of an MMS_FLOAT instance
 			/// </summary>
@@ -882,7 +882,7 @@ namespace IEC61850
 			}
 
             /// <summary>
-            /// Gets the child value with the given name 
+            /// Gets the child value with the given name
             /// </summary>
             /// <returns>the child value or null if no matching child has been found.</returns>
             /// <param name="childPath">path specifying the child using '.' or '$' as path element separator.</param>
@@ -1033,7 +1033,11 @@ namespace IEC61850
 			#endregion
 			}
 
-		}
+            public override int GetHashCode()
+            {
+                return valueReference.GetHashCode();
+            }
+        }
 
 		public class MmsValueException : Exception
 		{
