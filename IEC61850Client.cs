@@ -16,7 +16,7 @@
 
         private string _endpoint = string.Empty;
 
-        ThingDescription IAsset.BrowseAndGenerateTD(string name, string endpoint)
+        public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
         {
             string[] address = endpoint.Split([':', '/']);
 
@@ -126,29 +126,29 @@
             return td;
         }
 
-        void IAsset.Connect(string ipAddress, int port)
+        public void Connect(string ipAddress, int port)
         {
             _client.Connect(ipAddress, port);
             _endpoint = ipAddress + ":" + port;
         }
 
-        void IAsset.Disconnect()
+        public void Disconnect()
         {
             _client.Abort();
         }
 
-        List<string> IAsset.Discover()
+        public List<string> Discover()
         {
             // IEC61850 does not support discovery
             return new List<string>();
         }
 
-        string IAsset.GetRemoteEndpoint()
+        public string GetRemoteEndpoint()
         {
             return _endpoint;
         }
 
-        Task<byte[]> IAsset.Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             float value = _client.ReadFloatValue(addressWithinAsset, FunctionalConstraint.SP);
 
@@ -163,7 +163,7 @@
             }
         }
 
-        Task IAsset.Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             using (MemoryStream memStream = new(values))
             {

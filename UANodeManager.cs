@@ -16,7 +16,6 @@ namespace Opc.Ua.Edge.Translator
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using static System.Net.WebRequestMethods;
     using UANodeSet = Export.UANodeSet;
 
     public class UANodeManager : CustomNodeManager2
@@ -180,13 +179,14 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, connectionTest);
 
             // create a property listing our supported WoT protocol bindings
-            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[7] {
+            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[8] {
                 "https://www.w3.org/2019/wot/modbus",
                 "https://www.w3.org/2019/wot/opcua",
                 "https://www.w3.org/2019/wot/s7",
                 "https://www.w3.org/2019/wot/mcp",
                 "https://www.w3.org/2019/wot/eip",
                 "https://www.w3.org/2019/wot/ads",
+                "https://www.w3.org/2019/wot/iec61850",
                 "http://www.w3.org/2022/bacnet"
             }));
 
@@ -574,6 +574,7 @@ namespace Opc.Ua.Edge.Translator
                 allAddresses.AddRange(new RockwellClient().Discover());
                 allAddresses.AddRange(new SiemensClient().Discover());
                 allAddresses.AddRange(new UAClient().Discover());
+                allAddresses.AddRange(new IEC61850Client().Discover());
             }
             catch (Exception ex)
             {
@@ -639,6 +640,11 @@ namespace Opc.Ua.Edge.Translator
                 if (assetEndpoint.StartsWith("bacnet://"))
                 {
                     td = new BACNetClient().BrowseAndGenerateTD(assetName, assetEndpoint);
+                }
+
+                if (assetEndpoint.StartsWith("iec61850://"))
+                {
+                    td = new IEC61850Client().BrowseAndGenerateTD(assetName, assetEndpoint);
                 }
 
                 string contents = JsonConvert.SerializeObject(td);
@@ -972,6 +978,25 @@ namespace Opc.Ua.Edge.Translator
 
                 _tags[assetId].Add(tag);
             }
+
+            if (td.Base.ToLower().StartsWith("iec61850://"))
+            {
+                // create an asset tag and add to our list
+                GenericForm iec61850Form = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = iec61850Form.Href,
+                    UnitID = unitId,
+                    Type = iec61850Form.Type.ToString(),
+                    PollingInterval = 1000,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
         }
 
         private void AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -1081,6 +1106,21 @@ namespace Opc.Ua.Edge.Translator
                 // check if we can reach the BACNet asset
                 BACNetClient client = new();
                 client.Connect(address[3] + "/" + address[4], 0);
+
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("iec61850://"))
+            {
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "iec61850"))
+                {
+                    throw new Exception("Expected IEC61850 device address in the format iec61850://ipaddress:port!");
+                }
+
+                // check if we can reach the IEC61850 asset
+                IEC61850Client client = new();
+                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
 
                 assetInterface = client;
             }
@@ -1366,6 +1406,11 @@ namespace Opc.Ua.Edge.Translator
                                     HandleBACNetDataWrite(tag, assetId, value.ToString());
                                 }
 
+                                if (_assets[assetId] is IEC61850Client)
+                                {
+                                    HandleIEC61850DataWrite(tag, assetId, value.ToString());
+                                }
+
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
@@ -1441,6 +1486,11 @@ namespace Opc.Ua.Edge.Translator
                             if (_assets[assetId] is BACNetClient)
                             {
                                 HandleBACNetDataRead(tag, assetId);
+                            }
+
+                            if (_assets[assetId] is IEC61850Client)
+                            {
+                                HandleIEC61850DataRead(tag, assetId);
                             }
                         }
                     }
@@ -2155,6 +2205,84 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 throw new ArgumentException("Type not supported by BACNet.");
+            }
+
+            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private void HandleIEC61850DataRead(AssetTag tag, string assetId)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if (addressParts.Length == 2)
+            {
+                byte[] tagBytes = null;
+                try
+                {
+                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+
+                    // try reconnecting
+                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                    _assets[assetId].Disconnect();
+                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
+                }
+
+                if ((tagBytes != null) && (tagBytes.Length > 0))
+                {
+                    object value = null;
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by IEC61850.");
+                    }
+
+                    UpdateUAServerVariable(tag, value);
+                }
+            }
+        }
+        private void HandleIEC61850DataWrite(AssetTag tag, string assetId, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by IEC61850.");
             }
 
             _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
