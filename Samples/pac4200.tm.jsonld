@@ -2,6 +2,9 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1",
     {
+      "binding": "http://opcfoundation.org/UA/WoT-Binding/v1.00"
+    },
+    {
       "opcua": "http://opcfoundation.org/UA/PNEM/"
     }
   ],
