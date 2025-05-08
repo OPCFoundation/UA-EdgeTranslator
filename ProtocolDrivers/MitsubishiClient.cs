@@ -1,5 +1,4 @@
-
-namespace Opc.Ua.Edge.Translator
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using MCProtocol;
     using Opc.Ua.Edge.Translator.Interfaces;
@@ -44,7 +43,7 @@ namespace Opc.Ua.Edge.Translator
                 _endpoint = ipAddress + ":" + port.ToString();
 
                 PLCData.PLC = new Mitsubishi.McProtocolTcp(ipAddress, port, Mitsubishi.McFrame.MC3E);
-                int result = PLCData.PLC.Open().GetAwaiter().GetResult();
+                var result = PLCData.PLC.Open().GetAwaiter().GetResult();
 
                 Log.Logger.Information("Connected to Mitsubishi PLC: " + result.ToString());
             }
@@ -70,12 +69,12 @@ namespace Opc.Ua.Edge.Translator
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
-            PLCData<byte> data = new PLCData<byte>((Mitsubishi.PlcDeviceType)unitID, int.Parse(addressWithinAsset), count);
+            var data = new PLCData<byte>((Mitsubishi.PlcDeviceType)unitID, int.Parse(addressWithinAsset), count);
 
             data.ReadData();
 
-            byte[] result = new byte[count];
-            for (int i = 0; i < count; i++)
+            var result = new byte[count];
+            for (var i = 0; i < count; i++)
             {
                 result[i] = data[i];
             }
@@ -85,9 +84,9 @@ namespace Opc.Ua.Edge.Translator
 
         public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
-            PLCData<byte> data = new PLCData<byte>((Mitsubishi.PlcDeviceType)unitID, int.Parse(addressWithinAsset), values.Length);
+            var data = new PLCData<byte>((Mitsubishi.PlcDeviceType)unitID, int.Parse(addressWithinAsset), values.Length);
 
-            for (int i = 0; i < values.Length; i++)
+            for (var i = 0; i < values.Length; i++)
             {
                 data[i] = values[i];
             }

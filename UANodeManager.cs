@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using Opc.Ua.Server;
     using Serilog;
     using System;
