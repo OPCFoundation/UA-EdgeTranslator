@@ -13,14 +13,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="arm64\**" />
+    <Compile Remove="linux-arm64\**" />
     <Compile Remove="WoTThingModelGenerator\**" />
+    <EmbeddedResource Remove="arm64\**" />
+    <EmbeddedResource Remove="linux-arm64\**" />
     <EmbeddedResource Remove="WoTThingModelGenerator\**" />
+    <None Remove="arm64\**" />
+    <None Remove="linux-arm64\**" />
     <None Remove="WoTThingModelGenerator\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="libiec61850.so" />
-    <None Remove="Opc.Ua.WotCon.NodeSet2.xml" />
+    <None Remove="runtimes\linux-arm64\native\libiec61850.dll" />
+    <None Remove="runtimes\linux-arm64\native\libplctag.so" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +34,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Opc.Ua.WotCon.NodeSet2.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="runtimes\linux-arm64\native\libiec61850.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="runtimes\linux-arm64\native\libplctag.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Ua.Edge.Translator.Config.xml">
