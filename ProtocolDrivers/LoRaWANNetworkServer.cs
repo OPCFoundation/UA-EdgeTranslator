@@ -12,23 +12,25 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
     public class LoRaWANNetworkServer : IAsset
     {
-        private string _endpoint = string.Empty;
-
-        private List<string> _discoverdAssets = new();
-
         public LoRaWANNetworkServer()
         {
             using var cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
 
             var configuration = NetworkServerConfiguration.CreateFromEnvironmentVariables();
-            BasicsStationNetworkServer.RunServerAsync(configuration, cancellationToken).GetAwaiter().GetResult();
+            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(configuration, cancellationToken));
         }
 
         public List<string> Discover()
         {
+            List<string> discoverdAssets = new();
 
-            return _discoverdAssets;
+            foreach (var device in SearchDevicesResult.DeviceList)
+            {
+                discoverdAssets.Add(device.Item2.Item2 + ":" + device.Item2.Item1.ToString());
+            }
+
+            return discoverdAssets;
         }
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
@@ -51,21 +53,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Connect(string ipAddress, int port)
         {
-            try
-            {
-                var addresses = ipAddress.Split('/');
-                if (addresses.Length == 2)
-                {
-                    _endpoint = addresses[0];
-                    var deviceId = uint.Parse(addresses[1]);
-
-
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-            }
+            // nothing to do
         }
 
         public void Disconnect()
@@ -75,7 +63,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string GetRemoteEndpoint()
         {
-            return _endpoint;
+            return string.Empty;
         }
 
         public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)

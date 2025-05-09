@@ -42,7 +42,7 @@ namespace LoRaWan.NetworkServer
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();
 
-        private static readonly List<Tuple<DevNonce, Tuple<DevEui, string>>> DeviceList = [];
+        public static readonly List<Tuple<DevNonce, Tuple<DevEui, string>>> DeviceList = [];
 
         public static SearchDevicesResult SearchForDevice(string gatewayID, DevEui devEui, DevNonce nounce)
         {

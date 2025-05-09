@@ -19,9 +19,19 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 * CreateAsset(assetName) - Creates an asset node and an OPC UA File API node below the asset node (which can be used to upload the WoT Thing Description), returning the node ID of the newly created asset node on success.
 * DeleteAsset(assetNodeId) - deletes a configured asset.
 
-## Supported "Southbound" Asset Interfaces
+## Supported Southbound Asset Interfaces
 
-In this reference implementation, Modbus TCP, OPC UA, Rockwell CIP-Ethernet/IP, Beckhoff ADS, Siemens S7Comm (experimental), Mitsubishi MC Protocol (experimental), BACNet (experimental) and IEC61850 (experimental) are supported. 
+The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
+
+* Modbus TCP
+* OPC UA
+* Rockwell CIP (Ethernet/IP)
+* Beckhoff ADS
+* Siemens S7Comm (experimental)
+* Mitsubishi MC Protocol (experimental)
+* BACNet (experimental)
+* IEC61850 (experimental)
+* LoRaWAN (experimental)
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
 
