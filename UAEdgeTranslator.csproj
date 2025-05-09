@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -60,6 +60,11 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Sharp7" Version="1.1.84" />
     <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="settings\" />
   </ItemGroup>
 
 </Project>
