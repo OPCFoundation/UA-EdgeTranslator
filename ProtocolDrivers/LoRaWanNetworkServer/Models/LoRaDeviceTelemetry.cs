@@ -1,0 +1,105 @@
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using global::LoRaWan;
+
+namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
+{
+    using System;
+    using System.Collections.Generic;
+    using Newtonsoft.Json;
+
+    // Represents the device telemetry that will be sent to IoT Hub
+    public class LoRaDeviceTelemetry
+    {
+        [JsonProperty("time")]
+        public ulong Time { get; set; }
+
+        [JsonProperty("tmms")]
+        public uint GpsTime { get; set; }
+
+        [JsonProperty("freq")]
+        public double Freq { get; set; }
+
+        [JsonProperty("chan")]
+        public uint Chan { get; set; }
+
+        [JsonProperty("rfch")]
+        public uint Rfch { get; set; }
+
+        [JsonProperty("modu")]
+        public string Modu { get; set; }
+
+        [JsonProperty("datr")]
+        public string Datr { get; set; }
+
+        [JsonProperty("rssi")]
+        public double Rssi { get; set; }
+
+        [JsonProperty("lsnr")]
+        public float Lsnr { get; set; }
+
+        [JsonProperty("data")]
+        public object Data { get; set; }
+
+        [JsonProperty("port")]
+        public byte? PortByte { get => (byte?)Port; set => Port = (FramePort?)value; }
+
+        [JsonIgnore]
+        public FramePort? Port { get; private set; }
+
+        [JsonProperty("fcnt")]
+        public ushort Fcnt { get; set; }
+
+        [JsonProperty("edgets")]
+        public long Edgets { get; set; }
+
+        [JsonProperty("rawdata")]
+        public string Rawdata { get; set; }
+
+        [JsonProperty("eui")]
+        public string DeviceEUI { get; set; }
+
+        [JsonProperty("gatewayid")]
+        public string GatewayID { get; set; }
+
+        [JsonProperty("stationeui")]
+        public string StationEui { get; set; }
+
+        [JsonProperty("dupmsg", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool? DupMsg { get; set; }
+
+        [JsonExtensionData]
+        public Dictionary<string, object> ExtraData { get; } = new Dictionary<string, object>();
+
+        public LoRaDeviceTelemetry()
+        {
+        }
+
+        public LoRaDeviceTelemetry(LoRaRequest request, LoRaPayloadData upstreamPayload, object payloadData, byte[] decryptedPayloadData)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            var radioMetadata = request.RadioMetadata;
+
+            ArgumentNullException.ThrowIfNull(radioMetadata);
+            ArgumentNullException.ThrowIfNull(upstreamPayload);
+
+            var datr = request.Region.GetDatarateFromIndex(request.RadioMetadata.DataRate);
+            Data = payloadData;
+            Rawdata = decryptedPayloadData?.Length > 0 ? Convert.ToBase64String(decryptedPayloadData) : string.Empty;
+            Fcnt = upstreamPayload.Fcnt;
+            Port = upstreamPayload.Fport;
+            Freq = radioMetadata.Frequency.InMega;
+            Datr = datr.ToString();
+            Rssi = radioMetadata.UpInfo.ReceivedSignalStrengthIndication;
+            Rfch = radioMetadata.UpInfo.AntennaPreference;
+            Lsnr = radioMetadata.UpInfo.SignalNoiseRatio;
+            Time = unchecked(radioMetadata.UpInfo.Xtime); // This is used by former computation only.
+            Chan = (uint)radioMetadata.DataRate; // This is not used in any computation. It is only reported in the device telemetry.
+            GpsTime = radioMetadata.UpInfo.GpsTime; // This is not used in any computation. It is only reported in the device telemetry.
+            Modu = datr.ModulationKind.ToString(); // This is only used in test path by legacy PacketForwarder code. Safe to eventually remove. Could be also "FSK"
+            StationEui = request.StationEui.ToString();
+        }
+    }
+}
