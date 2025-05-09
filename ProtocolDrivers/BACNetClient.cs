@@ -72,6 +72,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     Connect(new BacnetAddress(BacnetAddressTypes.IP, _endpoint), deviceId, 0, BacnetSegmentations.SEGMENTATION_NONE, 0);
                     Log.Logger.Information("Connected to BACNet device at " + ipAddress);
                 }
+                else
+                {
+                    Log.Logger.Error("Invalid BACNet address format. Expected format: bacnet://<ip_address>/<device_id>");
+                }
             }
             catch (Exception ex)
             {

@@ -13,6 +13,9 @@ namespace LoRaWan.NetworkServer
     /// </summary>
     public class SearchDevicesResult : IReadOnlyList<DeviceInfo>
     {
+        // Nounce:DevEUI:GatewayID
+        public static readonly Dictionary<string, Tuple<DevNonce, DevEui, string>> DeviceList = [];
+
         /// <summary>
         /// Gets list of devices that match the criteria.
         /// </summary>
@@ -42,24 +45,28 @@ namespace LoRaWan.NetworkServer
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();
 
-        public static readonly List<Tuple<DevNonce, Tuple<DevEui, string>>> DeviceList = [];
-
-        public static SearchDevicesResult SearchForDevice(string gatewayID, DevEui devEui, DevNonce nounce)
+        public static SearchDevicesResult SearchForDevice(string gatewayID, DevEui devEUI, DevNonce? nounce = null)
         {
-            foreach (var device in DeviceList)
+            string index = gatewayID + ":" + devEUI.ToString();
+            if (DeviceList.ContainsKey(index))
             {
-                if (device.Item1 == nounce && device.Item2.Item1 == devEui && device.Item2.Item2 == gatewayID)
-                {
-                    return new SearchDevicesResult([new DeviceInfo(devEui)]);
-                }
+                return new SearchDevicesResult([new DeviceInfo(devEUI)]) { IsDevNonceAlreadyUsed = (DeviceList[index].Item1.AsUInt16 != 0) };
             }
 
             return null;
         }
 
-        public static void AddDevice(string gatewayID, DevEui devEUI, DevNonce nounce)
+        public static void AddOrUpdateDevice(string gatewayID, DevEui devEUI, DevNonce nounce)
         {
-            DeviceList.Add(new Tuple<DevNonce, Tuple<DevEui, string>>(nounce, new Tuple<DevEui, string>(devEUI, gatewayID)));
+            string index = gatewayID + ":" + devEUI.ToString();
+            if (!DeviceList.ContainsKey(index))
+            {
+                DeviceList.Add(index, new Tuple<DevNonce, DevEui, string>(nounce, devEUI, gatewayID));
+            }
+            else
+            {
+                DeviceList[index] = new Tuple<DevNonce, DevEui, string>(nounce, devEUI, gatewayID);
+            }
         }
     }
 }

@@ -3,17 +3,17 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWANContainer.LoRaWan.NetworkServer;
+    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
+    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
+    using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.Metrics;
     using System.Security.Cryptography;
     using System.Threading;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
-    using Newtonsoft.Json;
     using static LoRaWan.ReceiveWindowNumber;
 
     public class JoinRequestMessageHandler(NetworkServerConfiguration configuration,
@@ -64,6 +64,11 @@ namespace LoRaWan.NetworkServer
                 logger.LogError("join refused: device EUI does not match the one in the join request");
                 return null;
             }
+
+            SearchDevicesResult.AddOrUpdateDevice(
+                configuration.GatewayID,
+                devEUI,
+                devNonce);
 
             var matchingDeviceInfo = searchDeviceResult.Devices[0];
             return Task.FromResult(new LoRaDevice(null, matchingDeviceInfo.DevEUI));
