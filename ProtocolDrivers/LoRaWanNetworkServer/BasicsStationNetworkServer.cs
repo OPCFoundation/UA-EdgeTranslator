@@ -5,15 +5,15 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using System;
-    using System.Security.Cryptography.X509Certificates;
-    using System.Threading;
-    using System.Threading.Tasks;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.AspNetCore;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Server.Kestrel.Https;
     using Microsoft.Extensions.DependencyInjection;
+    using Opc.Ua.Edge.Translator;
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public static class BasicsStationNetworkServer
     {
@@ -30,10 +30,9 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             ArgumentNullException.ThrowIfNull(configuration);
 
-            var shouldUseCertificate = !string.IsNullOrEmpty(configuration.LnsServerPfxPath);
+            var shouldUseCertificate = (configuration.ClientCertificateMode != ClientCertificateMode.NoCertificate);
             using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(shouldUseCertificate ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}"),
-                                                                        FormattableString.Invariant($"https://0.0.0.0:{CupsPort}")]
+                                       .UseUrls(shouldUseCertificate ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
                                                                      : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
                                        .UseStartup<BasicsStationNetworkServerStartup>()
                                        .UseKestrel(config =>
@@ -61,10 +60,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                                                     IClientCertificateValidatorService? clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
-            https.ServerCertificate = string.IsNullOrEmpty(configuration.LnsServerPfxPassword) ? X509CertificateLoader.LoadCertificateFromFile(configuration.LnsServerPfxPath)
-                                                                                               : X509CertificateLoader.LoadPkcs12FromFile(configuration.LnsServerPfxPath,
-                                                                                                                      configuration.LnsServerPfxPassword,
-                                                                                                                      X509KeyStorageFlags.DefaultKeySet);
+            https.ServerCertificate = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
 
             if (configuration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
             {

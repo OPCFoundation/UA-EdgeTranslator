@@ -45,16 +45,6 @@ namespace LoRaWan.NetworkServer
         public HashSet<DevAddr> AllowedDevAddresses { get; internal set; }
 
         /// <summary>
-        /// Path of the .pfx certificate to be used for LNS Server endpoint
-        /// </summary>
-        public string LnsServerPfxPath { get; internal set; }
-
-        /// <summary>
-        /// Password of the .pfx certificate to be used for LNS Server endpoint
-        /// </summary>
-        public string LnsServerPfxPassword { get; internal set; }
-
-        /// <summary>
         /// Specifies the client certificate mode with which the server should be run
         /// Allowed values can be found at https://docs.microsoft.com/dotnet/api/microsoft.aspnetcore.server.kestrel.https.clientcertificatemode?view=aspnetcore-6.0
         /// </summary>
@@ -78,9 +68,6 @@ namespace LoRaWan.NetworkServer
                     config.ProcessingDelayInMilliseconds = delay;
                 }
             }
-
-            config.LnsServerPfxPath = Environment.GetEnvironmentVariable("LNS_SERVER_PFX_PATH");
-            config.LnsServerPfxPassword = Environment.GetEnvironmentVariable("LNS_SERVER_PFX_PASSWORD");
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LOG_LEVEL")))
             {
