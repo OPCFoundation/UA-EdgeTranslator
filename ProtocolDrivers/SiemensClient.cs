@@ -57,11 +57,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     break;
                 }
 
-                var reference = "DB" + i.ToString() + "?0";
+                var propertyName = "DB" + i.ToString() + "?0";
 
                 S7Form form = new()
                 {
-                    Href = reference,
+                    Href = propertyName,
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                     PollingTime = 1000,
                     S7DBNumber = i,
@@ -80,9 +80,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     Forms = new object[1] { form }
                 };
 
-                if (!td.Properties.ContainsKey(reference))
+                if (!td.Properties.ContainsKey(propertyName))
                 {
-                    td.Properties.Add(reference, property);
+                    td.Properties.Add(propertyName, property);
                 }
             }
 

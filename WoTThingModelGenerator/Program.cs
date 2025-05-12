@@ -41,12 +41,95 @@
 
                 if (filename.ToLower().EndsWith(".csv"))
                 {
-                    ImportCSV(filename);
+                    ImportCSVFromRockwell(filename);
+                    ImportCSVFromAzureForModbus(filename);
                 }
             }
         }
 
-        private static void ImportCSV(string filename)
+        private static void ImportCSVFromAzureForModbus(string filename)
+        {
+            IEnumerable<string> content = File.ReadLines(filename);
+
+            string tdName = Path.GetFileNameWithoutExtension(filename).Replace(" ", "_");
+
+            ThingDescription td = new()
+            {
+                Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                Id = "urn:" + tdName,
+                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                Security = new string[1] { "nosec_sc" },
+                Type = new string[1] { "tm:ThingModel" },
+                Name = "{{name}}",
+                Base = "modbus+tcp://{{address}}:{{port}}",
+                Title = tdName,
+                Properties = new Dictionary<string, Property>()
+            };
+
+            foreach (string line in content)
+            {
+                string[] tokens = line.Split(';');
+
+                if ((tokens.Length > 18) && tokens[0].Contains("Points List"))
+                {
+                    // skip header row
+                    continue;
+                }
+
+                if (tokens.Length > 18)
+                {
+                    string propertName = tokens[4].Replace(" ", "_");
+
+                    ModbusForm form = new()
+                    {
+                        Href = tokens[12],
+                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        ModbusPollingTime = 1000,
+                        ModbusEntity = tokens[10].Contains("Holding Register")? ModbusEntity.HoldingRegister : throw new NotSupportedException(),
+                    };
+
+                    if (tokens[14] == "FLOAT")
+                    {
+                        form.ModbusType = TypeString.Float;
+                        form.Href += "?quantity=2";
+                    }
+                    else if (tokens[14] == "INT16")
+                    {
+                        form.ModbusType = TypeString.Integer;
+                        form.Href += "?quantity=1";
+                    }
+                    else if (tokens[14] == "INT32")
+                    {
+                        form.ModbusType = TypeString.Integer;
+                        form.Href += "?quantity=2";
+                    }
+                    else if (tokens[14] == "BOOL")
+                    {
+                        form.ModbusType = TypeString.Boolean;
+                        form.Href += "?quantity=1";
+                    }
+         
+                    Property property = new()
+                    {
+                        ReadOnly = true,
+                        Observable = true,
+                        Forms = new object[1] { form }
+                    };
+
+                    if (!td.Properties.ContainsKey(propertName))
+                    {
+                        td.Properties.Add(propertName, property);
+                    }
+                }
+            }
+
+            if (td.Properties.Count > 0)
+            {
+                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), tdName + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
+            }
+        }
+
+        private static void ImportCSVFromRockwell(string filename)
         {
             IEnumerable<string> content = File.ReadLines(filename);
 
@@ -70,11 +153,11 @@
                 // ignore everything but tags in the form TYPE,SCOPE,NAME,DESCRIPTION,DATATYPE,SPECIFIER,ATTRIBUTES, where TYPE must be "TAG"
                 if ((tokens.Length > 6) && tokens[0] == "TAG")
                 {
-                    string reference = tokens[2];
+                    string propertyName = tokens[2];
 
                     GenericForm form = new()
                     {
-                        Href = reference,
+                        Href = propertyName,
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                         PollingTime = 1000
                     };
@@ -111,14 +194,17 @@
                         continue;
                     }
 
-                    if (!td.Properties.ContainsKey(reference))
+                    if (!td.Properties.ContainsKey(propertyName))
                     {
-                        td.Properties.Add(reference, property);
+                        td.Properties.Add(propertyName, property);
                     }
                 }
             }
 
-            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
+            if (td.Properties.Count > 0)
+            {
+                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(filename) + ".tm.jsonld"), JsonConvert.SerializeObject(td, Newtonsoft.Json.Formatting.Indented));
+            }
         }
 
         private static void ImportTwinCAT(string filename)
@@ -145,11 +231,11 @@
 
             foreach (Symbol symbol in twinCAT.Modules.Module.DataAreas.DataArea.Symbol)
             {
-                string reference = symbol.Name;
+                string propertyName = symbol.Name;
 
                 GenericForm form = new()
                 {
-                    Href = reference + "?" + symbol.BitSize/8,
+                    Href = propertyName + "?" + symbol.BitSize/8,
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                     PollingTime = 1000,
                     Type = TypeString.Float
@@ -163,9 +249,9 @@
                     Forms = new object[1] { form }
                 };
 
-                if (!td.Properties.ContainsKey(reference))
+                if (!td.Properties.ContainsKey(propertyName))
                 {
-                    td.Properties.Add(reference, property);
+                    td.Properties.Add(propertyName, property);
                 }
             }
 
@@ -286,7 +372,10 @@
                     Forms = new object[1] { form }
                 };
 
-                td.Properties.Add(propertyName, property);
+                if (!td.Properties.ContainsKey(propertyName))
+                {
+                    td.Properties.Add(propertyName, property);
+                }
             }
         }
 

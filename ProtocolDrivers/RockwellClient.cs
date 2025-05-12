@@ -151,11 +151,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     {
                         Log.Logger.Information($"EIP Tag: Id={tag.Name} Name={udt.Name} FieldName={f.Name} Offset={f.Offset} Metadata={f.Metadata} Type=" + ParseDataType(f.Type));
 
-                        var reference = tag.Name + "." + udt.Name + "." + f.Name;
+                        string propertyName = tag.Name + "." + udt.Name + "." + f.Name;
 
                         EIPForm form = new()
                         {
-                            Href = reference + "?" + f.Offset.ToString(),
+                            Href = propertyName + "?" + f.Offset.ToString(),
                             Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                             PollingTime = 1000,
                             Type = ParseDataType(f.Type)
@@ -169,9 +169,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                             Forms = new object[1] { form }
                         };
 
-                        if (!td.Properties.ContainsKey(reference))
+                        if (!td.Properties.ContainsKey(propertyName))
                         {
-                            td.Properties.Add(reference, property);
+                            td.Properties.Add(propertyName, property);
                         }
                     }
                 }
@@ -179,11 +179,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     Log.Logger.Information($"EIP Tag: Id={tag.Name} Type=" + ParseDataType(tag.Type));
 
-                    var reference = tag.Name;
+                    string properyName = tag.Name;
 
                     EIPForm form = new()
                     {
-                        Href = reference + "?0",
+                        Href = properyName + "?0",
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                         PollingTime = 1000,
                         Type = ParseDataType(tag.Type)
@@ -197,9 +197,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         Forms = new object[1] { form }
                     };
 
-                    if (!td.Properties.ContainsKey(reference))
+                    if (!td.Properties.ContainsKey(properyName))
                     {
-                        td.Properties.Add(reference, property);
+                        td.Properties.Add(properyName, property);
                     }
                 }
             }
