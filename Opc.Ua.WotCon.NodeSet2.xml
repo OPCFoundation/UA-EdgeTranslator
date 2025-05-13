@@ -3,7 +3,7 @@
  * Copyright (c) 2005-2024 The OPC Foundation, Inc. All rights reserved.
  *
  * OPC Foundation MIT License 1.00
- *
+ * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -12,7 +12,7 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- *
+ * 
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -28,12 +28,12 @@
  * http://opcfoundation.org/License/MIT/1.00/
 -->
 
-<UANodeSet xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" LastModified="2025-02-25T00:00:00Z" xmlns="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd">
+<UANodeSet xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" LastModified="2025-04-29T00:00:00Z" xmlns="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd">
   <NamespaceUris>
     <Uri>http://opcfoundation.org/UA/WoT-Con/</Uri>
   </NamespaceUris>
   <Models>
-    <Model ModelUri="http://opcfoundation.org/UA/WoT-Con/" Version="1.01.0" PublicationDate="2025-02-25T00:00:00Z" ModelVersion="1.1.0">
+    <Model ModelUri="http://opcfoundation.org/UA/WoT-Con/" Version="1.01.0" PublicationDate="2025-04-29T00:00:00Z" ModelVersion="1.1.0">
       <RequiredModel ModelUri="http://opcfoundation.org/UA/" XmlSchemaUri="http://opcfoundation.org/UA/2008/02/Types.xsd" />
     </Model>
   </Models>
@@ -91,69 +91,69 @@
     <Alias Alias="AlarmGroupMember">i=16362</Alias>
     <Alias Alias="AlarmSuppressionGroupMember">i=32059</Alias>
   </Aliases>
-  <UAObject NodeId="ns=1;i=1" BrowseName="1:http://opcfoundation.org/UA/WoT-Con/" SymbolicName="WotConNamespaceMetadata">
+  <UAObject NodeId="ns=1;i=67" BrowseName="1:http://opcfoundation.org/UA/WoT-Con/" SymbolicName="WotConNamespaceMetadata">
     <DisplayName>http://opcfoundation.org/UA/WoT-Con/</DisplayName>
     <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/8.1</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=2</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=3</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=4</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=5</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=6</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=7</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=8</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=33</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=34</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=35</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=68</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=69</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=70</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=71</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=72</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=73</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=74</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=99</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=100</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=101</Reference>
       <Reference ReferenceType="HasComponent" IsForward="false">i=11715</Reference>
       <Reference ReferenceType="HasTypeDefinition">i=11616</Reference>
     </References>
   </UAObject>
-  <UAVariable NodeId="ns=1;i=2" BrowseName="NamespaceUri" ParentNodeId="ns=1;i=1" DataType="String">
+  <UAVariable NodeId="ns=1;i=68" BrowseName="NamespaceUri" ParentNodeId="ns=1;i=67" DataType="String">
     <DisplayName>NamespaceUri</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <String xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">http://opcfoundation.org/UA/WoT-Con/</String>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=3" BrowseName="NamespaceVersion" ParentNodeId="ns=1;i=1" DataType="String">
+  <UAVariable NodeId="ns=1;i=69" BrowseName="NamespaceVersion" ParentNodeId="ns=1;i=67" DataType="String">
     <DisplayName>NamespaceVersion</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <String xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">1.01.0</String>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=4" BrowseName="NamespacePublicationDate" ParentNodeId="ns=1;i=1" DataType="DateTime">
+  <UAVariable NodeId="ns=1;i=70" BrowseName="NamespacePublicationDate" ParentNodeId="ns=1;i=67" DataType="DateTime">
     <DisplayName>NamespacePublicationDate</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
-      <DateTime xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">2025-02-25T00:00:00Z</DateTime>
+      <DateTime xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">2025-04-29T00:00:00Z</DateTime>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=5" BrowseName="IsNamespaceSubset" ParentNodeId="ns=1;i=1" DataType="Boolean">
+  <UAVariable NodeId="ns=1;i=71" BrowseName="IsNamespaceSubset" ParentNodeId="ns=1;i=67" DataType="Boolean">
     <DisplayName>IsNamespaceSubset</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <Boolean xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">false</Boolean>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=6" BrowseName="StaticNodeIdTypes" ParentNodeId="ns=1;i=1" DataType="i=256" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=72" BrowseName="StaticNodeIdTypes" ParentNodeId="ns=1;i=67" DataType="i=256" ValueRank="1" ArrayDimensions="0">
     <DisplayName>StaticNodeIdTypes</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <ListOfInt32 xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -161,11 +161,11 @@
       </ListOfInt32>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=7" BrowseName="StaticNumericNodeIdRange" ParentNodeId="ns=1;i=1" DataType="i=291" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=73" BrowseName="StaticNumericNodeIdRange" ParentNodeId="ns=1;i=67" DataType="i=291" ValueRank="1" ArrayDimensions="0">
     <DisplayName>StaticNumericNodeIdRange</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <ListOfString xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -173,86 +173,86 @@
       </ListOfString>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=8" BrowseName="StaticStringNodeIdPattern" ParentNodeId="ns=1;i=1" DataType="String">
+  <UAVariable NodeId="ns=1;i=74" BrowseName="StaticStringNodeIdPattern" ParentNodeId="ns=1;i=67" DataType="String">
     <DisplayName>StaticStringNodeIdPattern</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
     <Value>
       <String xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd" />
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=33" BrowseName="DefaultRolePermissions" ParentNodeId="ns=1;i=1" DataType="i=96" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=99" BrowseName="DefaultRolePermissions" ParentNodeId="ns=1;i=67" DataType="i=96" ValueRank="1" ArrayDimensions="0">
     <DisplayName>DefaultRolePermissions</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=34" BrowseName="DefaultUserRolePermissions" ParentNodeId="ns=1;i=1" DataType="i=96" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=100" BrowseName="DefaultUserRolePermissions" ParentNodeId="ns=1;i=67" DataType="i=96" ValueRank="1" ArrayDimensions="0">
     <DisplayName>DefaultUserRolePermissions</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=35" BrowseName="DefaultAccessRestrictions" ParentNodeId="ns=1;i=1" DataType="i=95">
+  <UAVariable NodeId="ns=1;i=101" BrowseName="DefaultAccessRestrictions" ParentNodeId="ns=1;i=67" DataType="i=95">
     <DisplayName>DefaultAccessRestrictions</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=67</Reference>
     </References>
   </UAVariable>
-  <UAObjectType NodeId="ns=1;i=38" BrowseName="1:WoTAssetConnectionManagementType">
+  <UAObjectType NodeId="ns=1;i=1" BrowseName="1:WoTAssetConnectionManagementType">
     <DisplayName>WoTAssetConnectionManagementType</DisplayName>
     <Category>WoT Connectivity Base Functionality</Category>
     <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.1/#6.3.1.1</Documentation>
     <References>
-      <Reference ReferenceType="Organizes">ns=1;i=39</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=89</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=40</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=43</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=90</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=92</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=94</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=96</Reference>
+      <Reference ReferenceType="Organizes">ns=1;i=2</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=40</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=26</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=29</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=41</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=49</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=75</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=78</Reference>
       <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
     </References>
   </UAObjectType>
-  <UAObject NodeId="ns=1;i=39" BrowseName="1:&lt;WoTAssetName&gt;" SymbolicName="WoTAssetName_Placeholder" ParentNodeId="ns=1;i=38">
+  <UAObject NodeId="ns=1;i=2" BrowseName="1:&lt;WoTAssetName&gt;" SymbolicName="WoTAssetName_Placeholder" ParentNodeId="ns=1;i=1">
     <DisplayName>&lt;WoTAssetName&gt;</DisplayName>
     <References>
-      <Reference ReferenceType="HasInterface">ns=1;i=56</Reference>
+      <Reference ReferenceType="HasInterface">ns=1;i=42</Reference>
       <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
       <Reference ReferenceType="HasModellingRule">i=11508</Reference>
-      <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAObject>
-  <UAVariable NodeId="ns=1;i=89" BrowseName="1:SupportedWoTBindings" ParentNodeId="ns=1;i=38" DataType="i=23751" ValueRank="1" ArrayDimensions="0">
+  <UAVariable NodeId="ns=1;i=40" BrowseName="1:SupportedWoTBindings" ParentNodeId="ns=1;i=1" DataType="i=23751" ValueRank="1" ArrayDimensions="0">
     <DisplayName>SupportedWoTBindings</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=40" BrowseName="1:CreateAsset" ParentNodeId="ns=1;i=38">
+  <UAMethod NodeId="ns=1;i=26" BrowseName="1:CreateAsset" ParentNodeId="ns=1;i=1">
     <DisplayName>CreateAsset</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.2</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.1/#6.3.1.2</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=41</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=42</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=27</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=28</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=41" BrowseName="InputArguments" ParentNodeId="ns=1;i=40" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=27" BrowseName="InputArguments" ParentNodeId="ns=1;i=26" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=40</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=26</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -274,14 +274,12 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=42" BrowseName="OutputArguments" ParentNodeId="ns=1;i=40" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=28" BrowseName="OutputArguments" ParentNodeId="ns=1;i=26" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
-    <Category>WoT Connectivity Base Functionality</Category>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.2</Documentation>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=40</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=26</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -303,21 +301,21 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=43" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=38">
+  <UAMethod NodeId="ns=1;i=29" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=1">
     <DisplayName>DeleteAsset</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.3</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.1/#6.3.1.3</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=44</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=30</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=44" BrowseName="InputArguments" ParentNodeId="ns=1;i=43" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=30" BrowseName="InputArguments" ParentNodeId="ns=1;i=29" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=43</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=29</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -339,21 +337,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=90" BrowseName="1:DiscoverAssets" ParentNodeId="ns=1;i=38">
+  <UAMethod NodeId="ns=1;i=41" BrowseName="1:DiscoverAssets" ParentNodeId="ns=1;i=1">
     <DisplayName>DiscoverAssets</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.4</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=117</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=48</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=117" BrowseName="OutputArguments" ParentNodeId="ns=1;i=90" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=48" BrowseName="OutputArguments" ParentNodeId="ns=1;i=41" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=90</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=41</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -377,21 +374,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=92" BrowseName="1:CreateAssetForEndpoint" ParentNodeId="ns=1;i=38">
+  <UAMethod NodeId="ns=1;i=49" BrowseName="1:CreateAssetForEndpoint" ParentNodeId="ns=1;i=1">
     <DisplayName>CreateAssetForEndpoint</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.5</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=93</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=50</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=93" BrowseName="InputArguments" ParentNodeId="ns=1;i=92" DataType="i=296" ValueRank="1" ArrayDimensions="2">
+  <UAVariable NodeId="ns=1;i=50" BrowseName="InputArguments" ParentNodeId="ns=1;i=49" DataType="i=296" ValueRank="1" ArrayDimensions="2">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=92</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=49</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -428,22 +424,21 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=94" BrowseName="1:ConnectionTest" ParentNodeId="ns=1;i=38">
+  <UAMethod NodeId="ns=1;i=75" BrowseName="1:ConnectionTest" ParentNodeId="ns=1;i=1">
     <DisplayName>ConnectionTest</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.6</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=95</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=118</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=76</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=77</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=95" BrowseName="InputArguments" ParentNodeId="ns=1;i=94" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=76" BrowseName="InputArguments" ParentNodeId="ns=1;i=75" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=94</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=75</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -465,12 +460,12 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=118" BrowseName="OutputArguments" ParentNodeId="ns=1;i=94" DataType="i=296" ValueRank="1" ArrayDimensions="2">
+  <UAVariable NodeId="ns=1;i=77" BrowseName="OutputArguments" ParentNodeId="ns=1;i=75" DataType="i=296" ValueRank="1" ArrayDimensions="2">
     <DisplayName>OutputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=94</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=75</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -507,38 +502,39 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAObject NodeId="ns=1;i=96" BrowseName="1:Configuration" ParentNodeId="ns=1;i=38">
+  <UAObject NodeId="ns=1;i=78" BrowseName="1:Configuration" ParentNodeId="ns=1;i=1">
     <DisplayName>Configuration</DisplayName>
     <References>
-      <Reference ReferenceType="HasTypeDefinition">ns=1;i=113</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=108</Reference>
+      <Reference ReferenceType="HasTypeDefinition">ns=1;i=105</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1</Reference>
     </References>
   </UAObject>
-  <UAObject NodeId="ns=1;i=45" BrowseName="1:WoTAssetConnectionManagement">
+  <UAObject NodeId="ns=1;i=31" BrowseName="1:WoTAssetConnectionManagement">
     <DisplayName>WoTAssetConnectionManagement</DisplayName>
     <Category>WoT Connectivity Base Functionality</Category>
     <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.2</Documentation>
     <References>
-      <Reference ReferenceType="HasComponent">ns=1;i=46</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=49</Reference>
-      <Reference ReferenceType="Organizes" IsForward="false">i=2253</Reference>
-      <Reference ReferenceType="HasTypeDefinition">ns=1;i=38</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=32</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=35</Reference>
+      <Reference ReferenceType="Organizes" IsForward="false">i=85</Reference>
+      <Reference ReferenceType="HasTypeDefinition">ns=1;i=1</Reference>
     </References>
   </UAObject>
-  <UAMethod NodeId="ns=1;i=46" BrowseName="1:CreateAsset" ParentNodeId="ns=1;i=45" MethodDeclarationId="ns=1;i=40">
+  <UAMethod NodeId="ns=1;i=32" BrowseName="1:CreateAsset" ParentNodeId="ns=1;i=31" MethodDeclarationId="ns=1;i=26">
     <DisplayName>CreateAsset</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=47</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=48</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=45</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=33</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=34</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=31</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=47" BrowseName="InputArguments" ParentNodeId="ns=1;i=46" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=33" BrowseName="InputArguments" ParentNodeId="ns=1;i=32" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=46</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=32</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -560,11 +556,11 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=48" BrowseName="OutputArguments" ParentNodeId="ns=1;i=46" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=34" BrowseName="OutputArguments" ParentNodeId="ns=1;i=32" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=46</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=32</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -586,18 +582,18 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=49" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=45" MethodDeclarationId="ns=1;i=43">
+  <UAMethod NodeId="ns=1;i=35" BrowseName="1:DeleteAsset" ParentNodeId="ns=1;i=31" MethodDeclarationId="ns=1;i=29">
     <DisplayName>DeleteAsset</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=50</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=45</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=36</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=31</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=50" BrowseName="InputArguments" ParentNodeId="ns=1;i=49" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=36" BrowseName="InputArguments" ParentNodeId="ns=1;i=35" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=49</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=35</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -619,108 +615,107 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAObjectType NodeId="ns=1;i=113" BrowseName="1:WoTAssetConfigurationType" IsAbstract="true">
+  <UAObjectType NodeId="ns=1;i=105" BrowseName="1:WoTAssetConfigurationType" IsAbstract="true">
     <DisplayName>WoTAssetConfigurationType</DisplayName>
-    <Documentation />
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=114</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=115</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=108</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=109</Reference>
       <Reference ReferenceType="HasSubtype" IsForward="false">i=17602</Reference>
     </References>
   </UAObjectType>
-  <UAVariable NodeId="ns=1;i=114" BrowseName="1:&lt;WoTConfigurationParameterName&gt;" SymbolicName="WoTConfigurationParameterName_Placeholder" ParentNodeId="ns=1;i=113">
+  <UAVariable NodeId="ns=1;i=108" BrowseName="1:&lt;WoTConfigurationParameterName&gt;" SymbolicName="WoTConfigurationParameterName_Placeholder" ParentNodeId="ns=1;i=105">
     <DisplayName>&lt;WoTConfigurationParameterName&gt;</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=11508</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=113</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=105</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=115" BrowseName="1:License" ParentNodeId="ns=1;i=113" DataType="String">
+  <UAVariable NodeId="ns=1;i=109" BrowseName="1:License" ParentNodeId="ns=1;i=105" DataType="String">
     <DisplayName>License</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=113</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=105</Reference>
     </References>
   </UAVariable>
-  <UAObjectType NodeId="ns=1;i=56" BrowseName="1:IWoTAssetType" IsAbstract="true">
+  <UAObjectType NodeId="ns=1;i=42" BrowseName="1:IWoTAssetType" IsAbstract="true">
     <DisplayName>IWoTAssetType</DisplayName>
     <Category>WoT Connectivity Base Functionality</Category>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.8</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.2</Documentation>
     <References>
-      <Reference ReferenceType="HasComponent">ns=1;i=57</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=116</Reference>
-      <Reference ReferenceType="ns=1;i=83">ns=1;i=82</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=43</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=122</Reference>
+      <Reference ReferenceType="ns=1;i=142">ns=1;i=66</Reference>
       <Reference ReferenceType="HasSubtype" IsForward="false">i=17602</Reference>
     </References>
   </UAObjectType>
-  <UAObject NodeId="ns=1;i=57" BrowseName="1:WoTFile" ParentNodeId="ns=1;i=56">
+  <UAObject NodeId="ns=1;i=43" BrowseName="1:WoTFile" ParentNodeId="ns=1;i=42">
     <DisplayName>WoTFile</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=58</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=59</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=60</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=61</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=65</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=68</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=70</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=73</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=75</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=78</Reference>
-      <Reference ReferenceType="HasComponent">ns=1;i=80</Reference>
-      <Reference ReferenceType="HasTypeDefinition">ns=1;i=86</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=44</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=45</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=46</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=47</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=51</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=54</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=56</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=59</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=61</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=64</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=106</Reference>
+      <Reference ReferenceType="HasTypeDefinition">ns=1;i=110</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=56</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=42</Reference>
     </References>
   </UAObject>
-  <UAVariable NodeId="ns=1;i=58" BrowseName="Size" ParentNodeId="ns=1;i=57" DataType="UInt64">
+  <UAVariable NodeId="ns=1;i=44" BrowseName="Size" ParentNodeId="ns=1;i=43" DataType="UInt64">
     <DisplayName>Size</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=59" BrowseName="Writable" ParentNodeId="ns=1;i=57" DataType="Boolean">
+  <UAVariable NodeId="ns=1;i=45" BrowseName="Writable" ParentNodeId="ns=1;i=43" DataType="Boolean">
     <DisplayName>Writable</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=60" BrowseName="UserWritable" ParentNodeId="ns=1;i=57" DataType="Boolean">
+  <UAVariable NodeId="ns=1;i=46" BrowseName="UserWritable" ParentNodeId="ns=1;i=43" DataType="Boolean">
     <DisplayName>UserWritable</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=61" BrowseName="OpenCount" ParentNodeId="ns=1;i=57" DataType="UInt16">
+  <UAVariable NodeId="ns=1;i=47" BrowseName="OpenCount" ParentNodeId="ns=1;i=43" DataType="UInt16">
     <DisplayName>OpenCount</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=65" BrowseName="Open" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11580">
+  <UAMethod NodeId="ns=1;i=51" BrowseName="Open" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11580">
     <DisplayName>Open</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=66</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=67</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=52</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=53</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=66" BrowseName="InputArguments" ParentNodeId="ns=1;i=65" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=52" BrowseName="InputArguments" ParentNodeId="ns=1;i=51" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=65</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=51</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -742,13 +737,12 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=67" BrowseName="OutputArguments" ParentNodeId="ns=1;i=65" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=53" BrowseName="OutputArguments" ParentNodeId="ns=1;i=51" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/8.1</Documentation>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=65</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=51</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -770,20 +764,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=68" BrowseName="Close" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11583">
+  <UAMethod NodeId="ns=1;i=54" BrowseName="Close" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11583">
     <DisplayName>Close</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=69</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=55</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=69" BrowseName="InputArguments" ParentNodeId="ns=1;i=68" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=55" BrowseName="InputArguments" ParentNodeId="ns=1;i=54" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=68</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=54</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -805,21 +799,21 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=70" BrowseName="Read" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11585">
+  <UAMethod NodeId="ns=1;i=56" BrowseName="Read" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11585">
     <DisplayName>Read</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=71</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=72</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=58</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=71" BrowseName="InputArguments" ParentNodeId="ns=1;i=70" DataType="i=296" ValueRank="1" ArrayDimensions="2">
+  <UAVariable NodeId="ns=1;i=57" BrowseName="InputArguments" ParentNodeId="ns=1;i=56" DataType="i=296" ValueRank="1" ArrayDimensions="2">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=70</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=56</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -856,12 +850,12 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=72" BrowseName="OutputArguments" ParentNodeId="ns=1;i=70" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=58" BrowseName="OutputArguments" ParentNodeId="ns=1;i=56" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=70</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=56</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -883,20 +877,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=73" BrowseName="Write" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11588">
+  <UAMethod NodeId="ns=1;i=59" BrowseName="Write" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11588">
     <DisplayName>Write</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=74</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=60</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=74" BrowseName="InputArguments" ParentNodeId="ns=1;i=73" DataType="i=296" ValueRank="1" ArrayDimensions="2">
+  <UAVariable NodeId="ns=1;i=60" BrowseName="InputArguments" ParentNodeId="ns=1;i=59" DataType="i=296" ValueRank="1" ArrayDimensions="2">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=73</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=59</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -933,21 +927,21 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=75" BrowseName="GetPosition" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11590">
+  <UAMethod NodeId="ns=1;i=61" BrowseName="GetPosition" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11590">
     <DisplayName>GetPosition</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=76</Reference>
-      <Reference ReferenceType="HasProperty">ns=1;i=77</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=62</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=63</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=76" BrowseName="InputArguments" ParentNodeId="ns=1;i=75" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=62" BrowseName="InputArguments" ParentNodeId="ns=1;i=61" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=75</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=61</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -969,12 +963,12 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=77" BrowseName="OutputArguments" ParentNodeId="ns=1;i=75" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=63" BrowseName="OutputArguments" ParentNodeId="ns=1;i=61" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>OutputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=75</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=61</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -996,20 +990,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=78" BrowseName="SetPosition" ParentNodeId="ns=1;i=57" MethodDeclarationId="i=11593">
+  <UAMethod NodeId="ns=1;i=64" BrowseName="SetPosition" ParentNodeId="ns=1;i=43" MethodDeclarationId="i=11593">
     <DisplayName>SetPosition</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=79</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=65</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=79" BrowseName="InputArguments" ParentNodeId="ns=1;i=78" DataType="i=296" ValueRank="1" ArrayDimensions="2">
+  <UAVariable NodeId="ns=1;i=65" BrowseName="InputArguments" ParentNodeId="ns=1;i=64" DataType="i=296" ValueRank="1" ArrayDimensions="2">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=78</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=64</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -1046,20 +1040,20 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAMethod NodeId="ns=1;i=80" BrowseName="1:CloseAndUpdate" ParentNodeId="ns=1;i=57" MethodDeclarationId="ns=1;i=87">
+  <UAMethod NodeId="ns=1;i=106" BrowseName="1:CloseAndUpdate" ParentNodeId="ns=1;i=43" MethodDeclarationId="ns=1;i=111">
     <DisplayName>CloseAndUpdate</DisplayName>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=81</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=107</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=57</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=43</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=81" BrowseName="InputArguments" ParentNodeId="ns=1;i=80" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=107" BrowseName="InputArguments" ParentNodeId="ns=1;i=106" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=80</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=106</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
@@ -1081,55 +1075,55 @@
       </ListOfExtensionObject>
     </Value>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=116" BrowseName="1:AssetEndpoint" ParentNodeId="ns=1;i=56" DataType="String">
+  <UAVariable NodeId="ns=1;i=122" BrowseName="1:AssetEndpoint" ParentNodeId="ns=1;i=42" DataType="String">
     <DisplayName>AssetEndpoint</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=80</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=56</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=42</Reference>
     </References>
   </UAVariable>
-  <UAVariable NodeId="ns=1;i=82" BrowseName="1:&lt;WoTPropertyName&gt;" SymbolicName="WoTPropertyName_Placeholder" ParentNodeId="ns=1;i=56">
+  <UAVariable NodeId="ns=1;i=66" BrowseName="1:&lt;WoTPropertyName&gt;" SymbolicName="WoTPropertyName_Placeholder" ParentNodeId="ns=1;i=42">
     <DisplayName>&lt;WoTPropertyName&gt;</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
       <Reference ReferenceType="HasModellingRule">i=11508</Reference>
-      <Reference ReferenceType="ns=1;i=83" IsForward="false">ns=1;i=56</Reference>
+      <Reference ReferenceType="ns=1;i=142" IsForward="false">ns=1;i=42</Reference>
     </References>
   </UAVariable>
-  <UAReferenceType NodeId="ns=1;i=83" BrowseName="1:HasWoTComponent">
+  <UAReferenceType NodeId="ns=1;i=142" BrowseName="1:HasWoTComponent">
     <DisplayName>HasWoTComponent</DisplayName>
     <Category>WoT Connectivity Base Functionality</Category>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.10</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.4</Documentation>
     <References>
       <Reference ReferenceType="HasSubtype" IsForward="false">i=47</Reference>
     </References>
     <InverseName>WoTComponentOf</InverseName>
   </UAReferenceType>
-  <UAObjectType NodeId="ns=1;i=86" BrowseName="1:WoTAssetFileType">
+  <UAObjectType NodeId="ns=1;i=110" BrowseName="1:WoTAssetFileType">
     <DisplayName>WoTAssetFileType</DisplayName>
     <Category>WoT Connectivity Base Functionality</Category>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.9/#6.3.9.1</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.3/#6.3.3.1</Documentation>
     <References>
-      <Reference ReferenceType="HasComponent">ns=1;i=87</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;i=111</Reference>
       <Reference ReferenceType="HasSubtype" IsForward="false">i=11575</Reference>
     </References>
   </UAObjectType>
-  <UAMethod NodeId="ns=1;i=87" BrowseName="1:CloseAndUpdate" ParentNodeId="ns=1;i=86">
+  <UAMethod NodeId="ns=1;i=111" BrowseName="1:CloseAndUpdate" ParentNodeId="ns=1;i=110">
     <DisplayName>CloseAndUpdate</DisplayName>
-    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.9/#6.3.9.2</Documentation>
+    <Documentation>https://reference.opcfoundation.org/WoT/v100/docs/6.3.3/#6.3.3.2</Documentation>
     <References>
-      <Reference ReferenceType="HasProperty">ns=1;i=88</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;i=112</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=86</Reference>
+      <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=110</Reference>
     </References>
   </UAMethod>
-  <UAVariable NodeId="ns=1;i=88" BrowseName="InputArguments" ParentNodeId="ns=1;i=87" DataType="i=296" ValueRank="1" ArrayDimensions="1">
+  <UAVariable NodeId="ns=1;i=112" BrowseName="InputArguments" ParentNodeId="ns=1;i=111" DataType="i=296" ValueRank="1" ArrayDimensions="1">
     <DisplayName>InputArguments</DisplayName>
     <References>
       <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
-      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=87</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=111</Reference>
     </References>
     <Value>
       <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
