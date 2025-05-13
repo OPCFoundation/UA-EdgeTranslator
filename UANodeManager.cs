@@ -48,6 +48,7 @@ namespace Opc.Ua.Edge.Translator
         private const uint _cIWoTAssetType = 56;
         private const uint _cHasWoTComponent = 83;
         private const uint _cWoTAssetFileType = 86;
+        private const uint _cWoTAssetConfigurationType = 105;
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
@@ -109,6 +110,8 @@ namespace Opc.Ua.Edge.Translator
 
                 AddNodesFromNodesetXml("Opc.Ua.WotCon.NodeSet2.xml");
 
+                AddOptionalNodesForAssetManagement();
+
                 IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
                 foreach (string file in WoTFiles)
                 {
@@ -136,6 +139,130 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        private void AddOptionalNodesForAssetManagement()
+        {
+            ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
+
+            MethodState discoverAssets = CreateMethod(_assetManagement, "DiscoverAssets");
+            discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
+            discoverAssets.OutputArguments = AddArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
+            AddPredefinedNode(SystemContext, discoverAssets);
+
+            MethodState createAssetForEndpoint = CreateMethod(_assetManagement, "CreateAssetForEndpoint");
+            createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
+            createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
+            createAssetForEndpoint.OutputArguments = AddArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
+            AddPredefinedNode(SystemContext, createAssetForEndpoint);
+
+            MethodState connectionTest = CreateMethod(_assetManagement, "ConnectionTest");
+            connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
+            connectionTest.InputArguments = AddArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
+            connectionTest.OutputArguments = AddArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
+            AddPredefinedNode(SystemContext, connectionTest);
+
+            // create a property listing our supported WoT protocol bindings
+            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[9] {
+                "https://www.w3.org/2019/wot/modbus",
+                "https://www.w3.org/2019/wot/opcua",
+                "https://www.w3.org/2019/wot/s7",
+                "https://www.w3.org/2019/wot/mcp",
+                "https://www.w3.org/2019/wot/eip",
+                "https://www.w3.org/2019/wot/ads",
+                "https://www.w3.org/2019/wot/iec61850",
+                "http://www.w3.org/2022/bacnet",
+                "https://www.w3.org/2019/wot/lorawan",
+            }));
+
+            BaseObjectState configuration = CreateObject(
+                _assetManagement,
+                "Configuration",
+                new ExpandedNodeId(_cWoTAssetConfigurationType, _cWotCon));
+
+            // create a property for the license key
+            _uaProperties.Add("License", CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
+        }
+
+        private MethodState CreateMethod(NodeState parent, string name)
+        {
+            MethodState method = new(parent)
+            {
+                SymbolicName = name,
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
+                NodeId = new NodeId(name, NamespaceIndex),
+                BrowseName = new QualifiedName(name, NamespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                Executable = true,
+                UserExecutable = true
+            };
+
+            if (parent != null)
+            {
+                parent.AddChild(method);
+            }
+
+            return method;
+        }
+
+        public BaseObjectState CreateObject(NodeState parent, string name, ExpandedNodeId type)
+        {
+            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
+            {
+                throw new ArgumentNullException("Cannot create UA object with empty browsename or type definition!");
+            }
+
+            BaseObjectState obj = new(parent)
+            {
+                BrowseName = name,
+                DisplayName = name,
+                TypeDefinitionId = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris)
+            };
+
+            obj.NodeId = New(SystemContext, obj);
+
+            AddPredefinedNode(SystemContext, obj);
+
+            if (parent != null)
+            {
+                parent.AddChild(obj);
+            }
+
+            return obj;
+        }
+
+        private PropertyState CreateProperty(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
+        {
+            PropertyState property = new(parent)
+            {
+                SymbolicName = name,
+                ReferenceTypeId = ReferenceTypes.Organizes,
+                TypeDefinitionId = VariableTypeIds.PropertyType,
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
+                DisplayName = new LocalizedText("en", name),
+                WriteMask = AttributeWriteMask.None,
+                UserWriteMask = AttributeWriteMask.None,
+                AccessLevel = AccessLevels.CurrentRead,
+                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
+                Value = value,
+                OnReadValue = OnReadValue
+            };
+
+            if (writeable)
+            {
+                property.AccessLevel = AccessLevels.CurrentReadOrWrite;
+                property.UserAccessLevel = AccessLevels.CurrentReadOrWrite;
+                property.UserWriteMask = AttributeWriteMask.ValueForVariableType;
+                property.WriteMask = AttributeWriteMask.ValueForVariableType;
+                property.OnWriteValue = OnWriteValue;
+            }
+
+            parent?.AddChild(property);
+
+            AddPredefinedNode(SystemContext, property);
+
+            return property;
+        }
+
         protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
         {
             // capture our base object instance (i.e. NOT the model!)
@@ -157,62 +284,13 @@ namespace Opc.Ua.Edge.Translator
                     methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
                     methodState.InputArguments = AddArguments(methodState, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true);
                     methodState.OutputArguments = AddArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
-
-                    return predefinedNode;
                 }
 
                 if (methodState.DisplayName == "DeleteAsset")
                 {
                     methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
                     methodState.InputArguments = AddArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true);
-
-                    return predefinedNode;
                 }
-
-                if (methodState.DisplayName == "DiscoverAssets")
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-                    methodState.OutputArguments = AddArguments(methodState, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
-
-                    return predefinedNode;
-                }
-
-                if (methodState.DisplayName == "CreateAssetForEndpoint")
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
-                    methodState.InputArguments = AddArguments(methodState, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = AddArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
-
-                    return predefinedNode;
-                }
-
-                if (methodState.DisplayName == "ConnectionTest")
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-                    methodState.InputArguments = AddArguments(methodState, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = AddArguments(methodState, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
-
-                    return predefinedNode;
-                }
-            }
-
-            // capture our instance properties (i.e. NOT the model!)
-            PropertyState propertyState = predefinedNode as PropertyState;
-            if ((propertyState != null) && (propertyState.ModellingRuleId == null))
-            {
-                if (propertyState.DisplayName == "SupportedWoTBindings")
-                {
-                    _uaProperties.Add("SupportedWoTBindings", propertyState);
-                    propertyState.Timestamp = DateTime.UtcNow;
-                }
-
-                if (propertyState.DisplayName == "License")
-                {
-                    _uaProperties.Add("License", propertyState);
-                }
-
-                propertyState.OnReadValue = OnReadValue;
-                propertyState.OnWriteValue = OnWriteValue;
             }
 
             return predefinedNode;
