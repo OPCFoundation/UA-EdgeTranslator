@@ -35,7 +35,6 @@ namespace Opc.Ua.Edge.Translator
             _file.OpenCount.Value = 0;
             if (_file.MaxByteStringLength != null) _file.MaxByteStringLength.Value = UInt16.MaxValue;
             _file.Open.OnCall = new OpenMethodStateMethodCallHandler(OnOpen);
-            _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnClose);
             _file.Read.OnCall = new ReadMethodStateMethodCallHandler(OnRead);
             _file.Write.OnCall = new WriteMethodStateMethodCallHandler(OnWrite);
             _file.GetPosition.OnCall = new GetPositionMethodStateMethodCallHandler(OnGetPosition);
@@ -221,37 +220,6 @@ namespace Opc.Ua.Edge.Translator
             }
 
             return StatusCodes.Good;
-        }
-
-        private ServiceResult OnClose(
-          ISystemContext _context,
-          MethodState _method,
-          NodeId _objectId,
-          uint fileHandle)
-        {
-            Handle handle;
-
-            lock (_handles)
-            {
-                if (!_handles.TryGetValue(fileHandle, out handle))
-                {
-                    return StatusCodes.BadInvalidArgument;
-                }
-
-                if (handle.SessionId != _context.SessionId)
-                {
-                    return StatusCodes.BadUserAccessDenied;
-                }
-
-                _writing = false;
-                _handles.Remove(fileHandle);
-                _file.OpenCount.Value = (ushort)_handles.Count;
-            }
-
-            handle.Stream.Close();
-            handle.Stream.Dispose();
-
-            return ServiceResult.Good;
         }
 
         private ServiceResult OnCloseAndUpdate(
