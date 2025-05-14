@@ -5,7 +5,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
-    using Opc.Ua.Gds.Client;
     using Serilog;
     using System;
     using System.Collections.Generic;
