@@ -86,7 +86,7 @@
             return property;
         }
 
-        public PropertyState<Argument[]> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false)
+        public PropertyState<Argument[]> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false, NodeId nodeId = null)
         {
             string browseName = methodState.BrowseName.Name;
             if (input)
@@ -112,7 +112,7 @@
 
             PropertyState<Argument[]> arguments = new(methodState)
             {
-                NodeId = new NodeId(browseName, _manager.NamespaceIndex),
+                NodeId = (nodeId == null)? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
                 BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,

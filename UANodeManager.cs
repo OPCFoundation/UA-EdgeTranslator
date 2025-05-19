@@ -25,6 +25,8 @@ namespace Opc.Ua.Edge.Translator
 
         private bool _shutdown = false;
 
+        private bool _wotAssetManagementLoaded = false;
+
         private readonly NodeFactory _nodeFactory;
 
         private BaseObjectState _assetManagement;
@@ -37,8 +39,6 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly Dictionary<string, List<AssetTag>> _tags = new();
 
-        private readonly Dictionary<string, Tuple<string, bool>> _nodesetFiles = new();
-
         private readonly UACloudLibraryClient _uacloudLibraryClient = new();
 
         private readonly Dictionary<NodeId, FileManager> _fileManagers = new();
@@ -49,6 +49,12 @@ namespace Opc.Ua.Edge.Translator
 
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
 
+        private const uint _cWoTAssetManagement = 31;
+        private const uint _cWoTCreateAsset = 32;
+        private const uint _cWoTCreateAssetInputArguments = 33;
+        private const uint _cWoTCreateAssetOutputArguments = 34;
+        private const uint _cWoTDeleteAsset = 35;
+        private const uint _cWoTDeleteAssetInputArguments = 36;
         private const uint _cIWoTAssetType = 56;
         private const uint _cWoTAssetFileType = 86;
         private const uint _cWoTAssetConfigurationType = 105;
@@ -121,7 +127,9 @@ namespace Opc.Ua.Edge.Translator
 
                 AddAllNodesFromDownloadedNodesetFiles();
 
-                AddOptionalNodesForAssetManagement();
+                _wotAssetManagementLoaded = true;
+
+                AddNodesForAssetManagement();
 
                 LoadLocalWoTFiles();
 
@@ -155,9 +163,20 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void AddOptionalNodesForAssetManagement()
+        private void AddNodesForAssetManagement()
         {
             ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
+
+            _assetManagement = (BaseObjectState)FindPredefinedNode(new NodeId(_cWoTAssetManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
+
+            MethodState createAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTCreateAsset, WoTConNamespaceIndex), typeof(MethodState));
+            createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
+            createAsset.InputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true, false, new NodeId(_cWoTCreateAssetInputArguments, WoTConNamespaceIndex));
+            createAsset.OutputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false, false, new NodeId(_cWoTCreateAssetOutputArguments, WoTConNamespaceIndex));
+
+            MethodState deleteAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTDeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
+            deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
+            deleteAsset.InputArguments = _nodeFactory.CreateMethodArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true, false, new NodeId(_cWoTDeleteAssetInputArguments, WoTConNamespaceIndex));
 
             MethodState discoverAssets = _nodeFactory.CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
@@ -205,40 +224,6 @@ namespace Opc.Ua.Edge.Translator
             PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty);
             _uaProperties.Add("License", licenseProperty);
             AddPredefinedNode(SystemContext, licenseProperty);
-        }
-
-        protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
-        {
-            // capture our base object instance (i.e. NOT the model!)
-            BaseObjectState baseObjectState = predefinedNode as BaseObjectState;
-            if ((baseObjectState != null) && (baseObjectState.ModellingRuleId == null))
-            {
-                // we don't want to overwrite the behaviour when we load our nodeset files during WoT file onboarding
-                if (baseObjectState.DisplayName == "WoTAssetConnectionManagement")
-                {
-                    _assetManagement = baseObjectState;
-                }
-            }
-
-            // add behaviour to our methods
-            MethodState methodState = predefinedNode as MethodState;
-            if ((methodState != null) && (methodState.ModellingRuleId == null))
-            {
-                if (methodState.DisplayName == "CreateAsset")
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-                    methodState.InputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
-                }
-
-                if (methodState.DisplayName == "DeleteAsset")
-                {
-                    methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-                    methodState.InputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true);
-                }
-            }
-
-            return predefinedNode;
         }
 
         private List<string> LoadNamespacesFromThingDescription(ThingDescription td)
@@ -302,6 +287,12 @@ namespace Opc.Ua.Edge.Translator
                         using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
                         {
                             UANodeSet nodeSet = UANodeSet.Read(stream);
+
+                            if ((nodeSet.Models?[0]?.ModelUri == _cWotCon) && _wotAssetManagementLoaded)
+                            {
+                                // skip the WoT asset management nodeset file, we already loaded it
+                                continue;
+                            }
 
                             NodeStateCollection predefinedNodes = new NodeStateCollection();
 
@@ -621,7 +612,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            //AddAllNodesFromDownloadedNodesetFiles();
+            AddAllNodesFromDownloadedNodesetFiles();
 
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
