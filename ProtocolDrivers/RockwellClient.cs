@@ -411,7 +411,133 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        public object Read(AssetTag tag)
+        {
+            object value = null;
+
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if (addressParts.Length == 2)
+            {
+                if (!addressParts[0].StartsWith("Cxn:Standard:"))
+                {
+                    byte[] tagBytes = Read(addressParts[0], byte.Parse(addressParts[1]), tag.Type, 0).GetAwaiter().GetResult();
+                    
+                    if ((tagBytes != null) && (tagBytes.Length > 0))
+                    {
+                        if (tag.Type == "BOOL")
+                        {
+                            value = BitConverter.ToBoolean(tagBytes);
+                        }
+                        else if (tag.Type == "SINT")
+                        {
+                            value = BitConverter.ToChar(tagBytes);
+                        }
+                        else if (tag.Type == "INT")
+                        {
+                            value = BitConverter.ToInt16(tagBytes);
+                        }
+                        else if (tag.Type == "DINT")
+                        {
+                            value = BitConverter.ToInt32(tagBytes);
+                        }
+                        else if (tag.Type == "LINT")
+                        {
+                            value = BitConverter.ToInt64(tagBytes);
+                        }
+                        else if (tag.Type == "USINT")
+                        {
+                            value = BitConverter.ToChar(tagBytes);
+                        }
+                        else if (tag.Type == "UINT")
+                        {
+                            value = BitConverter.ToUInt16(tagBytes);
+                        }
+                        else if (tag.Type == "UDINT")
+                        {
+                            value = BitConverter.ToInt32(tagBytes);
+                        }
+                        else if (tag.Type == "ULINT")
+                        {
+                            value = BitConverter.ToUInt64(tagBytes);
+                        }
+                        else if (tag.Type == "REAL")
+                        {
+                            value = BitConverter.ToSingle(tagBytes);
+                        }
+                        else if (tag.Type == "LREAL")
+                        {
+                            value = BitConverter.ToDouble(tagBytes);
+                        }
+                        else
+                        {
+                            throw new ArgumentException("Type not supported by Ethernet/IP.");
+                        }
+                    }
+                }
+            }
+
+            return value;
+        }
+
+        public void Write(AssetTag tag, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            byte[] tagBytes = null;
+
+            if (tag.Type == "BOOL")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "SINT")
+            {
+                tagBytes = BitConverter.GetBytes(char.Parse(value));
+            }
+            else if (tag.Type == "INT")
+            {
+                tagBytes = BitConverter.GetBytes(short.Parse(value));
+            }
+            else if (tag.Type == "DINT")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "LINT")
+            {
+                tagBytes = BitConverter.GetBytes(Int64.Parse(value));
+            }
+            else if (tag.Type == "USINT")
+            {
+                tagBytes = BitConverter.GetBytes(char.Parse(value));
+            }
+            else if (tag.Type == "UINT")
+            {
+                tagBytes = BitConverter.GetBytes(ushort.Parse(value));
+            }
+            else if (tag.Type == "UDINT")
+            {
+                tagBytes = BitConverter.GetBytes(uint.Parse(value));
+            }
+            else if (tag.Type == "ULINT")
+            {
+                tagBytes = BitConverter.GetBytes(UInt64.Parse(value));
+            }
+            else if (tag.Type == "REAL")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "LREAL")
+            {
+                tagBytes = BitConverter.GetBytes(double.Parse(value));
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by Rockwell.");
+            }
+
+            Write(addressParts[0], byte.Parse(addressParts[1]), tag.Type, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             var addressParts = addressWithinAsset.Split('.');
 
@@ -445,7 +571,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             var tag = new Tag()
             {

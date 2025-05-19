@@ -2,7 +2,6 @@
 {
     using Opc.Ua.Edge.Translator.Models;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
 
     public interface IAsset
     {
@@ -16,8 +15,8 @@
 
         public string GetRemoteEndpoint();
 
-        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count);
+        public object Read(AssetTag tag);
 
-        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly);
+        public void Write(AssetTag tag, string value);
     }
 }

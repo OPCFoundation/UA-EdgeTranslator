@@ -354,3 +354,4 @@ MigrationBackup/
 /pki
 /WoTThingModelGenerator/Mondelez
 /WoTThingModelGenerator/MCC1_V33_20240810_Tags.csv
+/nodesets/Opc.Ua.PnEm.NodeSet2.xml

@@ -7,6 +7,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Collections.Generic;
     using System.IO.BACnet;
     using System.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -115,7 +116,74 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        public object Read(AssetTag tag)
+        {
+            object value = null;
+
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if (addressParts.Length == 2)
+            {
+                byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                
+                if ((tagBytes != null) && (tagBytes.Length > 0))
+                {
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by BACNet.");
+                    }
+                }
+            }
+
+            return value;
+        }
+
+        public void Write(AssetTag tag, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by BACNet.");
+            }
+
+            Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             try
             {
@@ -132,7 +200,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             try
             {
@@ -149,11 +217,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return Task.CompletedTask;
         }
 
-        bool ReadScalarValue(BacnetAddress adr, uint device_id, BacnetObjectId BacnetObject, BacnetPropertyIds Proprerty, out BacnetValue value)
+        private bool ReadScalarValue(BacnetAddress adr, uint device_id, BacnetObjectId bacnetObject, BacnetPropertyIds property, out BacnetValue value)
         {
             value = new BacnetValue(null);
 
-            if (!_client.ReadPropertyRequest(adr, BacnetObject, Proprerty, out var NoScalarValue))
+            if (!_client.ReadPropertyRequest(adr, bacnetObject, property, out var NoScalarValue))
             {
                 return false;
             }
@@ -162,10 +230,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return true;
         }
 
-        bool WriteScalarValue(BacnetAddress adr, uint device_id, BacnetObjectId BacnetObject, BacnetPropertyIds Proprerty, BacnetValue Value)
+        private bool WriteScalarValue(BacnetAddress adr, uint device_id, BacnetObjectId bacnetObject, BacnetPropertyIds property, BacnetValue value)
         {
-            BacnetValue[] NoScalarValue = { Value };
-            return _client.WritePropertyRequest(adr, BacnetObject, Proprerty, NoScalarValue);
+            BacnetValue[] NoScalarValue = { value };
+            return _client.WritePropertyRequest(adr, bacnetObject, property, NoScalarValue);
         }
     }
 }

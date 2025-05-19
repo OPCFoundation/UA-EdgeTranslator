@@ -5,13 +5,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Viscon.Communication.Ads;
     using Viscon.Communication.Ads.Common;
 
     /*
-    Authorise this Beckhoff ADS client for accessing the Beckhoff PLC by adding an AMS route.
+    Authorize this Beckhoff ADS client for accessing the Beckhoff PLC by adding an AMS route.
     -----------------------------------------------------------------------------------------
 
     TwinCAT Engineering: Go to the tree item SYSTEM/Routes and add a static route.
@@ -106,14 +107,81 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        public object Read(AssetTag tag)
+        {
+            object value = null;
+            
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if (addressParts.Length == 2)
+            {
+                byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                
+                if ((tagBytes != null) && (tagBytes.Length > 0))
+                {
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(tagBytes);
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(tagBytes);
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Beckhoff.");
+                    }
+                }
+            }
+
+            return value;
+        }
+
+        public void Write(AssetTag tag, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            byte[] tagBytes = null;
+
+            if (tag.Type == "Float")
+            {
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
+            }
+            else if (tag.Type == "Boolean")
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if (tag.Type == "Integer")
+            {
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by Beckhoff.");
+            }
+
+            Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             var varHandle = _adsClient.GetSymhandleByNameAsync(addressWithinAsset).GetAwaiter().GetResult();
             var result = _adsClient.ReadBytesAsync(varHandle, count).GetAwaiter().GetResult();
             return Task.FromResult(result);
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             _adsClient.WriteBytesAsync(uint.Parse(addressWithinAsset), values);
             return Task.CompletedTask;

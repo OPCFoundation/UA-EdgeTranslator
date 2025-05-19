@@ -7,6 +7,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using Opc.Ua.Export;
     using Opc.Ua.Server;
     using Serilog;
     using System;
@@ -34,6 +35,8 @@ namespace Opc.Ua.Edge.Translator
         private readonly Dictionary<string, IAsset> _assets = new();
 
         private readonly Dictionary<string, List<AssetTag>> _tags = new();
+
+        private readonly Dictionary<string, Tuple<string, bool>> _nodesetFiles = new();
 
         private readonly UACloudLibraryClient _uacloudLibraryClient = new();
 
@@ -69,7 +72,26 @@ namespace Opc.Ua.Edge.Translator
             // log into UA Cloud Library and download available namespaces
             _uacloudLibraryClient.Login(Environment.GetEnvironmentVariable("UACLURL"), Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
 
-            namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml("Opc.Ua.WotCon.NodeSet2.xml"));
+            // load namespaces from local nodeset files
+            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"), "*.xml");
+            foreach (string nodesetFile in nodesetFiles)
+            {
+                try
+                {
+                    List<string> namespacesFromLocalNodesets = LoadNamespaceUrisFromNodesetXml(nodesetFile);
+                    foreach (string namespaceFromLocalNodeset in namespacesFromLocalNodesets)
+                    {
+                        if (!namespaceUris.Contains(namespaceFromLocalNodeset))
+                        {
+                            namespaceUris.Add(namespaceFromLocalNodeset);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+                }
+            }
 
             NamespaceUris = namespaceUris;
         }
@@ -101,41 +123,61 @@ namespace Opc.Ua.Edge.Translator
             lock (Lock)
             {
                 // in the create address space call, we add all our nodes
-
                 IList<IReference> objectsFolderReferences = null;
                 if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out objectsFolderReferences))
                 {
                     externalReferences[ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
                 }
 
-                AddNodesFromNodesetXml("Opc.Ua.WotCon.NodeSet2.xml");
+                LoadLocalNodesets();
 
                 AddOptionalNodesForAssetManagement();
 
-                IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
-                foreach (string file in WoTFiles)
-                {
-                    try
-                    {
-                        string contents = System.IO.File.ReadAllText(file);
-                        string fileName = Path.GetFileNameWithoutExtension(file);
-
-                        if (!CreateAssetNode(fileName, out NodeState assetNode))
-                        {
-                            throw new Exception("Asset already exists");
-                        }
-
-                        OnboardAssetFromWoTFile(assetNode, contents);
-                    }
-                    catch (Exception ex)
-                    {
-                        // skip this file, but log an error
-                        Log.Logger.Error(ex.Message, ex);
-                    }
-                }
+                LoadLocalWoTFiles();
 
                 AddReverseReferences(externalReferences);
                 base.CreateAddressSpace(externalReferences);
+            }
+        }
+
+        private void LoadLocalWoTFiles()
+        {
+            IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
+            foreach (string file in WoTFiles)
+            {
+                try
+                {
+                    string contents = System.IO.File.ReadAllText(file);
+                    string fileName = Path.GetFileNameWithoutExtension(file);
+
+                    if (!CreateAssetNode(fileName, out NodeState assetNode))
+                    {
+                        throw new Exception("Asset already exists");
+                    }
+
+                    OnboardAssetFromWoTFile(assetNode, contents);
+                }
+                catch (Exception ex)
+                {
+                    // skip this file, but log an error
+                    Log.Logger.Error(ex.Message, ex);
+                }
+            }
+        }
+
+        private void LoadLocalNodesets()
+        {
+            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"), "*.xml");
+            foreach (string nodesetFile in nodesetFiles)
+            {
+                try
+                {
+                    AddNodesFromNodesetXml(nodesetFile);
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex.Message, ex);
+                }
             }
         }
 
@@ -160,18 +202,20 @@ namespace Opc.Ua.Edge.Translator
             connectionTest.OutputArguments = AddArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
             AddPredefinedNode(SystemContext, connectionTest);
 
+            // create file node to upload local nodeset files to the server
+            FileState fileNode = new(_assetManagement);
+            fileNode.Create(SystemContext, new NodeId(), new QualifiedName("NodesetFile"), null, true);
+            _assetManagement.AddChild(fileNode);
+
+            FileManager fileManager = new(this, fileNode);
+            _fileManagers.Add(_assetManagement.NodeId, fileManager);
+            AddPredefinedNode(SystemContext, fileNode);
+
             // create a property listing our supported WoT protocol bindings
-            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false, new string[9] {
-                "https://www.w3.org/2019/wot/modbus",
-                "https://www.w3.org/2019/wot/opcua",
-                "https://www.w3.org/2019/wot/s7",
-                "https://www.w3.org/2019/wot/mcp",
-                "https://www.w3.org/2019/wot/eip",
-                "https://www.w3.org/2019/wot/ads",
-                "https://www.w3.org/2019/wot/iec61850",
-                "http://www.w3.org/2022/bacnet",
-                "https://www.w3.org/2019/wot/lorawan",
-            }));
+            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false));
+
+            // create a property listing our supported OPC UA nodesets to map to
+            _uaProperties.Add("SupportedOPCUAInfoModels", CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false));
 
             BaseObjectState configuration = CreateObject(
                 _assetManagement,
@@ -190,7 +234,7 @@ namespace Opc.Ua.Edge.Translator
                 ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 NodeId = new NodeId(name, NamespaceIndex),
                 BrowseName = new QualifiedName(name, NamespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 Executable = true,
                 UserExecutable = true
             };
@@ -207,7 +251,7 @@ namespace Opc.Ua.Edge.Translator
         {
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
             {
-                throw new ArgumentNullException("Cannot create UA object with empty browsename or type definition!");
+                throw new ArgumentNullException("Cannot create UA object with empty browse name or type definition!");
             }
 
             BaseObjectState obj = new(parent)
@@ -238,7 +282,7 @@ namespace Opc.Ua.Edge.Translator
                 TypeDefinitionId = VariableTypeIds.PropertyType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
@@ -313,35 +357,31 @@ namespace Opc.Ua.Edge.Translator
                     }
 
                     Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
-                    if (ns != null)
+                    if (namespaceUri != null)
                     {
-                        // support local Nodesets
-                        if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
+                        // check if namespace URI is already loaded
+                        if (namespaceUris.Contains(namespaceUri.OriginalString))
                         {
-                            string nodesetFile = string.Empty;
-                            if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
-                            {
-                                // absolute file path
-                                nodesetFile = namespaceUri.OriginalString;
-                            }
-                            else
-                            {
-                                // relative file path
-                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
-                            }
-
-                            Log.Logger.Information("Loading nodeset from local file: " + nodesetFile);
-                            namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml(nodesetFile));
+                            continue;
                         }
                         else
                         {
-                            if (_uacloudLibraryClient.DownloadNamespace(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
+                            if (_uacloudLibraryClient.DownloadNodeset(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
                             {
                                 Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + namespaceUri);
 
                                 foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
                                 {
-                                    namespaceUris.AddRange(LoadNamespaceUrisFromNodesetXml(nodesetFile));
+                                    // add the namespace URI to our list if it is not already present
+                                    List<string> namespacesFromNodeset = LoadNamespaceUrisFromNodesetXml(nodesetFile);
+
+                                    foreach (string namespaceFromNodeset in namespacesFromNodeset)
+                                    {
+                                        if (!namespaceUris.Contains(namespaceFromNodeset))
+                                        {
+                                            namespaceUris.Add(namespaceFromNodeset);
+                                        }
+                                    }
                                 }
                             }
                             else
@@ -368,7 +408,7 @@ namespace Opc.Ua.Edge.Translator
 
         private void AddNodesFromNodesetXml(ThingDescription td)
         {
-            // we need as many passes as we have nodesetfiles to make sure all references can be resolved
+            // we need as many passes as we have nodeset files to make sure all references can be resolved
             for (int i = 0; i < _uacloudLibraryClient._nodeSetFilenames.Count; i++)
             {
                 foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
@@ -401,10 +441,10 @@ namespace Opc.Ua.Edge.Translator
                             else
                             {
                                 // relative file path
-                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), namespaceUri.OriginalString);
+                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", namespaceUri.OriginalString);
                             }
 
-                            Log.Logger.Information("Adding node set from local nodeset file");
+                            Log.Logger.Information("Adding nodeset from local nodeset file");
                             AddNodesFromNodesetXml(nodesetFile);
                         }
                     }
@@ -458,6 +498,19 @@ namespace Opc.Ua.Edge.Translator
                     catch (Exception ex)
                     {
                         Log.Logger.Error(ex.Message, ex);
+                    }
+                }
+
+                // load dependent nodesets
+                if ((nodeSet.Models[0]?.RequiredModel != null) && (nodeSet.Models[0]?.RequiredModel.Length > 0))
+                {
+                    foreach (ModelTableEntry rm in nodeSet.Models[0].RequiredModel)
+                    {
+                        // ignore the default namespace which is always present
+                        if (rm.ModelUri != "http://opcfoundation.org/UA/")
+                        {
+                            AddNodesFromNodesetXml(rm.ModelUri);
+                        }
                     }
                 }
             }
@@ -520,7 +573,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(inputArguments[0].ToString(), out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Opc.Ua.LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -676,7 +729,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Opc.Ua.LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -1282,7 +1335,7 @@ namespace Opc.Ua.Edge.Translator
                 TypeDefinitionId = VariableTypeIds.BaseVariableType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new LocalizedText("en", name),
+                DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
@@ -1333,6 +1386,16 @@ namespace Opc.Ua.Edge.Translator
                         "http://www.w3.org/2022/bacnet",
                         "https://www.w3.org/2019/wot/lorawan",
                     };
+
+                    timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
+                    statusCode = StatusCodes.Good;
+
+                    return ServiceResult.Good;
+                }
+
+                if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
+                {
+                    value = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")).ToArray();
 
                     timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
                     statusCode = StatusCodes.Good;
@@ -1401,6 +1464,11 @@ namespace Opc.Ua.Edge.Translator
                     return ServiceResult.Good;
                 }
 
+                if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
+                {
+                    return ServiceResult.Good;
+                }
+
                 if (node.DisplayName.Text == "License")
                 {
                     // validate license key provided
@@ -1437,51 +1505,8 @@ namespace Opc.Ua.Edge.Translator
                         {
                             if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
                             {
-                                if (_assets[assetId] is ModbusTCPClient)
-                                {
-                                    HandleModbusDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is UAClient)
-                                {
-                                    HandleOPCUADataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is SiemensClient)
-                                {
-                                    HandleSiemensDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is MitsubishiClient)
-                                {
-                                    HandleMitsubishiDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is RockwellClient)
-                                {
-                                    HandleRockwellDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is BeckhoffClient)
-                                {
-                                    HandleBeckhoffDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is BACNetClient)
-                                {
-                                    HandleBACNetDataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is IEC61850Client)
-                                {
-                                    HandleIEC61850DataWrite(tag, assetId, value.ToString());
-                                }
-
-                                if (_assets[assetId] is LoRaWANNetworkServer)
-                                {
-                                    HandleLoRaDataWrite(tag, assetId, value.ToString());
-                                }
-
+                                _assets[assetId].Write(tag, value.ToString());
+                                
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
@@ -1524,56 +1549,25 @@ namespace Opc.Ua.Edge.Translator
                     {
                         if (_ticks * 1000 % tag.PollingInterval == 0)
                         {
-                            if (_assets[assetId] is ModbusTCPClient)
-                            {
-                                HandleModbusDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is UAClient)
-                            {
-                                HandleOPCUADataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is SiemensClient)
-                            {
-                                HandleSiemensDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is MitsubishiClient)
-                            {
-                                HandleMitsubishiDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is RockwellClient)
-                            {
-                                HandleRockwellDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is BeckhoffClient)
-                            {
-                                HandleBeckhoffDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is BACNetClient)
-                            {
-                                HandleBACNetDataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is IEC61850Client)
-                            {
-                                HandleIEC61850DataRead(tag, assetId);
-                            }
-
-                            if (_assets[assetId] is LoRaWANNetworkServer)
-                            {
-                                HandleLoRaDataRead(tag, assetId);
-                            }
+                            UpdateUAServerVariable(tag, _assets[assetId].Read(tag));
                         }
                     }
                     catch (Exception ex)
                     {
                         // skip this tag, but log an error
                         Log.Logger.Error(ex.Message, ex);
+
+                        // try reconnecting
+                        try
+                        {
+                            string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
+                            _assets[assetId].Disconnect();
+                            _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                        }
+                        catch (Exception)
+                        {
+                            // do nothing
+                        }
                     }
                 }
             }
@@ -1602,7 +1596,7 @@ namespace Opc.Ua.Edge.Translator
 
                                     if (field.Name == tag.MappedUAFieldPath)
                                     {
-                                        // overwrite existing value with our upated value
+                                        // overwrite existing value with our updated value
                                         newValue = (float)value;
                                     }
 
@@ -1616,7 +1610,7 @@ namespace Opc.Ua.Edge.Translator
 
                                     if (field.Name == tag.MappedUAFieldPath)
                                     {
-                                        // overwrite existing value with our upated value
+                                        // overwrite existing value with our updated value
                                         newValue = (bool)value;
                                     }
 
@@ -1630,7 +1624,7 @@ namespace Opc.Ua.Edge.Translator
 
                                     if (field.Name == tag.MappedUAFieldPath)
                                     {
-                                        // overwrite existing value with our upated value
+                                        // overwrite existing value with our updated value
                                         newValue = (int)value;
                                     }
 
@@ -1644,7 +1638,7 @@ namespace Opc.Ua.Edge.Translator
 
                                     if (field.Name == tag.MappedUAFieldPath)
                                     {
-                                        // overwrite existing value with our upated value
+                                        // overwrite existing value with our updated value
                                         newValue = (string)value;
                                     }
 
@@ -1666,781 +1660,6 @@ namespace Opc.Ua.Edge.Translator
 
             _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
             _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
-        }
-
-        private void HandleModbusDataRead(AssetTag tag, string assetId)
-        {
-            ModbusTCPClient.FunctionCode functionCode = ModbusTCPClient.FunctionCode.ReadCoilStatus;
-            if (tag.Entity == "HoldingRegister")
-            {
-                functionCode = ModbusTCPClient.FunctionCode.ReadHoldingRegisters;
-            }
-
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    ushort quantity = ushort.Parse(addressParts[2]);
-                    tagBytes = _assets[assetId].Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
-                    }
-                    else if  (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes));
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Modbus.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleModbusDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            ushort quantity = ushort.Parse(addressParts[2]);
-            byte[] tagBytes = null;
-
-            if ((tag.Type == "Float") && (quantity == 2))
-            {
-                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(float.Parse(value)));
-            }
-            else if ((tag.Type == "Boolean") && (quantity == 1))
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if ((tag.Type == "Integer") && (quantity == 2))
-            {
-                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(int.Parse(value)));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Modbus.");
-            }
-
-            _assets[assetId].Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleOPCUADataRead(AssetTag tag, string assetId)
-        {
-            byte[] tagBytes = null;
-            try
-            {
-                tagBytes = _assets[assetId].Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message, ex);
-
-                // try reconnecting
-                string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                _assets[assetId].Disconnect();
-                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-            }
-
-            if ((tagBytes != null) && (tagBytes.Length > 0))
-            {
-                object value = null;
-                if (tag.Type == "Float")
-                {
-                    value = BitConverter.ToSingle(tagBytes);
-                }
-                else if (tag.Type == "Boolean")
-                {
-                    value = BitConverter.ToBoolean(tagBytes);
-                }
-                else if (tag.Type == "Integer")
-                {
-                    value = BitConverter.ToInt32(tagBytes);
-                }
-                else if (tag.Type == "String")
-                {
-                    value = Encoding.UTF8.GetString(tagBytes);
-                }
-                else
-                {
-                    throw new ArgumentException("Type not supported by OPC UA.");
-                }
-
-                UpdateUAServerVariable(tag, value);
-            }
-        }
-
-        private void HandleOPCUADataWrite(AssetTag tag, string assetId, string value)
-        {
-            byte[] tagBytes = null;
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by OPC UA.");
-            }
-
-            _assets[assetId].Write(tag.Address, 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleSiemensDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Siemens.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleSiemensDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Siemens.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleMitsubishiDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Mitsubishi.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleMitsubishiDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Mitsubishi.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleRockwellDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                if (addressParts[0].StartsWith("Cxn:Standard:"))
-                {
-                    UpdateUAServerVariable(tag, addressParts[1]);
-                }
-                else
-                {
-                    byte[] tagBytes = null;
-                    try
-                    {
-                        tagBytes = _assets[assetId].Read(addressParts[0], byte.Parse(addressParts[1]), tag.Type, 0).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Error(ex.Message, ex);
-
-                        // try reconnecting
-                        string remoteEndpoint = _assets[assetId].GetRemoteEndpoint();
-                        _assets[assetId].Disconnect();
-                        _assets[assetId].Connect(remoteEndpoint, 0);
-                    }
-
-                    if ((tagBytes != null) && (tagBytes.Length > 0))
-                    {
-                        object value = null;
-
-                        if (tag.Type == "BOOL")
-                        {
-                            value = BitConverter.ToBoolean(tagBytes);
-                        }
-                        else if (tag.Type == "SINT")
-                        {
-                            value = BitConverter.ToChar(tagBytes);
-                        }
-                        else if (tag.Type == "INT")
-                        {
-                            value = BitConverter.ToInt16(tagBytes);
-                        }
-                        else if (tag.Type == "DINT")
-                        {
-                            value = BitConverter.ToInt32(tagBytes);
-                        }
-                        else if (tag.Type == "LINT")
-                        {
-                            value = BitConverter.ToInt64(tagBytes);
-                        }
-                        else if (tag.Type == "USINT")
-                        {
-                            value = BitConverter.ToChar(tagBytes);
-                        }
-                        else if (tag.Type == "UINT")
-                        {
-                            value = BitConverter.ToUInt16(tagBytes);
-                        }
-                        else if (tag.Type == "UDINT")
-                        {
-                            value = BitConverter.ToInt32(tagBytes);
-                        }
-                        else if (tag.Type == "ULINT")
-                        {
-                            value = BitConverter.ToUInt64(tagBytes);
-                        }
-                        else if (tag.Type == "REAL")
-                        {
-                            value = BitConverter.ToSingle(tagBytes);
-                        }
-                        else if (tag.Type == "LREAL")
-                        {
-                            value = BitConverter.ToDouble(tagBytes);
-                        }
-                        else
-                        {
-                            throw new ArgumentException("Type not supported by Ethernet/IP.");
-                        }
-
-                        UpdateUAServerVariable(tag, value);
-                    }
-                }
-            }
-        }
-
-        private void HandleRockwellDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "BOOL")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "SINT")
-            {
-                tagBytes = BitConverter.GetBytes(char.Parse(value));
-            }
-            else if (tag.Type == "INT")
-            {
-                tagBytes = BitConverter.GetBytes(short.Parse(value));
-            }
-            else if (tag.Type == "DINT")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "LINT")
-            {
-                tagBytes = BitConverter.GetBytes(Int64.Parse(value));
-            }
-            else if (tag.Type == "USINT")
-            {
-                tagBytes = BitConverter.GetBytes(char.Parse(value));
-            }
-            else if (tag.Type == "UINT")
-            {
-                tagBytes = BitConverter.GetBytes(ushort.Parse(value));
-            }
-            else if (tag.Type == "UDINT")
-            {
-                tagBytes = BitConverter.GetBytes(uint.Parse(value));
-            }
-            else if (tag.Type == "ULINT")
-            {
-                tagBytes = BitConverter.GetBytes(UInt64.Parse(value));
-            }
-            else if (tag.Type == "REAL")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "LREAL")
-            {
-                tagBytes = BitConverter.GetBytes(double.Parse(value));
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Rockwell.");
-            }
-
-            _assets[assetId].Write(addressParts[0], byte.Parse(addressParts[1]), tag.Type, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleBeckhoffDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Beckhoff.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleBeckhoffDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Beckhoff.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleBACNetDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by BACNet.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleBACNetDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by BACNet.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleIEC61850DataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by IEC61850.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-        private void HandleIEC61850DataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by IEC61850.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private void HandleLoRaDataRead(AssetTag tag, string assetId)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-
-            if (addressParts.Length == 2)
-            {
-                byte[] tagBytes = null;
-                try
-                {
-                    tagBytes = _assets[assetId].Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-
-                    // try reconnecting
-                    string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                    _assets[assetId].Disconnect();
-                    _assets[assetId].Connect(remoteEndpoint[0] + ":" + remoteEndpoint[1], int.Parse(remoteEndpoint[2]));
-                }
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
-                {
-                    object value = null;
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by LoRaWAN.");
-                    }
-
-                    UpdateUAServerVariable(tag, value);
-                }
-            }
-        }
-
-        private void HandleLoRaDataWrite(AssetTag tag, string assetId, string value)
-        {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by LoRaWAN.");
-            }
-
-            _assets[assetId].Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
         }
     }
 }

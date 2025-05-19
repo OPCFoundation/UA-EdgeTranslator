@@ -2,10 +2,12 @@
 {
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Net.Sockets;
+    using System.Text;
     using System.Threading.Tasks;
 
     class ModbusTCPClient : IAsset
@@ -102,7 +104,84 @@
             }
         }
 
-        public Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        public object Read(AssetTag tag)
+        {
+            object value = null;
+
+            FunctionCode functionCode = FunctionCode.ReadCoilStatus;
+            if (tag.Entity == "HoldingRegister")
+            {
+                functionCode = FunctionCode.ReadHoldingRegisters;
+            }
+
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+
+            if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
+            {
+                ushort quantity = ushort.Parse(addressParts[2]);
+                byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
+                
+
+                if ((tagBytes != null) && (tagBytes.Length > 0))
+                {
+                    if (tag.Type == "Float")
+                    {
+                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                    }
+                    else if (tag.Type == "Boolean")
+                    {
+                        value = BitConverter.ToBoolean(tagBytes);
+                    }
+                    else if (tag.Type == "Integer")
+                    {
+                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes));
+                    }
+                    else if (tag.Type == "String")
+                    {
+                        value = Encoding.UTF8.GetString(tagBytes);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Type not supported by Modbus.");
+                    }
+                }
+            }
+
+            return value;
+        }
+
+        public void Write(AssetTag tag, string value)
+        {
+            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            ushort quantity = ushort.Parse(addressParts[2]);
+            byte[] tagBytes = null;
+
+            if ((tag.Type == "Float") && (quantity == 2))
+            {
+                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(float.Parse(value)));
+            }
+            else if ((tag.Type == "Boolean") && (quantity == 1))
+            {
+                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+            }
+            else if ((tag.Type == "Integer") && (quantity == 2))
+            {
+                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(int.Parse(value)));
+            }
+            else if (tag.Type == "String")
+            {
+                tagBytes = Encoding.UTF8.GetBytes(value);
+            }
+            else
+            {
+                throw new ArgumentException("Type not supported by Modbus.");
+            }
+
+            Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+        }
+
+
+        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             var registerAddress = ushort.Parse(addressWithinAsset);
 
@@ -121,7 +200,7 @@
             }
         }
 
-        public Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
         {
             var registerAddress = ushort.Parse(addressWithinAsset);
 

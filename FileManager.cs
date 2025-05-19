@@ -253,9 +253,16 @@ namespace Opc.Ua.Edge.Translator
 
                 string contents = Encoding.UTF8.GetString(handle.Stream.ToArray());
 
-                _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
+                if (_file.Parent.DisplayName == "WoTConnectivity")
+                {
+                    File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "nodesets", _file.Parent.DisplayName.Text + ".nodeset2.xml"), contents);
+                }
+                else
+                {
+                    _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
 
-                File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
+                    File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
+                }
 
                 return ServiceResult.Good;
             }

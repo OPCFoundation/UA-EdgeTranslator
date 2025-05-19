@@ -54,7 +54,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public bool DownloadNamespace(string uaCloudLibraryUrl, string namespaceUrl)
+        public bool DownloadNodeset(string uaCloudLibraryUrl, string namespaceUrl)
         {
             if (!string.IsNullOrEmpty(uaCloudLibraryUrl) && !string.IsNullOrEmpty(namespaceUrl) && NamespacesInCloudLibrary.ContainsKey(namespaceUrl))
             {
@@ -73,7 +73,7 @@ namespace Opc.Ua.Edge.Translator
                     if (!string.IsNullOrEmpty(nameSpace.Nodeset.NodesetXml))
                     {
                         // store the file locally
-                        string filePath = Path.Combine(Directory.GetCurrentDirectory(), nameSpace.Title + ".nodeset2.xml");
+                        string filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", nameSpace.Title + ".nodeset2.xml");
                         File.WriteAllText(filePath, nameSpace.Nodeset.NodesetXml);
 
                         _nodeSetFilenames.Add(filePath);
@@ -192,7 +192,7 @@ namespace Opc.Ua.Edge.Translator
                             UANameSpace nameSpace = JsonConvert.DeserializeObject<UANameSpace>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
 
                             // store the file
-                            string filePath = Path.Combine(Directory.GetCurrentDirectory(), nameSpace.Category.Name + ".nodeset2.xml");
+                            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", nameSpace.Category.Name + ".nodeset2.xml");
                             File.WriteAllText(filePath, nameSpace.Nodeset.NodesetXml);
                             _nodeSetFilenames.Add(filePath);
                         }
