@@ -41,10 +41,11 @@ Other interfaces can easily be added by implementing the IAsset interface. There
 
 ## Running UA Edge Translator from a Docker environment
 
-The following folders within the Docker container store logs, certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
+The following folders within the Docker container store logs, certificates, secrets, settings and OPC UA nodeset files (used during asset mapping to OPC UA) and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
 * /app/logs
 * /app/settings
 * /app/pki
+* /app/nodesets
 
 E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 
