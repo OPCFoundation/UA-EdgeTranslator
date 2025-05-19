@@ -7,7 +7,6 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
-    using Opc.Ua.Export;
     using Opc.Ua.Server;
     using Serilog;
     using System;
@@ -72,27 +71,15 @@ namespace Opc.Ua.Edge.Translator
                 "http://opcfoundation.org/UA/EdgeTranslator/"
             };
 
-            // log into UA Cloud Library and download available namespaces
-            _uacloudLibraryClient.Login(Environment.GetEnvironmentVariable("UACLURL"), Environment.GetEnvironmentVariable("UACLUsername"), Environment.GetEnvironmentVariable("UACLPassword"));
+            _uacloudLibraryClient.Login();
 
-            // load namespaces from local nodeset files
-            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"), "*.xml");
-            foreach (string nodesetFile in nodesetFiles)
+            // load namespaces from downloaded nodesets
+            List<string> namespacesFromDownloadedNodesets = _uacloudLibraryClient.GetNamespacesFromDownloadedNodesets();
+            foreach (string namespaceFromDownloadedNodeset in namespacesFromDownloadedNodesets)
             {
-                try
+                if (!namespaceUris.Contains(namespaceFromDownloadedNodeset))
                 {
-                    List<string> namespacesFromLocalNodesets = LoadNamespaceUrisFromNodesetXml(nodesetFile);
-                    foreach (string namespaceFromLocalNodeset in namespacesFromLocalNodesets)
-                    {
-                        if (!namespaceUris.Contains(namespaceFromLocalNodeset))
-                        {
-                            namespaceUris.Add(namespaceFromLocalNodeset);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
+                    namespaceUris.Add(namespaceFromDownloadedNodeset);
                 }
             }
 
@@ -132,7 +119,7 @@ namespace Opc.Ua.Edge.Translator
                     externalReferences[ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
                 }
 
-                LoadLocalNodesets();
+                AddAllNodesFromDownloadedNodesetFiles();
 
                 AddOptionalNodesForAssetManagement();
 
@@ -163,22 +150,6 @@ namespace Opc.Ua.Edge.Translator
                 catch (Exception ex)
                 {
                     // skip this file, but log an error
-                    Log.Logger.Error(ex.Message, ex);
-                }
-            }
-        }
-
-        private void LoadLocalNodesets()
-        {
-            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"), "*.xml");
-            foreach (string nodesetFile in nodesetFiles)
-            {
-                try
-                {
-                    AddNodesFromNodesetXml(nodesetFile);
-                }
-                catch (Exception ex)
-                {
                     Log.Logger.Error(ex.Message, ex);
                 }
             }
@@ -242,6 +213,7 @@ namespace Opc.Ua.Edge.Translator
             BaseObjectState baseObjectState = predefinedNode as BaseObjectState;
             if ((baseObjectState != null) && (baseObjectState.ModellingRuleId == null))
             {
+                // we don't want to overwrite the behaviour when we load our nodeset files during WoT file onboarding
                 if (baseObjectState.DisplayName == "WoTAssetConnectionManagement")
                 {
                     _assetManagement = baseObjectState;
@@ -271,6 +243,7 @@ namespace Opc.Ua.Edge.Translator
 
         private List<string> LoadNamespacesFromThingDescription(ThingDescription td)
         {
+            // add a new namespace for the Thing Description itself
             List<string> namespaceUris = new() {
                 "http://opcfoundation.org/UA/" + td.Name + "/"
             };
@@ -295,35 +268,15 @@ namespace Opc.Ua.Edge.Translator
                         }
                         else
                         {
-                            if (_uacloudLibraryClient.DownloadNodeset(Environment.GetEnvironmentVariable("UACLURL"), namespaceUri.OriginalString))
+                            List<string> dependentNamespaces = _uacloudLibraryClient.DownloadNodeset(namespaceUri.OriginalString);
+                            foreach (string dependentNamespace in dependentNamespaces)
                             {
-                                Log.Logger.Information("Loaded nodeset from Cloud Library URL: " + namespaceUri);
-
-                                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                                if (!namespaceUris.Contains(dependentNamespace))
                                 {
-                                    // add the namespace URI to our list if it is not already present
-                                    List<string> namespacesFromNodeset = LoadNamespaceUrisFromNodesetXml(nodesetFile);
-
-                                    foreach (string namespaceFromNodeset in namespacesFromNodeset)
-                                    {
-                                        if (!namespaceUris.Contains(namespaceFromNodeset))
-                                        {
-                                            namespaceUris.Add(namespaceFromNodeset);
-                                        }
-                                    }
+                                    namespaceUris.Add(dependentNamespace);
                                 }
                             }
-                            else
-                            {
-                                Log.Logger.Warning($"Could not load nodeset {namespaceUri.OriginalString}");
-                            }
                         }
-                    }
-
-                    string validationError = _uacloudLibraryClient.ValidateNamespacesAndModels(Environment.GetEnvironmentVariable("UACLURL"), true);
-                    if (!string.IsNullOrEmpty(validationError))
-                    {
-                        Log.Logger.Error(validationError);
                     }
                 }
                 catch (Exception ex)
@@ -335,110 +288,36 @@ namespace Opc.Ua.Edge.Translator
             return namespaceUris;
         }
 
-        private void AddNodesFromNodesetXml(ThingDescription td)
+        private void AddAllNodesFromDownloadedNodesetFiles()
         {
-            // we need as many passes as we have nodeset files to make sure all references can be resolved
-            for (int i = 0; i < _uacloudLibraryClient._nodeSetFilenames.Count; i++)
+            // we need as many passes as we have downloaded nodeset files to make sure all references can be resolved
+            // because the nodeset files may reference each other and we need to load them in the correct order
+            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
+            if (nodesetFiles.Length > 0)
             {
-                foreach (string nodesetFile in _uacloudLibraryClient._nodeSetFilenames)
+                for (int i = 0; i < nodesetFiles.Length; i++)
                 {
-                    AddNodesFromNodesetXml(nodesetFile);
-                }
-            }
-
-            foreach (object ns in td.Context)
-            {
-                try
-                {
-                    if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
+                    foreach (string nodesetFile in nodesetFiles)
                     {
-                        continue;
-                    }
-
-                    Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
-                    if (namespaceUri != null)
-                    {
-                        // support local Nodesets
-                        if (!namespaceUri.IsAbsoluteUri || (!namespaceUri.AbsoluteUri.Contains("http://") && !namespaceUri.AbsoluteUri.Contains("https://")))
+                        using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
                         {
-                            string nodesetFile = string.Empty;
-                            if (Path.IsPathFullyQualified(namespaceUri.OriginalString))
+                            UANodeSet nodeSet = UANodeSet.Read(stream);
+
+                            NodeStateCollection predefinedNodes = new NodeStateCollection();
+
+                            nodeSet.Import(SystemContext, predefinedNodes);
+
+                            for (int j = 0; j < predefinedNodes.Count; j++)
                             {
-                                // absolute file path
-                                nodesetFile = namespaceUri.OriginalString;
+                                try
+                                {
+                                    AddPredefinedNode(SystemContext, predefinedNodes[j]);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Logger.Error(ex.Message, ex);
+                                }
                             }
-                            else
-                            {
-                                // relative file path
-                                nodesetFile = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", namespaceUri.OriginalString);
-                            }
-
-                            Log.Logger.Information("Adding nodeset from local nodeset file");
-                            AddNodesFromNodesetXml(nodesetFile);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex.Message, ex);
-                }
-            }
-        }
-
-        private List<string> LoadNamespaceUrisFromNodesetXml(string nodesetFile)
-        {
-            List<string> namespaceUris = new();
-
-            using (FileStream stream = new(nodesetFile, FileMode.Open, FileAccess.Read))
-            {
-                UANodeSet nodeSet = UANodeSet.Read(stream);
-
-                if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
-                {
-                    foreach (string ns in nodeSet.NamespaceUris)
-                    {
-                        if (!namespaceUris.Contains(ns))
-                        {
-                            namespaceUris.Add(ns);
-                        }
-                    }
-                }
-            }
-
-            return namespaceUris;
-        }
-
-        private void AddNodesFromNodesetXml(string nodesetFile)
-        {
-            using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
-            {
-                UANodeSet nodeSet = UANodeSet.Read(stream);
-
-                NodeStateCollection predefinedNodes = new NodeStateCollection();
-
-                nodeSet.Import(SystemContext, predefinedNodes);
-
-                for (int i = 0; i < predefinedNodes.Count; i++)
-                {
-                    try
-                    {
-                        AddPredefinedNode(SystemContext, predefinedNodes[i]);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Error(ex.Message, ex);
-                    }
-                }
-
-                // load dependent nodesets
-                if ((nodeSet.Models[0]?.RequiredModel != null) && (nodeSet.Models[0]?.RequiredModel.Length > 0))
-                {
-                    foreach (ModelTableEntry rm in nodeSet.Models[0].RequiredModel)
-                    {
-                        // ignore the default namespace which is always present
-                        if (rm.ModelUri != "http://opcfoundation.org/UA/")
-                        {
-                            AddNodesFromNodesetXml(rm.ModelUri);
                         }
                     }
                 }
@@ -742,7 +621,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            AddNodesFromNodesetXml(td);
+            //AddAllNodesFromDownloadedNodesetFiles();
 
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
@@ -868,7 +747,9 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 // no type info, default to float
-                _uaVariables.Add(variableId, _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly);
+                _uaVariables.Add(variableId, variable);
+                AddPredefinedNode(SystemContext, variable);
             }
 
             // check if we need to create a new asset first
@@ -1259,7 +1140,7 @@ namespace Opc.Ua.Edge.Translator
 
                 if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
                 {
-                    value = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")).ToArray();
+                    value = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
 
                     timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
                     statusCode = StatusCodes.Good;

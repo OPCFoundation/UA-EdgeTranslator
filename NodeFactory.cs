@@ -28,10 +28,7 @@
                 UserExecutable = true
             };
 
-            if (parent != null)
-            {
-                parent.AddChild(method);
-            }
+            parent?.AddChild(method);
 
             return method;
         }
@@ -52,10 +49,7 @@
 
             obj.NodeId = _manager.New(_manager.SystemContext, obj);
 
-            if (parent != null)
-            {
-                parent.AddChild(obj);
-            }
+            parent?.AddChild(obj);
 
             return obj;
         }
