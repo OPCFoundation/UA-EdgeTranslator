@@ -26,6 +26,8 @@ namespace Opc.Ua.Edge.Translator
 
         private bool _shutdown = false;
 
+        private readonly NodeFactory _nodeFactory;
+
         private BaseObjectState _assetManagement;
 
         private readonly Dictionary<string, BaseDataVariableState> _uaVariables = new();
@@ -49,7 +51,6 @@ namespace Opc.Ua.Edge.Translator
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
 
         private const uint _cIWoTAssetType = 56;
-        private const uint _cHasWoTComponent = 83;
         private const uint _cWoTAssetFileType = 86;
         private const uint _cWoTAssetConfigurationType = 105;
 
@@ -57,6 +58,8 @@ namespace Opc.Ua.Edge.Translator
         : base(server, configuration)
         {
             SystemContext.NodeIdFactory = this;
+
+            _nodeFactory = new NodeFactory(this);
 
             // create our settings folder, if required
             if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "settings")))
@@ -185,21 +188,21 @@ namespace Opc.Ua.Edge.Translator
         {
             ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
 
-            MethodState discoverAssets = CreateMethod(_assetManagement, "DiscoverAssets");
+            MethodState discoverAssets = _nodeFactory.CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-            discoverAssets.OutputArguments = AddArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
+            discoverAssets.OutputArguments = _nodeFactory.CreateMethodArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
-            MethodState createAssetForEndpoint = CreateMethod(_assetManagement, "CreateAssetForEndpoint");
+            MethodState createAssetForEndpoint = _nodeFactory.CreateMethod(_assetManagement, "CreateAssetForEndpoint");
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
-            createAssetForEndpoint.InputArguments = AddArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
-            createAssetForEndpoint.OutputArguments = AddArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
+            createAssetForEndpoint.InputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
+            createAssetForEndpoint.OutputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
-            MethodState connectionTest = CreateMethod(_assetManagement, "ConnectionTest");
+            MethodState connectionTest = _nodeFactory.CreateMethod(_assetManagement, "ConnectionTest");
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-            connectionTest.InputArguments = AddArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
-            connectionTest.OutputArguments = AddArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
+            connectionTest.InputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
+            connectionTest.OutputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
             AddPredefinedNode(SystemContext, connectionTest);
 
             // create file node to upload local nodeset files to the server
@@ -212,99 +215,25 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, fileNode);
 
             // create a property listing our supported WoT protocol bindings
-            _uaProperties.Add("SupportedWoTBindings", CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false));
+            PropertyState supportedWoTBindingsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
+            _uaProperties.Add("SupportedWoTBindings", supportedWoTBindingsProperty);
+            AddPredefinedNode(SystemContext, supportedWoTBindingsProperty);
 
             // create a property listing our supported OPC UA nodesets to map to
-            _uaProperties.Add("SupportedOPCUAInfoModels", CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false));
+            PropertyState supportedOPCUAInfoModelsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
+            _uaProperties.Add("SupportedOPCUAInfoModels", supportedOPCUAInfoModelsProperty);
+            AddPredefinedNode(SystemContext, supportedOPCUAInfoModelsProperty);
 
-            BaseObjectState configuration = CreateObject(
+            BaseObjectState configuration = _nodeFactory.CreateObject(
                 _assetManagement,
                 "Configuration",
                 new ExpandedNodeId(_cWoTAssetConfigurationType, _cWotCon));
+            AddPredefinedNode(SystemContext, configuration);
 
             // create a property for the license key
-            _uaProperties.Add("License", CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty));
-        }
-
-        private MethodState CreateMethod(NodeState parent, string name)
-        {
-            MethodState method = new(parent)
-            {
-                SymbolicName = name,
-                ReferenceTypeId = ReferenceTypeIds.HasComponent,
-                NodeId = new NodeId(name, NamespaceIndex),
-                BrowseName = new QualifiedName(name, NamespaceIndex),
-                DisplayName = new Opc.Ua.LocalizedText("en", name),
-                Executable = true,
-                UserExecutable = true
-            };
-
-            if (parent != null)
-            {
-                parent.AddChild(method);
-            }
-
-            return method;
-        }
-
-        public BaseObjectState CreateObject(NodeState parent, string name, ExpandedNodeId type)
-        {
-            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
-            {
-                throw new ArgumentNullException("Cannot create UA object with empty browse name or type definition!");
-            }
-
-            BaseObjectState obj = new(parent)
-            {
-                BrowseName = name,
-                DisplayName = name,
-                TypeDefinitionId = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris)
-            };
-
-            obj.NodeId = New(SystemContext, obj);
-
-            AddPredefinedNode(SystemContext, obj);
-
-            if (parent != null)
-            {
-                parent.AddChild(obj);
-            }
-
-            return obj;
-        }
-
-        private PropertyState CreateProperty(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
-        {
-            PropertyState property = new(parent)
-            {
-                SymbolicName = name,
-                ReferenceTypeId = ReferenceTypes.Organizes,
-                TypeDefinitionId = VariableTypeIds.PropertyType,
-                NodeId = new NodeId(name, namespaceIndex),
-                BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new Opc.Ua.LocalizedText("en", name),
-                WriteMask = AttributeWriteMask.None,
-                UserWriteMask = AttributeWriteMask.None,
-                AccessLevel = AccessLevels.CurrentRead,
-                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
-                Value = value,
-                OnReadValue = OnReadValue
-            };
-
-            if (writeable)
-            {
-                property.AccessLevel = AccessLevels.CurrentReadOrWrite;
-                property.UserAccessLevel = AccessLevels.CurrentReadOrWrite;
-                property.UserWriteMask = AttributeWriteMask.ValueForVariableType;
-                property.WriteMask = AttributeWriteMask.ValueForVariableType;
-                property.OnWriteValue = OnWriteValue;
-            }
-
-            parent?.AddChild(property);
-
-            AddPredefinedNode(SystemContext, property);
-
-            return property;
+            PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty);
+            _uaProperties.Add("License", licenseProperty);
+            AddPredefinedNode(SystemContext, licenseProperty);
         }
 
         protected override NodeState AddBehaviourToPredefinedNode(ISystemContext context, NodeState predefinedNode)
@@ -326,14 +255,14 @@ namespace Opc.Ua.Edge.Translator
                 if (methodState.DisplayName == "CreateAsset")
                 {
                     methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-                    methodState.InputArguments = AddArguments(methodState, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true);
-                    methodState.OutputArguments = AddArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
+                    methodState.InputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true);
+                    methodState.OutputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
                 }
 
                 if (methodState.DisplayName == "DeleteAsset")
                 {
                     methodState.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-                    methodState.InputArguments = AddArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true);
+                    methodState.InputArguments = _nodeFactory.CreateMethodArguments(methodState, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true);
                 }
             }
 
@@ -516,45 +445,6 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private PropertyState<Argument[]> AddArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false)
-        {
-            string browseName = methodState.BrowseName.Name;
-            if (input)
-            {
-                browseName += "InArgs";
-            }
-            else
-            {
-                browseName += "OutArgs";
-            }
-
-            List<Argument> argumentsList = new();
-            for (int i = 0; i < names.Length; i++)
-            {
-                argumentsList.Add(new Argument()
-                {
-                    Name = names[i],
-                    Description = descriptions[i],
-                    DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
-                    ValueRank = array ? ValueRanks.OneDimension : ValueRanks.Scalar
-                });
-            }
-
-            PropertyState<Argument[]> arguments = new(methodState)
-            {
-                NodeId = new NodeId(browseName, NamespaceIndex),
-                BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                TypeDefinitionId = VariableTypeIds.PropertyType,
-                ReferenceTypeId = ReferenceTypeIds.HasProperty,
-                DataType = DataTypeIds.Argument,
-                ValueRank = ValueRanks.OneDimension,
-                Value = argumentsList.ToArray()
-            };
-
-            return arguments;
-        }
-
         public override void DeleteAddressSpace()
         {
             lock (Lock)
@@ -563,7 +453,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
             {
@@ -631,7 +521,7 @@ namespace Opc.Ua.Edge.Translator
            }
         }
 
-        private ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
             {
@@ -691,7 +581,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             List<string> allAddresses = new();
 
@@ -869,7 +759,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            _ = Task.Factory.StartNew(UpdateNodeValues, td.Name, TaskCreationOptions.LongRunning);
+            _ = Task.Factory.StartNew(ReadAssetTags, td.Name, TaskCreationOptions.LongRunning);
 
             Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
         }
@@ -938,37 +828,47 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly, complexTypeInstance));
+                                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
+                                    _uaVariables.Add(variableId, variable);
+                                    AddPredefinedNode(SystemContext, variable);
                                 }
                             }
                             else
                             {
                                 // OPC UA type info not found, default to float
-                                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly);
+                                _uaVariables.Add(variableId, variable);
+                                AddPredefinedNode(SystemContext, variable);
                             }
                         }
                         else
                         {
                             // it's an OPC UA built-in type
-                            _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly);
+                            _uaVariables.Add(variableId, variable);
+                            AddPredefinedNode(SystemContext, variable);
                         }
                     }
                     else
                     {
                         // no namespace info, default to float
-                        _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly);
+                        _uaVariables.Add(variableId, variable);
+                        AddPredefinedNode(SystemContext, variable);
                     }
                 }
                 else
                 {
                     // can't parse type info, default to float
-                    _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly);
+                    _uaVariables.Add(variableId, variable);
+                    AddPredefinedNode(SystemContext, variable);
                 }
             }
             else
             {
                 // no type info, default to float
-                _uaVariables.Add(variableId, CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
+                _uaVariables.Add(variableId, _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetFolder.NodeId.NamespaceIndex, !property.Value.ReadOnly));
             }
 
             // check if we need to create a new asset first
@@ -1326,43 +1226,7 @@ namespace Opc.Ua.Edge.Translator
             return null;
         }
 
-        private BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
-        {
-            BaseDataVariableState variable = new(parent)
-            {
-                SymbolicName = name,
-                ReferenceTypeId = ReferenceTypes.Organizes,
-                TypeDefinitionId = VariableTypeIds.BaseVariableType,
-                NodeId = new NodeId(name, namespaceIndex),
-                BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = new Opc.Ua.LocalizedText("en", name),
-                WriteMask = AttributeWriteMask.None,
-                UserWriteMask = AttributeWriteMask.None,
-                AccessLevel = AccessLevels.CurrentRead,
-                DataType = ExpandedNodeId.ToNodeId(type, Server.NamespaceUris),
-                Value = value,
-                OnReadValue = OnReadValue
-            };
-
-            if (writeable)
-            {
-                variable.AccessLevel = AccessLevels.CurrentReadOrWrite;
-                variable.UserAccessLevel = AccessLevels.CurrentReadOrWrite;
-                variable.UserWriteMask = AttributeWriteMask.ValueForVariableType;
-                variable.WriteMask = AttributeWriteMask.ValueForVariableType;
-                variable.OnWriteValue = OnWriteValue;
-            }
-
-            parent?.AddChild(variable);
-
-            parent?.AddReference(ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cHasWoTComponent, _cWotCon), Server.NamespaceUris), false, variable.NodeId);
-
-            AddPredefinedNode(SystemContext, variable);
-
-            return variable;
-        }
-
-        private ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        public ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
@@ -1448,7 +1312,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        public ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
             bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
@@ -1506,7 +1370,7 @@ namespace Opc.Ua.Edge.Translator
                             if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
                             {
                                 _assets[assetId].Write(tag, value.ToString());
-                                
+
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
@@ -1527,7 +1391,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private void UpdateNodeValues(object assetNameObject)
+        private void ReadAssetTags(object assetNameObject)
         {
             bool assetDeleted = false;
             while (!_shutdown && !assetDeleted)

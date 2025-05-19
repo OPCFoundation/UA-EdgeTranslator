@@ -355,3 +355,5 @@ MigrationBackup/
 /WoTThingModelGenerator/Mondelez
 /WoTThingModelGenerator/MCC1_V33_20240810_Tags.csv
 /nodesets/Opc.Ua.PnEm.NodeSet2.xml
+/nodesets/DI.nodeset2.xml
+/nodesets/PROFIenergy.nodeset2.xml
