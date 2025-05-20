@@ -11,6 +11,7 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Net.NetworkInformation;
@@ -224,6 +225,11 @@ namespace Opc.Ua.Edge.Translator
             PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty);
             _uaProperties.Add("License", licenseProperty);
             AddPredefinedNode(SystemContext, licenseProperty);
+
+            // create a variable for the current memory working set
+            BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "Memory Working Set (MB)", new ExpandedNodeId(DataTypes.Int32), WoTConNamespaceIndex);
+            _uaVariables.Add("MemoryWorkingSet", variable);
+            AddPredefinedNode(SystemContext, variable);
         }
 
         private List<string> LoadNamespacesFromThingDescription(ThingDescription td)
@@ -1272,7 +1278,12 @@ namespace Opc.Ua.Edge.Translator
 
                 _ticks++;
 
-                string assetId = (string)assetNameObject;
+                // update working set variable
+                _uaVariables["MemoryWorkingSet"].Value = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+                _uaVariables["MemoryWorkingSet"].Timestamp = DateTime.UtcNow;
+                _uaVariables["MemoryWorkingSet"].ClearChangeMasks(SystemContext, false);
+
+            string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
                     assetDeleted = true;
