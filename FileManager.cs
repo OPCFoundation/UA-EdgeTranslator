@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
+    using Opc.Ua.Export;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -15,6 +16,10 @@ namespace Opc.Ua.Edge.Translator
         private readonly Dictionary<uint, Handle> _handles = new();
         private bool _writing = false;
         private uint _nextHandle = 1;
+
+        private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
+
+        private const uint _cWoTAssetManagement = 31;
 
         private class Handle
         {
@@ -40,7 +45,7 @@ namespace Opc.Ua.Edge.Translator
             _file.GetPosition.OnCall = new GetPositionMethodStateMethodCallHandler(OnGetPosition);
             _file.SetPosition.OnCall = new SetPositionMethodStateMethodCallHandler(OnSetPosition);
             _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnCloseAndUpdate);
-            _file.Close.DisplayName = new LocalizedText("CloseAndUpdate");
+            _file.Close.DisplayName = new Opc.Ua.LocalizedText("CloseAndUpdate");
             _file.Close.BrowseName = new QualifiedName("CloseAndUpdate");
         }
 
@@ -253,9 +258,22 @@ namespace Opc.Ua.Edge.Translator
 
                 string contents = Encoding.UTF8.GetString(handle.Stream.ToArray());
 
-                if (_file.Parent.DisplayName == "WoTConnectivity")
+                ushort WoTConNamespaceIndex = (ushort)_nodeManager.Server.NamespaceUris.GetIndex(_cWotCon);
+
+                if (_file.Parent.NodeId == new NodeId(_cWoTAssetManagement, WoTConNamespaceIndex))
                 {
-                    File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "nodesets", _file.Parent.DisplayName.Text + ".nodeset2.xml"), contents);
+                    string filename = Path.GetRandomFileName();
+
+                    using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(contents)))
+                    {
+                        UANodeSet nodeSet = UANodeSet.Read(stream);
+                        if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
+                        {
+                            filename = nodeSet.Models[0].ModelUri.Replace("http://", "").Replace(".", "_").Replace("/", "_").TrimEnd('_');
+                        }
+                    }
+
+                    File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "nodesets", filename + ".nodeset2.xml"), contents);
                 }
                 else
                 {

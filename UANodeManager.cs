@@ -197,7 +197,7 @@ namespace Opc.Ua.Edge.Translator
 
             // create file node to upload local nodeset files to the server
             FileState fileNode = new(_assetManagement);
-            fileNode.Create(SystemContext, new NodeId(), new QualifiedName("NodesetFile"), null, true);
+            fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFile Upload"), null, false);
             _assetManagement.AddChild(fileNode);
 
             FileManager fileManager = new(this, fileNode);
