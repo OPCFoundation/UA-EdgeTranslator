@@ -93,11 +93,15 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             }
         }
 
-        protected virtual void ConsoleWriteError(string message) =>
-            Console.Error.WriteLine(message);
+        protected virtual void ConsoleWriteError(string message)
+        {
+            Serilog.Log.Logger.Error(message);
+        }
 
-        protected virtual void ConsoleWrite(string message) =>
-            Console.WriteLine(message);
+        protected virtual void ConsoleWrite(string message)
+        {
+            Serilog.Log.Logger.Information(message);
+        }
     }
 
     public static class LoRaConsoleLoggerExtensions

@@ -20,11 +20,10 @@
  *
  *  See COPYING file for the complete license text.
  */
+using IEC61850.Common;
+using Serilog;
 using System;
 using System.Runtime.InteropServices;
-using System.Diagnostics;
-
-using IEC61850.Common;
 
 namespace IEC61850
 {
@@ -204,8 +203,8 @@ namespace IEC61850
 
 				} catch (Exception e) 
 				{
-					// older versions of mono 2.10 (for linux?) cause this exception
-					Console.WriteLine(e.Message);
+                    // older versions of mono 2.10 (for linux?) cause this exception
+                    Log.Logger.Error(e.Message);
 				}
 			}
 

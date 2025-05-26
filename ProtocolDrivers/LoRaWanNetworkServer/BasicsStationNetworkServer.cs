@@ -20,24 +20,22 @@ namespace LoRaWan.NetworkServer.BasicsStation
         internal const string DiscoveryEndpoint = "/router-info";
         internal const string RouterIdPathParameterName = "routerId";
         internal const string DataEndpoint = "/router-data";
-        internal const string UpdateInfoEndpoint = "/update-info";
 
         internal const int LnsSecurePort = 5001;
         internal const int LnsPort = 5000;
-        internal const int CupsPort = 5002;
 
         public static async Task RunServerAsync(NetworkServerConfiguration configuration, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(configuration);
 
-            var shouldUseCertificate = (configuration.ClientCertificateMode != ClientCertificateMode.NoCertificate);
+            var requireCertificate = (configuration.ClientCertificateMode != ClientCertificateMode.NoCertificate);
             using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(shouldUseCertificate ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
-                                                                     : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
+                                       .UseUrls(requireCertificate ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
+                                                                   : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
                                        .UseStartup<BasicsStationNetworkServerStartup>()
                                        .UseKestrel(config =>
                                        {
-                                           if (shouldUseCertificate)
+                                           if (requireCertificate)
                                            {
                                                config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(configuration,
                                                                                                              config.ApplicationServices.GetService<IClientCertificateValidatorService>(),

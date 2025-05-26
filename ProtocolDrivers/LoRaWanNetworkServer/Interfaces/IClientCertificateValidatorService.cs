@@ -1,10 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#nullable enable
-
-using global::LoRaWan;
-
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
 {
     using System.Net.Security;
@@ -14,6 +10,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
 
     internal interface IClientCertificateValidatorService
     {
-        Task<bool> ValidateAsync(X509Certificate2 certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors, CancellationToken token);
+        Task<bool> ValidateAsync(X509Certificate2 certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors, CancellationToken token);
     }
 }
