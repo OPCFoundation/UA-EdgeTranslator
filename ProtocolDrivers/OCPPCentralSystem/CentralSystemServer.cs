@@ -1,7 +1,6 @@
 
 namespace OCPPCentralSystem
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.AspNetCore;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -10,7 +9,7 @@ namespace OCPPCentralSystem
     using System;
     using System.Threading.Tasks;
 
-    public static class CentralSystem
+    public static class CentralSystemServer
     {
         public static async Task RunServerAsync()
         {

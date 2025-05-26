@@ -17,7 +17,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public OCPPCentralSystem()
         {
-            _ = Task.Run(() => CentralSystem.RunServerAsync());
+            _ = Task.Run(() => CentralSystemServer.RunServerAsync());
         }
 
         public List<string> Discover()
