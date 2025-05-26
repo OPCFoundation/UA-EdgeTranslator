@@ -46,6 +46,8 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly LoRaWANNetworkServer _lorawanNetworkServer = new();
 
+        private readonly OCPPCentralSystem _ocppCentralSystem = new();
+
         private uint _ticks = 0;
 
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
@@ -472,6 +474,7 @@ namespace Opc.Ua.Edge.Translator
                 allAddresses.AddRange(new UAClient().Discover());
                 allAddresses.AddRange(new IEC61850Client().Discover());
                 allAddresses.AddRange(_lorawanNetworkServer.Discover());
+                allAddresses.AddRange(_ocppCentralSystem.Discover());
             }
             catch (Exception ex)
             {
@@ -547,6 +550,11 @@ namespace Opc.Ua.Edge.Translator
                 if (assetEndpoint.StartsWith("lorawan://"))
                 {
                     td = _lorawanNetworkServer.BrowseAndGenerateTD(assetName, assetEndpoint);
+                }
+
+                if (assetEndpoint.StartsWith("ocpp://"))
+                {
+                    td = _ocppCentralSystem.BrowseAndGenerateTD(assetName, assetEndpoint);
                 }
 
                 string contents = JsonConvert.SerializeObject(td);
@@ -930,6 +938,26 @@ namespace Opc.Ua.Edge.Translator
 
                 _tags[assetId].Add(tag);
             }
+
+            if (td.Base.ToLower().StartsWith("ocpp://"))
+            {
+                // create an asset tag and add to our list
+                GenericForm ocppForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = ocppForm.Href,
+                    UnitID = unitId,
+                    Type = ocppForm.Type.ToString(),
+                    PollingInterval = 1000,
+                    Entity = null,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+
         }
 
         private void AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -1066,8 +1094,20 @@ namespace Opc.Ua.Edge.Translator
                     throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://ipaddress:port!");
                 }
 
-                // in the of LoRaWAN, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
+                // in the case of LoRaWAN, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
                 assetInterface = _lorawanNetworkServer;
+            }
+
+            if (td.Base.ToLower().StartsWith("ocpp://"))
+            {
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "ocpp"))
+                {
+                    throw new Exception("Expected OCPP Gateway address in the format ocpp://ipaddress:port!");
+                }
+
+                // in the case of OCPP, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
+                assetInterface = _ocppCentralSystem;
             }
 
             _assets.Add(td.Name, assetInterface);
@@ -1117,7 +1157,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
-                    value = new string[9] {
+                    value = new string[10] {
                         "https://www.w3.org/2019/wot/modbus",
                         "https://www.w3.org/2019/wot/opcua",
                         "https://www.w3.org/2019/wot/s7",
@@ -1127,6 +1167,7 @@ namespace Opc.Ua.Edge.Translator
                         "https://www.w3.org/2019/wot/iec61850",
                         "http://www.w3.org/2022/bacnet",
                         "https://www.w3.org/2019/wot/lorawan",
+                        "https://www.w3.org/2019/wot/ocpp"
                     };
 
                     timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
