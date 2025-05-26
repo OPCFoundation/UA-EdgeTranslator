@@ -2,7 +2,6 @@
 Copyright 2021 Microsoft Corporation
 */
 
-
 namespace OCPPCentralSystem.Models
 {
     using System;

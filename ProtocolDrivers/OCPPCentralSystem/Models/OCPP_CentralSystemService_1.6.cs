@@ -77,13 +77,26 @@ namespace OCPPCentralSystem.Models
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum ReadingContext
     {
+        [EnumMember(Value = @"Interruption.Begin")]
         InterruptionBegin,
+
+        [EnumMember(Value = @"Interruption.End")]
         InterruptionEnd,
+        
         Other,
+        
+        [EnumMember(Value = @"Sample.Clock")]
         SampleClock,
+        
+        [EnumMember(Value = @"Sample.Periodic")]
         SamplePeriodic,
+        
+        [EnumMember(Value = @"Transaction.Begin")]
         TransactionBegin,
+        
+        [EnumMember(Value = @"Transaction.End")]
         TransactionEnd,
+        
         Trigger
     }
 
@@ -97,27 +110,65 @@ namespace OCPPCentralSystem.Models
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum Measurand
     {
+        [EnumMember(Value = @"Current.Export")]
         CurrentExport,
+        
+        [EnumMember(Value = @"Current.Import")]
         CurrentImport,
+
+        [EnumMember(Value = @"Current.Offered")]
         CurrentOffered,
+
+        [EnumMember(Value = @"Energy.Active.Export.Register")]
         EnergyActiveExportRegister,
+
+        [EnumMember(Value = @"Energy.Active.Import.Register")]
         EnergyActiveImportRegister,
+
+        [EnumMember(Value = @"Energy.Reactive.Export.Register")]
         EnergyReactiveExportRegister,
+        
+        [EnumMember(Value = @"Energy.Reactive.Import.Register")]
         EnergyReactiveImportRegister,
+
+        [EnumMember(Value = @"Energy.Active.Export.Interval")]
         EnergyActiveExportInterval,
+                
+        [EnumMember(Value = @"Energy.Active.Import.Interval")]
         EnergyActiveImportInterval,
+        
+        [EnumMember(Value = @"Energy.Reactive.Export.Interval")]
         EnergyReactiveExportInterval,
+        
+        [EnumMember(Value = @"Energy.Reactive.Import.Interval")]
         EnergyReactiveImportInterval,
+        
         Frequency,
+        
+        [EnumMember(Value = @"Power.Active.Export")]
         PowerActiveExport,
+        
+        [EnumMember(Value = @"Power.Active.Import")]
         PowerActiveImport,
+        
+        [EnumMember(Value = @"Power.Factor")]
         PowerFactor,
+                
+        [EnumMember(Value = @"Power.Offered")]
         PowerOffered,
+        
+        [EnumMember(Value = @"Power.Reactive.Export")]
         PowerReactiveExport,
+        
+        [EnumMember(Value = @"Power.Reactive.Import")]
         PowerReactiveImport,
+
         RPM,
+        
         SoC,
+        
         Temperature,
+        
         Voltage
     }
 
@@ -180,9 +231,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class AuthorizeRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "idTag")]
         public string IdTag { get; set; }
     }
@@ -205,9 +253,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class BootNotificationRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "chargePointVendor")]
         public string ChargePointVendor { get; set; }
 
@@ -261,9 +306,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class DataTransferRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "vendorId")]
         public string VendorId { get; set; }
 
@@ -296,9 +338,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class DiagnosticsStatusNotificationRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "status")]
         public DiagnosticsStatus Status { get; set; }
     }
@@ -323,9 +362,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class FirmwareStatusNotificationRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "status")]
         public FirmwareStatus Status { get; set; }
     }
@@ -338,8 +374,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class HeartbeatRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
     }
 
     [DataContract]
@@ -352,9 +386,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class MeterValuesRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "connectorId")]
         public int ConnectorId { get; set; }
 
@@ -373,9 +404,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class StartTransactionRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "connectorId")]
         public int ConnectorId { get; set; }
 
@@ -439,9 +467,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class StatusNotificationRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]    
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "connectorId")]
         public int ConnectorId { get; set; }
 
@@ -488,9 +513,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class StopTransactionRequest
     {
-        [DataMember(Name = "chargeBoxIdentity")]
-        public string ChargeBoxIdentity { get; set; }
-
         [DataMember(Name = "transactionId")]
         public int TransactionId { get; set; }
 

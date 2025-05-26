@@ -25,7 +25,7 @@ namespace OCPPCentralSystem
     {
         private readonly RequestDelegate _next;
 
-        private static ConcurrentDictionary<string, ChargePointConnection> activeCharger = new ConcurrentDictionary<string, ChargePointConnection>();
+        private static ConcurrentDictionary<string, ChargePointConnection> connectedChargePoints = new ConcurrentDictionary<string, ChargePointConnection>();
         private int _transactionNumber = 0;
 
         public WebsocketJsonMiddlewareOCPP(RequestDelegate next)
@@ -49,7 +49,6 @@ namespace OCPPCentralSystem
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
 
                 httpContext.Response.StatusCode=StatusCodes.Status500InternalServerError;
                 await httpContext.Response.WriteAsync("Something went wrong!!. Please check with the Central system admin");
@@ -77,17 +76,17 @@ namespace OCPPCentralSystem
                     return;
                 }
 
-                if (!activeCharger.ContainsKey(chargepointName))
+                if (!connectedChargePoints.ContainsKey(chargepointName))
                 {
-                    activeCharger.TryAdd(chargepointName, new ChargePointConnection(chargepointName, socket));
-                    Log.Logger.Information($"No. of active chargers : {activeCharger.Count}");
+                    connectedChargePoints.TryAdd(chargepointName, new ChargePointConnection(chargepointName, socket));
+                    Log.Logger.Information($"No. of active chargers : {connectedChargePoints.Count}");
                 }
                 else
                 {
                     try
                     {
-                        var oldSocket = activeCharger[chargepointName].WebSocket;
-                        activeCharger[chargepointName].WebSocket = socket;
+                        var oldSocket = connectedChargePoints[chargepointName].WebSocket;
+                        connectedChargePoints[chargepointName].WebSocket = socket;
 
                         if (oldSocket != null)
                         {
@@ -105,7 +104,6 @@ namespace OCPPCentralSystem
                     catch (Exception ex)
                     {
                         Log.Logger.Error("Exception: " + ex.Message);
-                        Log.Logger.Error(ex.StackTrace);
                     }
                 }
 
@@ -117,7 +115,6 @@ namespace OCPPCentralSystem
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
             }
         }
 
@@ -130,7 +127,7 @@ namespace OCPPCentralSystem
                     await HandlePayloadsAsync(chargepointName, webSocket);
                 }
 
-                if (webSocket.State != WebSocketState.Open && activeCharger.ContainsKey(chargepointName) && activeCharger[chargepointName].WebSocket == webSocket)
+                if (webSocket.State != WebSocketState.Open && connectedChargePoints.ContainsKey(chargepointName) && connectedChargePoints[chargepointName].WebSocket == webSocket)
                 {
                     await RemoveConnectionsAsync(chargepointName, webSocket);
                 }
@@ -138,7 +135,67 @@ namespace OCPPCentralSystem
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
+            }
+        }
+
+        private async Task HandlePayloadsAsync(string chargepointName, WebSocket webSocket)
+        {
+            while (webSocket.State == WebSocketState.Open)
+            {
+                try
+                {
+                    string payloadString = await ReceiveDataFromChargerAsync(webSocket, chargepointName).ConfigureAwait(false);
+                    if (payloadString != null)
+                    {
+                        // switching based on messageTypeId
+                        JArray ocppMessage = JArray.Parse(payloadString);
+                        switch ((int)ocppMessage[0])
+                        {
+                            case 2:
+                                if (ocppMessage.Count < 4)
+                                {
+                                    Log.Logger.Error($"Invalid request payload received from charger {chargepointName}. Payload: {payloadString}");
+                                    continue;
+                                }
+
+                                string response = await ProcessRequestPayloadAsync((string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
+                                
+                                await SendPayloadToChargerAsync(chargepointName, response, webSocket);
+                                
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error("Exception: " + ex.Message);
+                }
+            }
+        }
+
+        private async Task RemoveConnectionsAsync(string chargepointName, WebSocket webSocket)
+        {
+            try
+            {
+                if (connectedChargePoints.TryRemove(chargepointName, out ChargePointConnection charger))
+                {
+                    Log.Logger.Information($"Removed charger {chargepointName}");
+                }
+                else
+                {
+                    Log.Logger.Error($"Cannot remove charger {chargepointName}");
+                }
+
+                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, StringConstants.ClientRequestedClosureMessage, CancellationToken.None);
+                Log.Logger.Information($"Closed websocket for charger {chargepointName}. Remaining active chargers : {connectedChargePoints.Count}");
+
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error("Exception: " + ex.Message);
             }
         }
 
@@ -154,10 +211,10 @@ namespace OCPPCentralSystem
                 {
                     result = await webSocket.ReceiveAsync(data, CancellationToken.None);
 
-                    //When the charger sends close frame
+                    // charger sent close frame
                     if (result.CloseStatus.HasValue)
                     {
-                        if (webSocket != activeCharger[chargepointName].WebSocket)
+                        if (webSocket != connectedChargePoints[chargepointName].WebSocket)
                         {
                             if (webSocket.State != WebSocketState.CloseReceived)
                             {
@@ -172,7 +229,7 @@ namespace OCPPCentralSystem
                         return null;
                     }
 
-                    //Appending received data
+                    // appending received data
                     payloadString += Encoding.UTF8.GetString(data.Array, 0, result.Count);
 
                 } while (!result.EndOfMessage);
@@ -181,7 +238,7 @@ namespace OCPPCentralSystem
             }
             catch (WebSocketException websocex)
             {
-                if (webSocket != activeCharger[chargepointName].WebSocket)
+                if (webSocket != connectedChargePoints[chargepointName].WebSocket)
                 {
                     Log.Logger.Error($"WebsocketException occured in the old socket while receiving payload from charger {chargepointName}. Error : {websocex.Message}");
                 }
@@ -193,24 +250,20 @@ namespace OCPPCentralSystem
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
             }
 
             return null;
         }
 
-        private async Task SendPayloadToChargerAsync(string chargepointName, object payload, WebSocket webSocket)
+        private async Task SendPayloadToChargerAsync(string chargepointName, string payload, WebSocket webSocket)
         {
-            var charger = activeCharger[chargepointName];
+            var charger = connectedChargePoints[chargepointName];
 
             try
             {
                 charger.WebsocketBusy = true;
 
-                var settings = new JsonSerializerSettings { DateFormatString = StringConstants.DateTimeFormat, NullValueHandling = NullValueHandling.Ignore };
-                var serializedPayload = JsonConvert.SerializeObject(payload, settings);
-
-                ArraySegment<byte> data = Encoding.UTF8.GetBytes(serializedPayload);
+                ArraySegment<byte> data = Encoding.UTF8.GetBytes(payload);
 
                 if (webSocket.State == WebSocketState.Open)
                 {
@@ -220,220 +273,208 @@ namespace OCPPCentralSystem
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
             }
 
             charger.WebsocketBusy = false;
         }
 
-        private JArray ProcessPayload(string payloadString, string chargepointName)
+        private Task<string> ProcessRequestPayloadAsync(string uniqueId, string action, string payload)
         {
-            try
-            {
-                if (payloadString != null)
-                {
-                    var basePayload = JsonConvert.DeserializeObject<JArray>(payloadString);
-                    return basePayload;
-                }
-                else
-                {
-                    Log.Logger.Error($"Null payload received for {chargepointName}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
-            }
-
-            return null;
-        }
-
-        private Task<JArray> ProcessRequestPayloadAsync(string chargepointName, RequestPayload requestPayload)
-        {
-            string action = string.Empty;
+            string responsePayload = string.Empty;
 
             try
             {
-                action = requestPayload.Action;
-
-                object responsePayload = null;
-                string url = string.Empty;
-
-                //switching based on OCPP action name
+                // switching based on OCPP action name
                 switch (action)
                 {
                     case "Authorize":
-                    {
-                        AuthorizeRequest request = requestPayload.Payload.ToObject<AuthorizeRequest>();
-
-                        Log.Logger.Information("Authorization requested on chargepoint " + request.ChargeBoxIdentity + "  and badge ID " + request.IdTag);
-
-                        // always authorize any badge for now
-                        IdTagInfo info = new IdTagInfo
                         {
-                            ExpiryDateSpecified = false,
-                            Status = AuthorizationStatus.Accepted
-                        };
+                            AuthorizeRequest authRequest = JsonConvert.DeserializeObject<AuthorizeRequest>(payload);
 
-                        AuthorizeResponse response = new AuthorizeResponse() { IdTagInfo = info };
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
-                    case "BootNotification":
-                    {
-                        BootNotificationRequest request = requestPayload.Payload.ToObject<BootNotificationRequest>();
+                            Log.Logger.Information("Authorization requested on chargepoint " + uniqueId + "  and badge ID " + authRequest.IdTag);
 
-                        Log.Logger.Information("Charge point with identity: " + request.ChargeBoxIdentity + " booted!");
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
-                        {
-                            OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
-                        }
-
-                        BootNotificationResponse response = new BootNotificationResponse() {
-                            Status = RegistrationStatus.Accepted,
-                            CurrentTime = DateTime.UtcNow,
-                            Interval = 60
-                        };
-
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
-                    case "Heartbeat":
-                    {
-                        HeartbeatRequest request = requestPayload.Payload.ToObject<HeartbeatRequest>();
-
-                        Log.Logger.Information("Heartbeat received from: " + request.ChargeBoxIdentity);
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
-                        {
-                            OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
-                        }
-
-                        HeartbeatResponse response = new HeartbeatResponse() { CurrentTime = DateTime.UtcNow };
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
-                    case "MeterValues":
-                    {
-                        MeterValuesRequest request = requestPayload.Payload.ToObject<MeterValuesRequest>();
-
-                        Log.Logger.Information("Meter values for connector ID " + request.ConnectorId + " on chargepoint " + request.ChargeBoxIdentity + ":");
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
-                        {
-                            OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
-                        }
-
-                        if (!OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.ContainsKey(request.ConnectorId))
-                        {
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.TryAdd(request.ConnectorId, new Connector(request.ConnectorId));
-                        }
-
-                        foreach (MeterValue meterValue in request.MeterValue)
-                        {
-                            foreach (SampledValue sampledValue in meterValue.SampledValue)
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
                             {
-                                Log.Logger.Information("Value: " + sampledValue.Value + " " + sampledValue.Unit.ToString());
-                                int parsedInt = 0;
-                                if (int.TryParse(sampledValue.Value, out parsedInt))
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            }
+
+                            // always authorize any badge
+                            IdTagInfo info = new IdTagInfo
+                            {
+                                ExpiryDateSpecified = false,
+                                Status = AuthorizationStatus.Accepted
+                            };
+
+                            responsePayload = JsonConvert.SerializeObject(new AuthorizeResponse()
+                            {
+                                IdTagInfo = info
+                            });
+
+                            break;
+                        }
+                    case "BootNotification":
+                        {
+                            BootNotificationRequest bootNotificationRequest = JsonConvert.DeserializeObject<BootNotificationRequest>(payload);
+
+                            Log.Logger.Information("Charge point with identity: " + uniqueId + " booted!");
+
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                            {
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            }
+
+                            responsePayload = JsonConvert.SerializeObject(new BootNotificationResponse()
+                            {
+                                Status = RegistrationStatus.Accepted,
+                                CurrentTime = DateTime.UtcNow,
+                                Interval = 60
+                            });
+
+                            break;
+                        }
+                    case "Heartbeat":
+                        {
+                            HeartbeatRequest heartbeatRequest = JsonConvert.DeserializeObject<HeartbeatRequest>(payload);
+
+                            Log.Logger.Information("Heartbeat received from: " + uniqueId);
+
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                            {
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            }
+
+                            responsePayload = JsonConvert.SerializeObject(new HeartbeatResponse() {
+                                CurrentTime = DateTime.UtcNow
+                            });
+
+                            break;
+                        }
+                    case "MeterValues":
+                        {
+                            MeterValuesRequest meterValuesRequest = JsonConvert.DeserializeObject<MeterValuesRequest>(payload);
+
+                            Log.Logger.Information("Meter values for connector ID " + meterValuesRequest.ConnectorId + " on chargepoint " + uniqueId + ":");
+
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                            {
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            }
+
+                            if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ContainsKey(meterValuesRequest.ConnectorId))
+                            {
+                                OCPPCentralSystem.ChargePoints[uniqueId].Connectors.TryAdd(meterValuesRequest.ConnectorId, new Connector(meterValuesRequest.ConnectorId));
+                            }
+
+                            foreach (MeterValue meterValue in meterValuesRequest.MeterValue)
+                            {
+                                foreach (SampledValue sampledValue in meterValue.SampledValue)
                                 {
-                                    MeterReading reading = new MeterReading();
-                                    reading.MeterValue = parsedInt;
-                                    if (sampledValue.UnitSpecified)
+                                    Log.Logger.Information("Value: " + sampledValue.Value + " " + sampledValue.Unit.ToString());
+                                    
+                                    if (int.TryParse(sampledValue.Value, out int parsedInt))
                                     {
-                                        reading.MeterValueUnit = sampledValue.Unit.ToString();
-                                    }
-                                    reading.Timestamp = meterValue.Timestamp;
-                                    OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].MeterReadings.Add(reading);
-                                    if (OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].MeterReadings.Count > 10)
-                                    {
-                                        OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].MeterReadings.RemoveAt(0);
+                                        MeterReading reading = new MeterReading();
+                                        reading.MeterValue = parsedInt;
+
+                                        if (sampledValue.UnitSpecified)
+                                        {
+                                            reading.MeterValueUnit = sampledValue.Unit.ToString();
+                                        }
+
+                                        reading.Timestamp = meterValue.Timestamp;
+                                        OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.ConnectorId].MeterReadings.Add(reading);
+                                        
+                                        if (OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.ConnectorId].MeterReadings.Count > 10)
+                                        {
+                                            OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.ConnectorId].MeterReadings.RemoveAt(0);
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        MeterValuesResponse response = new MeterValuesResponse();
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
+                            responsePayload = JsonConvert.SerializeObject(new MeterValuesResponse());
+
+                            break;
+                        }
                     case "StartTransaction":
-                    {
-                        StartTransactionRequest request = requestPayload.Payload.ToObject<StartTransactionRequest>();
-
-                        Log.Logger.Information("Start transaction " + _transactionNumber.ToString() + " from " + request.Timestamp + " on chargepoint " + request.ChargeBoxIdentity + " on connector " + request.ConnectorId + " with badge ID " + request.IdTag + " and meter reading at start " + request.MeterStart);
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
-                        }
+                            StartTransactionRequest startTransactionRequest = JsonConvert.DeserializeObject<StartTransactionRequest>(payload);
 
-                        if (!OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.ContainsKey(request.ConnectorId))
-                        {
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.TryAdd(request.ConnectorId, new Connector(request.ConnectorId));
-                        }
-                        _transactionNumber++;
-                        Transaction transaction = new Transaction(_transactionNumber)
-                        {
-                            BadgeID = request.IdTag,
-                            StartTime = request.Timestamp,
-                            MeterValueStart = request.MeterStart
-                        };
+                            Log.Logger.Information("Start transaction " + _transactionNumber.ToString() + " from " + startTransactionRequest.Timestamp + " on chargepoint " + uniqueId + " on connector " + startTransactionRequest.ConnectorId + " with badge ID " + startTransactionRequest.IdTag + " and meter reading at start " + startTransactionRequest.MeterStart);
 
-                        if (!OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].CurrentTransactions.ContainsKey(_transactionNumber))
-                        {
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].CurrentTransactions.TryAdd(_transactionNumber, transaction);
-                        }
-
-                        KeyValuePair<int, Transaction>[] transactionsArray = OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].CurrentTransactions.ToArray();
-                        for (int i = 0; i < transactionsArray.Length; i++)
-                        {
-                            if ((transactionsArray[i].Value.StopTime != DateTime.MinValue) && (transactionsArray[i].Value.StopTime < DateTime.UtcNow.Subtract(TimeSpan.FromDays(1))))
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
                             {
-                                OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].CurrentTransactions.TryRemove(transactionsArray[i].Key, out _);
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
                             }
+
+                            if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ContainsKey(startTransactionRequest.ConnectorId))
+                            {
+                                OCPPCentralSystem.ChargePoints[uniqueId].Connectors.TryAdd(startTransactionRequest.ConnectorId, new Connector(startTransactionRequest.ConnectorId));
+                            }
+
+                            _transactionNumber++;
+
+                            Transaction transaction = new Transaction(_transactionNumber)
+                            {
+                                BadgeID = startTransactionRequest.IdTag,
+                                StartTime = startTransactionRequest.Timestamp,
+                                MeterValueStart = startTransactionRequest.MeterStart
+                            };
+
+                            if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors[startTransactionRequest.ConnectorId].CurrentTransactions.ContainsKey(_transactionNumber))
+                            {
+                                OCPPCentralSystem.ChargePoints[uniqueId].Connectors[startTransactionRequest.ConnectorId].CurrentTransactions.TryAdd(_transactionNumber, transaction);
+                            }
+
+                            // housekeeping: Remove transactions that are older than 1 day
+                            KeyValuePair<int, Transaction>[] transactionsArray = OCPPCentralSystem.ChargePoints[uniqueId].Connectors[startTransactionRequest.ConnectorId].CurrentTransactions.ToArray();
+                            for (int i = 0; i < transactionsArray.Length; i++)
+                            {
+                                if ((transactionsArray[i].Value.StopTime != DateTime.MinValue) && (transactionsArray[i].Value.StopTime < DateTime.UtcNow.Subtract(TimeSpan.FromDays(1))))
+                                {
+                                    OCPPCentralSystem.ChargePoints[uniqueId].Connectors[startTransactionRequest.ConnectorId].CurrentTransactions.TryRemove(transactionsArray[i].Key, out _);
+                                }
+                            }
+
+                            IdTagInfo info = new IdTagInfo
+                            {
+                                ExpiryDateSpecified = false,
+                                Status = AuthorizationStatus.Accepted
+                            };
+
+                            responsePayload = JsonConvert.SerializeObject(new StartTransactionResponse()
+                            {
+                                TransactionId = _transactionNumber,
+                                IdTagInfo = info
+                            });
+
+                            break;
                         }
-
-                        IdTagInfo info = new IdTagInfo
-                        {
-                            ExpiryDateSpecified = false,
-                            Status = AuthorizationStatus.Accepted
-                        };
-
-                        StartTransactionResponse response = new StartTransactionResponse() {
-                            TransactionId = _transactionNumber,
-                            IdTagInfo = info
-                        };
-
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
                     case "StopTransaction":
                         {
-                            StopTransactionRequest request = requestPayload.Payload.ToObject<StopTransactionRequest>();
+                            StopTransactionRequest stopTransactionRequest = JsonConvert.DeserializeObject<StopTransactionRequest>(payload);
 
-                            Log.Logger.Information("Stop transaction " + request.TransactionId.ToString() + " from " + request.Timestamp + " on chargepoint " + request.ChargeBoxIdentity + " with badge ID " + request.IdTag + " and meter reading at stop " + request.MeterStop);
+                            Log.Logger.Information("Stop transaction " + stopTransactionRequest.TransactionId.ToString() + " from " + stopTransactionRequest.Timestamp + " on chargepoint " + uniqueId + " with badge ID " + stopTransactionRequest.IdTag + " and meter reading at stop " + stopTransactionRequest.MeterStop);
 
-                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
                             {
-                                OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                                OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
                             }
 
                             // find the transaction
-                            KeyValuePair<int, Connector>[] connectorArray = OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.ToArray();
+                            KeyValuePair<int, Connector>[] connectorArray = OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ToArray();
                             for (int i = 0; i < connectorArray.Length; i++)
                             {
-                                if (OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[connectorArray[i].Key].CurrentTransactions.ContainsKey(request.TransactionId))
+                                if (OCPPCentralSystem.ChargePoints[uniqueId].Connectors[connectorArray[i].Key].CurrentTransactions.ContainsKey(stopTransactionRequest.TransactionId))
                                 {
-                                    OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[connectorArray[i].Key].CurrentTransactions[request.TransactionId].MeterValueFinish = request.MeterStop;
-                                    OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[connectorArray[i].Key].CurrentTransactions[request.TransactionId].StopTime = request.Timestamp;
+                                    OCPPCentralSystem.ChargePoints[uniqueId].Connectors[connectorArray[i].Key].CurrentTransactions[stopTransactionRequest.TransactionId].MeterValueFinish = stopTransactionRequest.MeterStop;
+                                    OCPPCentralSystem.ChargePoints[uniqueId].Connectors[connectorArray[i].Key].CurrentTransactions[stopTransactionRequest.TransactionId].StopTime = stopTransactionRequest.Timestamp;
                                     break;
                                 }
                             }
@@ -444,167 +485,82 @@ namespace OCPPCentralSystem
                                 Status = AuthorizationStatus.Accepted
                             };
 
-                        StopTransactionResponse response = new StopTransactionResponse() { IdTagInfo = info };
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
+                            responsePayload = JsonConvert.SerializeObject(new StopTransactionResponse() {
+                                IdTagInfo = info
+                            });
+
+                            break;
+                        }
                     case "StatusNotification":
-                    {
-                        StatusNotificationRequest request = requestPayload.Payload.ToObject<StatusNotificationRequest>();
-
-                        Log.Logger.Information("Chargepoint " + request.ChargeBoxIdentity + " and connector " + request.ConnectorId + " status#: " + request.Status.ToString());
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(request.ChargeBoxIdentity))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(request.ChargeBoxIdentity, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
+                            StatusNotificationRequest statusNotificationRequest = JsonConvert.DeserializeObject<StatusNotificationRequest>(payload);
+
+                            Log.Logger.Information("Chargepoint " + uniqueId + " and connector " + statusNotificationRequest.ConnectorId + " status#: " + statusNotificationRequest.Status.ToString());
+
+                            if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                            {
+                                OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
+                                OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            }
+
+                            if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ContainsKey(statusNotificationRequest.ConnectorId))
+                            {
+                                OCPPCentralSystem.ChargePoints[uniqueId].Connectors.TryAdd(statusNotificationRequest.ConnectorId, new Connector(statusNotificationRequest.ConnectorId));
+                            }
+
+                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            OCPPCentralSystem.ChargePoints[uniqueId].Connectors[statusNotificationRequest.ConnectorId].Status = statusNotificationRequest.Status.ToString();
+
+                            responsePayload = JsonConvert.SerializeObject(new StatusNotificationResponse());
+
+                            break;
                         }
-
-                        if (!OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.ContainsKey(request.ConnectorId))
-                        {
-                            OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors.TryAdd(request.ConnectorId, new Connector(request.ConnectorId));
-                        }
-
-                        OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].ID = request.ChargeBoxIdentity;
-                        OCPPCentralSystem.ChargePoints[request.ChargeBoxIdentity].Connectors[request.ConnectorId].Status = request.Status.ToString();
-
-                        StatusNotificationResponse response = new StatusNotificationResponse();
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
                     case "DataTransfer":
-                    {
-                        DataTransferResponse response = new DataTransferResponse() {
-                            Status = DataTransferStatus.Rejected
-                        };
+                        {
+                            responsePayload = JsonConvert.SerializeObject(new DataTransferResponse()
+                            {
+                                Status = DataTransferStatus.Rejected
+                            });
 
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
+                            break;
+                        }
                     case "DiagnosticsStatusNotification":
-                    {
-                        DiagnosticsStatusNotificationResponse response = new DiagnosticsStatusNotificationResponse();
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
+                        {
+                            responsePayload = JsonConvert.SerializeObject(new DiagnosticsStatusNotificationResponse());
+
+                            break;
+                        }
                     case "FirmwareStatusNotification":
-                    {
-                        FirmwareStatusNotificationResponse response = new FirmwareStatusNotificationResponse();
-                        responsePayload = new ResponsePayload(requestPayload.UniqueId, response);
-                        break;
-                    }
+                        {
+                            responsePayload = JsonConvert.SerializeObject(new FirmwareStatusNotificationResponse());
+
+                            break;
+                        }
                     default:
-                    {
-                        responsePayload = new ErrorPayload(requestPayload.UniqueId, StringConstants.NotImplemented);
-                        break;
-                    }
+                        {
+                            break;
+                        }
                 }
 
-                if (responsePayload != null)
+                return Task.FromResult(JsonConvert.SerializeObject(new JArray
                 {
-                    if (((BasePayload)responsePayload).MessageTypeId == 3)
-                    {
-                        ResponsePayload response = (ResponsePayload)responsePayload;
-                        return Task.FromResult(response.WrappedPayload);
-                    }
-                    else
-                    {
-                        ErrorPayload error = (ErrorPayload)responsePayload;
-                        return Task.FromResult(error.WrappedPayload);
-                    }
-                }
+                    3, // messageTypeId for response
+                    uniqueId, // uniqueId from request
+                    JObject.Parse(responsePayload) // payload
+                }));
             }
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
-            }
 
-            return null;
-        }
-
-        private async Task ProcessResponsePayloadAsync(string chargepointName, ResponsePayload responsePayload)
-        {
-            //Placeholder to process response payloads from charger for CentralSystem initiated commands
-            await Task.Delay(1000);
-        }
-
-        private async Task ProcessErrorPayloadAsync(string chargepointName, ErrorPayload errorPayload)
-        {
-            //Placeholder to process error payloads from charger for CentralSystem initiated commands
-            await Task.Delay(1000);
-        }
-
-        private async Task RemoveConnectionsAsync(string chargepointName, WebSocket webSocket)
-        {
-            try
-            {
-                if (activeCharger.TryRemove(chargepointName, out ChargePointConnection charger))
+                return Task.FromResult(JsonConvert.SerializeObject(new JArray
                 {
-                    Log.Logger.Information($"Removed charger {chargepointName}");
-                }
-                else
-                {
-                    Log.Logger.Error($"Cannot remove charger {chargepointName}");
-                }
-
-                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, StringConstants.ClientRequestedClosureMessage, CancellationToken.None);
-                Log.Logger.Information($"Closed websocket for charger {chargepointName}. Remaining active chargers : {activeCharger.Count}");
-
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error("Exception: " + ex.Message);
-                Log.Logger.Error(ex.StackTrace);
-            }
-        }
-
-        private async Task HandlePayloadsAsync(string chargepointName, WebSocket webSocket)
-        {
-            while (webSocket.State == WebSocketState.Open)
-            {
-                try
-                {
-                    string payloadString = await ReceiveDataFromChargerAsync(webSocket, chargepointName);
-                    var payload = ProcessPayload(payloadString, chargepointName);
-
-                    if (payload != null)
-                    {
-                        JArray response = null;
-
-                        //switching based on messageTypeId
-                        switch ((int)payload[0])
-                        {
-                            case 2:
-                                RequestPayload requestPayload = new RequestPayload(payload);
-                                response = await ProcessRequestPayloadAsync(chargepointName, requestPayload);
-                                break;
-
-                            case 3:
-                                ResponsePayload responsePayload = new ResponsePayload(payload);
-                                await ProcessResponsePayloadAsync(chargepointName, responsePayload);
-                                break;
-
-                            case 4:
-                                ErrorPayload errorPayload = new ErrorPayload(payload);
-                                await ProcessErrorPayloadAsync(chargepointName, errorPayload);
-                                continue;
-
-                            default:
-                                break;
-                        }
-
-                        if (response != null)
-                        {
-                            await SendPayloadToChargerAsync(chargepointName, response, webSocket);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error("Exception: " + ex.Message);
-                    Log.Logger.Error(ex.StackTrace);
-                }
+                    4, // messageTypeId for error response
+                    uniqueId, // uniqueId from request
+                    "500", // error code
+                    ex.Message, // error description
+                    string.Empty // empty payload
+                }));
             }
         }
     }
