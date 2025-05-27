@@ -54,6 +54,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Properties = new Dictionary<string, Property>()
             };
 
+            // add properties for the requested charge point
+            if (ChargePoints.TryGetValue(name, out ChargePoint chargePoint))
+            {
+                foreach (Connector connector in chargePoint.Connectors.Values)
+                {
+                    td.Properties.Add("Connector" + connector.ID.ToString(), new Property
+                    {
+                        Type = TypeEnum.Number,
+                        ReadOnly = true,
+                        Observable = true,
+                    });
+                }
+            }
+
             return td;
         }
 
@@ -75,13 +89,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public object Read(AssetTag tag)
         {
             object value = null;
-            
+
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")
