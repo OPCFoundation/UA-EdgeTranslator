@@ -31,7 +31,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
             if (socketWriterRegistry.TryGetHandle(message.StationEui, out var webSocketWriterHandle))
             {
                 var payload = Message(message);
-                await webSocketWriterHandle.SendAsync(payload, CancellationToken.None);
+                await webSocketWriterHandle.SendAsync(payload, CancellationToken.None).ConfigureAwait(false);
             }
             else
             {

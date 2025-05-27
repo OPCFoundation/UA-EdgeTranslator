@@ -73,7 +73,7 @@ namespace LoRaWan.NetworkServer
 
             try
             {
-                await foreach (var output in this.channel.Reader.ReadAllAsync(cancellationToken))
+                await foreach (var output in this.channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     if (output.CancellationToken.IsCancellationRequested)
                         continue;
@@ -82,8 +82,7 @@ namespace LoRaWan.NetworkServer
 
                     try
                     {
-                        await this.socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, output.CancellationToken)
-                                  .ConfigureAwait(false);
+                        await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, output.CancellationToken).ConfigureAwait(false);
                         _ = output.TaskCompletionSource.TrySetResult(default);
                     }
                     catch (OperationCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)

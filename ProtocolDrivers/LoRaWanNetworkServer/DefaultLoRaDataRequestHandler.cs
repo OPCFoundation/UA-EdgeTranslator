@@ -67,13 +67,13 @@ namespace LoRaWan.NetworkServer
 
             try
             {
-                return await ProcessRequestAsync(request, loRaDevice, processingState);
+                return await ProcessRequestAsync(request, loRaDevice, processingState).ConfigureAwait(false);
             }
             finally
             {
                 if (processingState.SecondaryTasks is { Count: > 0 } secondaryTasks)
                 {
-                    _ = await Task.WhenAny(Task.WhenAll(secondaryTasks));
+                    _ = await Task.WhenAny(Task.WhenAll(secondaryTasks)).ConfigureAwait(false);
 
                     var exception = secondaryTasks.GetExceptions() switch
                     {
@@ -128,7 +128,7 @@ namespace LoRaWan.NetworkServer
 
             // Leaf devices that restart lose the counter. In relax mode we accept the incoming frame counter
             // ABP device does not reset the Fcnt so in relax mode we should reset for 0 (LMIC based) or 1
-            var isFrameCounterFromNewlyStartedDevice = await DetermineIfFramecounterIsFromNewlyStartedDeviceAsync(loRaDevice, payloadFcntAdjusted, frameCounterStrategy, concentratorDeduplicationResult);
+            var isFrameCounterFromNewlyStartedDevice = await DetermineIfFramecounterIsFromNewlyStartedDeviceAsync(loRaDevice, payloadFcntAdjusted, frameCounterStrategy, concentratorDeduplicationResult).ConfigureAwait(false);
 
             // Reply attack or confirmed reply
             // Confirmed resubmit: A confirmed message that was received previously but we did not answer in time
@@ -157,9 +157,9 @@ namespace LoRaWan.NetworkServer
                     //{
                     //    if (loRaDevice.IsConnectionOwner is false && IsProcessingDelayEnabled())
                     //    {
-                    //        await DelayProcessing();
+                    //        await DelayProcessing().ConfigureAwait(false);
                     //    }
-                    //    bundlerResult = await TryUseBundler(bundler, loRaDevice);
+                    //    bundlerResult = await TryUseBundler(bundler, loRaDevice).ConfigureAwait(false);
                     //}
                 }
                 #endregion
@@ -182,7 +182,7 @@ namespace LoRaWan.NetworkServer
                 // ADR is skipped for soft duplicates and will be enabled again in https://github.com/Azure/iotedge-lorawan-starterkit/issues/1017
                 if (loRaADRResult == null && loraPayload.IsDataRateNetworkControlled && concentratorDeduplicationResult is not ConcentratorDeduplicationResult.SoftDuplicateDueToDeduplicationStrategy)
                 {
-                    loRaADRResult = await PerformADR(request, loRaDevice, loraPayload, payloadFcntAdjusted, loRaADRResult, frameCounterStrategy);
+                    loRaADRResult = await PerformADR(request, loRaDevice, loraPayload, payloadFcntAdjusted, loRaADRResult, frameCounterStrategy).ConfigureAwait(false);
                 }
                 #endregion
 
@@ -223,7 +223,7 @@ namespace LoRaWan.NetworkServer
                 // saving fcnt reset changes
                 if (isFrameCounterFromNewlyStartedDevice)
                 {
-                    await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice);
+                    await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice).ConfigureAwait(false);
                     fcntResetSaved = true;
                 }
 
@@ -236,7 +236,7 @@ namespace LoRaWan.NetworkServer
                 // Multiple gateways: in redis, otherwise in device twin
                 if (requiresConfirmation && !skipDownstreamToAvoidCollisions)
                 {
-                    fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy);
+                    fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
 
                     var result = HandleFrameCounterDownResult(fcntDown, loRaDevice, ref skipDownstreamToAvoidCollisions);
 
@@ -290,7 +290,7 @@ namespace LoRaWan.NetworkServer
 
                     if (!skipDownstreamToAvoidCollisions && loraPayload.IsMacAnswerRequired)
                     {
-                        fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy);
+                        fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
 
                         var result = HandleFrameCounterDownResult(fcntDown, loRaDevice, ref skipDownstreamToAvoidCollisions);
 
@@ -308,7 +308,7 @@ namespace LoRaWan.NetworkServer
                             if (someRegion.DesiredDwellTimeSetting != loRaDevice.ReportedDwellTimeSetting)
                             {
                                 loRaDevice.UpdateDwellTimeSetting(someRegion.DesiredDwellTimeSetting, acceptChanges: false);
-                                _ = await loRaDevice.SaveChangesAsync(force: true);
+                                _ = await loRaDevice.SaveChangesAsync(force: true).ConfigureAwait(false);
                             }
                             else
                             {
@@ -332,7 +332,7 @@ namespace LoRaWan.NetworkServer
                         else
                         {
                             logger.LogDebug($"decoding with: {loRaDevice.SensorDecoder} port: {(byte)payloadPort}");
-                            var decodePayloadResult = await payloadDecoder.DecodeMessageAsync(loRaDevice.DevEUI, decryptedPayloadData, payloadPort, loRaDevice.SensorDecoder);
+                            var decodePayloadResult = await payloadDecoder.DecodeMessageAsync(loRaDevice.DevEUI, decryptedPayloadData, payloadPort, loRaDevice.SensorDecoder).ConfigureAwait(false);
                             payloadData = decodePayloadResult.GetDecodedPayload();
 
                             if (decodePayloadResult.CloudToDeviceMessage != null)
@@ -341,7 +341,7 @@ namespace LoRaWan.NetworkServer
                                 {
                                     // sending c2d to same device
                                     cloudToDeviceMessage = decodePayloadResult.CloudToDeviceMessage;
-                                    fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy);
+                                    fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
 
                                     if (!fcntDown.HasValue || fcntDown <= 0)
                                     {
@@ -373,7 +373,7 @@ namespace LoRaWan.NetworkServer
                         logger.LogDebug("Preparing 'TxParamSetupReq' MAC command downstream.");
                         // put the MAC command into a C2D message.
                         cloudToDeviceMessage = new ReceivedLoRaCloudToDeviceMessage() { MacCommands = { new TxParamSetupRequest(someDwellTimeLimitedRegion.DesiredDwellTimeSetting) } };
-                        fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy);
+                        fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
                         requiresConfirmation = true;
                     }
 
@@ -386,7 +386,7 @@ namespace LoRaWan.NetworkServer
                     {
                         // combine the results of the 2 deduplications: on the concentrator level and on the network server layer
                         var isDuplicate = concentratorDeduplicationResult is not ConcentratorDeduplicationResult.NotDuplicate || (bundlerResult?.DeduplicationResult?.IsDuplicate ?? false);
-                        if (!await SendDeviceEventAsync(request, loRaDevice, timeWatcher, payloadData, isDuplicate, decryptedPayloadData))
+                        if (!await SendDeviceEventAsync(request, loRaDevice, timeWatcher, payloadData, isDuplicate, decryptedPayloadData).ConfigureAwait(false))
                         {
                             // failed to send event to IoT Hub, stop now
                             return new LoRaDeviceRequestProcessResult(loRaDevice, request, LoRaDeviceRequestFailedReason.IoTHubProblem);
@@ -436,18 +436,18 @@ namespace LoRaWan.NetworkServer
                     if (downlinkMessageBuilderResp.DownlinkMessage != null)
                     {
                         this.receiveWindowHits?.Add(1, KeyValuePair.Create(MetricRegistry.ReceiveWindowTagName, (object)downlinkMessageBuilderResp.ReceiveWindow));
-                        await request.DownstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage);
+                        await request.DownstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
 
                         if (cloudToDeviceMessage != null)
                         {
                             if (downlinkMessageBuilderResp.IsMessageTooLong)
                             {
                                 this.c2dMessageTooLong?.Add(1);
-                                _ = await cloudToDeviceMessage.AbandonAsync();
+                                _ = await cloudToDeviceMessage.AbandonAsync().ConfigureAwait(false);
                             }
                             else
                             {
-                                _ = await cloudToDeviceMessage.CompleteAsync();
+                                _ = await cloudToDeviceMessage.CompleteAsync().ConfigureAwait(false);
                             }
                         }
                     }
@@ -482,7 +482,7 @@ namespace LoRaWan.NetworkServer
                             {
                                 // The message coming from the device was not confirmed, therefore we did not computed the frame count down
                                 // Now we need to increment because there is a C2D message to be sent
-                                fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy);
+                                fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
 
                                 if (!fcntDown.HasValue || fcntDown <= 0)
                                 {
@@ -537,7 +537,7 @@ namespace LoRaWan.NetworkServer
                 if (confirmDownlinkMessageBuilderResp.DownlinkMessage != null)
                 {
                     this.receiveWindowHits?.Add(1, KeyValuePair.Create(MetricRegistry.ReceiveWindowTagName, (object)confirmDownlinkMessageBuilderResp.ReceiveWindow));
-                    await SendMessageDownstreamAsync(request, confirmDownlinkMessageBuilderResp);
+                    await SendMessageDownstreamAsync(request, confirmDownlinkMessageBuilderResp).ConfigureAwait(false);
                 }
 
                 return new LoRaDeviceRequestProcessResult(loRaDevice, request, confirmDownlinkMessageBuilderResp.DownlinkMessage);
@@ -580,7 +580,7 @@ namespace LoRaWan.NetworkServer
         {
             _ = loRaDevice ?? throw new ArgumentNullException(nameof(loRaDevice));
 
-            _ = await loRaDevice.SaveChangesAsync(force: force);
+            _ = await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
         }
 
         private void HandlePreferredGatewayChanges(
@@ -743,7 +743,7 @@ namespace LoRaWan.NetworkServer
                 return fcntDown.Value;
             }
 
-            var newFcntDown = await frameCounterStrategy.NextFcntDown(loRaDevice, payloadFcnt);
+            var newFcntDown = await frameCounterStrategy.NextFcntDown(loRaDevice, payloadFcnt).ConfigureAwait(false);
             LogNotNullFrameCounterDownState(loRaDevice, newFcntDown);
 
             return newFcntDown;
@@ -792,7 +792,7 @@ namespace LoRaWan.NetworkServer
 
         internal virtual bool IsProcessingDelayEnabled() => configuration.ProcessingDelayInMilliseconds > 0;
 
-        protected virtual async Task DelayProcessing() => await Task.Delay(TimeSpan.FromMilliseconds(configuration.ProcessingDelayInMilliseconds));
+        protected virtual async Task DelayProcessing() => await Task.Delay(TimeSpan.FromMilliseconds(configuration.ProcessingDelayInMilliseconds)).ConfigureAwait(false);
 
         protected virtual async Task<LoRaADRResult> PerformADR(LoRaRequest request, LoRaDevice loRaDevice, LoRaPayloadData loraPayload, uint payloadFcnt, LoRaADRResult loRaADRResult, ILoRaDeviceFrameCounterUpdateStrategy frameCounterStrategy)
         {
@@ -826,7 +826,7 @@ namespace LoRaWan.NetworkServer
                     request.RadioMetadata.DataRate,
                     request.Region.TXPowertoMaxEIRP.Count - 1,
                     request.Region.MaxADRDataRate,
-                    loRaADRTableEntry);
+                    loRaADRTableEntry).ConfigureAwait(false);
                 logger.LogDebug("device sent ADR ack request, computing an answer");
             }
 
@@ -907,7 +907,7 @@ namespace LoRaWan.NetworkServer
                         // fcnt down calculations
                         if (concentratorDeduplicationResult is ConcentratorDeduplicationResult.NotDuplicate)
                         {
-                            _ = await frameCounterStrategy.ResetAsync(loRaDevice, payloadFcnt, configuration.GatewayID);
+                            _ = await frameCounterStrategy.ResetAsync(loRaDevice, payloadFcnt, configuration.GatewayID).ConfigureAwait(false);
                         }
                         isFrameCounterFromNewlyStartedDevice = true;
                     }

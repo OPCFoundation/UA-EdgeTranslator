@@ -83,7 +83,7 @@ namespace LoRaWan.NetworkServer
                 return false;
             }
 
-            var fcntDown = await frameCounterStrategy.NextFcntDown(loRaDevice, loRaDevice.FCntUp);
+            var fcntDown = await frameCounterStrategy.NextFcntDown(loRaDevice, loRaDevice.FCntUp).ConfigureAwait(false);
             if (fcntDown <= 0)
             {
                 logger.LogError("[class-c] could not obtain fcnt down for class C device");
@@ -106,7 +106,7 @@ namespace LoRaWan.NetworkServer
             {
                 this.c2dMessageTooLong?.Add(1);
                 logger.LogError($"[class-c] cloud to device message too large, rejecting. Id: {messageIdLog}");
-                if (!await message.RejectAsync())
+                if (!await message.RejectAsync().ConfigureAwait(false))
                 {
                     logger.LogError($"[class-c] failed to reject. Id: {messageIdLog}");
                 }
@@ -116,24 +116,24 @@ namespace LoRaWan.NetworkServer
             {
                 try
                 {
-                    await downstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage);
+                    await downstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
                     logger.LogError($"[class-c] failed to send the message, abandoning. Id: {messageIdLog}, ex: {ex.Message}");
-                    if (!await message.AbandonAsync())
+                    if (!await message.AbandonAsync().ConfigureAwait(false))
                     {
                         logger.LogError($"[class-c] failed to abandon the message. Id: {messageIdLog}");
                     }
                     throw;
                 }
 
-                if (!await message.CompleteAsync())
+                if (!await message.CompleteAsync().ConfigureAwait(false))
                 {
                     logger.LogError($"[class-c] failed to complete the message. Id: {messageIdLog}");
                 }
 
-                if (!await frameCounterStrategy.SaveChangesAsync(loRaDevice))
+                if (!await frameCounterStrategy.SaveChangesAsync(loRaDevice).ConfigureAwait(false))
                 {
                     logger.LogWarning("[class-c] failed to update framecounter.");
                 }

@@ -103,7 +103,7 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                loRaDevice = await GetDeviceForJoinRequestAsync(devEui, joinReq.DevNonce);
+                loRaDevice = await GetDeviceForJoinRequestAsync(devEui, joinReq.DevNonce).ConfigureAwait(false);
                 if (loRaDevice == null)
                 {
                     request.NotifyFailed(devEui.ToString(), LoRaDeviceRequestFailedReason.UnknownDevice);
@@ -210,7 +210,7 @@ namespace LoRaWan.NetworkServer
                     }
                 }
 
-                var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties, joinAcceptCancellationToken.Token);
+                var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties, joinAcceptCancellationToken.Token).ConfigureAwait(false);
 
                 if (!deviceUpdateSucceeded)
                 {

@@ -90,7 +90,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                            {
                                var processor = context.RequestServices.GetRequiredService<TService>();
                                var handler = handlerMapper(processor);
-                               await handler(context, context.RequestAborted);
+                               await handler(context, context.RequestAborted).ConfigureAwait(false);
                            });
                        }
                    });

@@ -51,7 +51,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     uriBuilder.Port = somePort;
 
                 var discoveryService = new DiscoveryService(new LocalLnsDiscovery(uriBuilder.Uri), loggerFactory.CreateLogger<DiscoveryService>());
-                await discoveryService.HandleDiscoveryRequestAsync(httpContext, cancellationToken);
+                await discoveryService.HandleDiscoveryRequestAsync(httpContext, cancellationToken).ConfigureAwait(false);
                 return 0;
             });
 
@@ -59,7 +59,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
             ExecuteWithExceptionHandlingAsync(async () =>
             {
                 var webSocketConnection = new WebSocketConnection(httpContext, logger);
-                return await webSocketConnection.HandleAsync((httpContext, socket, ct) => InternalHandleDataAsync(httpContext.GetRouteData().Values, socket, ct), cancellationToken);
+                return await webSocketConnection.HandleAsync((httpContext, socket, ct) => InternalHandleDataAsync(httpContext.GetRouteData().Values, socket, ct), cancellationToken).ConfigureAwait(false);
             });
 
         internal async Task InternalHandleDataAsync(RouteValueDictionary routeValues, WebSocket socket, CancellationToken cancellationToken)
@@ -81,14 +81,16 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                 var task = channel.ProcessSendQueueAsync(linkedCancellationTokenSource.Token);
 
                 await using var message = socket.ReadTextMessages(cancellationToken);
-                while (await message.MoveNextAsync())
-                    await HandleDataMessageAsync(stationEui, handle, message.Current, cancellationToken);
+                while (await message.MoveNextAsync().ConfigureAwait(false))
+                {
+                    await HandleDataMessageAsync(stationEui, handle, message.Current, cancellationToken).ConfigureAwait(false);
+                }
 
                 cancellationTokenSource.Cancel(); // cancel send queue processing, then...
 
                 try
                 {
-                    await task; // ...wait for its task to complete (practically instantaneous)
+                    await task.ConfigureAwait(false); // ...wait for its task to complete (practically instantaneous)
                 }
                 catch (OperationCanceledException)
                 {
@@ -113,8 +115,8 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     var versionMessage = JsonConvert.DeserializeObject<VersionMessage>(json);
                     logger.LogInformation("Received 'version' message for station '{StationVersion}' with package '{StationPackage}'.", versionMessage.MessageType, versionMessage.Package);
 
-                    var routerConfigResponse = await basicsStationConfigurationService.GetRouterConfigMessageAsync(stationEui, cancellationToken);
-                    await socket.SendAsync(routerConfigResponse, cancellationToken);
+                    var routerConfigResponse = await basicsStationConfigurationService.GetRouterConfigMessageAsync(stationEui, cancellationToken).ConfigureAwait(false);
+                    await socket.SendAsync(routerConfigResponse, cancellationToken).ConfigureAwait(false);
 
                     break;
 
@@ -124,7 +126,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     {
                         var jreq = JsonConvert.DeserializeObject<JoinRequestMessage>(json);
 
-                        var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken);
+                        var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                         var loraRequest = new LoRaRequest(jreq.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
                         loraRequest.SetPayload(new LoRaPayloadJoinRequest(jreq.JoinEui,
@@ -152,7 +154,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         using var scope = logger.BeginDeviceAddressScope(updf.DevAddr);
                         this.uplinkMessageCounter?.Add(1);
 
-                        var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken);
+                        var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                         var loraRequest = new LoRaRequest(updf.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
                         loraRequest.SetPayload(new LoRaPayloadData(updf.DevAddr,
@@ -187,7 +189,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     var timeSyncData = JsonConvert.DeserializeObject<TimeSyncMessage>(json);
                     LogReceivedMessage(logger, "TimeSync", json, null);
                     timeSyncData.GpsTime = (ulong)DateTime.UtcNow.Subtract(GpsEpoch).TotalMilliseconds * 1000; // to microseconds
-                    await socket.SendAsync(JsonConvert.SerializeObject(timeSyncData), cancellationToken);
+                    await socket.SendAsync(JsonConvert.SerializeObject(timeSyncData), cancellationToken).ConfigureAwait(false);
 
                     break;
 
@@ -208,7 +210,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
         {
             try
             {
-                return await action();
+                return await action().ConfigureAwait(false);
             }
             catch (Exception ex) when (ExceptionFilterUtility.False(() => logger.LogError(ex, "An exception occurred while processing requests: {Exception}.", ex),
                                                                     () => this.unhandledExceptionCount?.Add(1)))
@@ -222,7 +224,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
             if (socket.State is WebSocketState.Open)
             {
                 logger.LogDebug("Closing websocket.");
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, nameof(WebSocketCloseStatus.NormalClosure), cancellationToken);
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, nameof(WebSocketCloseStatus.NormalClosure), cancellationToken).ConfigureAwait(false);
                 logger.LogDebug("WebSocket connection closed");
             }
         }

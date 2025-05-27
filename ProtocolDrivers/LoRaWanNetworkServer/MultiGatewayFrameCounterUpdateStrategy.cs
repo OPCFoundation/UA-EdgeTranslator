@@ -28,7 +28,7 @@ namespace LoRaWan.NetworkServer
             //    devEUI: loRaDevice.DevEUI,
             //    fcntDown: loRaDevice.FCntDown,
             //    fcntUp: messageFcnt,
-            //    gatewayId: gatewayID);
+            //    gatewayId: gatewayID).ConfigureAwait(false);
 
             //if (result > 0)
             //{
@@ -49,7 +49,7 @@ namespace LoRaWan.NetworkServer
 
         private static async Task<bool> InternalSaveChangesAsync(LoRaDevice loRaDevice, bool force)
         {
-            return await loRaDevice.SaveChangesAsync(force: force);
+            return await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
         }
     }
 }

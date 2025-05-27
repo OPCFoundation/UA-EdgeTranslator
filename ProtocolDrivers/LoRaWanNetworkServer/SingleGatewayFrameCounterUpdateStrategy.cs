@@ -34,7 +34,7 @@ namespace LoRaWan.NetworkServer
 
         private static async Task<bool> InternalSaveChangesAsync(LoRaDevice loRaDevice, bool force)
         {
-            return await loRaDevice.SaveChangesAsync(force: force);
+            return await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
         }
 
         // Initializes a device instance created

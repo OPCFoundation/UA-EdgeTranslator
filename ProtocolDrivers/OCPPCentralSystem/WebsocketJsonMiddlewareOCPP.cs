@@ -11,7 +11,6 @@ namespace OCPPCentralSystem
     using OCPPCentralSystem.Models;
     using Serilog;
     using System;
-    using System.Collections;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.IO;
@@ -37,19 +36,19 @@ namespace OCPPCentralSystem
             {
                 if (httpContext.WebSockets.IsWebSocketRequest)
                 {
-                    await HandleWebsockets(httpContext);
+                    await HandleWebsockets(httpContext).ConfigureAwait(false);
                     return;
                 }
 
                 // passed on to next middleware
-                await _next(httpContext);
+                await _next(httpContext).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
 
                 httpContext.Response.StatusCode=StatusCodes.Status500InternalServerError;
-                await httpContext.Response.WriteAsync("Something went wrong!!. Please check with the Central system admin");
+                await httpContext.Response.WriteAsync("Something went wrong!!. Please check with the Central system admin").ConfigureAwait(false);
             }
         }
 
@@ -85,7 +84,7 @@ namespace OCPPCentralSystem
                 if (socket == null || socket.State != WebSocketState.Open)
                 {
                     Log.Logger.Error("Accepting websocket failed!");
-                    await _next(httpContext);
+                    await _next(httpContext).ConfigureAwait(false);
                     return;
                 }
 
@@ -108,7 +107,7 @@ namespace OCPPCentralSystem
                             {
                                 Log.Logger.Information($"Closing old websocket for {chargepointName}");
 
-                                await oldSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Client sent new websocket request", CancellationToken.None);
+                                await oldSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Client sent new websocket request", CancellationToken.None).ConfigureAwait(false);
                             }
                         }
 
@@ -122,7 +121,7 @@ namespace OCPPCentralSystem
 
                 if (socket.State == WebSocketState.Open)
                 {
-                    await HandleActiveConnection(socket, chargepointName);
+                    await HandleActiveConnection(socket, chargepointName).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -137,12 +136,12 @@ namespace OCPPCentralSystem
             {
                 if (webSocket.State == WebSocketState.Open)
                 {
-                    await HandlePayloadsAsync(chargepointName, webSocket);
+                    await HandlePayloadsAsync(chargepointName, webSocket).ConfigureAwait(false);
                 }
 
                 if (webSocket.State != WebSocketState.Open && connectedChargePoints.ContainsKey(chargepointName) && connectedChargePoints[chargepointName].WebSocket == webSocket)
                 {
-                    await RemoveConnectionsAsync(chargepointName, webSocket);
+                    await RemoveConnectionsAsync(chargepointName, webSocket).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -174,15 +173,16 @@ namespace OCPPCentralSystem
                                 if (webSocket.SubProtocol == "ocpp1.6")
                                 {
 
-                                    string response = await OCPP16Processor.ProcessRequestPayloadAsync((string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
+                                    string response = await OCPP16Processor.ProcessRequestPayloadAsync(chargepointName, (string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
 
-                                    await SendPayloadToChargerAsync(chargepointName, response, webSocket);
+                                    await SendPayloadToChargerAsync(chargepointName, response, webSocket).ConfigureAwait(false);
                                 }
 
-                                if (webSocket.SubProtocol == "ocpp2.1")
+                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.1"))
                                 {
-                                    string response = await OCPP21Processor.ProcessRequestPayloadAsync((string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
-                                    await SendPayloadToChargerAsync(chargepointName, response, webSocket);
+                                    string response = await OCPP21Processor.ProcessRequestPayloadAsync(chargepointName, (string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
+                                    
+                                    await SendPayloadToChargerAsync(chargepointName, response, webSocket).ConfigureAwait(false);
                                 }
 
                                 break;
@@ -212,7 +212,7 @@ namespace OCPPCentralSystem
                     Log.Logger.Error($"Cannot remove charger {chargepointName}");
                 }
 
-                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Client requested closed", CancellationToken.None);
+                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Client requested closed", CancellationToken.None).ConfigureAwait(false);
                 Log.Logger.Information($"Closed websocket for charger {chargepointName}. Remaining active chargers : {connectedChargePoints.Count}");
 
             }
@@ -232,7 +232,7 @@ namespace OCPPCentralSystem
 
                 do
                 {
-                    result = await webSocket.ReceiveAsync(data, CancellationToken.None);
+                    result = await webSocket.ReceiveAsync(data, CancellationToken.None).ConfigureAwait(false);
 
                     // charger sent close frame
                     if (result.CloseStatus.HasValue)
@@ -241,12 +241,12 @@ namespace OCPPCentralSystem
                         {
                             if (webSocket.State != WebSocketState.CloseReceived)
                             {
-                                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "New websocket request received for this charger", CancellationToken.None);
+                                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "New websocket request received for this charger", CancellationToken.None).ConfigureAwait(false);
                             }
                         }
                         else
                         {
-                            await RemoveConnectionsAsync(chargepointName, webSocket);
+                            await RemoveConnectionsAsync(chargepointName, webSocket).ConfigureAwait(false);
                         }
 
                         return null;
@@ -290,7 +290,7 @@ namespace OCPPCentralSystem
 
                 if (webSocket.State == WebSocketState.Open)
                 {
-                    await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None);
+                    await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

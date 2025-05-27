@@ -11,9 +11,9 @@
 
     public class OCPP21Processor
     {
-        static public Task<string> ProcessRequestPayloadAsync(string uniqueId, string action, string payload)
+        static public Task<string> ProcessRequestPayloadAsync(string cpId, string correlationId, string action, string payload)
         {
-            string responsePayload = string.Empty;
+            string responsePayload = "{}";
 
             try
             {
@@ -24,12 +24,12 @@
 
                         AuthorizeRequest21 authRequest = JsonConvert.DeserializeObject<AuthorizeRequest21>(payload);
 
-                        Log.Logger.Information("Authorization requested on chargepoint " + uniqueId + "  and badge ID " + authRequest.IdToken);
+                        Log.Logger.Information("Authorization requested on chargepoint " + cpId + "  and badge ID " + authRequest.IdToken.IdToken);
 
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            OCPPCentralSystem.ChargePoints.TryAdd(cpId, new ChargePoint());
+                            OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
                         }
 
                         // always authorize any badge
@@ -50,12 +50,12 @@
 
                         BootNotificationRequest21 bootNotificationRequest = JsonConvert.DeserializeObject<BootNotificationRequest21>(payload);
 
-                        Log.Logger.Information("Charge point with identity: " + uniqueId + " booted!");
+                        Log.Logger.Information("Charge point with identity: " + cpId + " booted!");
 
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            OCPPCentralSystem.ChargePoints.TryAdd(cpId, new ChargePoint());
+                            OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
                         }
 
                         responsePayload = JsonConvert.SerializeObject(new BootNotificationResponse()
@@ -71,14 +71,6 @@
 
                         HeartbeatRequest21 heartbeatRequest = JsonConvert.DeserializeObject<HeartbeatRequest21>(payload);
 
-                        Log.Logger.Information("Heartbeat received from: " + uniqueId);
-
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
-                        {
-                            OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
-                        }
-
                         responsePayload = JsonConvert.SerializeObject(new HeartbeatResponse()
                         {
                             CurrentTime = DateTime.UtcNow
@@ -90,39 +82,39 @@
 
                         MeterValuesRequest21 meterValuesRequest = JsonConvert.DeserializeObject<MeterValuesRequest21>(payload);
 
-                        Log.Logger.Information("Meter values for connector ID " + meterValuesRequest.EvseId + " on chargepoint " + uniqueId + ":");
+                        Log.Logger.Information("Meter values for connector ID " + meterValuesRequest.EvseId + " on chargepoint " + cpId + ":");
 
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            OCPPCentralSystem.ChargePoints.TryAdd(cpId, new ChargePoint());
+                            OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
                         }
 
-                        if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ContainsKey(meterValuesRequest.EvseId))
+                        if (!OCPPCentralSystem.ChargePoints[cpId].Connectors.ContainsKey(meterValuesRequest.EvseId))
                         {
-                            OCPPCentralSystem.ChargePoints[uniqueId].Connectors.TryAdd(meterValuesRequest.EvseId, new Connector(meterValuesRequest.EvseId));
+                            OCPPCentralSystem.ChargePoints[cpId].Connectors.TryAdd(meterValuesRequest.EvseId, new Connector(meterValuesRequest.EvseId));
                         }
 
                         foreach (MeterValue21 meterValue in meterValuesRequest.MeterValue)
                         {
                             foreach (SampledValue21 sampledValue in meterValue.SampledValue)
                             {
-                                Log.Logger.Information("Value: " + sampledValue.Value + " " + sampledValue.UnitOfMeasure.Unit.ToString());
+                                Log.Logger.Information("Value: " + sampledValue.Value + " " + sampledValue.UnitOfMeasure?.Unit?.ToString());
 
                                 MeterReading reading = new MeterReading();
                                 reading.MeterValue = (int)sampledValue.Value;
 
-                                if (!string.IsNullOrEmpty(sampledValue.UnitOfMeasure.Unit))
+                                if (!string.IsNullOrEmpty(sampledValue.UnitOfMeasure?.Unit))
                                 {
-                                    reading.MeterValueUnit = sampledValue.UnitOfMeasure.Unit.ToString();
+                                    reading.MeterValueUnit = sampledValue.UnitOfMeasure?.Unit?.ToString();
                                 }
 
                                 reading.Timestamp = meterValue.Timestamp;
-                                OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.EvseId].MeterReadings.Add(reading);
+                                OCPPCentralSystem.ChargePoints[cpId].Connectors[meterValuesRequest.EvseId].MeterReadings.Add(reading);
 
-                                if (OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.EvseId].MeterReadings.Count > 10)
+                                if (OCPPCentralSystem.ChargePoints[cpId].Connectors[meterValuesRequest.EvseId].MeterReadings.Count > 10)
                                 {
-                                    OCPPCentralSystem.ChargePoints[uniqueId].Connectors[meterValuesRequest.EvseId].MeterReadings.RemoveAt(0);
+                                    OCPPCentralSystem.ChargePoints[cpId].Connectors[meterValuesRequest.EvseId].MeterReadings.RemoveAt(0);
                                 }
                             }
                         }
@@ -135,17 +127,17 @@
 
                         TransactionEventRequest transactionEventRequest = JsonConvert.DeserializeObject<TransactionEventRequest>(payload);
 
-                        Log.Logger.Information("Start transaction from " + transactionEventRequest.Timestamp + " on chargepoint " + uniqueId + " with badge ID " + transactionEventRequest.IdToken);
+                        Log.Logger.Information("Transaction from " + transactionEventRequest.Timestamp + " on chargepoint " + cpId + " with badge ID " + transactionEventRequest.IdToken.IdToken);
 
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(transactionEventRequest.Evse.Id.ToString()))
+                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(transactionEventRequest.Evse.Id.ToString(), new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].ID = transactionEventRequest.Evse.Id.ToString();
+                            OCPPCentralSystem.ChargePoints.TryAdd(cpId, new ChargePoint());
+                            OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
                         }
 
-                        if (!OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors.ContainsKey(transactionEventRequest.Evse.ConnectorId))
+                        if (!OCPPCentralSystem.ChargePoints[cpId].Connectors.ContainsKey(transactionEventRequest.Evse.ConnectorId))
                         {
-                            OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors.TryAdd(transactionEventRequest.Evse.ConnectorId, new Connector(transactionEventRequest.Evse.ConnectorId));
+                            OCPPCentralSystem.ChargePoints[cpId].Connectors.TryAdd(transactionEventRequest.Evse.ConnectorId, new Connector(transactionEventRequest.Evse.ConnectorId));
                         }
 
                         ChargePointTransaction transaction = new()
@@ -156,18 +148,18 @@
                             MeterValueStart = transactionEventRequest.TransactionInfo.TimeSpentCharging
                         };
 
-                        if (!OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.ContainsKey(transactionEventRequest.TransactionInfo.TransactionId.GetHashCode()))
+                        if (!OCPPCentralSystem.ChargePoints[cpId].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.ContainsKey(transactionEventRequest.TransactionInfo.TransactionId.GetHashCode()))
                         {
-                            OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.TryAdd(transactionEventRequest.TransactionInfo.TransactionId.GetHashCode(), transaction);
+                            OCPPCentralSystem.ChargePoints[cpId].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.TryAdd(transactionEventRequest.TransactionInfo.TransactionId.GetHashCode(), transaction);
                         }
 
                         // housekeeping: Remove transactions that are older than 1 day
-                        KeyValuePair<int, ChargePointTransaction>[] transactionsArray = OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.ToArray();
+                        KeyValuePair<int, ChargePointTransaction>[] transactionsArray = OCPPCentralSystem.ChargePoints[cpId].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.ToArray();
                         for (int i = 0; i < transactionsArray.Length; i++)
                         {
                             if ((transactionsArray[i].Value.StopTime != DateTime.MinValue) && (transactionsArray[i].Value.StopTime < DateTime.UtcNow.Subtract(TimeSpan.FromDays(1))))
                             {
-                                OCPPCentralSystem.ChargePoints[transactionEventRequest.Evse.Id.ToString()].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.TryRemove(transactionsArray[i].Key, out _);
+                                OCPPCentralSystem.ChargePoints[cpId].Connectors[transactionEventRequest.Evse.ConnectorId].CurrentTransactions.TryRemove(transactionsArray[i].Key, out _);
                             }
                         }
 
@@ -191,21 +183,21 @@
 
                         StatusNotificationRequest21 statusNotificationRequest = JsonConvert.DeserializeObject<StatusNotificationRequest21>(payload);
 
-                        Log.Logger.Information("Chargepoint " + uniqueId + " and connector " + statusNotificationRequest.ConnectorId + " status#: " + statusNotificationRequest.ConnectorStatus.ToString());
+                        Log.Logger.Information("Chargepoint " + cpId + " and connector " + statusNotificationRequest.ConnectorId + " status#: " + statusNotificationRequest.ConnectorStatus.ToString());
 
-                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(uniqueId))
+                        if (!OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
                         {
-                            OCPPCentralSystem.ChargePoints.TryAdd(uniqueId, new ChargePoint());
-                            OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
+                            OCPPCentralSystem.ChargePoints.TryAdd(cpId, new ChargePoint());
+                            OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
                         }
 
-                        if (!OCPPCentralSystem.ChargePoints[uniqueId].Connectors.ContainsKey(statusNotificationRequest.ConnectorId))
+                        if (!OCPPCentralSystem.ChargePoints[cpId].Connectors.ContainsKey(statusNotificationRequest.ConnectorId))
                         {
-                            OCPPCentralSystem.ChargePoints[uniqueId].Connectors.TryAdd(statusNotificationRequest.ConnectorId, new Connector(statusNotificationRequest.ConnectorId));
+                            OCPPCentralSystem.ChargePoints[cpId].Connectors.TryAdd(statusNotificationRequest.ConnectorId, new Connector(statusNotificationRequest.ConnectorId));
                         }
 
-                        OCPPCentralSystem.ChargePoints[uniqueId].ID = uniqueId;
-                        OCPPCentralSystem.ChargePoints[uniqueId].Connectors[statusNotificationRequest.ConnectorId].Status = statusNotificationRequest.ConnectorStatus.ToString();
+                        OCPPCentralSystem.ChargePoints[cpId].ID = cpId;
+                        OCPPCentralSystem.ChargePoints[cpId].Connectors[statusNotificationRequest.ConnectorId].Status = statusNotificationRequest.ConnectorStatus.ToString();
 
                         responsePayload = JsonConvert.SerializeObject(new StatusNotificationResponse());
 
@@ -240,7 +232,7 @@
                 return Task.FromResult(JsonConvert.SerializeObject(new JArray
                 {
                     3, // messageTypeId for response
-                    uniqueId, // uniqueId from request
+                    correlationId, // correlationId from request
                     JObject.Parse(responsePayload) // payload
                 }));
             }
@@ -251,7 +243,7 @@
                 return Task.FromResult(JsonConvert.SerializeObject(new JArray
                 {
                     4, // messageTypeId for error response
-                    uniqueId, // uniqueId from request
+                    correlationId, // correlationId from request
                     "500", // error code
                     ex.Message, // error description
                     string.Empty // empty payload

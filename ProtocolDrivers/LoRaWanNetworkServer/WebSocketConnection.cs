@@ -35,13 +35,13 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
                 return this.httpContext;
             }
 
-            using var socket = await this.httpContext.WebSockets.AcceptWebSocketAsync();
+            using var socket = await this.httpContext.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
             this.logger?.LogDebug("WebSocket connection from {RemoteIpAddress} established", this.httpContext.Connection.RemoteIpAddress);
 
             try
             {
-                await handler(this.httpContext, socket, cancellationToken);
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Goodbye", cancellationToken);
+                await handler(this.httpContext, socket, cancellationToken).ConfigureAwait(false);
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Goodbye", cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException ex)
 #pragma warning disable CA1508 // Avoid dead conditional code (false positive)

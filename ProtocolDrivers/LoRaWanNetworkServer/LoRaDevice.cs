@@ -261,7 +261,7 @@ namespace LoRaWan.NetworkServer
                 // to happen. The save to the twins can be delayed for multiple
                 // seconds, subsequent updates should be waiting for this to complete
                 // before checking the current state and update again.
-                await this.syncSave.WaitAsync();
+                await this.syncSave.WaitAsync().ConfigureAwait(false);
 
                 var savedProperties = new List<IChangeTrackingProperty>();
                 foreach (var prop in GetTrackableProperties())
@@ -612,7 +612,7 @@ namespace LoRaWan.NetworkServer
 
                 try
                 {
-                    result = await this.dataRequestHandler.ProcessRequestAsync(request, this);
+                    result = await this.dataRequestHandler.ProcessRequestAsync(request, this).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

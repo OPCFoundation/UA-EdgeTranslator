@@ -52,7 +52,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
                 using var ms = new MemoryStream(buffer.Memory.Length);
                 do
                 {
-                    result = await socket.ReceiveAsync(buffer.Memory, cancellationToken);
+                    result = await socket.ReceiveAsync(buffer.Memory, cancellationToken).ConfigureAwait(false);
 #pragma warning disable IDE0010 // Add missing cases (all are covered)
                     switch (result.MessageType)
 #pragma warning restore IDE0010 // Add missing cases

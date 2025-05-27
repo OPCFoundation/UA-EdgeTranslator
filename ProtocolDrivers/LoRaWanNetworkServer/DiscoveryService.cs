@@ -50,7 +50,7 @@ namespace LoRaTools.NetworkServerDiscovery
             _ = await webSocketConnection.HandleAsync(async (ctx, s, ct) =>
             {
                 await using var message = s.ReadTextMessages(cancellationToken);
-                if (!await message.MoveNextAsync())
+                if (!await message.MoveNextAsync().ConfigureAwait(false))
                 {
                     this.logger.LogWarning("Did not receive discovery request from station.");
                 }
@@ -74,7 +74,7 @@ namespace LoRaTools.NetworkServerDiscovery
                                                   ? someNetworkInterface.GetPhysicalAddress().Convert48To64() : 0,
                                               Id6.FormatOptions.FixedWidth);
 
-                        var lnsUri = await this.lnsDiscovery.ResolveLnsAsync(stationEui, cancellationToken);
+                        var lnsUri = await lnsDiscovery.ResolveLnsAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                         // Ensure resilience against duplicate specification of `router-data` and make sure that LNS host address ends with slash
                         // to make sure that URI composes as expected.
@@ -83,18 +83,16 @@ namespace LoRaTools.NetworkServerDiscovery
 
                         var url = new Uri(new Uri(lnsUriSanitized), $"{DataEndpointPath}/{stationEui}");
                         var response = Write(w => WriteResponse(w, stationEui, muxs, url));
-                        await s.SendAsync(response, WebSocketMessageType.Text,
-                                          true, cancellationToken);
+                        await s.SendAsync(response, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
                         var response = Write(w => WriteResponse(w, stationEui, ex.Message));
-                        await s.SendAsync(response, WebSocketMessageType.Text,
-                                          true, cancellationToken);
+                        await s.SendAsync(response, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
                         throw;
                     }
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

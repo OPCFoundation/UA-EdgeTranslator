@@ -16,7 +16,7 @@ namespace LoRaWan.NetworkServer
             {
                 try
                 {
-                    await task();
+                    await task().ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ExceptionFilterUtility.False(() => log(ex), () => exceptionCount?.Add(1)))
                 {

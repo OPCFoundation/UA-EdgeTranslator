@@ -32,11 +32,11 @@ namespace OCPPCentralSystem
 
             try
             {
-                await webHost.RunAsync();
+                await webHost.RunAsync().ConfigureAwait(false);
             }
             finally
             {
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
         }
 

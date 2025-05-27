@@ -76,7 +76,7 @@ namespace LoRaWan.NetworkServer
 
                     try
                     {
-                        await Task.Delay(ObserveInterval, this.cancellationTokenSource.Token);
+                        await Task.Delay(ObserveInterval, this.cancellationTokenSource.Token).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException)
                     {

@@ -46,11 +46,11 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
             try
             {
-                await webHost.RunAsync(cancellationToken);
+                await webHost.RunAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None);
+                await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
             }
         }
 

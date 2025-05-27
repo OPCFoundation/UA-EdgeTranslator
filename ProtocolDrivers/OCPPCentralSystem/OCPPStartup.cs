@@ -49,7 +49,7 @@ namespace OCPPCentralSystem
                 context.Request.Headers.TryGetValue("Origin", out var origin);
                 context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
                 context.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-                await next();
+                await next().ConfigureAwait(false);
             });
 
             var webSocketOptions = new WebSocketOptions
@@ -65,11 +65,11 @@ namespace OCPPCentralSystem
             {
                 if (context.Request.Path.Value == "/")
                 {
-                    await context.Response.WriteAsync("OCPP Central System running.");
+                    await context.Response.WriteAsync("OCPP Central System running.").ConfigureAwait(false);
                 }
                 else
                 {
-                    await context.Response.WriteAsync("Invalid Request");
+                    await context.Response.WriteAsync("Invalid Request").ConfigureAwait(false);
                 }
             });
         }

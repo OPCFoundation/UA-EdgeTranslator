@@ -34,7 +34,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     ConsoleKeyInfo result = Console.ReadKey();
                     Console.WriteLine();
-                    return await Task.FromResult((result.KeyChar == 'y') || (result.KeyChar == 'Y') || (result.KeyChar == '\r'));
+                    return await Task.FromResult((result.KeyChar == 'y') || (result.KeyChar == 'Y') || (result.KeyChar == '\r')).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -43,7 +43,7 @@ namespace Opc.Ua.Edge.Translator
             }
 
             // always return yes by default
-            return await Task.FromResult(true);
+            return await Task.FromResult(true).ConfigureAwait(false);
         }
     }
 }

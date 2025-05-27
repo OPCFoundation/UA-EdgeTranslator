@@ -35,14 +35,14 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             if (!newEntry.DevEUI.IsValid || string.IsNullOrEmpty(newEntry.GatewayId))
                 throw new ArgumentException("Missing Gateway ID or invalid DevEUI");
 
-            _ = await this.store.AddTableEntry(newEntry);
+            _ = await this.store.AddTableEntry(newEntry).ConfigureAwait(false);
         }
 
         public virtual async Task<LoRaADRResult> CalculateADRResultAndAddEntryAsync(DevEui devEUI, string gatewayId, uint fCntUp, uint fCntDown, float requiredSnr, DataRateIndex dataRate, int minTxPower, DataRateIndex maxDr, LoRaADRTableEntry newEntry = null)
         {
             var table = newEntry != null
-                        ? await this.store.AddTableEntry(newEntry)
-                        : await this.store.GetADRTable(devEUI);
+                        ? await this.store.AddTableEntry(newEntry).ConfigureAwait(false)
+                        : await this.store.GetADRTable(devEUI).ConfigureAwait(false);
 
             var currentStrategy = this.strategyProvider.GetStrategy();
 
@@ -60,13 +60,13 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
                 }
                 else
                 {
-                    result = await GetLastResultAsync(devEUI) ?? new LoRaADRResult();
+                    result = await GetLastResultAsync(devEUI).ConfigureAwait(false) ?? new LoRaADRResult();
                     result.NumberOfFrames = table.Entries.Count;
                     return result;
                 }
             }
 
-            var nextFcntDown = await NextFCntDown(devEUI, gatewayId, fCntUp, fCntDown);
+            var nextFcntDown = await NextFCntDown(devEUI, gatewayId, fCntUp, fCntDown).ConfigureAwait(false);
             result.CanConfirmToDevice = nextFcntDown > 0;
 
             if (result.CanConfirmToDevice)
@@ -75,7 +75,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
                 table.CurrentNbRep = result.NbRepetition;
                 table.CurrentTxPower = result.TxPower;
-                await this.store.UpdateADRTable(devEUI, table);
+                await this.store.UpdateADRTable(devEUI, table).ConfigureAwait(false);
                 UpdateState(result);
                 result.FCntDown = nextFcntDown;
             }
@@ -92,7 +92,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
         public virtual async Task<LoRaADRResult> GetLastResultAsync(DevEui devEUI)
         {
-            var table = await this.store.GetADRTable(devEUI);
+            var table = await this.store.GetADRTable(devEUI).ConfigureAwait(false);
 
             return table != null
                 ? new LoRaADRResult
@@ -106,13 +106,13 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
         public virtual async Task<LoRaADRTableEntry> GetLastEntryAsync(DevEui devEUI)
         {
-            var table = await this.store.GetADRTable(devEUI);
+            var table = await this.store.GetADRTable(devEUI).ConfigureAwait(false);
             return table != null && table.Entries.Count > 0 ? table.Entries[table.Entries.Count - 1] : null;
         }
 
         public virtual async Task<bool> ResetAsync(DevEui devEUI)
         {
-            return await this.store.Reset(devEUI);
+            return await this.store.Reset(devEUI).ConfigureAwait(false);
         }
 
         private static LoRaADRResult ReturnDefaultValues(DataRateIndex upstreamDataRate, int defaultNbRep, int maxTxPowerIndex)
