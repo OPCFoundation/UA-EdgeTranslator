@@ -1,7 +1,5 @@
 ﻿namespace OCPPCentralSystem.Models
 {
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Converters;
     using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
@@ -45,7 +43,7 @@
     }
 
     [DataContract]
-    public class AdditionalInfoType
+    public class AdditionalInfo
     {
         [DataMember (Name = "customData")]
         public CustomData CustomData { get; set; }
@@ -95,7 +93,7 @@
         public CustomData CustomData { get; set; }
 
         [DataMember(Name = "additionalInfo")]
-        public ICollection<AdditionalInfoType> AdditionalInfo { get; set; }
+        public ICollection<AdditionalInfo> AdditionalInfo { get; set; }
 
         [DataMember(Name = "idToken")]
         public string IdToken { get; set; }
@@ -221,7 +219,7 @@
     }
 
     [DataContract]
-    public class StatusInfoType
+    public class StatusInfo
     {
         [DataMember(Name = "customData")]
         public CustomData CustomData { get; set; }
@@ -249,7 +247,7 @@
         public RegistrationStatus Status { get; set; }
 
         [DataMember(Name = "statusInfo")]
-        public StatusInfoType StatusInfo { get; set; }
+        public StatusInfo StatusInfo { get; set; }
     }
 
     [DataContract]
@@ -295,27 +293,27 @@
         public DataTransferStatus Status { get; set; }
 
         [DataMember(Name = "statusInfo")]
-        public StatusInfoType StatusInfo { get; set; }
+        public StatusInfo StatusInfo { get; set; }
 
         [DataMember(Name = "data")]
         public object Data { get; set; }
     }
 
     [DataContract]
-    public class MeterValueType
+    public class MeterValue21
     {
         [DataMember(Name = "customData")]
         public CustomData CustomData { get; set; }
 
         [DataMember(Name = "sampledValue")]
-        public ICollection<SampledValueType> SampledValue { get; set; }
+        public ICollection<SampledValue21> SampledValue { get; set; }
 
         [DataMember(Name = "timestamp")]
         public DateTime Timestamp { get; set; }
     }
 
     [DataContract]
-    public class SampledValueType
+    public class SampledValue21
     {
         [DataMember(Name = "customData")]
         public CustomData CustomData { get; set; }
@@ -336,14 +334,14 @@
         public Location Location { get; set; }
 
         [DataMember(Name = "signedMeterValue")]
-        public SignedMeterValueType SignedMeterValue { get; set; }
+        public SignedMeterValue SignedMeterValue { get; set; }
 
         [DataMember(Name = "unitOfMeasure")]
-        public UnitOfMeasureType UnitOfMeasure { get; set; }
+        public UnitOfMeasure21 UnitOfMeasure { get; set; }
     }
 
     [DataContract]
-    public class SignedMeterValueType
+    public class SignedMeterValue
     {
         [DataMember(Name = "customData")]
         public CustomData CustomData { get; set; }
@@ -362,7 +360,7 @@
     }
 
     [DataContract]
-    public class UnitOfMeasureType
+    public class UnitOfMeasure21
     {
         [DataMember(Name = "customData")]
         public CustomData CustomData { get; set; }
@@ -384,7 +382,7 @@
         public int EvseId { get; set; }
 
         [DataMember(Name = "meterValue")]
-        public ICollection<MeterValueType> MeterValue { get; set; }
+        public ICollection<MeterValue21> MeterValue { get; set; }
     }
 
     [DataContract]
@@ -404,11 +402,11 @@
         public int SeqNo { get; set; }
 
         [DataMember(Name = "eventData")]
-        public EventDataType[] EventData { get; set; }
+        public EventData[] EventData { get; set; }
     }
 
     [DataContract]
-    public class EventDataType
+    public class EventData
     {
         [DataMember(Name = "eventId")]
         public int EventId { get; set; }
@@ -468,7 +466,7 @@
         public TransactionEvent EventType { get; set; }
 
         [DataMember(Name = "meterValue")]
-        public ICollection<MeterValueType> MeterValue { get; set; }
+        public ICollection<MeterValue21> MeterValue { get; set; }
 
         [DataMember(Name = "timestamp")]
         public DateTime Timestamp { get; set; }
@@ -498,7 +496,7 @@
         public EVSE Evse { get; set; }
 
         [DataMember(Name = "idToken")]
-        public IdToken IdToken { get; set; }
+        public IdTokenType IdToken { get; set; }
     }
 
     [DataContract]

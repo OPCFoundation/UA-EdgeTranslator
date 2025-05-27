@@ -32,7 +32,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * BACNet (experimental)
 * IEC61850 (experimental)
 * LoRaWAN (experimental)
-* OCPP - Open Charge Point Protocol (experimental) V1.6J. V2.1 support, allowing Bidirectional Power Transfer (BPT) for Electric Vehicles, is in the works!
+* OCPP - Open Charge Point Protocol V1.6J & V2.1 support (experimental). Bidirectional Power Transfer (BPT) for Electric Vehicles is in the works!
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
 
