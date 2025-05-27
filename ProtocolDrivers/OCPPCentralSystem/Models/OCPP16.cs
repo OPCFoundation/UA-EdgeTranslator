@@ -1,7 +1,6 @@
 ﻿
 namespace OCPPCentralSystem.Models
 {
-    using Newtonsoft.Json;
     using System;
     using System.Runtime.Serialization;
 
@@ -10,25 +9,15 @@ namespace OCPPCentralSystem.Models
     {
         [DataMember(Name = "status")]
         public AuthorizationStatus Status { get; set; }
-        
+
         [DataMember(Name = "expiryDate")]
         public DateTime ExpiryDate { get; set; }
-        
+
         [DataMember(Name = "expiryDateSpecified")]
         public bool ExpiryDateSpecified { get; set; }
-        
+
         [DataMember(Name = "parentIdTag")]
         public string ParentIdTag { get; set; }
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum AuthorizationStatus
-    {
-        Accepted,
-        Blocked,
-        Expired,
-        Invalid,
-        ConcurrentTx
     }
 
     [DataContract]
@@ -50,7 +39,7 @@ namespace OCPPCentralSystem.Models
         public bool FormatSpecified { get; set; }
 
         [DataMember(Name = "measurand")]
-        public Measurand Measurand { get; set; }
+        public SampledValueMeasurand Measurand { get; set; }
 
         [DataMember(Name = "measurandSpecified")]
         public bool MeasurandSpecified { get; set; }
@@ -72,150 +61,6 @@ namespace OCPPCentralSystem.Models
 
         [DataMember(Name = "unitSpecified")]
         public bool UnitSpecified { get; set; }
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ReadingContext
-    {
-        [EnumMember(Value = @"Interruption.Begin")]
-        InterruptionBegin,
-
-        [EnumMember(Value = @"Interruption.End")]
-        InterruptionEnd,
-        
-        Other,
-        
-        [EnumMember(Value = @"Sample.Clock")]
-        SampleClock,
-        
-        [EnumMember(Value = @"Sample.Periodic")]
-        SamplePeriodic,
-        
-        [EnumMember(Value = @"Transaction.Begin")]
-        TransactionBegin,
-        
-        [EnumMember(Value = @"Transaction.End")]
-        TransactionEnd,
-        
-        Trigger
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ValueFormat
-    {
-        Raw,
-        SignedData
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum Measurand
-    {
-        [EnumMember(Value = @"Current.Export")]
-        CurrentExport,
-        
-        [EnumMember(Value = @"Current.Import")]
-        CurrentImport,
-
-        [EnumMember(Value = @"Current.Offered")]
-        CurrentOffered,
-
-        [EnumMember(Value = @"Energy.Active.Export.Register")]
-        EnergyActiveExportRegister,
-
-        [EnumMember(Value = @"Energy.Active.Import.Register")]
-        EnergyActiveImportRegister,
-
-        [EnumMember(Value = @"Energy.Reactive.Export.Register")]
-        EnergyReactiveExportRegister,
-        
-        [EnumMember(Value = @"Energy.Reactive.Import.Register")]
-        EnergyReactiveImportRegister,
-
-        [EnumMember(Value = @"Energy.Active.Export.Interval")]
-        EnergyActiveExportInterval,
-                
-        [EnumMember(Value = @"Energy.Active.Import.Interval")]
-        EnergyActiveImportInterval,
-        
-        [EnumMember(Value = @"Energy.Reactive.Export.Interval")]
-        EnergyReactiveExportInterval,
-        
-        [EnumMember(Value = @"Energy.Reactive.Import.Interval")]
-        EnergyReactiveImportInterval,
-        
-        Frequency,
-        
-        [EnumMember(Value = @"Power.Active.Export")]
-        PowerActiveExport,
-        
-        [EnumMember(Value = @"Power.Active.Import")]
-        PowerActiveImport,
-        
-        [EnumMember(Value = @"Power.Factor")]
-        PowerFactor,
-                
-        [EnumMember(Value = @"Power.Offered")]
-        PowerOffered,
-        
-        [EnumMember(Value = @"Power.Reactive.Export")]
-        PowerReactiveExport,
-        
-        [EnumMember(Value = @"Power.Reactive.Import")]
-        PowerReactiveImport,
-
-        RPM,
-        
-        SoC,
-        
-        Temperature,
-        
-        Voltage
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum Phase
-    {
-        L1,
-        L2,
-        L3,
-        N,
-        L1N,
-        L2N,
-        L3N,
-        L1L2,
-        L2L3,
-        L3L1
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum Location
-    {
-        Body,
-        Cable,
-        EV,
-        Inlet,
-        Outlet
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum UnitOfMeasure
-    {
-        Celsius,
-        Fahrenheit,
-        Wh,
-        kWh,
-        varh,
-        kvarh,
-        W,
-        kW,
-        VA,
-        kVA,
-        var,
-        kvar,
-        A,
-        V,
-        K,
-        Percent
     }
 
     [DataContract]
@@ -242,14 +87,6 @@ namespace OCPPCentralSystem.Models
         public IdTagInfo IdTagInfo { get; set; }
     }
 
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum RegistrationStatus
-    {
-        Accepted,
-        Pending,
-        Rejected
-    }
-
     [DataContract]
     public class BootNotificationRequest
     {
@@ -264,7 +101,7 @@ namespace OCPPCentralSystem.Models
 
         [DataMember(Name = "chargeBoxSerialNumber")]
         public string ChargeBoxSerialNumber { get; set; }
-                
+
         [DataMember(Name = "firmwareVersion")]
         public string FirmwareVersion { get; set; }
 
@@ -294,15 +131,6 @@ namespace OCPPCentralSystem.Models
         public int Interval { get; set; }
     }
 
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum DataTransferStatus
-    {
-        Accepted,
-        Rejected,
-        UnknownMessageId,
-        UnknownVendorId
-    }
-
     [DataContract]
     public class DataTransferRequest
     {
@@ -326,15 +154,6 @@ namespace OCPPCentralSystem.Models
         public string Data { get; set; } = string.Empty;
     }
 
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum DiagnosticsStatus
-    {
-        Idle,
-        Uploaded,
-        UploadFailed,
-        Uploading
-    }
-
     [DataContract]
     public class DiagnosticsStatusNotificationRequest
     {
@@ -345,18 +164,6 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class DiagnosticsStatusNotificationResponse
     {
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum FirmwareStatus
-    {
-        Downloaded,
-        DownloadFailed,
-        Downloading,
-        Idle,
-        InstallationFailed,
-        Installed,
-        Installing
     }
 
     [DataContract]
@@ -429,41 +236,6 @@ namespace OCPPCentralSystem.Models
         public IdTagInfo IdTagInfo { get; set; }
     }
 
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ChargePointStatus
-    {
-        Available,
-        Preparing,
-        Charging,
-        SuspendedEV,
-        SuspendedEVSE,
-        Finishing,
-        Reserved,
-        Faulted,
-        Unavailable
-    }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ChargePointErrorCode
-    {
-        ConnectorLockFailure,
-        EVCommunicationError,
-        GroundFailure,
-        HighTemperature,
-        InternalError,
-        LocalListConflict,
-        NoError,
-        OtherError,
-        OverCurrentFailure,
-        OverVoltage,
-        PowerMeterFailure,
-        PowerSwitchFailure,
-        ReaderFailure,
-        ResetFailure,
-        UnderVoltage,
-        WeakSignal
-    }
-
     [DataContract]
     public class StatusNotificationRequest
     {
@@ -494,22 +266,6 @@ namespace OCPPCentralSystem.Models
     {
     }
 
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum Reason
-    {
-        EmergencyStop,
-        EVDisconnected,
-        HardReset,
-        Local,
-        Other,
-        PowerLoss,
-        Reboot,
-        Remote,
-        SoftReset,
-        UnlockCommand,
-        DeAuthorized
-    }
-
     [DataContract]
     public class StopTransactionRequest
     {
@@ -518,7 +274,7 @@ namespace OCPPCentralSystem.Models
 
         [DataMember(Name = "idTag")]
         public string IdTag { get; set; }
-                
+
         [DataMember(Name = "timestamp")]
         public DateTime Timestamp { get; set; }
 
@@ -526,7 +282,7 @@ namespace OCPPCentralSystem.Models
         public int MeterStop { get; set; }
 
         [DataMember(Name = "reason")]
-        public Reason Reason { get; set; }
+        public StopReason Reason { get; set; }
 
         [DataMember(Name = "transactionData")]
         public MeterValue[] TransactionData { get; set; }

@@ -28,7 +28,7 @@ namespace OCPPCentralSystem.Models
 
         public List<MeterReading> MeterReadings { get; set; } = new();
 
-        public ConcurrentDictionary<int, Transaction> CurrentTransactions { get; set; } = new();
+        public ConcurrentDictionary<int, ChargePointTransaction> CurrentTransactions { get; set; } = new();
     }
 
     public class MeterReading
@@ -40,13 +40,8 @@ namespace OCPPCentralSystem.Models
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 
-    public class Transaction
+    public class ChargePointTransaction
     {
-        public Transaction(int id)
-        {
-            ID = id;
-        }
-
         public int ID { get; set; }
 
         public string BadgeID { get; set; } = string.Empty;

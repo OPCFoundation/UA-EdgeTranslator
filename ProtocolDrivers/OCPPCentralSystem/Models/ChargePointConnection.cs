@@ -12,9 +12,9 @@ namespace OCPPCentralSystem.Models
     {
         public string ChargingPointName { get; set; }
 
-        public Dictionary<string, string> RequestDictionary { get; set; } //Used for Central system initiated commands
+        public Dictionary<string, string> Requests { get; set; } //Used for Central system initiated commands
 
-        public Dictionary<string,object> ChargerResponse { get; set; } //Used for Central system initiated commands
+        public Dictionary<string,object> Responses { get; set; } //Used for Central system initiated commands
 
         public WebSocket WebSocket { get; set; }
 
@@ -22,14 +22,14 @@ namespace OCPPCentralSystem.Models
 
         public bool Authorized { get; set; }
 
-        public bool WaitingResponse => RequestDictionary.Count != 0;
+        public bool WaitingResponse => Requests.Count != 0;
 
         public ChargePointConnection(string name, WebSocket webSocket)
         {
             ChargingPointName = name;
             WebSocket = webSocket;
-            RequestDictionary = new Dictionary<string, string>();
-            ChargerResponse = new Dictionary<string, object>();
+            Requests = new Dictionary<string, string>();
+            Responses = new Dictionary<string, object>();
             WebsocketBusy = false;
             Authorized=false;
         }
