@@ -212,18 +212,6 @@
 
                         break;
 
-                    case "DiagnosticsStatusNotification":
-
-                        responsePayload = JsonConvert.SerializeObject(new DiagnosticsStatusNotificationResponse());
-
-                        break;
-
-                    case "FirmwareStatusNotification":
-
-                        responsePayload = JsonConvert.SerializeObject(new FirmwareStatusNotificationResponse());
-
-                        break;
-
                     default:
 
                         break;
@@ -249,6 +237,26 @@
                     string.Empty // empty payload
                 }));
             }
+        }
+
+        public static Task ProcessErrorPayloadAsync(string cpId, string payload)
+        {
+            Log.Logger.Error("Error processing payload for chargepoint " + cpId + " - " + payload);
+            return Task.CompletedTask;
+        }
+
+        public static Task ProcessResponsePayloadAsync(string cpId, string correlationId, string payload)
+        {
+            try
+            {
+                Log.Logger.Information("Response for chargepoint " + cpId + ": " + payload);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error("Exception: " + ex.Message);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

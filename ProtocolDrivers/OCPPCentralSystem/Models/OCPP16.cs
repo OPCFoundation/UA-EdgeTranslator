@@ -155,30 +155,6 @@ namespace OCPPCentralSystem.Models
     }
 
     [DataContract]
-    public class DiagnosticsStatusNotificationRequest
-    {
-        [DataMember(Name = "status")]
-        public DiagnosticsStatus Status { get; set; }
-    }
-
-    [DataContract]
-    public class DiagnosticsStatusNotificationResponse
-    {
-    }
-
-    [DataContract]
-    public class FirmwareStatusNotificationRequest
-    {
-        [DataMember(Name = "status")]
-        public FirmwareStatus Status { get; set; }
-    }
-
-    [DataContract]
-    public class FirmwareStatusNotificationResponse
-    {
-    }
-
-    [DataContract]
     public class HeartbeatRequest
     {
     }
@@ -293,5 +269,138 @@ namespace OCPPCentralSystem.Models
     {
         [DataMember(Name = "idTagInfo")]
         public IdTagInfo IdTagInfo { get; set; }
+    }
+
+    [DataContract]
+    public class ChangeAvailabilityRequest
+    {
+        [DataMember(Name = "connectorId")]
+        public int ConnectorId { get; set; }
+
+        [DataMember(Name = "type")]
+        public Availability Type { get; set; }
+    }
+
+    [DataContract]
+    public class ChangeAvailabilityResponse
+    {
+        [DataMember(Name = "status")]
+        public AvailabilityStatus Status { get; set; }
+    }
+
+    [DataContract]
+    public class ChangeConfigurationRequest
+    {
+        [DataMember(Name = "key")]
+        public string Key { get; set; }
+
+        [DataMember(Name = "value")]
+        public string Value { get; set; }
+    }
+
+    [DataContract]
+    public class ClearCacheRequest
+    {
+    }
+
+    [DataContract]
+    public class GetConfigurationRequest
+    {
+        [DataMember(Name = "key")]
+        public string[] Key { get; set; }
+    }
+
+    [DataContract]
+    public class ChargingProfile
+    {
+        [DataMember(Name = "chargingProfileId")]
+        public int ChargingProfileId { get; set; }
+
+        [DataMember(Name = "stackLevel")]
+        public int StackLevel { get; set; }
+
+        [DataMember(Name = "chargingProfilePurpose")]
+        public ChargingProfilePurpose ChargingProfilePurpose { get; set; }
+
+        [DataMember(Name = "chargingProfileKind")]
+        public ChargingProfileKind ChargingProfileKind { get; set; }
+
+        [DataMember(Name = "recurrencyKind")]
+        public RecurrencyKind? RecurrencyKind { get; set; }
+
+        [DataMember(Name = "validFrom")]
+        public DateTime? ValidFrom { get; set; }
+
+        [DataMember(Name = "validTo")]
+        public DateTime? ValidTo { get; set; }
+
+        [DataMember(Name = "chargingSchedule")]
+        public ChargingSchedule ChargingSchedule { get; set; }
+    }
+
+    [DataContract]
+    public class ChargingSchedule
+    {
+        [DataMember(Name = "duration")]
+        public int? Duration { get; set; }
+
+        [DataMember(Name = "startSchedule")]
+        public DateTime? StartSchedule { get; set; }
+
+        [DataMember(Name = "chargingRateUnit")]
+        public ChargingRateUnit ChargingRateUnit { get; set; }
+
+        [DataMember(Name = "chargingSchedulePeriod")]
+        public ChargingSchedulePeriod[] ChargingSchedulePeriod { get; set; }
+
+        [DataMember(Name = "minChargingRate")]
+        public decimal? MinChargingRate { get; set; }
+    }
+
+    [DataContract]
+    public class ChargingSchedulePeriod
+    {
+        [DataMember(Name = "startPeriod")]
+        public int StartPeriod { get; set; }
+
+        [DataMember(Name = "limit")]
+        public decimal Limit { get; set; }
+
+        [DataMember(Name = "numberPhases")]
+        public int? NumberPhases { get; set; }
+    }
+
+    [DataContract]
+    public class RemoteStartTransactionRequest
+    {
+        [DataMember(Name = "connectorId")]
+        public int ConnectorId { get; set; }
+
+        [DataMember(Name = "idTag")]
+        public string IdTag { get; set; }
+
+        [DataMember(Name = "chargingProfile")]
+        public ChargingProfile ChargingProfile { get; set; }
+    }
+
+    [DataContract]
+    public class RemoteStopTransactionRequest
+    {
+        [DataMember(Name = "transactionId")]
+        public int TransactionId { get; set; }
+    }
+
+    [DataContract]
+    public class ResetRequest
+    {
+        [DataMember(Name = "type")]
+        public ResetType Type { get; set; }
+    }
+
+    [DataContract]
+    public class UnlockConnectorRequest
+    {
+        [DataMember(Name = "connectorId")]
+        public int ConnectorId { get; set; }
     }
 }

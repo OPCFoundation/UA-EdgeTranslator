@@ -9,6 +9,26 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
+    // Mandatory commands (charge point - i.e. the remote connected client - initiated):
+    // Authorize
+    // BootNotification
+    // DataTransfer
+    // Heartbeat
+    // MeterValues
+    // StartTransaction
+    // StatusNotification
+    // StopTransaction
+
+    // Mandatory commands (central system - i.e. us! - initiated):
+    // ChangeAvailability
+    // ChangeConfiguration
+    // ClearCache
+    // GetConfiguration
+    // RemoteStartTransaction
+    // RemoteStopTransaction
+    // Reset
+    // UnlockConnector
+
     public class OCPP16Processor
     {
         static private int _transactionNumber = 0;
@@ -254,18 +274,6 @@
 
                         break;
 
-                    case "DiagnosticsStatusNotification":
-
-                        responsePayload = JsonConvert.SerializeObject(new DiagnosticsStatusNotificationResponse());
-
-                        break;
-
-                    case "FirmwareStatusNotification":
-
-                        responsePayload = JsonConvert.SerializeObject(new FirmwareStatusNotificationResponse());
-
-                        break;
-
                     default:
 
                         break;
@@ -291,6 +299,186 @@
                     string.Empty // empty payload
                 }));
             }
+        }
+
+        public static Task SendCentralStationCommand(string cpId, string action, string[] arguments)
+        {
+            if (OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
+            {
+                Log.Logger.Information("Sending command " + action + " to chargepoint " + cpId);
+            }
+            else
+            {
+                Log.Logger.Error("Chargepoint " + cpId + " not found. Cannot send command: " + action);
+            }
+
+            try
+            {
+                // switching based on OCPP action name
+                switch (action)
+                {
+                    case "ChangeAvailability":
+
+                        if (arguments.Length < 2)
+                        {
+                            Log.Logger.Error("ChangeAvailability requires at least 2 arguments: connectorId and type.");
+                            return Task.CompletedTask;
+                        }
+
+                        ChangeAvailabilityRequest changeAvailabilityRequest = new();
+                        changeAvailabilityRequest.ConnectorId = int.Parse(arguments[0]);
+                        changeAvailabilityRequest.Type = (Availability)Enum.Parse(typeof(Availability), arguments[1], true);
+
+                        Log.Logger.Information("Changing availability of connector " + changeAvailabilityRequest.ConnectorId + " on chargepoint " + cpId + " to " + changeAvailabilityRequest.Type.ToString());
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(changeAvailabilityRequest));
+
+                        break;
+
+                    case "ChangeConfiguration":
+
+                        if (arguments.Length < 2)
+                        {
+                            Log.Logger.Error("ChangeConfiguration requires at least 2 arguments: key and value.");
+                            return Task.CompletedTask;
+                        }
+
+                        ChangeConfigurationRequest changeConfigRequest = new();
+                        changeConfigRequest.Key = arguments[0];
+                        changeConfigRequest.Value = arguments[1];
+
+                        Log.Logger.Information($"ChangeConfiguration requested on chargepoint {cpId}: {changeConfigRequest.Key} = {changeConfigRequest.Value}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(changeConfigRequest));
+
+                        break;
+
+                    case "ClearCache":
+
+                        Log.Logger.Information($"ClearCache requested on chargepoint {cpId}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(new ClearCacheRequest()));
+
+                        break;
+
+                    case "GetConfiguration":
+
+
+                        GetConfigurationRequest getConfigRequest = new();
+
+                        if (arguments.Length > 0)
+                        {
+                            getConfigRequest.Key = arguments;
+                        }
+
+                        else
+                        {
+                            getConfigRequest.Key = Array.Empty<string>(); // Empty list if no keys provided
+                        }
+
+                        Log.Logger.Information($"GetConfiguration requested on chargepoint {cpId} for keys: {string.Join(", ", getConfigRequest.Key ?? Array.Empty<string>())}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(getConfigRequest));
+
+                        break;
+
+                    case "RemoteStartTransaction":
+
+                        if (arguments.Length < 1)
+                        {
+                            Log.Logger.Error("RemoteStartTransaction requires at least 1 argument: idTag.");
+                            return Task.CompletedTask;
+                        }
+
+                        RemoteStartTransactionRequest remoteStartRequest = new()
+                        {
+                            IdTag = arguments[0]
+                        };
+
+                        Log.Logger.Information($"RemoteStartTransaction requested on chargepoint {cpId} for idTag: {remoteStartRequest.IdTag}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(remoteStartRequest));
+
+                        break;
+
+                    case "RemoteStopTransaction":
+
+                        if (arguments.Length < 1)
+                        {
+                            Log.Logger.Error("RemoteStopTransaction requires at least 1 argument: transactionId.");
+                            return Task.CompletedTask;
+                        }
+
+                        RemoteStopTransactionRequest remoteStopRequest = new();
+                        remoteStopRequest.TransactionId = int.Parse(arguments[0]);
+
+                        Log.Logger.Information($"RemoteStopTransaction requested on chargepoint {cpId} for transactionId: {remoteStopRequest.TransactionId}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(remoteStopRequest));
+
+                        break;
+
+                    case "Reset":
+
+                        ResetRequest resetRequest = new();
+                        resetRequest.Type = ResetType.Hard;
+
+                        Log.Logger.Information($"Reset requested on chargepoint {cpId} type: {resetRequest.Type}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(resetRequest));
+
+                        break;
+
+                    case "UnlockConnector":
+
+                        if (arguments.Length < 1)
+                        {
+                            Log.Logger.Error("UnlockConnector requires at least 1 argument: connectorId.");
+                            return Task.CompletedTask;
+                        }
+
+                        UnlockConnectorRequest unlockRequest = new();
+                        unlockRequest.ConnectorId = int.Parse(arguments[0]);
+
+                        Log.Logger.Information($"UnlockConnector requested on chargepoint {cpId} for connectorId: {unlockRequest.ConnectorId}");
+
+                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(unlockRequest));
+
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error("Exception: " + ex.Message);
+
+                return Task.CompletedTask;
+            }
+        }
+
+        public static Task ProcessErrorPayloadAsync(string cpId, string payload)
+        {
+            Log.Logger.Error("Error processing payload for chargepoint " + cpId + " - " + payload);
+            return Task.CompletedTask;
+        }
+
+        public static Task ProcessResponsePayloadAsync(string cpId, string correlationId, string payload)
+        {
+            try
+            {
+                Log.Logger.Information("Response for chargepoint " + cpId + ": " + payload);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error("Exception: " + ex.Message);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

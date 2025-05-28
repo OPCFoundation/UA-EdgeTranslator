@@ -495,4 +495,56 @@
         Unavailable,
         Faulted
     }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum Availability
+    {
+        Operative,
+        Inoperative
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum AvailabilityStatus
+    {
+        Accepted,
+        Rejected,
+        Scheduled
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ResetType
+    {
+        Hard,
+        Soft
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ChargingProfilePurpose
+    {
+        ChargePointMaxProfile,
+        TxDefaultProfile,
+        TxProfile
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ChargingProfileKind
+    {
+        Absolute,
+        Recurring,
+        Relative
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum RecurrencyKind
+    {
+        Daily,
+        Weekly
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ChargingRateUnit
+    {
+        W,
+        A
+    }
 }
