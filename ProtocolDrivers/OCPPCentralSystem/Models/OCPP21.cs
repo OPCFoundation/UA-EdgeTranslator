@@ -7,9 +7,6 @@
     [DataContract]
     public class OCSPRequest
     {
-        [DataMember (Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "hashAlgorithm")]
         public HashAlgorithm HashAlgorithm { get; set; }
 
@@ -29,9 +26,6 @@
     [DataContract]
     public class AuthorizeRequestV21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "idToken")]
         public IdTokenType IdToken { get; set; }
 
@@ -45,9 +39,6 @@
     [DataContract]
     public class AdditionalInfo
     {
-        [DataMember (Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "additionalIdToken")]
         public string AdditionalIdToken { get; set; }
 
@@ -58,9 +49,6 @@
     [DataContract]
     public class IdTokenInfo
     {
-        [DataMember (Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "status")]
         public AuthorizationStatus Status { get; set; }
 
@@ -89,9 +77,6 @@
     [DataContract]
     public class IdTokenType
     {
-        [DataMember (Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "additionalInfo")]
         public ICollection<AdditionalInfo> AdditionalInfo { get; set; }
 
@@ -105,9 +90,6 @@
     [DataContract]
     public class MessageContent
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "format")]
         public MessageFormat Format { get; set; }
 
@@ -121,9 +103,6 @@
     [DataContract]
     public class AuthorizeResponse21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "idTokenInfo")]
         public IdTokenInfo IdTokenInfo { get; set; }
 
@@ -153,9 +132,6 @@
     [DataContract]
     public class ChargingStation
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "serialNumber")]
         public string SerialNumber { get; set; }
 
@@ -183,21 +159,8 @@
     }
 
     [DataContract]
-    public class CustomData
-    {
-        [DataMember(Name = "vendorId")]
-        public string VendorId { get; set; }
-
-        [DataMember(Name = "additionalProperties")]
-        public IDictionary<string, object> AdditionalProperties { get; set; }
-    }
-
-    [DataContract]
     public class ModemType
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "iccid")]
         public string Iccid { get; set; }
 
@@ -208,9 +171,6 @@
     [DataContract]
     public class BootNotificationRequest21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "chargingStation")]
         public ChargingStation ChargingStation { get; set; }
 
@@ -221,9 +181,6 @@
     [DataContract]
     public class StatusInfo
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "reasonCode")]
         public string ReasonCode { get; set; }
 
@@ -234,9 +191,6 @@
     [DataContract]
     public class BootNotificationResponse21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "currentTime")]
         public DateTime CurrentTime { get; set; }
 
@@ -251,44 +205,8 @@
     }
 
     [DataContract]
-    public class HeartbeatRequest21
-    {
-        [DataMember (Name = "customData")]
-        public CustomData CustomData { get; set; }
-    }
-
-    [DataContract]
-    public class HeartbeatResponse21
-    {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
-        [DataMember(Name = "currentTime")]
-        public DateTime CurrentTime { get; set; }
-    }
-
-    [DataContract]
-    public class DataTransferRequest21
-    {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
-        [DataMember(Name = "messageId")]
-        public string MessageId { get; set; }
-
-        [DataMember(Name = "data")]
-        public object Data { get; set; }
-
-        [DataMember(Name = "vendorId")]
-        public string VendorId { get; set; }
-    }
-
-    [DataContract]
     public class DataTransferResponse21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "status")]
         public DataTransferStatus Status { get; set; }
 
@@ -302,9 +220,6 @@
     [DataContract]
     public class MeterValue21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "sampledValue")]
         public ICollection<SampledValue21> SampledValue { get; set; }
 
@@ -315,9 +230,6 @@
     [DataContract]
     public class SampledValue21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "value")]
         public double Value { get; set; }
 
@@ -343,9 +255,6 @@
     [DataContract]
     public class SignedMeterValue
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "signedMeterData")]
         public string SignedMeterData { get; set; }
 
@@ -362,9 +271,6 @@
     [DataContract]
     public class UnitOfMeasure21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "unit")]
         public string Unit { get; set; }
 
@@ -375,21 +281,11 @@
     [DataContract]
     public class MeterValuesRequest21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "evseId")]
         public int EvseId { get; set; }
 
         [DataMember(Name = "meterValue")]
         public ICollection<MeterValue21> MeterValue { get; set; }
-    }
-
-    [DataContract]
-    public class MeterValuesResponse21
-    {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
     }
 
     [DataContract]
@@ -403,6 +299,11 @@
 
         [DataMember(Name = "eventData")]
         public EventData[] EventData { get; set; }
+    }
+
+    [DataContract]
+    public class NotifyEventResponse
+    {
     }
 
     [DataContract]
@@ -424,9 +325,6 @@
     [DataContract]
     public class EVSE
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "id")]
         public int Id { get; set; }
 
@@ -437,9 +335,6 @@
     [DataContract]
     public class Transaction
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "transactionId")]
         public string TransactionId { get; set; }
 
@@ -459,9 +354,6 @@
     [DataContract]
     public class TransactionEventRequest
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "eventType")]
         public TransactionEvent EventType { get; set; }
 
@@ -502,9 +394,6 @@
     [DataContract]
     public class TransactionEventResponse
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "totalCost")]
         public double TotalCost { get; set; }
 
@@ -521,9 +410,6 @@
     [DataContract]
     public class StatusNotificationRequest21
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
-
         [DataMember(Name = "timestamp")]
         public System.DateTimeOffset Timestamp { get; set; }
 
@@ -538,10 +424,285 @@
     }
 
     [DataContract]
-    public class StatusNotificationResponse21
+    public class NotifyMonitoringReportRequest
     {
-        [DataMember(Name = "customData")]
-        public CustomData CustomData { get; set; }
+        [DataMember(Name = "requestId")]
+        public string RequestId { get; set; }
+
+        [DataMember(Name = "tbc")]
+        public bool TBC { get; set; }
+
+        [DataMember(Name = "generatedAt")]
+        public DateTime GeneratedAt { get; set; }
+
+        [DataMember(Name = "monitor")]
+        public List<MonitoringData> Monitor { get; set; }
+    }
+
+    [DataContract]
+    public class MonitoringData
+    {
+        [DataMember(Name = "component")]
+        public Component Component { get; set; }
+
+        [DataMember(Name = "variable")]
+        public Variable Variable { get; set; }
+
+        [DataMember(Name = "variableMonitoring")]
+        public VariableMonitoring VariableMonitoring { get; set; }
+    }
+
+    [DataContract]
+    public class Component
+    {
+        [DataMember(Name = "name")]
+        public string Name { get; set; }
+
+        [DataMember(Name = "instance")]
+        public string Instance { get; set; }
+
+        [DataMember(Name = "evse")]
+        public EVSE Evse { get; set; }
+    }
+
+    [DataContract]
+    public class Variable
+    {
+        [DataMember(Name = "name")]
+        public string Name { get; set; }
+
+        [DataMember(Name = "instance")]
+        public string Instance { get; set; }
+    }
+
+    [DataContract]
+    public class VariableMonitoring
+    {
+        [DataMember(Name = "id")]
+        public int Id { get; set; }
+
+        [DataMember(Name = "transaction")]
+        public bool Transaction { get; set; }
+
+        [DataMember(Name = "value")]
+        public int Value { get; set; }
+
+        [DataMember(Name = "type")]
+        public MonitorType Type { get; set; }
+
+        [DataMember(Name = "severity")]
+        public int Severity { get; set; }
+    }
+
+    [DataContract]
+    public class NotifyMonitoringReportResponse
+    {
+    }
+
+    [DataContract]
+    public class NotifyReportRequest
+    {
+        [DataMember(Name = "requestId")]
+        public string RequestId { get; set; }
+
+        [DataMember(Name = "generatedAt")]
+        public DateTime GeneratedAt { get; set; }
+
+        [DataMember(Name = "tbc")]
+        public bool TBC { get; set; }
+
+        [DataMember(Name ="seqNo")]
+        public int SeqNo { get; set; }
+
+        [DataMember(Name = "reportData")]
+        public List<ReportData> ReportData { get; set; }
+    }
+
+    [DataContract]
+    public class ReportData
+    {
+        [DataMember(Name = "component")]
+        public Component Component { get; set; }
+
+        [DataMember(Name = "variable")]
+        public Variable Variable { get; set; }
+
+        [DataMember(Name ="variableAttribute")]
+        public VariableAttribute VariableAttribute { get; set; }
+
+        [DataMember(Name = "variableCharacteristics")]
+        public VariableCharacteristics VariableCharacteristics { get; set; }
+    }
+
+    [DataContract]
+    public class VariableAttribute
+    {
+        [DataMember(Name = "type")]
+        public AttributeType Type { get; set; }
+
+        [DataMember(Name = "value")]
+        public string Value { get; set; }
+
+        [DataMember(Name = "mutability")]
+        public Mutability Mutability { get; set; }
+
+        [DataMember(Name = "persistent")]
+        public bool Persistent { get; set; }
+
+        [DataMember(Name = "constant")]
+        public bool Constant { get; set; }
+    }
+
+    [DataContract]
+    public class VariableCharacteristics
+    {
+        [DataMember(Name = "unit")]
+        public string Unit { get; set; }
+
+        [DataMember(Name = "dataType")]
+        public DataEnum DataType { get; set; }
+
+        [DataMember(Name = "minLimit")]
+        public int MinLimit { get; set; }
+
+        [DataMember(Name = "maxLimit")]
+        public int MaxLimit { get; set; }
+
+        [DataMember(Name = "valuesList")]
+        public List<string> ValuesList { get; set; }
+
+        [DataMember(Name = "supportsMonitoring")]
+        public bool SupportsMonitoring { get; set; }
+    }
+
+    [DataContract]
+    public class NotifyReportResponse
+    {
+    }
+
+    [DataContract]
+    public class SetVariablesRequest
+    {
+        [DataMember(Name = "setVariableData")]
+        public List<SetVariableData> SetVariableData { get; set; }
+    }
+
+    [DataContract]
+    public class GetVariablesRequest
+    {
+        [DataMember(Name = "getVariableData")]
+        public List<GetVariableData> GetVariableData { get; set; }
+    }
+
+    [DataContract]
+    public class SetVariableData
+    {
+        [DataMember(Name = "attributeType")]
+        public AttributeType AttributeType { get; set; }
+
+        [DataMember(Name = "attributeValue")]
+        public List<string> AttributeValue { get; set; }
+
+        [DataMember(Name = "component")]
+        public Component Component { get; set; }
+
+        [DataMember(Name = "variable")]
+        public Variable Variable { get; set; }
+    }
+
+    [DataContract]
+    public class GetVariableData
+    {
+        [DataMember(Name = "attributeType")]
+        public AttributeType AttributeType { get; set; }
+
+        [DataMember(Name = "component")]
+        public Component Component { get; set; }
+
+        [DataMember(Name = "variable")]
+        public Variable Variable { get; set; }
+    }
+
+    [DataContract]
+    public class GetTransactionStatusRequest
+    {
+        [DataMember(Name = "transactionId")]
+        public string TransactionId { get; set; }
+    }
+
+    [DataContract]
+    public class ChargingProfile21
+    {
+        [DataMember(Name = "id")]
+        public int Id { get; set; }
+
+        [DataMember(Name = "stackLevel")]
+        public int StackLevel { get; set; }
+
+        [DataMember(Name = "chargingProfilePurpose")]
+        public ChargingProfilePurpose ChargingProfilePurpose { get; set; }
+
+        [DataMember(Name = "chargingProfileKind")]
+        public ChargingProfileKind ChargingProfileKind { get; set; }
+
+        [DataMember(Name = "recurrencyKind", EmitDefaultValue = false)]
+        public RecurrencyKind RecurrencyKind { get; set; }
+
+        [DataMember(Name = "validFrom", EmitDefaultValue = false)]
+        public DateTime ValidFrom { get; set; }
+
+        [DataMember(Name = "validTo", EmitDefaultValue = false)]
+        public DateTime ValidTo { get; set; }
+
+        [DataMember(Name = "transactionId", EmitDefaultValue = false)]
+        public string TransactionId { get; set; }
+
+        [DataMember(Name = "chargingSchedule")]
+        public List<ChargingSchedule21> ChargingSchedule { get; set; }
+    }
+
+    [DataContract]
+    public class ChargingSchedule21
+    {
+        [DataMember(Name = "id")]
+        public int Id { get; set; }
+
+        [DataMember(Name = "startSchedule")]
+        public DateTime? StartSchedule { get; set; }
+
+        [DataMember(Name = "duration")]
+        public int? Duration { get; set; }
+
+        [DataMember(Name = "chargingRateUnit")]
+        public ChargingRateUnit ChargingRateUnit { get; set; }
+
+        [DataMember(Name = "minChargingRate")]
+        public decimal? MinChargingRate { get; set; }
+
+        [DataMember(Name = "chargingSchedulePeriod")]
+        public List<ChargingSchedulePeriod> ChargingSchedulePeriod { get; set; }
+
+        [DataMember(Name = "salesTariff")]
+        public SalesTariff SalesTariff { get; set; }
+    }
+
+    [DataContract]
+    public class SalesTariff
+    {
+        [DataMember(Name = "id")]
+        public int Id { get; set; }
+
+        [DataMember(Name = "salesTariffDescription")]
+        public string SalesTariffDescription { get; set; }
+    }
+
+    [DataContract]
+    public class SetChargingProfileRequest21
+    {
+        [DataMember(Name = "evseId")]
+        public int EvseId { get; set; }
+
+        [DataMember(Name = "chargingProfile")]
+        public ChargingProfile21 ChargingProfile { get; set; }
     }
 }
-

@@ -547,4 +547,48 @@
         W,
         A
     }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum MonitorType
+    {
+        UpperThreshold,
+        LowerThreshold,
+        Delta,
+        Periodic,
+        PeriodicClockAligned
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum AttributeType
+    {
+        Actual,
+        Target,
+        MinSet,
+        MaxSet
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum Mutability
+    {
+        ReadOnly,
+        WriteOnly,
+        ReadWrite
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum DataEnum
+    {
+        [EnumMember(Value = @"string")]
+        String,
+
+        [EnumMember(Value = @"decimal")]
+        Decimal,
+
+        integer,
+        dateTime,
+        boolean,
+        OptionList,
+        SequenceList,
+        MemberList
+    }
 }

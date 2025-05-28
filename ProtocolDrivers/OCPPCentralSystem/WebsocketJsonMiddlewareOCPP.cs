@@ -130,7 +130,7 @@ namespace OCPPCentralSystem
                         break;
                     }
 
-                    if ((protocol == "ocpp2.0") || (protocol == "ocpp2.1"))
+                    if ((protocol == "ocpp2.0") || (protocol == "ocpp2.0.1") || (protocol == "ocpp2.1"))
                     {
                         socket = await httpContext.WebSockets.AcceptWebSocketAsync(protocol).ConfigureAwait(false);
                         break;
@@ -247,7 +247,7 @@ namespace OCPPCentralSystem
                                     await SendDataToWebSocketAsync(chargepointName, response, webSocket).ConfigureAwait(false);
                                 }
 
-                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.1"))
+                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.0.1") || (webSocket.SubProtocol == "ocpp2.1"))
                                 {
                                     string response = await OCPP21Processor.ProcessRequestPayloadAsync(chargepointName, (string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
 
@@ -274,7 +274,7 @@ namespace OCPPCentralSystem
                                     await OCPP16Processor.ProcessResponsePayloadAsync(chargepointName, (string)ocppMessage[1], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
                                 }
 
-                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.1"))
+                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.0.1") || (webSocket.SubProtocol == "ocpp2.1"))
                                 {
                                     await OCPP21Processor.ProcessResponsePayloadAsync(chargepointName, (string)ocppMessage[1], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
                                 }
@@ -294,7 +294,7 @@ namespace OCPPCentralSystem
                                     await OCPP16Processor.ProcessErrorPayloadAsync(chargepointName, payloadString).ConfigureAwait(false);
                                 }
 
-                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.1"))
+                                if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.0.1") || (webSocket.SubProtocol == "ocpp2.1"))
                                 {
                                     await OCPP21Processor.ProcessErrorPayloadAsync(chargepointName, payloadString).ConfigureAwait(false);
                                 }

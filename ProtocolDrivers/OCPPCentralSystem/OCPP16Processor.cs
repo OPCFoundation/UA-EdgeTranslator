@@ -28,6 +28,7 @@
     // RemoteStopTransaction
     // Reset
     // UnlockConnector
+    // SetChargingProfile
 
     public class OCPP16Processor
     {
@@ -445,6 +446,40 @@
                         WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(unlockRequest));
 
                         break;
+
+                    case "SetChargingProfile":
+
+                            if (arguments.Length < 3)
+                            {
+                                Log.Logger.Error("SetChargingProfile requires at least 3 arguments: connectorId, limit and number of phases.");
+                                return Task.CompletedTask;
+                            }
+
+                            SetChargingProfileRequest setChargingProfileRequest = new() {
+                                ConnectorId = int.Parse(arguments[0]),
+                                CSChargingProfiles = new ChargingProfile() {
+                                    ChargingProfileId = 1,
+                                    StackLevel = 1,
+                                    ChargingProfilePurpose = ChargingProfilePurpose.ChargePointMaxProfile,
+                                    ChargingProfileKind = ChargingProfileKind.Absolute,
+                                    ChargingSchedule = new ChargingSchedule() {
+                                        ChargingRateUnit = ChargingRateUnit.W,
+                                        ChargingSchedulePeriod = new List<ChargingSchedulePeriod>() {
+                                            new ChargingSchedulePeriod() {
+                                                StartPeriod = 0,
+                                                Limit = int.Parse(arguments[1]),
+                                                NumberPhases = int.Parse(arguments[2])
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+
+                            Log.Logger.Information($"SetChargingProfile requested on chargepoint {cpId} for connector {setChargingProfileRequest.ConnectorId}, purpose {setChargingProfileRequest.CSChargingProfiles.ChargingProfilePurpose}, profile ID {setChargingProfileRequest.CSChargingProfiles.ChargingProfileId}");
+
+                            WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(setChargingProfileRequest));
+
+                            break;
 
                     default:
 

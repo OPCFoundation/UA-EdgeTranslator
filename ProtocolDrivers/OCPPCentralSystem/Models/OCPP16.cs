@@ -2,6 +2,7 @@
 namespace OCPPCentralSystem.Models
 {
     using System;
+    using System.Collections.Generic;
     using System.Runtime.Serialization;
 
     [DataContract]
@@ -134,14 +135,14 @@ namespace OCPPCentralSystem.Models
     [DataContract]
     public class DataTransferRequest
     {
-        [DataMember(Name = "vendorId")]
-        public string VendorId { get; set; }
-
         [DataMember(Name = "messageId")]
         public string MessageId { get; set; }
 
         [DataMember(Name = "data")]
         public string Data { get; set; }
+
+        [DataMember(Name = "vendorId")]
+        public string VendorId { get; set; }
     }
 
     [DataContract]
@@ -351,7 +352,7 @@ namespace OCPPCentralSystem.Models
         public ChargingRateUnit ChargingRateUnit { get; set; }
 
         [DataMember(Name = "chargingSchedulePeriod")]
-        public ChargingSchedulePeriod[] ChargingSchedulePeriod { get; set; }
+        public List<ChargingSchedulePeriod> ChargingSchedulePeriod { get; set; }
 
         [DataMember(Name = "minChargingRate")]
         public decimal? MinChargingRate { get; set; }
@@ -402,5 +403,15 @@ namespace OCPPCentralSystem.Models
     {
         [DataMember(Name = "connectorId")]
         public int ConnectorId { get; set; }
+    }
+
+    [DataContract]
+    public class SetChargingProfileRequest
+    {
+        [DataMember(Name = "connectorId")]
+        public int ConnectorId { get; set; }
+
+        [DataMember(Name = "csChargingProfiles")]
+        public ChargingProfile CSChargingProfiles { get; set; }
     }
 }
