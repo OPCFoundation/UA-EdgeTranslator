@@ -25,11 +25,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public List<string> Discover()
         {
-            return [.. SearchDevicesResult.DeviceList.Keys];
+            List<string> deviceList = new List<string>();
+            foreach (var device in SearchDevicesResult.DeviceList.Keys)
+            {
+                deviceList.Add("lorawan://" + device);
+            }
+
+            return deviceList;
         }
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
         {
+            string[] endpointParts = endpoint.Split(new char[] { ':', '/' });
+
             ThingDescription td = new()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
@@ -81,13 +89,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public object Read(AssetTag tag)
         {
             object value = null;
-            
+
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")

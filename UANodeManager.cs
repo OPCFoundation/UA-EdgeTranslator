@@ -1089,9 +1089,9 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 6) || (address[0] != "lorawan"))
+                if ((address.Length != 4) || (address[0] != "lorawan"))
                 {
-                    throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://ipaddress:port!");
+                    throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://assetname!");
                 }
 
                 // in the case of LoRaWAN, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
@@ -1101,9 +1101,9 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("ocpp://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 6) || (address[0] != "ocpp"))
+                if ((address.Length != 4) || (address[0] != "ocpp"))
                 {
-                    throw new Exception("Expected OCPP Gateway address in the format ocpp://ipaddress:port!");
+                    throw new Exception("Expected OCPP Gateway address in the format ocpp://assetname!");
                 }
 
                 // in the case of OCPP, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding

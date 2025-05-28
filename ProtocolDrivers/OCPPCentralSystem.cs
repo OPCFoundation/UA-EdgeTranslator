@@ -28,7 +28,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // Discover all charge points
                 foreach (var chargePoint in ChargePoints)
                 {
-                    deviceList.Add(chargePoint.Key);
+                    deviceList.Add("ocpp://" + chargePoint.Key);
                 }
             }
             catch (Exception ex)
@@ -41,6 +41,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
         {
+            string[] endpointParts = endpoint.Split(new char[] { ':', '/' });
+
             ThingDescription td = new()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
@@ -55,16 +57,35 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             };
 
             // add properties for the requested charge point
-            if (ChargePoints.TryGetValue(name, out ChargePoint chargePoint))
+            if (ChargePoints.TryGetValue(endpointParts[3], out ChargePoint chargePoint))
             {
                 foreach (Connector connector in chargePoint.Connectors.Values)
                 {
-                    td.Properties.Add("Connector" + connector.ID.ToString(), new Property
-                    {
+                    td.Properties.Add("Connector" + connector.ID.ToString() + "Meter", new Property {
                         Type = TypeEnum.Number,
                         ReadOnly = true,
                         Observable = true,
+                        Forms = new object[] {
+                            new GenericForm() {
+                                Type = TypeString.Float,
+                                Href = endpoint + "?" + connector.ID.ToString()
+                            }
+                        }
                     });
+
+                    td.Properties.Add("Connector" + connector.ID.ToString() + "Status", new Property
+                    {
+                        Type = TypeEnum.String,
+                        ReadOnly = true,
+                        Observable = true,
+                        Forms = new object[] {
+                            new GenericForm() {
+                                Type = TypeString.Float,
+                                Href = endpoint + "?" + connector.ID.ToString()
+                            }
+                        }
+                    });
+
                 }
             }
 
@@ -90,33 +111,38 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             object value = null;
 
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            string[] addressParts = tag.Address.Split(['?', '/']);
 
-            if (addressParts.Length == 2)
+            // find our charge point
+            foreach (var chargePoint in ChargePoints.Values)
             {
-                byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-
-                if ((tagBytes != null) && (tagBytes.Length > 0))
+                if (chargePoint.ID == addressParts[2])
                 {
-                    if (tag.Type == "Float")
+                    // find the connector
+                    if (chargePoint.Connectors.TryGetValue(int.Parse(addressParts[3]), out Connector connector))
                     {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by OCPP.");
+                        if (tag.Name.EndsWith("Meter"))
+                        {
+                            // read the meter value
+                            if (connector.MeterReadings.Count > 0)
+                            {
+                                // pick the last meter reading
+                                value = connector.MeterReadings[connector.MeterReadings.Count - 1].MeterValue.ToString();
+                            }
+                            else
+                            {
+                                value = "0"; // no meter readings available
+                            }
+                        }
+                        else if (tag.Name.EndsWith("Status"))
+                        {
+                            // read the status of the connector
+                            value = connector.Status;
+                        }
+                        else
+                        {
+                            throw new ArgumentException("Unknown tag name: " + tag.Name);
+                        }
                     }
                 }
             }
@@ -150,36 +176,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new ArgumentException("Type not supported by LoRaWAN.");
             }
 
-            Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
-        {
-            try
-            {
-                // TODO
-
-                return Task.FromResult((byte[])null);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message);
-                return Task.FromResult((byte[])null);
-            }
-        }
-
-        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
-        {
-            try
-            {
-                // TODO
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message);
-            }
-
-            return Task.CompletedTask;
+            // TODO: Implement the write logic to the charge point
         }
     }
 }
