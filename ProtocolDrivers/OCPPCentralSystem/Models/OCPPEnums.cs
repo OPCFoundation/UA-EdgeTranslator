@@ -591,4 +591,89 @@
         SequenceList,
         MemberList
     }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum EnergyTransferMode
+    {
+        AC_single_phase,
+        AC_two_phase,
+        AC_three_phase,
+        DC,
+        AC_BPT,
+        AC_BPT_DER,
+        AC_BER,
+        DC_BPT,
+        DC_ACDP,
+        DC_ACDP_BPT,
+        WPT
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum MobilityNeedsMode
+    {
+        EVCC,
+        EVCC_SECC
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ControlMode
+    {
+        ScheduledControl,
+        DynamicControl
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum NotifyEVChargingNeedsStatus
+    {
+        Accepted,
+        Rejected,
+        Processing
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum DERControl
+    {
+        EnterService,
+        FreqDrop,
+        FreqWatt,
+        FixedPFAbsorb,
+        FixedPFInject,
+        FixedVar,
+        Gradients,
+        HFMustTrip,
+        HFMayTrip,
+        HVMustTrip,
+        HVMomCess,
+        HVMayTrip,
+        LimitMaxDischarge,
+        LFMustTrip,
+        LVMustTrip,
+        LVMomCess,
+        LVMayTrip,
+        PowerMonitoringMustTrip,
+        VoltVar,
+        VoltWatt,
+        WattPF,
+        WattVar
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum IslandingDetection
+    {
+        NoAntiIslandingSupport,
+        RoCoF,
+        UVP_OVP,
+        UFP_OFP,
+        VoltageVectorShift,
+        ZeroCrossingDetection,
+        OtherPassive,
+        ImpedanceMeasurement,
+        ImpedanceAtFrequency,
+        SlipModeFrequencyShift,
+        SandiaFrequencyShift,
+        SandiaVoltageShift,
+        FrequencyJump,
+        RCLQFactor,
+        OtherActive
+    }
 }
