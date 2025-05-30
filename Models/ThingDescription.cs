@@ -2,7 +2,6 @@
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
-    using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
@@ -36,6 +35,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("properties")]
         public Dictionary<string, Property>? Properties { get; set; }
+
+        [JsonProperty("actions")]
+        public Dictionary<string, TDAction>? Actions { get; set; }
     }
 
     public class Property
@@ -60,6 +62,30 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("forms")]
         public object[]? Forms { get; set; }
+    }
+
+    public class TDAction
+    {
+        [JsonProperty("input")]
+        public Dictionary<string, TDArgument>? Input { get; set; }
+
+        [JsonProperty("output")]
+        public Dictionary<string, TDArgument>? Output { get; set; }
+
+        [JsonProperty("forms")]
+        public object[]? Forms { get; set; }
+    }
+
+    public class TDArgument
+    {
+        [JsonProperty("type")]
+        public TypeEnum Type { get; set; }
+
+        [JsonProperty("properties")]
+        public Dictionary<string, Property>? Properties { get; set; }
+
+        [JsonProperty("required")]
+        public string[]? Required { get; set; }
     }
 
     public class ModbusForm
@@ -219,7 +245,10 @@ namespace Opc.Ua.Edge.Translator.Models
         Integer,
 
         [EnumMember(Value = "string")]
-        String
+        String,
+
+        [EnumMember(Value = "object")]
+        Object
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

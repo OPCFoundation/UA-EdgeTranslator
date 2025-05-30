@@ -637,9 +637,41 @@ namespace Opc.Ua.Edge.Translator
             // create nodes for each TD property
             foreach (KeyValuePair<string, Property> property in td.Properties)
             {
-                foreach (object form in property.Value.Forms)
+                if ((property.Value.Forms != null) && (property.Value.Forms.Length > 0))
                 {
-                    AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                    foreach (object form in property.Value.Forms)
+                    {
+                        AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                    }
+                }
+            }
+
+            // create nodes for each TD action
+            if ((td.Actions != null) && (td.Actions.Count > 0))
+            {
+                foreach (KeyValuePair<string, TDAction> action in td.Actions)
+                {
+                    MethodState method = _nodeFactory.CreateMethod(parent, action.Key);
+                    method.OnCallMethod = new GenericMethodCalledEventHandler(OnTDActionCalled);
+
+                    if ((action.Value.Input != null) && (action.Value.Input.Count > 0))
+                    {
+                        foreach (KeyValuePair<string, TDArgument> input in action.Value.Input)
+                        {
+                            method.InputArguments = _nodeFactory.CreateMethodArguments(method, [input.Key], null, new ExpandedNodeId(DataTypes.String), true);
+                        }
+                    }
+
+                    if ((action.Value.Output != null) && (action.Value.Output.Count > 0))
+                    {
+                        foreach (KeyValuePair<string, TDArgument> output in action.Value.Output)
+                        {
+                            method.OutputArguments = _nodeFactory.CreateMethodArguments(method, [output.Key], null, new ExpandedNodeId(DataTypes.String), false, true);
+                        }
+                    }
+
+                    parent.AddChild(method);
+                    AddPredefinedNode(SystemContext, method);
                 }
             }
 
@@ -1308,6 +1340,11 @@ namespace Opc.Ua.Edge.Translator
             }
 
             return ServiceResult.Good;
+        }
+
+        private ServiceResult OnTDActionCalled(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            return new ServiceResult(new NotImplementedException());
         }
 
         private void ReadAssetTags(object assetNameObject)
