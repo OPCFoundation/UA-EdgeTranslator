@@ -304,6 +304,8 @@
 
         public static Task SendCentralStationCommand(string cpId, string action, string[] arguments)
         {
+            string requestPayload = "{}";
+
             if (OCPPCentralSystem.ChargePoints.ContainsKey(cpId))
             {
                 Log.Logger.Information("Sending command " + action + " to chargepoint " + cpId);
@@ -332,7 +334,7 @@
 
                         Log.Logger.Information("Changing availability of connector " + changeAvailabilityRequest.ConnectorId + " on chargepoint " + cpId + " to " + changeAvailabilityRequest.Type.ToString());
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(changeAvailabilityRequest));
+                        requestPayload = JsonConvert.SerializeObject(changeAvailabilityRequest);
 
                         break;
 
@@ -350,7 +352,7 @@
 
                         Log.Logger.Information($"ChangeConfiguration requested on chargepoint {cpId}: {changeConfigRequest.Key} = {changeConfigRequest.Value}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(changeConfigRequest));
+                        requestPayload = JsonConvert.SerializeObject(changeConfigRequest);
 
                         break;
 
@@ -358,12 +360,11 @@
 
                         Log.Logger.Information($"ClearCache requested on chargepoint {cpId}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(new ClearCacheRequest()));
+                        requestPayload = JsonConvert.SerializeObject(new ClearCacheRequest());
 
                         break;
 
                     case "GetConfiguration":
-
 
                         GetConfigurationRequest getConfigRequest = new();
 
@@ -379,7 +380,7 @@
 
                         Log.Logger.Information($"GetConfiguration requested on chargepoint {cpId} for keys: {string.Join(", ", getConfigRequest.Key ?? Array.Empty<string>())}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(getConfigRequest));
+                        requestPayload = JsonConvert.SerializeObject(getConfigRequest);
 
                         break;
 
@@ -398,7 +399,7 @@
 
                         Log.Logger.Information($"RemoteStartTransaction requested on chargepoint {cpId} for idTag: {remoteStartRequest.IdTag}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(remoteStartRequest));
+                        requestPayload = JsonConvert.SerializeObject(remoteStartRequest);
 
                         break;
 
@@ -415,7 +416,7 @@
 
                         Log.Logger.Information($"RemoteStopTransaction requested on chargepoint {cpId} for transactionId: {remoteStopRequest.TransactionId}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(remoteStopRequest));
+                        requestPayload = JsonConvert.SerializeObject(remoteStopRequest);
 
                         break;
 
@@ -426,7 +427,7 @@
 
                         Log.Logger.Information($"Reset requested on chargepoint {cpId} type: {resetRequest.Type}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(resetRequest));
+                        requestPayload = JsonConvert.SerializeObject(resetRequest);
 
                         break;
 
@@ -443,7 +444,7 @@
 
                         Log.Logger.Information($"UnlockConnector requested on chargepoint {cpId} for connectorId: {unlockRequest.ConnectorId}");
 
-                        WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(unlockRequest));
+                        requestPayload = JsonConvert.SerializeObject(unlockRequest);
 
                         break;
 
@@ -477,14 +478,23 @@
 
                             Log.Logger.Information($"SetChargingProfile requested on chargepoint {cpId} for connector {setChargingProfileRequest.ConnectorId}, purpose {setChargingProfileRequest.CSChargingProfiles.ChargingProfilePurpose}, profile ID {setChargingProfileRequest.CSChargingProfiles.ChargingProfileId}");
 
-                            WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, JsonConvert.SerializeObject(setChargingProfileRequest));
+                            requestPayload = JsonConvert.SerializeObject(setChargingProfileRequest);
 
-                            break;
+                        break;
 
                     default:
 
                         break;
                 }
+
+                string serializedCommand = JsonConvert.SerializeObject(new JArray
+                {
+                    2, // messageTypeId for request
+                    Guid.NewGuid().ToString("N"), // correlationId for request
+                    JObject.Parse(requestPayload) // payload
+                });
+
+                WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, serializedCommand);
 
                 return Task.CompletedTask;
             }
