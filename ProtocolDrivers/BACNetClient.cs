@@ -125,7 +125,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")
@@ -234,6 +234,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             BacnetValue[] NoScalarValue = { value };
             return _client.WritePropertyRequest(adr, bacnetObject, property, NoScalarValue);
+        }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
         }
     }
 }

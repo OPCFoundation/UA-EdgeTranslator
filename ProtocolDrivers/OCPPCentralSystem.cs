@@ -178,5 +178,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             // TODO: Implement the write logic to the charge point
         }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -120,7 +120,7 @@
             {
                 ushort quantity = ushort.Parse(addressParts[2]);
                 byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
-                
+
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
@@ -436,6 +436,11 @@
                     throw new Exception("Incorrect coil flag returned");
                 }
             }
+        }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
         }
     }
 }

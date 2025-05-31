@@ -94,7 +94,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             object value = null;
 
             byte[] tagBytes = Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
-            
+
             if ((tagBytes != null) && (tagBytes.Length > 0))
             {
 
@@ -387,6 +387,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 _reconnectHandlers.Remove(reconnectHandler);
             }
             reconnectHandler.Dispose();
+        }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
         }
     }
 }

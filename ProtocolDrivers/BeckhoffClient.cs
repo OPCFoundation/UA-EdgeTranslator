@@ -110,13 +110,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public object Read(AssetTag tag)
         {
             object value = null;
-            
+
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")
@@ -185,6 +185,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             _adsClient.WriteBytesAsync(uint.Parse(addressWithinAsset), values);
             return Task.CompletedTask;
+        }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
         }
     }
 }

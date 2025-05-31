@@ -1310,6 +1310,7 @@ namespace Opc.Ua.Edge.Translator
             BaseDataVariableState variable = node as BaseDataVariableState;
             if (variable == null)
             {
+                // find the tag that matches the variable node ID
                 foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
                 {
                     string assetId = tags.Key;
@@ -1344,7 +1345,22 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnTDActionCalled(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            return new ServiceResult(new NotImplementedException());
+            try
+            {
+                string assetId = method.Parent.BrowseName.Name;
+                string actionName = method.BrowseName.Name;
+                string[] actionInputArgs = inputArguments.Select(arg => arg?.ToString()).ToArray();
+                string[] actionOutputArgs = outputArguments.Select(arg => arg?.ToString()).ToArray();
+
+                string result = _assets[assetId].ExecuteAction(actionName, actionInputArgs, actionOutputArgs);
+
+                return new ServiceResult(StatusCodes.Good, new LocalizedText(result));
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex.Message, ex);
+                return new ServiceResult(ex);
+            }
         }
 
         private void ReadAssetTags(object assetNameObject)

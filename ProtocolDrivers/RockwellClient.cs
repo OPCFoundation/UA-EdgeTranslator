@@ -604,5 +604,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             return Task.CompletedTask;
         }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

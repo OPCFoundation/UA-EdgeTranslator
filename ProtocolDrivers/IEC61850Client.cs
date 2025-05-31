@@ -145,6 +145,11 @@
             return new List<string>();
         }
 
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
+        }
+
         public string GetRemoteEndpoint()
         {
             return _endpoint;
@@ -159,7 +164,7 @@
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-                
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")

@@ -77,7 +77,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (addressParts.Length == 2)
             {
                 byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
-      
+
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
 
@@ -164,6 +164,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             data.WriteData();
 
             return Task.CompletedTask;
+        }
+
+        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        {
+            throw new NotImplementedException();
         }
     }
 }
