@@ -9,7 +9,7 @@
     <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <DockerfileRunArguments>-p 4840:4840</DockerfileRunArguments>
+    <DockerfileRunArguments>-p 4840:4840 -p 5000:5000 -p 5001:5001 -p 19520:19520 -p 19521:19521</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>

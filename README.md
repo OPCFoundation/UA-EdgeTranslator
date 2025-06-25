@@ -38,6 +38,10 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 > **Note**: Network discovery for Rockwell PLCs only works when running UA Edge Translator natively, i.e. NOT within a Docker container!
 
+> **Note**: The LoRaWAN Network Server is available on port 5000 (not secure) and port 5001 (secure), which needs to be mapped to the Docker host for access.
+
+> **Note**: The OCPP Central System is available on port 19520 (not secure) and on port 19521 (secure), which needs to be mapped to the Docker host for access.
+
 Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
 
 ## Running UA Edge Translator from a Docker environment
