@@ -25,7 +25,7 @@ namespace OCPPCentralSystem
     {
         private readonly RequestDelegate _next;
 
-        private ConcurrentDictionary<string, ChargePointConnection> _connectedChargePoints = new();
+        private static ConcurrentDictionary<string, ChargePointConnection> _connectedChargePoints = new();
 
         public static ConcurrentDictionary<string, string> Requests { get; set; } = new(); // used for Central system initiated commands
 
@@ -108,6 +108,35 @@ namespace OCPPCentralSystem
             }
         }
 
+        public static string ExecuteCommand(string chargePointName, string command, string[] inputArgs, string[] outputArgs)
+        {
+            if (!_connectedChargePoints.ContainsKey(chargePointName))
+            {
+                Log.Logger.Error($"Charge point {chargePointName} not found in the connected charge points list!");
+                return null;
+            }
+
+            if (_connectedChargePoints[chargePointName].WebSocket.State != WebSocketState.Open)
+            {
+                Log.Logger.Error($"WebSocket for charge point {chargePointName} is not open. Cannot send request.");
+                return null;
+            }
+
+            string subProtocol = _connectedChargePoints[chargePointName].WebSocket.SubProtocol;
+
+            if (subProtocol == "ocpp1.6")
+            {
+                OCPP16Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
+            }
+
+            if ((subProtocol == "ocpp2.0") || (subProtocol == "ocpp2.0.1") || (subProtocol == "ocpp2.1"))
+            {
+                OCPP21Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
+            }
+
+            return string.Empty;
+        }
+
         private async Task AddWebSocketAsync(HttpContext httpContext)
         {
             try
@@ -124,13 +153,7 @@ namespace OCPPCentralSystem
                 WebSocket socket = null;
                 foreach (string protocol in chargerProtocols)
                 {
-                    if (protocol == "ocpp1.6")
-                    {
-                        socket = await httpContext.WebSockets.AcceptWebSocketAsync(protocol).ConfigureAwait(false);
-                        break;
-                    }
-
-                    if ((protocol == "ocpp2.0") || (protocol == "ocpp2.0.1") || (protocol == "ocpp2.1"))
+                    if ((protocol == "ocpp1.6") || (protocol == "ocpp2.0") || (protocol == "ocpp2.0.1") || (protocol == "ocpp2.1"))
                     {
                         socket = await httpContext.WebSockets.AcceptWebSocketAsync(protocol).ConfigureAwait(false);
                         break;

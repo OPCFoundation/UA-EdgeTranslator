@@ -53,8 +53,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Name = name,
                 Base = endpoint,
                 Title = name,
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
+
+            // add an action property for executing commands on the charge point
+            td.Actions.Add("ExecuteCommand", new TDAction
+            {
+                 Input = new Dictionary<string, TDArgument>() { { "Command", new TDArgument() { Type = TypeEnum.String  } } },
+                 Output = new Dictionary<string, TDArgument>() { { "Result", new TDArgument() { Type = TypeEnum.String } } }
+            });
+
+            // add 5 command arguments
+            td.Actions["ExecuteCommand"].Input.Add("Arg1", new TDArgument { Type = TypeEnum.String });
+            td.Actions["ExecuteCommand"].Input.Add("Arg2", new TDArgument { Type = TypeEnum.String });
+            td.Actions["ExecuteCommand"].Input.Add("Arg3", new TDArgument { Type = TypeEnum.String });
+            td.Actions["ExecuteCommand"].Input.Add("Arg4", new TDArgument { Type = TypeEnum.String });
+            td.Actions["ExecuteCommand"].Input.Add("Arg5", new TDArgument { Type = TypeEnum.String });
 
             // add properties for the requested charge point
             if (ChargePoints.TryGetValue(endpointParts[3], out ChargePoint chargePoint))
@@ -85,7 +100,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                             }
                         }
                     });
-
                 }
             }
 
@@ -114,7 +128,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string[] addressParts = tag.Address.Split(['?', '/']);
 
             // find our charge point
-            foreach (var chargePoint in ChargePoints.Values)
+            foreach (ChargePoint chargePoint in ChargePoints.Values)
             {
                 if (chargePoint.ID == addressParts[2])
                 {
@@ -179,9 +193,28 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // TODO: Implement the write logic to the charge point
         }
 
-        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
         {
-            throw new NotImplementedException();
+            // find our charge point
+            foreach (ChargePoint chargePoint in ChargePoints.Values)
+            {
+                if (chargePoint.ID == address)
+                {
+                    string commandName = inputArgs?[0];
+
+                    for (int i = 0; i < inputArgs?.Length - 1; i++)
+                    {
+                        inputArgs[i] = inputArgs?[i + 1];
+                    }
+
+                    Array.Resize(ref inputArgs, inputArgs.Length - 1);
+
+                    WebsocketJsonMiddlewareOCPP.ExecuteCommand(chargePoint.ID, commandName, inputArgs, outputArgs);
+                    break;
+                }
+            }
+
+            return string.Empty; // TODO: Return result
         }
     }
 }

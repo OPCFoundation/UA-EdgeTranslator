@@ -2,7 +2,6 @@
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
-    using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
@@ -36,12 +35,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("properties")]
         public Dictionary<string, Property>? Properties { get; set; }
-    }
 
-    public class OpcUaNamespaces
-    {
-        [JsonProperty("opcua")]
-        public Uri[]? Namespaces { get; set; }
+        [JsonProperty("actions")]
+        public Dictionary<string, TDAction>? Actions { get; set; }
     }
 
     public class Property
@@ -66,6 +62,30 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("forms")]
         public object[]? Forms { get; set; }
+    }
+
+    public class TDAction
+    {
+        [JsonProperty("input")]
+        public Dictionary<string, TDArgument>? Input { get; set; }
+
+        [JsonProperty("output")]
+        public Dictionary<string, TDArgument>? Output { get; set; }
+
+        [JsonProperty("forms")]
+        public object[]? Forms { get; set; }
+    }
+
+    public class TDArgument
+    {
+        [JsonProperty("type")]
+        public TypeEnum Type { get; set; }
+
+        [JsonProperty("properties")]
+        public Dictionary<string, Property>? Properties { get; set; }
+
+        [JsonProperty("required")]
+        public string[]? Required { get; set; }
     }
 
     public class ModbusForm
@@ -96,6 +116,21 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("type")]
         public TypeString Type { get; set; }
+
+        [JsonProperty("pollingTime")]
+        public long PollingTime { get; set; }
+    }
+
+    public class EIPForm
+    {
+        [JsonProperty("href")]
+        public string? Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[]? Op { get; set; }
+
+        [JsonProperty("type")]
+        public EIPTypeString Type { get; set; }
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -210,7 +245,10 @@ namespace Opc.Ua.Edge.Translator.Models
         Integer,
 
         [EnumMember(Value = "string")]
-        String
+        String,
+
+        [EnumMember(Value = "object")]
+        Object
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
@@ -227,5 +265,42 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [EnumMember(Value = "xsd:string")]
         String
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum EIPTypeString
+    {
+        [EnumMember(Value = "xsd:BOOL")]
+        BOOL,
+
+        [EnumMember(Value = "xsd:SINT")]
+        SINT,
+
+        [EnumMember(Value = "xsd:INT")]
+        INT,
+
+        [EnumMember(Value = "xsd:DINT")]
+        DINT,
+
+        [EnumMember(Value = "xsd:LINT")]
+        LINT,
+
+        [EnumMember(Value = "xsd:USINT")]
+        USINT,
+
+        [EnumMember(Value = "xsd:UINT")]
+        UINT,
+
+        [EnumMember(Value = "xsd:UDINT")]
+        UDINT,
+
+        [EnumMember(Value = "xsd:ULINT")]
+        ULINT,
+
+        [EnumMember(Value = "xsd:REAL")]
+        REAL,
+
+        [EnumMember(Value = "xsd:LREAL")]
+        LREAL
     };
 }

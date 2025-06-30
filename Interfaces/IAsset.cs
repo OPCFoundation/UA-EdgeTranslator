@@ -19,6 +19,6 @@
 
         public void Write(AssetTag tag, string value);
 
-        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs);
+        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs);
     }
 }

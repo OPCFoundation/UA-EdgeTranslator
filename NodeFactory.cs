@@ -86,7 +86,7 @@
             return property;
         }
 
-        public PropertyState<Argument[]> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId type, bool input, bool array = false, NodeId nodeId = null)
+        public PropertyState<Argument[]> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId[] type, bool input, bool array = false, NodeId nodeId = null)
         {
             string browseName = methodState.BrowseName.Name;
             if (input)
@@ -105,7 +105,7 @@
                 {
                     Name = names[i],
                     Description = descriptions[i],
-                    DataType = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris),
+                    DataType = ExpandedNodeId.ToNodeId(type[i], _manager.Server.NamespaceUris),
                     ValueRank = array ? ValueRanks.OneDimension : ValueRanks.Scalar
                 });
             }

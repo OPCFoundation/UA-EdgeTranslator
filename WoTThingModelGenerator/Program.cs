@@ -63,7 +63,8 @@
                 Name = "{{name}}",
                 Base = "modbus+tcp://{{address}}:{{port}}",
                 Title = tdName,
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             foreach (string line in content)
@@ -108,7 +109,7 @@
                         form.ModbusType = TypeString.Boolean;
                         form.Href += "?quantity=1";
                     }
-         
+
                     Property property = new()
                     {
                         ReadOnly = true,
@@ -143,7 +144,8 @@
                 Name = "{{name}}",
                 Base = "eip://{{address}}:{{port}}",
                 Title = Path.GetFileNameWithoutExtension(filename),
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             foreach (string line in content)
@@ -226,7 +228,8 @@
                 Name = "{{name}}",
                 Base = "ads://{{address}}:{{port}}",
                 Title = twinCAT.Modules.Module.Name,
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             foreach (Symbol symbol in twinCAT.Modules.Module.DataAreas.DataArea.Symbol)
@@ -272,7 +275,8 @@
                 Name = "{{name}}",
                 Base = "{{protocol}}://{{address}}:{{port}}",
                 Title = Path.GetFileNameWithoutExtension(filename),
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             Dictionary<string, string> subModelElements = new();
@@ -422,7 +426,8 @@
                 Name = "{{name}}",
                 Base = "{{protocol}}://{{address}}:{{port}}",
                 Title = Path.GetFileNameWithoutExtension(filename),
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             foreach (InstanceHierarchyType instanceHirarchy in doc.CAEXFile.InstanceHierarchy)
@@ -508,7 +513,8 @@
                 Name = "{{name}}",
                 Base = "opc.tcp://{{address}}:{{port}}",
                 Title = Path.GetFileNameWithoutExtension(filename),
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             UANodeSet nodeSet = UANodeSet.Read(stream);

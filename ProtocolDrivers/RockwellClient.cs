@@ -102,7 +102,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Name = name,
                 Base = endpoint,
                 Title = name,
-                Properties = new Dictionary<string, Property>()
+                Properties = new Dictionary<string, Property>(),
+                Actions = new Dictionary<string, TDAction>()
             };
 
             var address = td.Base.Split([':', '/']);
@@ -605,7 +606,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return Task.CompletedTask;
         }
 
-        public string ExecuteAction(string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
         {
             throw new NotImplementedException();
         }

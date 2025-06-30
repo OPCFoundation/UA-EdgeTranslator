@@ -174,28 +174,28 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState createAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTCreateAsset, WoTConNamespaceIndex), typeof(MethodState));
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
-            createAsset.InputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetName"], ["A unique name for the asset."], new ExpandedNodeId(DataTypes.String), true, false, new NodeId(_cWoTCreateAssetInputArguments, WoTConNamespaceIndex));
-            createAsset.OutputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false, false, new NodeId(_cWoTCreateAssetOutputArguments, WoTConNamespaceIndex));
+            createAsset.InputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetName"], ["A unique name for the asset."], [new ExpandedNodeId(DataTypes.String)], true, false, new NodeId(_cWoTCreateAssetInputArguments, WoTConNamespaceIndex));
+            createAsset.OutputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false, false, new NodeId(_cWoTCreateAssetOutputArguments, WoTConNamespaceIndex));
 
             MethodState deleteAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTDeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
-            deleteAsset.InputArguments = _nodeFactory.CreateMethodArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], new ExpandedNodeId(DataTypes.NodeId), true, false, new NodeId(_cWoTDeleteAssetInputArguments, WoTConNamespaceIndex));
+            deleteAsset.InputArguments = _nodeFactory.CreateMethodArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], [new ExpandedNodeId(DataTypes.NodeId)], true, false, new NodeId(_cWoTDeleteAssetInputArguments, WoTConNamespaceIndex));
 
             MethodState discoverAssets = _nodeFactory.CreateMethod(_assetManagement, "DiscoverAssets");
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
-            discoverAssets.OutputArguments = _nodeFactory.CreateMethodArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], new ExpandedNodeId(DataTypes.String), false, true);
+            discoverAssets.OutputArguments = _nodeFactory.CreateMethodArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], [new ExpandedNodeId(DataTypes.String)], false, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = _nodeFactory.CreateMethod(_assetManagement, "CreateAssetForEndpoint");
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
-            createAssetForEndpoint.InputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], new ExpandedNodeId(DataTypes.String), true);
-            createAssetForEndpoint.OutputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], new ExpandedNodeId(DataTypes.NodeId), false);
+            createAssetForEndpoint.InputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], true);
+            createAssetForEndpoint.OutputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
             MethodState connectionTest = _nodeFactory.CreateMethod(_assetManagement, "ConnectionTest");
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
-            connectionTest.InputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], new ExpandedNodeId(DataTypes.String), true);
-            connectionTest.OutputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], new ExpandedNodeId(DataTypes.String), false);
+            connectionTest.InputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], [new ExpandedNodeId(DataTypes.String)], true);
+            connectionTest.OutputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], false);
             AddPredefinedNode(SystemContext, connectionTest);
 
             // create file node to upload local nodeset files to the server
@@ -209,12 +209,10 @@ namespace Opc.Ua.Edge.Translator
 
             // create a property listing our supported WoT protocol bindings
             PropertyState supportedWoTBindingsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
-            _uaProperties.Add("SupportedWoTBindings", supportedWoTBindingsProperty);
             AddPredefinedNode(SystemContext, supportedWoTBindingsProperty);
 
             // create a property listing our supported OPC UA nodesets to map to
             PropertyState supportedOPCUAInfoModelsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
-            _uaProperties.Add("SupportedOPCUAInfoModels", supportedOPCUAInfoModelsProperty);
             AddPredefinedNode(SystemContext, supportedOPCUAInfoModelsProperty);
 
             BaseObjectState configuration = _nodeFactory.CreateObject(
@@ -230,7 +228,6 @@ namespace Opc.Ua.Edge.Translator
 
             // create a variable for the current memory working set
             BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "Memory Working Set (MB)", new ExpandedNodeId(DataTypes.Int32), WoTConNamespaceIndex);
-            _uaVariables.Add("MemoryWorkingSet", variable);
             AddPredefinedNode(SystemContext, variable);
         }
 
@@ -563,7 +560,7 @@ namespace Opc.Ua.Edge.Translator
 
                 OnboardAssetFromWoTFile(assetNode, contents);
 
-                System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".td.jsonld"), contents);
+                System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
 
                 return ServiceResult.Good;
             }
@@ -656,18 +653,56 @@ namespace Opc.Ua.Edge.Translator
 
                     if ((action.Value.Input != null) && (action.Value.Input.Count > 0))
                     {
-                        foreach (KeyValuePair<string, TDArgument> input in action.Value.Input)
+                        // create expanded node IDs for each input argument type
+                        ExpandedNodeId[] inputArgumentTypes = new ExpandedNodeId[action.Value.Input.Count];
+                        for (int i = 0; i < action.Value.Input.Count; i++)
                         {
-                            method.InputArguments = _nodeFactory.CreateMethodArguments(method, [input.Key], null, new ExpandedNodeId(DataTypes.String), true);
+                            if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.String)
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String);
+                            }
+                            else if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.Number)
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Double);
+                            }
+                            else if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.Boolean)
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
+                            }
+                            else
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String); // default to string
+                            }
                         }
+
+                        method.InputArguments = _nodeFactory.CreateMethodArguments(method, action.Value.Input.Keys.ToArray(), action.Value.Input.Keys.ToArray(), inputArgumentTypes, true);
                     }
 
                     if ((action.Value.Output != null) && (action.Value.Output.Count > 0))
                     {
-                        foreach (KeyValuePair<string, TDArgument> output in action.Value.Output)
+                        // create expanded node IDs for each output argument type
+                        ExpandedNodeId[] outputArgumentTypes = new ExpandedNodeId[action.Value.Output.Count];
+                        for (int i = 0; i < action.Value.Output.Count; i++)
                         {
-                            method.OutputArguments = _nodeFactory.CreateMethodArguments(method, [output.Key], null, new ExpandedNodeId(DataTypes.String), false, true);
+                            if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.String)
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String);
+                            }
+                            else if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.Number)
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Double);
+                            }
+                            else if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.Boolean)
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
+                            }
+                            else
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String); // default to string
+                            }
                         }
+
+                        method.OutputArguments = _nodeFactory.CreateMethodArguments(method, action.Value.Output.Keys.ToArray(), action.Value.Output.Keys.ToArray(), outputArgumentTypes, false, true);
                     }
 
                     parent.AddChild(method);
@@ -1202,7 +1237,7 @@ namespace Opc.Ua.Edge.Translator
                         "https://www.w3.org/2019/wot/ocpp"
                     };
 
-                    timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
+                    timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
 
                     return ServiceResult.Good;
@@ -1212,7 +1247,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     value = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
 
-                    timestamp = _uaProperties[node.DisplayName.Text].Timestamp;
+                    timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
 
                     return ServiceResult.Good;
@@ -1230,8 +1265,16 @@ namespace Opc.Ua.Edge.Translator
             }
 
             BaseDataVariableState variable = node as BaseDataVariableState;
-            if (variable == null)
+            if (variable != null)
             {
+                if (node.DisplayName.Text == "Memory Working Set (MB)")
+                {
+                    value = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+                    timestamp = DateTime.UtcNow;
+                    statusCode = StatusCodes.Good;
+
+                    return ServiceResult.Good;
+                }
 
                 foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
                 {
@@ -1276,11 +1319,22 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
+                    statusCode = StatusCodes.Good;
+
                     return ServiceResult.Good;
                 }
 
                 if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
                 {
+                    statusCode = StatusCodes.Good;
+
+                    return ServiceResult.Good;
+                }
+
+                if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
+                {
+                    statusCode = StatusCodes.Good;
+
                     return ServiceResult.Good;
                 }
 
@@ -1302,14 +1356,22 @@ namespace Opc.Ua.Edge.Translator
                     _uaVariables["License"].Value = value;
                     _uaVariables["License"].Timestamp = DateTime.UtcNow;
                     _uaVariables["License"].ClearChangeMasks(SystemContext, false);
+                    statusCode = StatusCodes.Good;
 
                     return ServiceResult.Good;
                 }
             }
 
             BaseDataVariableState variable = node as BaseDataVariableState;
-            if (variable == null)
+            if (variable != null)
             {
+                if (node.DisplayName.Text == "MemoryWorkingSet")
+                {
+                    statusCode = StatusCodes.Good;
+
+                    return ServiceResult.Good;
+                }
+
                 // find the tag that matches the variable node ID
                 foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
                 {
@@ -1326,6 +1388,7 @@ namespace Opc.Ua.Edge.Translator
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                                statusCode = StatusCodes.Good;
 
                                 return ServiceResult.Good;
                             }
@@ -1352,7 +1415,7 @@ namespace Opc.Ua.Edge.Translator
                 string[] actionInputArgs = inputArguments.Select(arg => arg?.ToString()).ToArray();
                 string[] actionOutputArgs = outputArguments.Select(arg => arg?.ToString()).ToArray();
 
-                string result = _assets[assetId].ExecuteAction(actionName, actionInputArgs, actionOutputArgs);
+                string result = _assets[assetId].ExecuteAction(assetId, actionName, actionInputArgs, actionOutputArgs);
 
                 return new ServiceResult(StatusCodes.Good, new LocalizedText(result));
             }
@@ -1372,12 +1435,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _ticks++;
 
-                // update working set variable
-                _uaVariables["MemoryWorkingSet"].Value = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
-                _uaVariables["MemoryWorkingSet"].Timestamp = DateTime.UtcNow;
-                _uaVariables["MemoryWorkingSet"].ClearChangeMasks(SystemContext, false);
-
-            string assetId = (string)assetNameObject;
+                string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
                     assetDeleted = true;
