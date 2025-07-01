@@ -56,7 +56,7 @@ namespace OCPPCentralSystem
                         }
 
                         string chargePointName = Requests.FirstOrDefault().Key;
-                        if (!_connectedChargePoints[chargePointName].WaitingResponse && !_connectedChargePoints[chargePointName].WebsocketBusy)
+                        if (!_connectedChargePoints[chargePointName].WaitingForResponse && !_connectedChargePoints[chargePointName].WebsocketBusy)
                         {
                             if (_connectedChargePoints[chargePointName].WebSocket.State == WebSocketState.Open)
                             {
@@ -64,7 +64,7 @@ namespace OCPPCentralSystem
 
                                 await SendDataToWebSocketAsync(chargePointName, requestPayload, _connectedChargePoints[chargePointName].WebSocket).ConfigureAwait(false);
 
-                                _connectedChargePoints[chargePointName].WaitingResponse = true; // set the flag to true to indicate that a request is sent and waiting for response
+                                _connectedChargePoints[chargePointName].WaitingForResponse = true; // set the flag to true to indicate that a request is sent and waiting for response
                             }
                             else
                             {
@@ -177,6 +177,8 @@ namespace OCPPCentralSystem
                     {
                         var oldSocket = _connectedChargePoints[chargepointName].WebSocket;
                         _connectedChargePoints[chargepointName].WebSocket = socket;
+                        _connectedChargePoints[chargepointName].WebsocketBusy = false;
+                        _connectedChargePoints[chargepointName].WaitingForResponse = false;
 
                         if (oldSocket != null)
                         {
@@ -284,7 +286,7 @@ namespace OCPPCentralSystem
                                 // remove the waiting response flag
                                 if (_connectedChargePoints.TryGetValue(chargepointName, out ChargePointConnection charger))
                                 {
-                                    charger.WaitingResponse = false;
+                                    charger.WaitingForResponse = false;
                                 }
 
                                 if (ocppMessage.Count < 3)
@@ -309,7 +311,7 @@ namespace OCPPCentralSystem
                                 // remove the waiting response flag
                                 if (_connectedChargePoints.TryGetValue(chargepointName, out ChargePointConnection charger2))
                                 {
-                                    charger2.WaitingResponse = false;
+                                    charger2.WaitingForResponse = false;
                                 }
 
                                 if (webSocket.SubProtocol == "ocpp1.6")

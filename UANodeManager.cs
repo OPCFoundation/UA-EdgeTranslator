@@ -200,7 +200,7 @@ namespace Opc.Ua.Edge.Translator
 
             // create file node to upload local nodeset files to the server
             FileState fileNode = new(_assetManagement);
-            fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFile Upload"), null, false);
+            fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFileUpload"), null, false);
             _assetManagement.AddChild(fileNode);
 
             FileManager fileManager = new(this, fileNode);
@@ -227,7 +227,7 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, licenseProperty);
 
             // create a variable for the current memory working set
-            BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "Memory Working Set (MB)", new ExpandedNodeId(DataTypes.Int32), WoTConNamespaceIndex);
+            BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "MemoryWorkingSet(MB)", new ExpandedNodeId(DataTypes.Int32), WoTConNamespaceIndex);
             AddPredefinedNode(SystemContext, variable);
         }
 
@@ -1267,7 +1267,7 @@ namespace Opc.Ua.Edge.Translator
             BaseDataVariableState variable = node as BaseDataVariableState;
             if (variable != null)
             {
-                if (node.DisplayName.Text == "Memory Working Set (MB)")
+                if (node.DisplayName.Text == "MemoryWorkingSet(MB)")
                 {
                     value = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
                     timestamp = DateTime.UtcNow;
