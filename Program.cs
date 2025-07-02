@@ -41,7 +41,7 @@ namespace Opc.Ua.Edge.Translator
 
             await App.LoadApplicationConfiguration(false).ConfigureAwait(false);
 
-            await App.CheckApplicationInstanceCertificates(false, 0).ConfigureAwait(false);
+            await App.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
 
             // create OPC UA cert validator
             App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();

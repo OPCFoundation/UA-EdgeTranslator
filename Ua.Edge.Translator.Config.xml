@@ -10,6 +10,11 @@
   <ApplicationType>ClientAndServer_2</ApplicationType>
 
   <SecurityConfiguration>
+    <ApplicationCertificate>
+      <StoreType>Directory</StoreType>
+      <StorePath>./pki/own</StorePath>
+      <SubjectName>CN=UAEdgeTranslator, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+    </ApplicationCertificate>
     <ApplicationCertificates>
       <CertificateIdentifier>
         <StoreType>Directory</StoreType>
