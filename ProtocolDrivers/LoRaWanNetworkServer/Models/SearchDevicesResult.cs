@@ -13,8 +13,7 @@ namespace LoRaWan.NetworkServer
     /// </summary>
     public class SearchDevicesResult : IReadOnlyList<DeviceInfo>
     {
-        // Nounce:DevEUI:GatewayID
-        public static readonly Dictionary<string, Tuple<DevNonce, DevEui, string>> DeviceList = [];
+        public static readonly List<string> DeviceList = new();
 
         /// <summary>
         /// Gets list of devices that match the criteria.
@@ -45,27 +44,30 @@ namespace LoRaWan.NetworkServer
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();
 
-        public static SearchDevicesResult SearchForDevice(string gatewayID, DevEui devEUI, DevNonce? nounce = null)
+        public static SearchDevicesResult SearchForDevice(DevEui devEUI, DevNonce? nounce = null)
         {
-            string index = gatewayID + ":" + devEUI.ToString();
-            if (DeviceList.ContainsKey(index))
+            string index = devEUI.ToString();
+
+            // check if we allow all devices to be added
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ALLOW_ALL_LORAWAN_DEVICES")))
             {
-                return new SearchDevicesResult([new DeviceInfo(devEUI)]) { IsDevNonceAlreadyUsed = (DeviceList[index].Item1.AsUInt16 != 0) };
+                AddDevice(devEUI);
+            }
+
+            if (DeviceList.Contains(index))
+            {
+                return new SearchDevicesResult([new DeviceInfo(devEUI)]);
             }
 
             return null;
         }
 
-        public static void AddOrUpdateDevice(string gatewayID, DevEui devEUI, DevNonce nounce)
+        public static void AddDevice(DevEui devEUI)
         {
-            string index = gatewayID + ":" + devEUI.ToString();
-            if (!DeviceList.ContainsKey(index))
+            string index = devEUI.ToString();
+            if (!DeviceList.Contains(index))
             {
-                DeviceList.Add(index, new Tuple<DevNonce, DevEui, string>(nounce, devEUI, gatewayID));
-            }
-            else
-            {
-                DeviceList[index] = new Tuple<DevNonce, DevEui, string>(nounce, devEUI, gatewayID);
+                DeviceList.Add(index);
             }
         }
     }

@@ -275,21 +275,12 @@ namespace LoRaWan.NetworkServer
                 var fcntUpDelta = FCntUp >= LastSavedFCntUp ? FCntUp - LastSavedFCntUp : LastSavedFCntUp - FCntUp;
                 var fcntDownDelta = FCntDown >= LastSavedFCntDown ? FCntDown - LastSavedFCntDown : LastSavedFCntDown - FCntDown;
 
-                if (fcntDownDelta >= LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.MaxFcntUnsavedDelta ||
-                    fcntUpDelta >= LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.MaxFcntUnsavedDelta ||
+                if (fcntDownDelta >= Constants.MaxFcntUnsavedDelta ||
+                    fcntUpDelta >= Constants.MaxFcntUnsavedDelta ||
                     (this.hasFrameCountChanges && force))
                 {
                     var savedFcntDown = FCntDown;
                     var savedFcntUp = FCntUp;
-
-                    // For class C devices this might be the only moment the connection is established
-                    await using var deviceClientActivityScope = BeginDeviceClientConnectionActivity();
-                    if (deviceClientActivityScope == null)
-                    {
-                        // Logging as information because the real error was logged as error
-                        this.logger.LogDebug("failed to save twin, could not reconnect");
-                        return false;
-                    }
 
                     InternalAcceptFrameCountChanges(savedFcntUp, savedFcntDown);
 
@@ -424,16 +415,6 @@ namespace LoRaWan.NetworkServer
         }
 
         /// <summary>
-        /// Ensures that the device is connected. Calls the connection manager that keeps track of device connection lifetime.
-        /// Most devices won't have a connection timeout,
-        /// in that case check without lock and return a cached disposable
-        /// </summary>
-        internal virtual IAsyncDisposable BeginDeviceClientConnectionActivity()
-        {
-            return null;
-        }
-
-        /// <summary>
         /// Indicates whether or not we can resubmit an ack for the confirmation up message.
         /// </summary>
         /// <returns><c>true</c>, if resubmit is allowed, <c>false</c> otherwise.</returns>
@@ -463,20 +444,11 @@ namespace LoRaWan.NetworkServer
         /// <summary>
         /// Updates device on the server after a join succeeded.
         /// </summary>
-        internal virtual async Task<bool> UpdateAfterJoinAsync(LoRaDeviceJoinUpdateProperties updateProperties, CancellationToken cancellationToken)
+        internal virtual Task<bool> UpdateAfterJoinAsync(LoRaDeviceJoinUpdateProperties updateProperties, CancellationToken cancellationToken)
         {
-            await using var activityScope = BeginDeviceClientConnectionActivity();
-            if (activityScope == null)
-            {
-                // Logging as information because the real error was logged as error
-                this.logger.LogDebug("failed to update twin after join, could not reconnect");
-                return false;
-            }
-
             var devAddrBeforeSave = DevAddr;
 
             _ = RegionManager.TryTranslateToRegion(updateProperties.Region, out var currentRegion);
-
 
             // Only save if the devAddr remains the same, otherwise ignore the save
             if (devAddrBeforeSave == DevAddr)
@@ -529,7 +501,7 @@ namespace LoRaWan.NetworkServer
                 this.preferredGatewayID.Rollback();
             }
 
-            return true;
+            return Task.FromResult(true);
         }
 
         internal void SetRequestHandler(ILoRaDataRequestHandler dataRequestHandler) => this.dataRequestHandler = dataRequestHandler;

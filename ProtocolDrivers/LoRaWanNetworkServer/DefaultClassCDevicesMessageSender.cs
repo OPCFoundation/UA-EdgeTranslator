@@ -37,7 +37,7 @@ namespace LoRaWan.NetworkServer
                 return false;
             }
 
-            var searchResult = SearchDevicesResult.SearchForDevice(null, devEui);
+            var searchResult = SearchDevicesResult.SearchForDevice(devEui);
             if (searchResult == null || searchResult.Devices.Count == 0)
             {
                 logger.LogError($"[class-c] device {message.DevEUI} not found or not joined");

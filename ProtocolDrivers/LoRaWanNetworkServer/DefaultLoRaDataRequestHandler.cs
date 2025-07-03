@@ -31,7 +31,7 @@ namespace LoRaWan.NetworkServer
         private readonly Counter<int> c2dMessageTooLong = meter?.CreateCounter<int>(MetricRegistry.C2DMessageTooLong);
         private IClassCDeviceMessageSender classCDeviceMessageSender;
 
-        private sealed class ProcessingState(LoRaDevice device)
+        private sealed class ProcessingState()
         {
             private List<Task> secondaryTasks;
 
@@ -43,19 +43,6 @@ namespace LoRaWan.NetworkServer
                 this.secondaryTasks ??= new List<Task>();
                 this.secondaryTasks.Add(task);
             }
-
-            public IAsyncDisposable DeviceConnectionActivity { get; private set; }
-
-            public bool BeginDeviceClientConnectionActivity()
-            {
-                if (DeviceConnectionActivity is not null)
-                    throw new InvalidOperationException();
-                var activity = device.BeginDeviceClientConnectionActivity();
-                if (activity is null)
-                    return false;
-                DeviceConnectionActivity = activity;
-                return true;
-            }
         }
 
         public async Task<LoRaDeviceRequestProcessResult> ProcessRequestAsync(LoRaRequest request, LoRaDevice loRaDevice)
@@ -63,7 +50,7 @@ namespace LoRaWan.NetworkServer
             ArgumentNullException.ThrowIfNull(request, nameof(request));
             ArgumentNullException.ThrowIfNull(loRaDevice, nameof(loRaDevice));
 
-            var processingState = new ProcessingState(loRaDevice);
+            var processingState = new ProcessingState();
 
             try
             {
@@ -215,10 +202,6 @@ namespace LoRaWan.NetworkServer
                 }
 
                 loRaDevice.IsConnectionOwner = true;
-                if (!state.BeginDeviceClientConnectionActivity())
-                {
-                    return new LoRaDeviceRequestProcessResult(loRaDevice, request, LoRaDeviceRequestFailedReason.DeviceClientConnectionFailed);
-                }
 
                 // saving fcnt reset changes
                 if (isFrameCounterFromNewlyStartedDevice)

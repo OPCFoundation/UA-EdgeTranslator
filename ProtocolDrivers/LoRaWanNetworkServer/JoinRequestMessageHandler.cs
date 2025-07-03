@@ -32,24 +32,21 @@ namespace LoRaWan.NetworkServer
             _ = Task.Run(() => ProcessJoinRequestAsync(request));
         }
 
-        public Task<LoRaDevice> GetDeviceForJoinRequestAsync(DevEui devEUI, DevNonce devNonce)
+        public LoRaDevice GetDeviceForJoinRequestAsync(DevEui devEUI)
         {
             logger.LogDebug("querying the registry for OTAA device");
 
-            var searchDeviceResult = SearchDevicesResult.SearchForDevice(
-                configuration.GatewayID,
-                devEUI,
-                devNonce);
+            var searchDeviceResult = SearchDevicesResult.SearchForDevice(devEUI);
+
+            if ((searchDeviceResult == null) || (searchDeviceResult?.Devices == null) || (searchDeviceResult.Devices.Count == 0))
+            {
+                logger.LogInformation("join refused: no devices found matching join request");
+                return null;
+            }
 
             if (searchDeviceResult.IsDevNonceAlreadyUsed)
             {
                 logger.LogInformation("join refused: Join already processed by another gateway.");
-                return null;
-            }
-
-            if (searchDeviceResult?.Devices == null || searchDeviceResult.Devices.Count == 0)
-            {
-                logger.LogInformation(searchDeviceResult.RefusedMessage ?? "join refused: no devices found matching join request");
                 return null;
             }
 
@@ -65,13 +62,8 @@ namespace LoRaWan.NetworkServer
                 return null;
             }
 
-            SearchDevicesResult.AddOrUpdateDevice(
-                configuration.GatewayID,
-                devEUI,
-                devNonce);
-
             var matchingDeviceInfo = searchDeviceResult.Devices[0];
-            return Task.FromResult(new LoRaDevice(null, matchingDeviceInfo.DevEUI));
+            return new LoRaDevice(null, matchingDeviceInfo.DevEUI);
         }
 
         internal async Task ProcessJoinRequestAsync(LoRaRequest request)
@@ -103,7 +95,7 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                loRaDevice = await GetDeviceForJoinRequestAsync(devEui, joinReq.DevNonce).ConfigureAwait(false);
+                loRaDevice = GetDeviceForJoinRequestAsync(devEui);
                 if (loRaDevice == null)
                 {
                     request.NotifyFailed(devEui.ToString(), LoRaDeviceRequestFailedReason.UnknownDevice);
@@ -111,26 +103,16 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                if (loRaDevice.AppKey is null)
-                {
-                    logger.LogError("join refused: missing AppKey for OTAA device");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.InvalidJoinRequest);
-                    return;
-                }
-
-                var appKey = loRaDevice.AppKey.Value;
+                loRaDevice.DevNonce = joinReq.DevNonce;
+                loRaDevice.AppEui = joinReq.AppEui;
+                loRaDevice.AppKey = AppKey.Read(RandomNumberGenerator.GetBytes(AppKey.Size));
+                loRaDevice.GatewayID = configuration.GatewayID;
+                loRaDevice.IsOurDevice = true;
 
                 if (loRaDevice.AppEui != joinReq.AppEui)
                 {
                     logger.LogError("join refused: AppEUI for OTAA does not match device");
                     request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.InvalidJoinRequest);
-                    return;
-                }
-
-                if (!joinReq.CheckMic(appKey))
-                {
-                    logger.LogError("join refused: invalid MIC");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.JoinMicCheckFailed);
                     return;
                 }
 
@@ -140,14 +122,9 @@ namespace LoRaWan.NetworkServer
                     if (string.IsNullOrEmpty(loRaDevice.GatewayID))
                     {
                         logger.LogInformation("join refused: join already processed by another gateway");
+                        request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.JoinDevNonceAlreadyUsed);
+                        return;
                     }
-                    else
-                    {
-                        logger.LogError("join refused: DevNonce already used by this device");
-                    }
-
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.JoinDevNonceAlreadyUsed);
-                    return;
                 }
 
                 // Check that the device is joining through the linked gateway and not another
@@ -160,8 +137,8 @@ namespace LoRaWan.NetworkServer
 
                 var netId = configuration.NetId;
                 var appNonce = new AppNonce(RandomNumberGenerator.GetInt32(toExclusive: AppNonce.MaxValue + 1));
-                var appSKey = OTAAKeysGenerator.CalculateAppSessionKey(appNonce, netId, joinReq.DevNonce, appKey);
-                var nwkSKey = OTAAKeysGenerator.CalculateNetworkSessionKey(appNonce, netId, joinReq.DevNonce, appKey);
+                var appSKey = OTAAKeysGenerator.CalculateAppSessionKey(appNonce, netId, joinReq.DevNonce, (AppKey)loRaDevice.AppKey);
+                var nwkSKey = OTAAKeysGenerator.CalculateNetworkSessionKey(appNonce, netId, joinReq.DevNonce, (AppKey)loRaDevice.AppKey);
                 var address = RandomNumberGenerator.GetInt32(toExclusive: DevAddr.MaxNetworkAddress + 1);
                 // The 7 LBS of the NetID become the NwkID of a DevAddr:
                 var devAddr = new DevAddr(unchecked((byte)netId.NetworkId), address);
@@ -211,7 +188,6 @@ namespace LoRaWan.NetworkServer
                 }
 
                 var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties, joinAcceptCancellationToken.Token).ConfigureAwait(false);
-
                 if (!deviceUpdateSucceeded)
                 {
                     logger.LogError("join refused: join request could not save twin");
@@ -285,7 +261,7 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                var joinAcceptBytes = loRaPayloadJoinAccept.Serialize(appKey);
+                var joinAcceptBytes = loRaPayloadJoinAccept.Serialize((AppKey)loRaDevice.AppKey);
 
                 // For join accept messages the RX1DROffsetvalue is ignored as the join accept message carry the settings to the device.
                 var rx1 = windowToUse is not ReceiveWindow2

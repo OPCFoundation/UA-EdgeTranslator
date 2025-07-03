@@ -26,7 +26,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public List<string> Discover()
         {
             List<string> deviceList = new List<string>();
-            foreach (var device in SearchDevicesResult.DeviceList.Keys)
+            foreach (var device in SearchDevicesResult.DeviceList)
             {
                 deviceList.Add("lorawan://" + device);
             }
@@ -60,16 +60,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 // register the device with the LoRaWAN Network Server
-                var addresses = ipAddress.Split('/');
-                if (addresses.Length == 2)
-                {
-                    var devEui = new DevEui(ulong.Parse(addresses[1]));
-                    SearchDevicesResult.AddOrUpdateDevice(addresses[0], devEui, new DevNonce(0));
-                }
-                else
-                {
-                    Log.Logger.Error("Invalid LoRaWAN address format. Expected format: lorawan://<ip_address>/<device_id>");
-                }
+                var devEui = DevEui.Parse(ipAddress);
+                SearchDevicesResult.AddDevice(devEui);
             }
             catch (Exception ex)
             {

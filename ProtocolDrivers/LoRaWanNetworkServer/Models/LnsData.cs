@@ -94,7 +94,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public uint AntennaPreference { get; set; }
 
             [DataMember(Name = "xtime")]
-            public uint Xtime { get; set; }
+            public ulong Xtime { get; set; }
 
             [DataMember(Name = "gpstime")]
             public uint GpsTime { get; set; }
@@ -113,31 +113,31 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public LnsMessageType MessageType { get; set; }
 
             [DataMember(Name = "MHdr")]
-            public MacHeader MacHeader { get; }
+            public MacHeader MacHeader { get; set; }
 
             [DataMember(Name = "DevAddr")]
-            public DevAddr DevAddr { get; }
+            public DevAddr DevAddr { get; set; }
 
             [DataMember(Name = "FCtrl")]
-            public FrameControlFlags FrameControlFlags { get; }
+            public FrameControlFlags FrameControlFlags { get; set; }
 
             [DataMember(Name = "FCnt")]
-            public ushort Counter { get; }
+            public ushort Counter { get; set; }
 
             [DataMember(Name = "FOpts")]
-            public string Options { get; }
+            public string Options { get; set; }
 
             [DataMember(Name = "FPort")]
-            public FramePort? Port { get; }
+            public FramePort? Port { get; set; }
 
             [DataMember(Name = "FRMPayload")]
-            public string Payload { get; }
+            public string Payload { get; set; }
 
             [DataMember(Name = "MIC")]
-            public MessageIntegrityCode Mic { get; }
+            public MessageIntegrityCode Mic { get; set; }
 
             [DataMember(Name = "RADIOMETADATA")]
-            public RadioMetadata RadioMetadata { get; }
+            public RadioMetadata RadioMetadata { get; set; }
         }
 
         [DataContract]
@@ -147,22 +147,28 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public LnsMessageType MessageType { get; set; }
 
             [DataMember(Name = "MHdr")]
-            public MacHeader MacHeader { get; }
+            public int MacHeader { get; set; }
 
-            [DataMember(Name = "JoinEUI")]
-            public JoinEui JoinEui { get; }
+            [DataMember(Name = "JoinEui")]
+            public string JoinEui { get; set; }
 
-            [DataMember(Name = "DevEUI")]
-            public DevEui DevEui { get; }
+            [DataMember(Name = "DevEui")]
+            public string DevEui { get; set; }
 
             [DataMember(Name = "DevNonce")]
-            public DevNonce DevNonce { get; }
+            public string DevNonce { get; set; }
 
             [DataMember(Name = "MIC")]
-            public MessageIntegrityCode Mic { get; }
+            public string Mic { get; set; }
 
-            [DataMember(Name = "RADIOMETADATA")]
-            public RadioMetadata RadioMetadata { get; }
+            [DataMember(Name = "DR")]
+            public int DR { get; set; }
+
+            [DataMember(Name = "Freq")]
+            public ulong Frequency { get; set; }
+
+            [DataMember(Name = "upinfo")]
+            public RadioMetadataUpInfo UpInfo { get; set; }
         }
 
     }

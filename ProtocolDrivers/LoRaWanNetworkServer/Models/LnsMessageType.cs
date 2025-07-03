@@ -3,23 +3,48 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Converters;
     using System;
+    using System.Runtime.Serialization;
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum LnsMessageType
     {
-        Version,                // version
-        RouterConfig,           // router_config
-        JoinRequest,            // jreq
-        UplinkDataFrame,        // updf
-        TransmitConfirmation,   // dntxed
-        DownlinkMessage,        // dnmsg
+        [EnumMember(Value = @"version")]
+        Version,
 
-        // Following message types are not handled in current LoRaWan Network Server implementation
-        ProprietaryDataFrame,   // propdf
-        MulticastSchedule,      // dnsched
-        TimeSync,               // timesync
-        RunCommand,             // runcmd
-        RemoteShell             // rmtsh
+        [EnumMember(Value = @"router_config")]
+        RouterConfig,
+
+        [EnumMember(Value = @"jreq")]
+        JoinRequest,
+
+        [EnumMember(Value = @"updf")]
+        UplinkDataFrame,
+
+        [EnumMember(Value = @"dntxed")]
+        TransmitConfirmation,
+
+        [EnumMember(Value = @"dnmsg")]
+        DownlinkMessage,
+
+        // the below message types are not handled in current LoRaWan Network Server implementation
+
+        [EnumMember(Value = @"propdf")]
+        ProprietaryDataFrame,
+
+        [EnumMember(Value = @"dnsched")]
+        MulticastSchedule,
+
+        [EnumMember(Value = @"timesync")]
+        TimeSync,
+
+        [EnumMember(Value = @"runcmd")]
+        RunCommand,
+
+        [EnumMember(Value = @"rmtsh")]
+        RemoteShell
     }
 
     public static class LnsMessageTypeExtensions

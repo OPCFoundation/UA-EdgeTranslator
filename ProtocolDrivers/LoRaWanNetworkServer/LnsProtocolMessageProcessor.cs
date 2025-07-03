@@ -10,6 +10,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
     using System;
     using System.Diagnostics.Metrics;
     using System.Net.WebSockets;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using LoRaTools.NetworkServerDiscovery;
@@ -124,15 +125,21 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     LogReceivedMessage(logger, "jreq", json, null);
                     try
                     {
-                        var jreq = JsonConvert.DeserializeObject<JoinRequestMessage>(json);
+                        JoinRequestMessage jreq = JsonConvert.DeserializeObject<JoinRequestMessage>(json);
+                        RadioMetadata radioMetadata = new()
+                        {
+                            Frequency = new Hertz(jreq.Frequency),
+                            DataRate = (DataRateIndex)jreq.DR,
+                            UpInfo = jreq.UpInfo
+                        };
 
                         var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
-                        var loraRequest = new LoRaRequest(jreq.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
-                        loraRequest.SetPayload(new LoRaPayloadJoinRequest(jreq.JoinEui,
-                                                                          jreq.DevEui,
-                                                                          jreq.DevNonce,
-                                                                          jreq.Mic));
+                        var loraRequest = new LoRaRequest(radioMetadata, downstreamMessageSender, DateTime.UtcNow);
+                        loraRequest.SetPayload(new LoRaPayloadJoinRequest(JoinEui.Parse(jreq.JoinEui),
+                                                                          DevEui.Parse(jreq.DevEui),
+                                                                          DevNonce.Read(Encoding.UTF8.GetBytes(jreq.DevNonce)),
+                                                                          MessageIntegrityCode.Read(Encoding.UTF8.GetBytes(jreq.Mic))));
                         loraRequest.SetRegion(routerRegion);
                         loraRequest.SetStationEui(stationEui);
                         messageDispatcher.DispatchRequest(loraRequest);
