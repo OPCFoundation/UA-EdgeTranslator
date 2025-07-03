@@ -20,9 +20,6 @@
   "properties": {
     "RoleExample_Cell_Ressource_RB1_Frame_x": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -39,9 +36,6 @@
     },
     "RoleExample_Cell_Ressource_RB1_Frame_y": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -58,9 +52,6 @@
     },
     "RoleExample_Cell_Ressource_RB1_Frame_z": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -77,9 +68,6 @@
     },
     "RoleExample_Cell_Ressource_RB1_Frame_rx": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -96,9 +84,6 @@
     },
     "RoleExample_Cell_Ressource_RB1_Frame_ry": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -115,9 +100,6 @@
     },
     "RoleExample_Cell_Ressource_RB1_Frame_rz": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -134,9 +116,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_x": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -153,9 +132,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_y": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -172,9 +148,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_z": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -191,9 +164,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_rx": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -210,9 +180,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_ry": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -229,9 +196,6 @@
     },
     "RoleExample_Cell_Ressource_DT2_Frame_rz": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -248,9 +212,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_x": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -267,9 +228,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_y": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -286,9 +244,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_z": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -305,9 +260,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_rx": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -324,9 +276,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_ry": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -343,9 +292,6 @@
     },
     "RoleExample_Cell_Ressource_TB3_Frame_rz": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [

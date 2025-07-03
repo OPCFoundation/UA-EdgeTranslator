@@ -243,7 +243,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 try
                 {
-                    if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("opcua"))
+                    if (ns.ToString().Contains("https://www.w3.org/") && !ns.ToString().Contains("uav:"))
                     {
                         continue;
                     }

@@ -17,9 +17,6 @@
   "properties": {
     "ProductSerialNumber": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -36,9 +33,6 @@
     },
     "NumberOfManufacturedProducts": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -55,9 +49,6 @@
     },
     "NumberOfDiscardedProducts": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -74,9 +65,6 @@
     },
     "OverallRunningTime": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -93,9 +81,6 @@
     },
     "FaultyTime": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -112,9 +97,6 @@
     },
     "Status": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -131,9 +113,6 @@
     },
     "EnergyConsumption": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -150,9 +129,6 @@
     },
     "Pressure": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -169,9 +145,6 @@
     },
     "IdealCycleTime": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -188,9 +161,6 @@
     },
     "ActualCycleTime": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [

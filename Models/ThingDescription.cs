@@ -45,13 +45,13 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }
 
-        [JsonProperty("opcua:nodeId")]
+        [JsonProperty("uav:mapToNodeId")]
         public string? OpcUaNodeId { get; set; }
 
-        [JsonProperty("opcua:type")]
+        [JsonProperty("uav:mapToType")]
         public string? OpcUaType { get; set; }
 
-        [JsonProperty("opcua:fieldPath")]
+        [JsonProperty("uav:mapByFieldPath")]
         public string? OpcUaFieldPath { get; set; }
 
         [JsonProperty("readOnly")]

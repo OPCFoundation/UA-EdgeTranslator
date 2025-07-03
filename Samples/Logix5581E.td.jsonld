@@ -17,9 +17,6 @@
   "properties": {
     "Production_Data.Product_Count": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [

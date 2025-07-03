@@ -20,9 +20,6 @@
   "properties": {
     "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -39,9 +36,6 @@
     },
     "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:idbUN01_Labeler": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -58,9 +52,6 @@
     },
     "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_OMACPackTags": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -77,9 +68,6 @@
     },
     "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler_PDI_BASIC": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -96,9 +84,6 @@
     },
     "https://siemens.com/demo/ids/sm/plc/532c045d-f584-4c50-bec2-f2276ea7932d:3_-_Data_blocks:dbUN01_Labeler_PDI_PEC": {
       "type": "number",
-      "opcua:nodeId": null,
-      "opcua:type": null,
-      "opcua:fieldPath": null,
       "readOnly": true,
       "observable": true,
       "forms": [

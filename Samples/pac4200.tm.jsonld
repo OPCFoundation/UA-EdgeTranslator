@@ -2,10 +2,7 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1",
     {
-      "binding": "http://opcfoundation.org/UA/WoT-Binding/v1.00"
-    },
-    {
-      "opcua": "http://opcfoundation.org/UA/PNEM/"
+      "uav": "http://opcfoundation.org/UA/PNEM/"
     }
   ],
   "id": "urn:pac4200",
@@ -26,11 +23,9 @@
   "properties": {
     "VoltageL1-N": {
       "type": "number",
-      "opcua:nodeId": "s=VoltageL-N",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "A",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -48,11 +43,9 @@
     },
     "VoltageL2-N": {
       "type": "number",
-      "opcua:nodeId": "s=VoltageL-N",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "B",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -70,11 +63,9 @@
     },
     "VoltageL3-N": {
       "type": "number",
-      "opcua:nodeId": "s=VoltageL-N",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "C",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -143,11 +134,9 @@
     },
     "CurrentL1": {
       "type": "number",
-      "opcua:nodeId": "s=Current",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "A",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -165,11 +154,9 @@
     },
     "CurrentL2": {
       "type": "number",
-      "opcua:nodeId": "s=Current",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "B",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -187,11 +174,9 @@
     },
     "CurrentL3": {
       "type": "number",
-      "opcua:nodeId": "s=Current",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "C",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -209,11 +194,9 @@
     },
     "PowerFactorL1": {
       "type": "number",
-      "opcua:nodeId": "s=PowerFactor",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "A",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -231,11 +214,9 @@
     },
     "PowerFactorL2": {
       "type": "number",
-      "opcua:nodeId": "s=PowerFactor",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "B",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -253,11 +234,9 @@
     },
     "PowerFactorL3": {
       "type": "number",
-      "opcua:nodeId": "s=PowerFactor",
-      "@type": [
-        "http://opcfoundation.org/UA/PNEM/;i=3005"
-      ],
-      "opcua:fieldPath": "C",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
       "readOnly": true,
       "observable": true,
       "forms": [
