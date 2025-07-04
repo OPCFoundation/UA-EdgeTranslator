@@ -7,8 +7,8 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     using System.Collections.Generic;
     using System.Linq;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
     using Microsoft.Extensions.Logging;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
 #pragma warning disable CA1724
     public abstract class Region

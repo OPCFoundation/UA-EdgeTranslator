@@ -7,11 +7,11 @@ namespace LoRaWan.NetworkServer
     using System.Collections.Generic;
     using System.Linq;
     using System.Security.Cryptography;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using static ReceiveWindowNumber;
     using static RxDelay;
 

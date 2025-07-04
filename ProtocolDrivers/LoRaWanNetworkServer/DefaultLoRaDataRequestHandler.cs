@@ -187,8 +187,8 @@ namespace LoRaWan.NetworkServer
                         if (IsProcessingDelayEnabled())
                         {
                             loRaDevice.IsConnectionOwner = false;
-                            loRaDevice.CloseConnection(CancellationToken.None);
                         }
+
                         // duplication strategy is indicating that we do not need to continue processing this message
                         logger.LogDebug($"duplication strategy indicated to not process message: {payloadFcnt}");
                         return new LoRaDeviceRequestProcessResult(loRaDevice, request, LoRaDeviceRequestFailedReason.DeduplicationDrop);

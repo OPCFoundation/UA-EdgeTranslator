@@ -7,7 +7,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
     public class RegionAU915RP1 : Region
     {

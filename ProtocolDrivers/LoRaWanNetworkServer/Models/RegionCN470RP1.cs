@@ -7,7 +7,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
     // Frequency plan for region CN470-510 using version 1 of LoRaWAN 1.0.3 Regional Parameters specification
     public class RegionCN470RP1 : Region

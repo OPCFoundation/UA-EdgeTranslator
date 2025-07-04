@@ -15,7 +15,7 @@ namespace LoRaWan.NetworkServer
     using Microsoft.Extensions.Logging.Abstractions;
     using static ReceiveWindowNumber;
 
-    public class LoRaDevice : ILoRaDeviceRequestQueue, IDisposable
+    public class LoRaDevice : IDisposable
     {
         /// <summary>
         /// Defines the maximum amount of times an ack resubmit will be sent.
@@ -95,12 +95,7 @@ namespace LoRaWan.NetworkServer
         private readonly ChangeTrackingProperty<int> txPower = new ChangeTrackingProperty<int>(TwinProperty.TxPower);
         private readonly ILogger<LoRaDevice> logger;
         private readonly Counter<int> unhandledExceptionCount;
-
-        public int TxPower => this.txPower.Get();
-
         private readonly ChangeTrackingProperty<int> nbRep = new ChangeTrackingProperty<int>(TwinProperty.NbRep);
-
-        public int NbRep => this.nbRep.Get();
 
         public DeduplicationMode Deduplication { get; set; }
 
@@ -181,24 +176,16 @@ namespace LoRaWan.NetworkServer
         private volatile uint fcntDown;
         private volatile uint lastSavedFcntUp;
         private volatile uint lastSavedFcntDown;
-        private volatile LoRaRequest runningRequest;
-
+ 
         public RxDelay ReportedRXDelay { get; set; }
 
         public RxDelay DesiredRXDelay { get; set; }
-
-        private ILoRaDataRequestHandler dataRequestHandler;
 
         /// <summary>
         ///  Gets or sets a value indicating whether cloud to device messages are enabled for the device
         ///  By default it is enabled. To disable, set the desired property "EnableC2D" to false.
         /// </summary>
         public bool DownlinkEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating the timeout value in seconds for the device client connection.
-        /// </summary>
-        public int KeepAliveTimeout { get; set; }
 
         /// <summary>
         /// Gets or sets the StationEui for the Basic Station that last processed a message coming from this device.
@@ -226,24 +213,6 @@ namespace LoRaWan.NetworkServer
         internal LoRaDevice(DevAddr? devAddr, DevEui devEui)
             : this(devAddr, devEui, NullLogger<LoRaDevice>.Instance, null)
         { }
-
-        /// <summary>
-        /// Initializes the device from twin properties
-        /// Throws InvalidLoRaDeviceException if the device does contain require properties.
-        /// </summary>
-        public virtual bool Initialize(NetworkServerConfiguration configuration, CancellationToken cancellationToken = default)
-        {
-            _ = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-            LastUpdate = DateTimeOffset.UtcNow;
-            return true;
-        }
-
-        internal bool UpdateIsOurDevice(string currentGatewayId)
-        {
-            IsOurDevice = string.IsNullOrEmpty(GatewayID) || string.Equals(GatewayID, currentGatewayId, StringComparison.OrdinalIgnoreCase);
-            return IsOurDevice;
-        }
 
         public void SetLastProcessingStationEui(StationEui s) => this.lastProcessingStationEui.Set(s);
 
@@ -297,27 +266,6 @@ namespace LoRaWan.NetworkServer
         }
 
         /// <summary>
-        /// Gets a value indicating whether there are pending frame count changes.
-        /// </summary>
-        public bool HasFrameCountChanges => this.hasFrameCountChanges;
-
-        /// <summary>
-        /// Accept changes to the frame count.
-        /// </summary>
-        public void AcceptFrameCountChanges()
-        {
-            this.syncSave.Wait();
-            try
-            {
-                InternalAcceptFrameCountChanges(this.fcntUp, this.fcntDown);
-            }
-            finally
-            {
-                _ = this.syncSave.Release();
-            }
-        }
-
-        /// <summary>
         /// Accept changes to the frame count
         /// This method is not protected by locks.
         /// </summary>
@@ -340,26 +288,6 @@ namespace LoRaWan.NetworkServer
                 this.fcntDown += value;
                 this.hasFrameCountChanges = true;
                 return this.fcntDown;
-            }
-            finally
-            {
-                _ = this.syncSave.Release();
-            }
-        }
-
-        /// <summary>
-        /// Sets a new value for <see cref="FCntDown"/>.
-        /// </summary>
-        public void SetFcntDown(uint newValue)
-        {
-            this.syncSave.Wait();
-            try
-            {
-                if (newValue != this.fcntDown)
-                {
-                    this.fcntDown = newValue;
-                    this.hasFrameCountChanges = true;
-                }
             }
             finally
             {
@@ -504,113 +432,7 @@ namespace LoRaWan.NetworkServer
             return Task.FromResult(true);
         }
 
-        internal void SetRequestHandler(ILoRaDataRequestHandler dataRequestHandler) => this.dataRequestHandler = dataRequestHandler;
-
-        public void Queue(LoRaRequest request)
-        {
-            // Access to runningRequest and queuedRequests must be
-            // thread safe
-            lock (this.processingSyncLock)
-            {
-                if (this.runningRequest == null)
-                {
-                    this.runningRequest = request;
-                    _ = RunAndQueueNext(request);
-                }
-                else
-                {
-                    this.queuedRequests.Enqueue(request);
-                }
-            }
-        }
-
-        private void ProcessNext()
-        {
-            // Access to runningRequest and queuedRequests must be
-            // thread safe
-            lock (this.processingSyncLock)
-            {
-                this.runningRequest = null;
-                if (this.queuedRequests.TryDequeue(out var nextRequest))
-                {
-                    this.runningRequest = nextRequest;
-                    _ = RunAndQueueNext(nextRequest);
-                }
-            }
-        }
-
-        internal bool ValidateMic(LoRaPayloadData payloadData)
-        {
-            var adjusted32bit = Get32BitAdjustedFcntIfSupported(payloadData);
-            var ret = payloadData.CheckMic(NwkSKey.Value, adjusted32bit);
-            if (!ret && CanRolloverToNext16Bits(payloadData.Fcnt))
-            {
-                payloadData.Reset32BitFcnt();
-                // if the upper 16bits changed on the client, it can be that we can't decrypt
-                ret = payloadData.CheckMic(NwkSKey.Value, Get32BitAdjustedFcntIfSupported(payloadData, true));
-                if (ret)
-                {
-                    // this is an indication that the lower 16 bits rolled over on the client
-                    // we adjust the server to the new higher 16bits and keep the lower 16bits
-                    SetFcntUp(IncrementUpper16bit(this.fcntUp));
-                }
-            }
-
-            return ret;
-
-            uint? Get32BitAdjustedFcntIfSupported(LoRaPayloadData payload, bool rollHi = false) =>
-                Supports32BitFCnt && payload is { Fcnt: var fcnt }
-                ? LoRaPayloadData.InferUpper32BitsForClientFcnt(fcnt, rollHi ? IncrementUpper16bit(FCntUp) : FCntUp)
-                : null;
-
-            bool CanRolloverToNext16Bits(ushort payloadFcntUp) =>
-                Supports32BitFCnt && payloadFcntUp + (ushort.MaxValue - (ushort)this.fcntUp) <= LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.MaxFcntGap;
-
-            static uint IncrementUpper16bit(uint val) => (val | 0x0000ffff) + 1;
-        }
-
-
-        private Task RunAndQueueNext(LoRaRequest request)
-        {
-            return TaskUtil.RunOnThreadPool(CoreAsync,
-                                            ex => this.logger.LogError(ex, $"error processing request: {ex.Message}"),
-                                            this.unhandledExceptionCount);
-
-            async Task CoreAsync()
-            {
-                using var scope = this.logger.BeginDeviceScope(DevEUI);
-
-                LoRaDeviceRequestProcessResult result = null;
-
-                try
-                {
-                    result = await this.dataRequestHandler.ProcessRequestAsync(request, this).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    request.NotifyFailed(this, ex);
-                    throw;
-                }
-                finally
-                {
-                    ProcessNext();
-                }
-
-                if (result.FailedReason.HasValue)
-                {
-                    request.NotifyFailed(this, result.FailedReason.Value);
-                }
-                else
-                {
-                    request.NotifySucceeded(this, result?.DownlinkMessage);
-                }
-            }
-        }
-
-        internal virtual void CloseConnection(CancellationToken cancellationToken, bool force = false)
-        {
-        }
-
+     
         public void Dispose()
         {
             this.syncSave.Dispose();
@@ -655,17 +477,6 @@ namespace LoRaWan.NetworkServer
             changeTrackingProperty.Set(value);
             if (acceptChanges)
                 changeTrackingProperty.AcceptChanges();
-        }
-
-        /// <summary>
-        /// Accepts changes in properties, for testing only!.
-        /// </summary>
-        internal void InternalAcceptChanges()
-        {
-            foreach (var prop in GetTrackableProperties())
-            {
-                prop.AcceptChanges();
-            }
         }
     }
 }

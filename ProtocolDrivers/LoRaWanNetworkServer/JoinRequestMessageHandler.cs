@@ -8,6 +8,7 @@ namespace LoRaWan.NetworkServer
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.Metrics;
@@ -304,11 +305,6 @@ namespace LoRaWan.NetworkServer
             {
                 request.NotifyFailed(loRaDevice, ex);
                 throw;
-            }
-            finally
-            {
-                if (loRaDevice is { } someLoRaDevice)
-                    someLoRaDevice.CloseConnection(CancellationToken.None, true);
             }
         }
     }

@@ -7,7 +7,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
     using System;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
     /// <summary>
     /// Model class for a Downlink message for the Basic Station.
