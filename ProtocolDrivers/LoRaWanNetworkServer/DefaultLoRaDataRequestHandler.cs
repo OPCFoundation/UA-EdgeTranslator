@@ -131,32 +131,7 @@ namespace LoRaWan.NetworkServer
 
             try
             {
-                #region FunctionBundler
-                FunctionBundlerResult bundlerResult = null;
-                if (useMultipleGateways
-                    && concentratorDeduplicationResult is ConcentratorDeduplicationResult.NotDuplicate
-                                                       or ConcentratorDeduplicationResult.DuplicateDueToResubmission)
-                {
-                    // in the case of resubmissions we need to contact the function to get a valid frame counter down
-                    throw new NotImplementedException("Azure Function is not supported anymore!");
-
-                    //if (CreateBundler(loraPayload, loRaDevice, request) is { } bundler)
-                    //{
-                    //    if (loRaDevice.IsConnectionOwner is false && IsProcessingDelayEnabled())
-                    //    {
-                    //        await DelayProcessing().ConfigureAwait(false);
-                    //    }
-                    //    bundlerResult = await TryUseBundler(bundler, loRaDevice).ConfigureAwait(false);
-                    //}
-                }
-                #endregion
-
-                loRaADRResult = bundlerResult?.AdrResult;
-
-                if (bundlerResult?.PreferredGatewayResult != null)
-                {
-                    HandlePreferredGatewayChanges(request, loRaDevice, bundlerResult);
-                }
+                loRaADRResult = null;
 
                 #region ADR
                 if (loraPayload.IsAdrAckRequested)
@@ -179,28 +154,10 @@ namespace LoRaWan.NetworkServer
                     requiresConfirmation = true;
                 }
 
-                if (useMultipleGateways)
-                {
-                    // applying the correct deduplication
-                    if (bundlerResult?.DeduplicationResult != null && !bundlerResult.DeduplicationResult.CanProcess)
-                    {
-                        if (IsProcessingDelayEnabled())
-                        {
-                            loRaDevice.IsConnectionOwner = false;
-                        }
-
-                        // duplication strategy is indicating that we do not need to continue processing this message
-                        logger.LogDebug($"duplication strategy indicated to not process message: {payloadFcnt}");
-                        return new LoRaDeviceRequestProcessResult(loRaDevice, request, LoRaDeviceRequestFailedReason.DeduplicationDrop);
-                    }
-                }
-                else
-                {
-                    // we must save class C devices regions in order to send c2d messages
-                    if (loRaDevice.ClassType == LoRaDeviceClassType.C && request.Region.LoRaRegion != loRaDevice.LoRaRegion)
-                        loRaDevice.UpdateRegion(request.Region.LoRaRegion, acceptChanges: false);
-                }
-
+                // we must save class C devices regions in order to send c2d messages
+                if (loRaDevice.ClassType == LoRaDeviceClassType.C && request.Region.LoRaRegion != loRaDevice.LoRaRegion)
+                    loRaDevice.UpdateRegion(request.Region.LoRaRegion, acceptChanges: false);
+                
                 loRaDevice.IsConnectionOwner = true;
 
                 // saving fcnt reset changes
@@ -211,8 +168,7 @@ namespace LoRaWan.NetworkServer
                 }
 
                 #region FrameCounterDown
-                // if deduplication already processed the next framecounter down, use that
-                var fcntDown = loRaADRResult?.FCntDown != null ? loRaADRResult.FCntDown : bundlerResult?.NextFCntDown;
+                var fcntDown = loRaADRResult.FCntDown;
                 LogNotNullFrameCounterDownState(loRaDevice, fcntDown);
 
                 // If we can send message downstream, we need to update the frame counter down
@@ -367,8 +323,7 @@ namespace LoRaWan.NetworkServer
                     // - and it's not a MAC command
                     if (sendUpstream && loraPayload.Fport != FramePort.MacCommand)
                     {
-                        // combine the results of the 2 deduplications: on the concentrator level and on the network server layer
-                        var isDuplicate = concentratorDeduplicationResult is not ConcentratorDeduplicationResult.NotDuplicate || (bundlerResult?.DeduplicationResult?.IsDuplicate ?? false);
+                        var isDuplicate = concentratorDeduplicationResult is not ConcentratorDeduplicationResult.NotDuplicate;
                         if (!await SendDeviceEventAsync(request, loRaDevice, timeWatcher, payloadData, isDuplicate, decryptedPayloadData).ConfigureAwait(false))
                         {
                             // failed to send event to IoT Hub, stop now
@@ -564,37 +519,6 @@ namespace LoRaWan.NetworkServer
             _ = loRaDevice ?? throw new ArgumentNullException(nameof(loRaDevice));
 
             _ = await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
-        }
-
-        private void HandlePreferredGatewayChanges(
-            LoRaRequest request,
-            LoRaDevice loRaDevice,
-            FunctionBundlerResult bundlerResult)
-        {
-            var preferredGatewayResult = bundlerResult.PreferredGatewayResult;
-            if (preferredGatewayResult.IsSuccessful())
-            {
-                var currentIsPreferredGateway = bundlerResult.PreferredGatewayResult.PreferredGatewayID == configuration.GatewayID;
-
-                var preferredGatewayChanged = bundlerResult.PreferredGatewayResult.PreferredGatewayID != loRaDevice.PreferredGatewayID;
-                if (preferredGatewayChanged)
-                    logger.LogDebug($"preferred gateway changed from '{loRaDevice.PreferredGatewayID}' to '{preferredGatewayResult.PreferredGatewayID}'");
-
-                if (preferredGatewayChanged)
-                {
-                    loRaDevice.UpdatePreferredGatewayID(bundlerResult.PreferredGatewayResult.PreferredGatewayID, acceptChanges: !currentIsPreferredGateway);
-                }
-
-                // Save the region if we are the winning gateway and it changed
-                if (request.Region.LoRaRegion != loRaDevice.LoRaRegion)
-                {
-                    loRaDevice.UpdateRegion(request.Region.LoRaRegion, acceptChanges: !currentIsPreferredGateway);
-                }
-            }
-            else
-            {
-                logger.LogError($"failed to resolve preferred gateway: {preferredGatewayResult}");
-            }
         }
 
         public void SetClassCMessageSender(IClassCDeviceMessageSender classCMessageSender) => this.classCDeviceMessageSender = classCMessageSender;

@@ -41,7 +41,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 .AddMemoryCache()
                 .AddSingleton(NetworkServerConfiguration)
                 .AddSingleton<ILoRaDeviceFrameCounterUpdateStrategyProvider, LoRaDeviceFrameCounterUpdateStrategyProvider>()
-                .AddSingleton<IDeduplicationStrategyFactory, DeduplicationStrategyFactory>()
                 .AddSingleton<ILoRaADRStrategyProvider, LoRaADRStrategyProvider>()
                 .AddSingleton<ILoRAADRManagerFactory, LoRAADRManagerFactory>()
                 .AddSingleton<ILoRaPayloadDecoder, LoRaPayloadDecoder>()
