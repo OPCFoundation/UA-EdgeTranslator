@@ -5,7 +5,7 @@
   schemaLocation="./Schema/ApplicationConfiguration.xsd"
 >
   <ApplicationName>UAEdgeTranslator</ApplicationName>
-  <ApplicationUri>urn:localhost:UAEdgeTranslator</ApplicationUri>
+  <ApplicationUri>urn:UAEdgeTranslator</ApplicationUri>
   <ProductUri>http://opcfoundation.com/UA/EdgeTranslator</ProductUri>
   <ApplicationType>ClientAndServer_2</ApplicationType>
 

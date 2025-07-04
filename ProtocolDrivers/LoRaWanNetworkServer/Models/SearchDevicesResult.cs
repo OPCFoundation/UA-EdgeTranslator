@@ -48,12 +48,6 @@ namespace LoRaWan.NetworkServer
         {
             string index = devEUI.ToString();
 
-            // check if we allow all devices to be added
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ALLOW_ALL_LORAWAN_DEVICES")))
-            {
-                AddDevice(devEUI);
-            }
-
             if (DeviceList.Contains(index))
             {
                 return new SearchDevicesResult([new DeviceInfo(devEUI)]);

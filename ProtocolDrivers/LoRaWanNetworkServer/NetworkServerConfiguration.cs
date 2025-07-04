@@ -48,7 +48,7 @@ namespace LoRaWan.NetworkServer
         /// Specifies the client certificate mode with which the server should be run
         /// Allowed values can be found at https://docs.microsoft.com/dotnet/api/microsoft.aspnetcore.server.kestrel.https.clientcertificatemode?view=aspnetcore-6.0
         /// </summary>
-        public ClientCertificateMode ClientCertificateMode { get; internal set; } = ClientCertificateMode.NoCertificate;
+        public ClientCertificateMode ClientCertificateMode { get; internal set; } = ClientCertificateMode.AllowCertificate;
 
         /// <summary>
         /// Specifies the Processing Delay in Milliseconds

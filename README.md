@@ -74,4 +74,3 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space.
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `OCPP_USE_TLS` - Set to `1` to use TLS for OCPP connections.
-* `ALLOW_ALL_LORAWAN_DEVICES` - Set to `1` to allow all LoRaWAN devices to connect.

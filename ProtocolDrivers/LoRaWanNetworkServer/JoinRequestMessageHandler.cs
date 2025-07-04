@@ -12,6 +12,7 @@ namespace LoRaWan.NetworkServer
     using System.Collections.Generic;
     using System.Diagnostics.Metrics;
     using System.Security.Cryptography;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using static LoRaWan.ReceiveWindowNumber;
@@ -103,9 +104,10 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
+                string appKeyString = "TODO";
                 loRaDevice.DevNonce = joinReq.DevNonce;
                 loRaDevice.AppEui = joinReq.AppEui;
-                loRaDevice.AppKey = AppKey.Read(RandomNumberGenerator.GetBytes(AppKey.Size));
+                loRaDevice.AppKey = AppKey.Read(Encoding.UTF8.GetBytes(appKeyString));
                 loRaDevice.GatewayID = configuration.GatewayID;
                 loRaDevice.IsOurDevice = true;
 
