@@ -68,24 +68,5 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
             return Task.FromResult(region);
         }
-
-        public Task<CupsTwinInfo> GetCupsConfigAsync(StationEui? stationEui, CancellationToken cancellationToken)
-        {
-            // TODO: Replace with real CUPS config
-            CupsTwinInfo cupsTwinInfo = new()
-            {
-                CupsUri = new Uri("https://example.com"),
-                TcUri = new Uri("https://example.com"),
-                CupsCredentialUrl = "https://example.com",
-                TcCredentialUrl = "https://example.com",
-                Package = "example-package",
-                FwKeyChecksum = 1234567890,
-                FwSignatureInBase64 = "example-signature",
-                FwUrl = new Uri("https://example.com"),
-                CupsCredCrc = 1234567890,
-                TcCredCrc = 1234567890,
-            };
-            return Task.FromResult(cupsTwinInfo);
-        }
     }
 }

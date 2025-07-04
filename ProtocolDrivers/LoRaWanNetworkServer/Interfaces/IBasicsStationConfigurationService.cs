@@ -5,18 +5,15 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
 {
+    using global::LoRaWan;
+    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using System.Threading;
     using System.Threading.Tasks;
-    using global::LoRaWan;
-    using global::LoRaWan.NetworkServer.BasicsStation;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
 
     internal interface IBasicsStationConfigurationService
     {
         Task<string> GetRouterConfigMessageAsync(StationEui stationEui, CancellationToken cancellationToken);
 
         Task<Region> GetRegionAsync(StationEui stationEui, CancellationToken cancellationToken);
-
-        Task<CupsTwinInfo> GetCupsConfigAsync(StationEui? stationEui, CancellationToken cancellationToken);
     }
 }
