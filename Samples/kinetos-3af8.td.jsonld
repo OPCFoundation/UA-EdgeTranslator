@@ -1,0 +1,118 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:kinetos-3af8",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "kinetos-3af8",
+  "base": "ocpp://kinetos-3af8",
+  "title": "kinetos-3af8",
+  "properties": {
+    "Connector0Meter": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ocpp://kinetos-3af8?0",
+          "op": null,
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "Connector0Status": {
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ocpp://kinetos-3af8?0",
+          "op": null,
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "Connector1Meter": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ocpp://kinetos-3af8?1",
+          "op": null,
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "Connector1Status": {
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "ocpp://kinetos-3af8?1",
+          "op": null,
+          "type": "xsd:float",
+          "pollingTime": 0
+        }
+      ]
+    }
+  },
+  "actions": {
+    "ExecuteCommand": {
+      "input": {
+        "Command": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        },
+        "Arg1": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        },
+        "Arg2": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        },
+        "Arg3": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        },
+        "Arg4": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        },
+        "Arg5": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        }
+      },
+      "output": {
+        "Result": {
+          "type": "string",
+          "properties": null,
+          "required": null
+        }
+      },
+      "forms": null
+    }
+  }
+}
