@@ -7,6 +7,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
 {
     using System.Threading.Tasks;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
     /// <summary>
     /// Request handler for data requests.

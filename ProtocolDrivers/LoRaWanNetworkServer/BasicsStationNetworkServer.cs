@@ -42,7 +42,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                                            if (requireCertificate)
                                            {
                                                config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(configuration,
-                                                                                                             config.ApplicationServices.GetService<IClientCertificateValidatorService>(),
+                                                                                                             config.ApplicationServices.GetService<ClientCertificateValidatorService>(),
                                                                                                              https));
                                            }
                                        })
@@ -59,7 +59,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
         }
 
         internal static void ConfigureHttpsSettings(NetworkServerConfiguration configuration,
-                                                    IClientCertificateValidatorService? clientCertificateValidatorService,
+                                                    ClientCertificateValidatorService? clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
             X509Certificate2 opcuaCert = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;

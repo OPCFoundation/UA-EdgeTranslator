@@ -15,7 +15,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.Extensions.Logging;
 
-    internal sealed partial class ClientCertificateValidatorService(ILogger<ClientCertificateValidatorService> logger) : IClientCertificateValidatorService
+    internal sealed partial class ClientCertificateValidatorService(ILogger<ClientCertificateValidatorService> logger)
     {
         public Task<bool> ValidateAsync(X509Certificate2 certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors, CancellationToken token)
         {

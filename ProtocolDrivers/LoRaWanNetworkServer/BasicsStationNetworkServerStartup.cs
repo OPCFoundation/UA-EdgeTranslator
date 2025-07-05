@@ -55,7 +55,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
             if (NetworkServerConfiguration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
             {
-                _ = services.AddSingleton<IClientCertificateValidatorService, ClientCertificateValidatorService>();
+                _ = services.AddSingleton<ClientCertificateValidatorService>();
             }
         }
 
