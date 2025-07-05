@@ -37,7 +37,7 @@ namespace LoRaWan.NetworkServer
         /// <summary>
         /// Gets or sets the gateway netword id.
         /// </summary>
-        public NetId NetId { get; set; } = new NetId(50);
+        public NetId NetId { get; set; } = new NetId(1);
 
         /// <summary>
         /// Gets list of allowed dev addresses.
