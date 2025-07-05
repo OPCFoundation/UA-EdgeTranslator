@@ -4,11 +4,11 @@
 namespace Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models
 {
     using LoRaWan;
-    using Newtonsoft.Json;
 
-    public class DeviceInfo(DevEui devEui)
+    public class DeviceInfo(DevEui devEui, AppKey appKey)
     {
-        [JsonIgnore]
         public DevEui DevEUI { get; set; } = devEui;
+
+        public AppKey AppKey { get; set; } = appKey;
     }
 }

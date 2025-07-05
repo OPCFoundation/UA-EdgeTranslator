@@ -1,0 +1,58 @@
+﻿{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:milesight-em300-th",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "Milesight EM300-TH 24E124136E440353",
+  "base": "lorawan://24E124136E440353/5572404c696e6b4c6f52613230313823",
+  "title": "Milesight EM300-TH",
+  "properties": {
+    "batteryLevel": {
+      "title": "BatteryLevel",
+      "type": "number",
+      "unit": "percent",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "0?quantity=2"
+        }
+      ]
+    },
+    "humidity": {
+      "title": "Humidity",
+      "type": "number",
+      "unit": "percent",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "2?quantity=2"
+        }
+      ]
+    },
+    "temperature": {
+      "title": "Temperature",
+      "type": "number",
+      "unit": "degree Celsius",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "4?quantity=2"
+        }
+      ]
+    }
+  }
+}

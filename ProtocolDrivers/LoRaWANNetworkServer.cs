@@ -50,11 +50,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Connect(string ipAddress, int port)
         {
+            string[] addressParts = ipAddress.Split('/');
             try
             {
                 // register the device with the LoRaWAN Network Server
-                var devEui = DevEui.Parse(ipAddress);
-                SearchDevicesResult.AddDevice(devEui);
+                var devEui = DevEui.Parse(addressParts[2]);
+                var appKey = AppKey.Parse(addressParts[3]);
+
+                SearchDevicesResult.AddDevice(devEui, appKey);
             }
             catch (Exception ex)
             {
@@ -78,9 +81,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
-            if (addressParts.Length == 2)
+            if (addressParts.Length == 3)
             {
-                byte[] tagBytes = Read(addressParts[0], 0, null, ushort.Parse(addressParts[1])).GetAwaiter().GetResult();
+                byte[] tagBytes = Read(addressParts[0], ushort.Parse(addressParts[2])).GetAwaiter().GetResult();
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
@@ -136,10 +139,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new ArgumentException("Type not supported by LoRaWAN.");
             }
 
-            Write(addressParts[0], 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+            Write(addressParts[0], tagBytes, false).GetAwaiter().GetResult();
         }
 
-        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        private Task<byte[]> Read(string addressWithinAsset, ushort count)
         {
             try
             {
@@ -154,7 +157,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte[] values, bool singleBitOnly)
         {
             try
             {

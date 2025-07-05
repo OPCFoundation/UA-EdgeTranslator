@@ -14,6 +14,7 @@ namespace LoRaWan.NetworkServer
     public sealed class MessageDispatcher(
         NetworkServerConfiguration configuration,
         JoinRequestMessageHandler joinRequestHandler,
+        DefaultLoRaDataRequestHandler dataRequestHandler,
         ILogger<MessageDispatcher> logger)
     {
         private readonly NetworkServerConfiguration configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -48,6 +49,8 @@ namespace LoRaWan.NetworkServer
                     request.NotifyFailed(LoRaDeviceRequestFailedReason.InvalidNetId);
                     return;
                 }
+
+                dataRequestHandler.ProcessRequestAsync(request, null).GetAwaiter().GetResult();
             }
             else
             {

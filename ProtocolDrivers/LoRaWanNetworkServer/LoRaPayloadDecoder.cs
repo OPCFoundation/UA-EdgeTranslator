@@ -3,12 +3,11 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using System.Globalization;
     using System.Reflection;
     using System.Text;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
 
     /// <summary>
     /// LoRa payload decoder.

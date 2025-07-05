@@ -1156,12 +1156,13 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 4) || (address[0] != "lorawan"))
+                if ((address.Length != 5) || (address[0] != "lorawan"))
                 {
-                    throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://assetname!");
+                    throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://deviceeui/appkey!");
                 }
 
-                // in the case of LoRaWAN, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
+                _lorawanNetworkServer.Connect(td.Base, 0);
+
                 assetInterface = _lorawanNetworkServer;
             }
 

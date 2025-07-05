@@ -57,7 +57,7 @@ namespace LoRaWan.NetworkServer
             }
 
             var matchingDeviceInfo = searchDeviceResult.Devices[0];
-            return new LoRaDevice(null, matchingDeviceInfo.DevEUI);
+            return new LoRaDevice(null, matchingDeviceInfo.DevEUI) { AppKey = matchingDeviceInfo.AppKey };
         }
 
         internal async Task ProcessJoinRequestAsync(LoRaRequest request)
@@ -94,10 +94,8 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                string appKeyString = "TODO";
                 loRaDevice.DevNonce = joinReq.DevNonce;
                 loRaDevice.AppEui = joinReq.AppEui;
-                loRaDevice.AppKey = AppKey.Read(Encoding.UTF8.GetBytes(appKeyString));
                 loRaDevice.GatewayID = configuration.GatewayID;
                 loRaDevice.IsOurDevice = true;
 

@@ -139,7 +139,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         messageDispatcher.DispatchRequest(loraRequest);
 
                     }
-                    catch (Newtonsoft.Json.JsonException)
+                    catch (JsonException)
                     {
                         logger.LogInformation("Received unexpected 'jreq' message: {Json}.", json);
                     }
@@ -152,25 +152,25 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     {
                         var updf = JsonConvert.DeserializeObject<UpstreamDataMessage>(json);
 
-                        using var scope = logger.BeginDeviceAddressScope(updf.DevAddr);
+                        using var scope = logger.BeginDeviceAddressScope(DevAddr.Parse(updf.DevAddr.ToString()));
 
                         var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                         var loraRequest = new LoRaRequest(updf.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
-                        loraRequest.SetPayload(new LoRaPayloadData(updf.DevAddr,
-                                                                   updf.MacHeader,
-                                                                   updf.FrameControlFlags,
-                                                                   updf.Counter,
+                        loraRequest.SetPayload(new LoRaPayloadData(DevAddr.Parse(updf.DevAddr.ToString()),
+                                                                   new MacHeader((byte)updf.MacHeader),
+                                                                   (FrameControlFlags)updf.FrameControlFlags,
+                                                                   (ushort)updf.Counter,
                                                                    updf.Options,
                                                                    updf.Payload,
-                                                                   updf.Port,
-                                                                   updf.Mic,
+                                                                   (FramePort)updf.Port,
+                                                                   MessageIntegrityCode.Read(Encoding.UTF8.GetBytes(updf.Mic.ToString())),
                                                                    logger));
                         loraRequest.SetRegion(routerRegion);
                         loraRequest.SetStationEui(stationEui);
                         messageDispatcher.DispatchRequest(loraRequest);
                     }
-                    catch (Newtonsoft.Json.JsonException)
+                    catch (JsonException)
                     {
                         logger.LogError("Received unexpected 'updf' message: {Json}.", json);
                     }

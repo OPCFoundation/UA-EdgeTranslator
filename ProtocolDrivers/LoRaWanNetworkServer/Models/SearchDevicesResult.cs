@@ -13,7 +13,7 @@ namespace LoRaWan.NetworkServer
     /// </summary>
     public class SearchDevicesResult : IReadOnlyList<DeviceInfo>
     {
-        public static readonly List<string> DeviceList = new();
+        public static readonly Dictionary<string, string> DeviceList = new();
 
         /// <summary>
         /// Gets list of devices that match the criteria.
@@ -48,20 +48,24 @@ namespace LoRaWan.NetworkServer
         {
             string index = devEUI.ToString();
 
-            if (DeviceList.Contains(index))
+            if (DeviceList.ContainsKey(index))
             {
-                return new SearchDevicesResult([new DeviceInfo(devEUI)]);
+                return new SearchDevicesResult([new DeviceInfo(devEUI, AppKey.Parse(DeviceList[index]))]);
             }
 
             return null;
         }
 
-        public static void AddDevice(DevEui devEUI)
+        public static void AddDevice(DevEui devEUI, AppKey appKey)
         {
             string index = devEUI.ToString();
-            if (!DeviceList.Contains(index))
+            if (!DeviceList.ContainsKey(index))
             {
-                DeviceList.Add(index);
+                DeviceList.Add(index, appKey.ToString());
+            }
+            else
+            {
+                DeviceList[index] = appKey.ToString();
             }
         }
     }

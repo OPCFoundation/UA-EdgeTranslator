@@ -50,7 +50,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public uint MHdr { get; set; }
 
             [DataMember(Name = "DevAddr")]
-            public int DevAddr { get; set; }
+            public uint DevAddr { get; set; }
 
             [DataMember(Name = "FCtrl")]
             public uint FCtrl { get; set; }
@@ -113,28 +113,28 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public LnsMessageType MessageType { get; set; }
 
             [DataMember(Name = "MHdr")]
-            public MacHeader MacHeader { get; set; }
+            public uint MacHeader { get; set; }
 
             [DataMember(Name = "DevAddr")]
-            public DevAddr DevAddr { get; set; }
+            public uint DevAddr { get; set; }
 
             [DataMember(Name = "FCtrl")]
-            public FrameControlFlags FrameControlFlags { get; set; }
+            public uint FrameControlFlags { get; set; }
 
             [DataMember(Name = "FCnt")]
-            public ushort Counter { get; set; }
+            public uint Counter { get; set; }
 
             [DataMember(Name = "FOpts")]
             public string Options { get; set; }
 
             [DataMember(Name = "FPort")]
-            public FramePort? Port { get; set; }
+            public int Port { get; set; }
 
             [DataMember(Name = "FRMPayload")]
             public string Payload { get; set; }
 
             [DataMember(Name = "MIC")]
-            public MessageIntegrityCode Mic { get; set; }
+            public int Mic { get; set; }
 
             [DataMember(Name = "RADIOMETADATA")]
             public RadioMetadata RadioMetadata { get; set; }

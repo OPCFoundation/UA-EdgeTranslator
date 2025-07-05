@@ -42,7 +42,6 @@ namespace LoRaWan.NetworkServer
         public async Task<LoRaDeviceRequestProcessResult> ProcessRequestAsync(LoRaRequest request, LoRaDevice loRaDevice)
         {
             ArgumentNullException.ThrowIfNull(request, nameof(request));
-            ArgumentNullException.ThrowIfNull(loRaDevice, nameof(loRaDevice));
 
             var processingState = new ProcessingState();
 
