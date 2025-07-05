@@ -3,8 +3,6 @@
 
 #nullable enable
 
-using global::LoRaWan;
-
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
 {
     using System.Threading;

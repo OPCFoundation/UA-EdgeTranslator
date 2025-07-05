@@ -18,7 +18,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         /// <summary>
         /// Provider writtent for future strategy addition.
         /// </summary>
-        public ILoRaADRStrategy GetStrategy()
+        public LoRaADRStandardStrategy GetStrategy()
         {
             return new LoRaADRStandardStrategy(this.loggerFactory.CreateLogger<LoRaADRStandardStrategy>());
         }

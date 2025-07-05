@@ -23,7 +23,7 @@ namespace LoRaWan.NetworkServer
         LoRAADRManagerFactory loRaADRManagerFactory,
         ILogger<DefaultLoRaDataRequestHandler> logger)
     {
-        private IClassCDeviceMessageSender classCDeviceMessageSender;
+        private DefaultClassCDevicesMessageSender classCDeviceMessageSender;
 
         private sealed class ProcessingState()
         {
@@ -460,7 +460,7 @@ namespace LoRaWan.NetworkServer
             }
         }
 
-        internal virtual DownlinkMessageBuilderResponse DownlinkMessageBuilderResponse(LoRaRequest request, LoRaDevice loRaDevice, LoRaOperationTimeWatcher timeWatcher, LoRaADRResult loRaADRResult, IReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage, uint? fcntDown, bool fpending)
+        internal virtual DownlinkMessageBuilderResponse DownlinkMessageBuilderResponse(LoRaRequest request, LoRaDevice loRaDevice, LoRaOperationTimeWatcher timeWatcher, LoRaADRResult loRaADRResult, ReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage, uint? fcntDown, bool fpending)
         {
             _ = loRaDevice ?? throw new ArgumentNullException(nameof(loRaDevice));
             _ = request ?? throw new ArgumentNullException(nameof(request));
@@ -493,7 +493,7 @@ namespace LoRaWan.NetworkServer
             _ = await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
         }
 
-        public void SetClassCMessageSender(IClassCDeviceMessageSender classCMessageSender) => this.classCDeviceMessageSender = classCMessageSender;
+        public void SetClassCMessageSender(DefaultClassCDevicesMessageSender classCMessageSender) => this.classCDeviceMessageSender = classCMessageSender;
 
         private bool ValidateCloudToDeviceMessage(LoRaDevice loRaDevice, LoRaRequest request, ReceivedLoRaCloudToDeviceMessage cloudToDeviceMsg)
         {

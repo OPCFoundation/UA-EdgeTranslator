@@ -4,13 +4,12 @@
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
     using System.Collections.Generic;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
 
     /// <summary>
     /// Primitive that keep tracks of changes.
     /// </summary>
     /// <typeparam name="T">The underlying type that we keep track of. Must implement <see cref="IEqualityComparer{T}"/>.</typeparam>
-    public sealed class ChangeTrackingProperty<T> : IChangeTrackingProperty
+    public sealed class ChangeTrackingProperty<T>
     {
         private T current;
         private T original;
@@ -30,11 +29,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
         /// Gets the property name.
         /// </summary>
         public string PropertyName { get; }
-
-        /// <summary>
-        /// Gets the value that must be persisted in twin collection.
-        /// </summary>
-        object IChangeTrackingProperty.Value => this.current;
 
         /// <summary>
         /// Gets the current value.

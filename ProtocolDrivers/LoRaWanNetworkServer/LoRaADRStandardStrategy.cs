@@ -3,16 +3,15 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using System.Linq;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
+    using System.Linq;
 
     /// <summary>
     /// A strategy based on the standard ADR strategy.
     /// </summary>
-    public sealed class LoRaADRStandardStrategy : ILoRaADRStrategy
+    public sealed class LoRaADRStandardStrategy
     {
         private const int MarginDb = 5;
         private const int MaxTxPowerIndex = 0;
@@ -35,7 +34,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
         public int DefaultTxPower => 0;
 
-        int ILoRaADRStrategy.DefaultNbRep => 1;
+        public int DefaultNbRep => 1;
 
         public LoRaADRStandardStrategy(ILogger<LoRaADRStandardStrategy> logger)
         {

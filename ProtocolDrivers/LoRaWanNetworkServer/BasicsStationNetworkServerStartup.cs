@@ -66,7 +66,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
 #pragma warning restore CA1822 // Mark members as static
         {
             // Manually set the class C as otherwise the DI fails.
-            var classCMessageSender = app.ApplicationServices.GetService<IClassCDeviceMessageSender>();
+            var classCMessageSender = app.ApplicationServices.GetService<DefaultClassCDevicesMessageSender>();
             var dataHandlerImplementation = app.ApplicationServices.GetService<DefaultLoRaDataRequestHandler>();
             dataHandlerImplementation.SetClassCMessageSender(classCMessageSender);
 

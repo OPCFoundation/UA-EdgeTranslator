@@ -3,15 +3,14 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Security.Cryptography;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Security.Cryptography;
     using static ReceiveWindowNumber;
     using static RxDelay;
 
@@ -30,7 +29,7 @@ namespace LoRaWan.NetworkServer
             LoRaDevice loRaDevice,
             LoRaRequest request,
             LoRaOperationTimeWatcher timeWatcher,
-            IReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
+            ReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
             bool fpending,
             uint fcntDown,
             LoRaADRResult loRaADRResult,
@@ -255,7 +254,7 @@ namespace LoRaWan.NetworkServer
             NetworkServerConfiguration configuration,
             LoRaDevice loRaDevice,
             Region loRaRegion,
-            IReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
+            ReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
             uint fcntDown,
             ILogger logger)
         {

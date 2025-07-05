@@ -216,7 +216,7 @@ namespace LoRaWan.NetworkServer
                 // before checking the current state and update again.
                 await this.syncSave.WaitAsync().ConfigureAwait(false);
 
-                var savedProperties = new List<IChangeTrackingProperty>();
+                var savedProperties = new List<ChangeTrackingProperty<object>>();
                 foreach (var prop in GetTrackableProperties())
                 {
                     if (prop.IsDirty())
@@ -436,15 +436,15 @@ namespace LoRaWan.NetworkServer
         /// <summary>
         /// Gets the properties that are trackable.
         /// </summary>
-        private IEnumerable<IChangeTrackingProperty> GetTrackableProperties()
+        private IEnumerable<ChangeTrackingProperty<object>> GetTrackableProperties()
         {
-            yield return this.preferredGatewayID;
-            yield return this.region;
-            yield return this.dataRate;
-            yield return this.txPower;
-            yield return this.nbRep;
-            yield return this.lastProcessingStationEui;
-            yield return this.reportedDwellTimeSetting;
+            yield return (object)preferredGatewayID as ChangeTrackingProperty<object>;
+            yield return (object)region as ChangeTrackingProperty<object>;
+            yield return (object)dataRate as ChangeTrackingProperty<object>;
+            yield return (object)txPower as ChangeTrackingProperty<object>;
+            yield return (object)nbRep as ChangeTrackingProperty<object>;
+            yield return (object)lastProcessingStationEui as ChangeTrackingProperty<object>;
+            yield return (object)reportedDwellTimeSetting as ChangeTrackingProperty<object>;
         }
 
         internal void UpdatePreferredGatewayID(string value, bool acceptChanges) =>
