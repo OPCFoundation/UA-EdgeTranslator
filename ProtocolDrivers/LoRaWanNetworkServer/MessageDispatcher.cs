@@ -3,11 +3,10 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Diagnostics.Metrics;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
+    using System;
 
     /// <summary>
     /// Message dispatcher.
@@ -15,12 +14,9 @@ namespace LoRaWan.NetworkServer
     public sealed class MessageDispatcher(
         NetworkServerConfiguration configuration,
         IJoinRequestMessageHandler joinRequestHandler,
-        ILoggerFactory loggerFactory,
-        ILogger<MessageDispatcher> logger,
-        Meter meter) : IMessageDispatcher
+        ILogger<MessageDispatcher> logger) : IMessageDispatcher
     {
         private readonly NetworkServerConfiguration configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        private readonly Histogram<double> d2cMessageDeliveryLatencyHistogram = meter?.CreateHistogram<double>(MetricRegistry.D2CMessageDeliveryLatency);
 
         /// <summary>
         /// Dispatches a request.
@@ -39,33 +35,23 @@ namespace LoRaWan.NetworkServer
                 throw new LoRaProcessingException(nameof(request.Region), LoRaProcessingErrorCode.RegionNotSet);
             }
 
-            var loggingRequest = new LoggingLoRaRequest(request, loggerFactory.CreateLogger<LoggingLoRaRequest>(), this.d2cMessageDeliveryLatencyHistogram);
-
             if (request.Payload.MessageType == MacMessageType.JoinRequest)
             {
-                DispatchLoRaJoinRequest(loggingRequest);
+                joinRequestHandler.DispatchRequest(request);
             }
             else if (request.Payload.MessageType is MacMessageType.UnconfirmedDataUp or MacMessageType.ConfirmedDataUp)
             {
-                DispatchLoRaDataMessage(loggingRequest);
+                using var scope = logger.BeginDeviceAddressScope(request.Payload.DevAddr);
+                if (!IsValidNetId(request.Payload.DevAddr))
+                {
+                    logger.LogDebug($"device is using another network id, ignoring this message (network: {this.configuration.NetId}, devAddr: {request.Payload.DevAddr.NetworkId})");
+                    request.NotifyFailed(LoRaDeviceRequestFailedReason.InvalidNetId);
+                    return;
+                }
             }
             else
             {
                 logger.LogError("Unknwon message type in rxpk, message ignored");
-            }
-        }
-
-        private void DispatchLoRaJoinRequest(LoggingLoRaRequest request) => joinRequestHandler.DispatchRequest(request);
-
-        private void DispatchLoRaDataMessage(LoggingLoRaRequest request)
-        {
-            var loRaPayload = (LoRaPayloadData)request.Payload;
-            using var scope = logger.BeginDeviceAddressScope(loRaPayload.DevAddr);
-            if (!IsValidNetId(loRaPayload.DevAddr))
-            {
-                logger.LogDebug($"device is using another network id, ignoring this message (network: {this.configuration.NetId}, devAddr: {loRaPayload.DevAddr.NetworkId})");
-                request.NotifyFailed(LoRaDeviceRequestFailedReason.InvalidNetId);
-                return;
             }
         }
 

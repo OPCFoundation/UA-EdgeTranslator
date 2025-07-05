@@ -3,23 +3,19 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Diagnostics.Metrics;
-    using System.Threading;
-    using System.Threading.Tasks;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class DefaultClassCDevicesMessageSender(
         NetworkServerConfiguration configuration,
         IDownstreamMessageSender downstreamMessageSender,
         ILoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
-        ILogger<DefaultClassCDevicesMessageSender> logger,
-        Meter meter) : IClassCDeviceMessageSender
+        ILogger<DefaultClassCDevicesMessageSender> logger) : IClassCDeviceMessageSender
     {
-        private readonly Counter<int> c2dMessageTooLong = meter?.CreateCounter<int>(MetricRegistry.C2DMessageTooLong);
-
         public async Task<bool> SendAsync(IReceivedLoRaCloudToDeviceMessage message, CancellationToken cts = default)
         {
             ArgumentNullException.ThrowIfNull(message);
@@ -104,7 +100,6 @@ namespace LoRaWan.NetworkServer
 
             if (downlinkMessageBuilderResp.IsMessageTooLong)
             {
-                this.c2dMessageTooLong?.Add(1);
                 logger.LogError($"[class-c] cloud to device message too large, rejecting. Id: {messageIdLog}");
                 if (!await message.RejectAsync().ConfigureAwait(false))
                 {

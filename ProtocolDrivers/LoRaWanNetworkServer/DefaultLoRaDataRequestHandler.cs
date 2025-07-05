@@ -3,16 +3,13 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.Metrics;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
-    using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
     using Constants = LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants;
 
     public class DefaultLoRaDataRequestHandler(
@@ -22,13 +19,8 @@ namespace LoRaWan.NetworkServer
         ILoRaPayloadDecoder payloadDecoder,
         ILoRaADRStrategyProvider loRaADRStrategyProvider,
         ILoRAADRManagerFactory loRaADRManagerFactory,
-        ILogger<DefaultLoRaDataRequestHandler> logger,
-        Meter meter) : ILoRaDataRequestHandler
+        ILogger<DefaultLoRaDataRequestHandler> logger) : ILoRaDataRequestHandler
     {
-        private readonly Counter<int> receiveWindowMissed = meter?.CreateCounter<int>(MetricRegistry.ReceiveWindowMisses);
-        private readonly Counter<int> receiveWindowHits = meter?.CreateCounter<int>(MetricRegistry.ReceiveWindowHits);
-        private readonly Histogram<int> d2cPayloadSizeHistogram = meter?.CreateHistogram<int>(MetricRegistry.D2CMessageSize);
-        private readonly Counter<int> c2dMessageTooLong = meter?.CreateCounter<int>(MetricRegistry.C2DMessageTooLong);
         private IClassCDeviceMessageSender classCDeviceMessageSender;
 
         private sealed class ProcessingState()
@@ -81,7 +73,6 @@ namespace LoRaWan.NetworkServer
             var timeWatcher = request.GetTimeWatcher();
 
             var loraPayload = (LoRaPayloadData)request.Payload;
-            this.d2cPayloadSizeHistogram?.Record(loraPayload.Frmpayload.Length);
 
             var payloadFcnt = loraPayload.Fcnt;
 
@@ -157,7 +148,7 @@ namespace LoRaWan.NetworkServer
                 // we must save class C devices regions in order to send c2d messages
                 if (loRaDevice.ClassType == LoRaDeviceClassType.C && request.Region.LoRaRegion != loRaDevice.LoRaRegion)
                     loRaDevice.UpdateRegion(request.Region.LoRaRegion, acceptChanges: false);
-                
+
                 loRaDevice.IsConnectionOwner = true;
 
                 // saving fcnt reset changes
@@ -316,21 +307,6 @@ namespace LoRaWan.NetworkServer
                         requiresConfirmation = true;
                     }
 
-                    var sendUpstream = concentratorDeduplicationResult is ConcentratorDeduplicationResult.NotDuplicate || loRaDevice.Deduplication is not DeduplicationMode.Drop;
-
-                    // We send it to the IoT Hub:
-                    // - when it's a new message or it's a resubmission/duplicate but with a strategy that is not drop
-                    // - and it's not a MAC command
-                    if (sendUpstream && loraPayload.Fport != FramePort.MacCommand)
-                    {
-                        var isDuplicate = concentratorDeduplicationResult is not ConcentratorDeduplicationResult.NotDuplicate;
-                        if (!await SendDeviceEventAsync(request, loRaDevice, timeWatcher, payloadData, isDuplicate, decryptedPayloadData).ConfigureAwait(false))
-                        {
-                            // failed to send event to IoT Hub, stop now
-                            return new LoRaDeviceRequestProcessResult(loRaDevice, request, LoRaDeviceRequestFailedReason.IoTHubProblem);
-                        }
-                    }
-
                     loRaDevice.SetFcntUp(payloadFcntAdjusted);
                 }
 
@@ -348,7 +324,6 @@ namespace LoRaWan.NetworkServer
                 {
                     if (requiresConfirmation)
                     {
-                        this.receiveWindowMissed?.Add(1);
                         logger.LogInformation($"too late for down message ({timeWatcher.GetElapsedTime()})");
                     }
 
@@ -373,14 +348,12 @@ namespace LoRaWan.NetworkServer
 
                     if (downlinkMessageBuilderResp.DownlinkMessage != null)
                     {
-                        this.receiveWindowHits?.Add(1, KeyValuePair.Create(MetricRegistry.ReceiveWindowTagName, (object)downlinkMessageBuilderResp.ReceiveWindow));
                         await request.DownstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
 
                         if (cloudToDeviceMessage != null)
                         {
                             if (downlinkMessageBuilderResp.IsMessageTooLong)
                             {
-                                this.c2dMessageTooLong?.Add(1);
                                 _ = await cloudToDeviceMessage.AbandonAsync().ConfigureAwait(false);
                             }
                             else
@@ -456,13 +429,11 @@ namespace LoRaWan.NetworkServer
                 {
                     if (confirmDownlinkMessageBuilderResp.DownlinkMessage == null)
                     {
-                        this.receiveWindowMissed?.Add(1);
                         logger.LogInformation($"out of time for downstream message, will abandon cloud to device message id: {cloudToDeviceMessage.MessageId ?? "undefined"}");
                         state.Track(cloudToDeviceMessage.AbandonAsync());
                     }
                     else if (confirmDownlinkMessageBuilderResp.IsMessageTooLong)
                     {
-                        this.c2dMessageTooLong?.Add(1);
                         logger.LogError($"payload will not fit in current receive window, will abandon cloud to device message id: {cloudToDeviceMessage.MessageId ?? "undefined"}");
                         state.Track(cloudToDeviceMessage.AbandonAsync());
                     }
@@ -474,7 +445,6 @@ namespace LoRaWan.NetworkServer
 
                 if (confirmDownlinkMessageBuilderResp.DownlinkMessage != null)
                 {
-                    this.receiveWindowHits?.Add(1, KeyValuePair.Create(MetricRegistry.ReceiveWindowTagName, (object)confirmDownlinkMessageBuilderResp.ReceiveWindow));
                     await SendMessageDownstreamAsync(request, confirmDownlinkMessageBuilderResp).ConfigureAwait(false);
                 }
 
@@ -584,55 +554,6 @@ namespace LoRaWan.NetworkServer
             }
 
             return true;
-        }
-
-        internal virtual Task<bool> SendDeviceEventAsync(LoRaRequest request, LoRaDevice loRaDevice, LoRaOperationTimeWatcher timeWatcher, object decodedValue, bool isDuplicate, byte[] decryptedPayloadData)
-        {
-            _ = loRaDevice ?? throw new ArgumentNullException(nameof(loRaDevice));
-            _ = timeWatcher ?? throw new ArgumentNullException(nameof(timeWatcher));
-            _ = request ?? throw new ArgumentNullException(nameof(request));
-
-            var loRaPayloadData = (LoRaPayloadData)request.Payload;
-            var deviceTelemetry = new LoRaDeviceTelemetry(request, loRaPayloadData, decodedValue, decryptedPayloadData)
-            {
-                DeviceEUI = loRaDevice.DevEUI.ToString(),
-                GatewayID = configuration.GatewayID,
-                Edgets = (long)(timeWatcher.Start - DateTime.UnixEpoch).TotalMilliseconds
-            };
-
-            if (isDuplicate)
-            {
-                deviceTelemetry.DupMsg = true;
-            }
-
-            Dictionary<string, string> eventProperties = null;
-            if (loRaPayloadData.IsUpwardAck)
-            {
-                eventProperties = new Dictionary<string, string>();
-                logger.LogInformation($"message ack received for cloud to device message id {loRaDevice.LastConfirmedC2DMessageID}");
-                eventProperties.Add(Constants.C2D_MSG_PROPERTY_VALUE_NAME, loRaDevice.LastConfirmedC2DMessageID ?? Constants.C2D_MSG_ID_PLACEHOLDER);
-                loRaDevice.LastConfirmedC2DMessageID = null;
-            }
-
-            ProcessAndSendMacCommands(loRaPayloadData, ref eventProperties);
-
-            return Task.FromResult(false);
-        }
-
-        /// <summary>
-        /// Send detected MAC commands as message properties.
-        /// </summary>
-        private static void ProcessAndSendMacCommands(LoRaPayloadData payloadData, ref Dictionary<string, string> eventProperties)
-        {
-            if (payloadData.MacCommands?.Count > 0)
-            {
-                eventProperties ??= new Dictionary<string, string>(payloadData.MacCommands.Count);
-
-                for (var i = 0; i < payloadData.MacCommands.Count; i++)
-                {
-                    eventProperties[payloadData.MacCommands[i].Cid.ToString()] = JsonConvert.SerializeObject(payloadData.MacCommands[i].ToString(), Formatting.None);
-                }
-            }
         }
 
         /// <summary>

@@ -3,16 +3,14 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.Metrics;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using LoRaTools;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Logging.Abstractions;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using static ReceiveWindowNumber;
 
     public class LoRaDevice : IDisposable
@@ -26,18 +24,6 @@ namespace LoRaWan.NetworkServer
         /// The default values for RX1DROffset, RX2DR.
         /// </summary>
         internal const ushort DefaultJoinValues = 0;
-
-        private const RxDelay DefaultJoinRxDelay = RxDelay.RxDelay0;
-
-        /// <summary>
-        /// Last time this device connected to the network server
-        /// </summary>
-        public DateTimeOffset LastSeen { get; set; }
-
-        /// <summary>
-        /// Last time the twins were updated from IoT Hub
-        /// </summary>
-        public DateTimeOffset LastUpdate { get; set; }
 
         public DevAddr? DevAddr { get; set; }
 
@@ -94,7 +80,6 @@ namespace LoRaWan.NetworkServer
 
         private readonly ChangeTrackingProperty<int> txPower = new ChangeTrackingProperty<int>(TwinProperty.TxPower);
         private readonly ILogger<LoRaDevice> logger;
-        private readonly Counter<int> unhandledExceptionCount;
         private readonly ChangeTrackingProperty<int> nbRep = new ChangeTrackingProperty<int>(TwinProperty.NbRep);
 
         public DeduplicationMode Deduplication { get; set; }
@@ -176,7 +161,7 @@ namespace LoRaWan.NetworkServer
         private volatile uint fcntDown;
         private volatile uint lastSavedFcntUp;
         private volatile uint lastSavedFcntDown;
- 
+
         public RxDelay ReportedRXDelay { get; set; }
 
         public RxDelay DesiredRXDelay { get; set; }
@@ -194,7 +179,7 @@ namespace LoRaWan.NetworkServer
 
         public StationEui LastProcessingStationEui => this.lastProcessingStationEui.Get();
 
-        public LoRaDevice(DevAddr? devAddr, DevEui devEui, ILogger<LoRaDevice> logger, Meter meter)
+        public LoRaDevice(DevAddr? devAddr, DevEui devEui, ILogger<LoRaDevice> logger)
         {
             this.queuedRequests = new Queue<LoRaRequest>();
             this.logger = logger;
@@ -204,14 +189,13 @@ namespace LoRaWan.NetworkServer
             IsABPRelaxedFrameCounter = true;
             PreferredWindow = ReceiveWindow1;
             ClassType = LoRaDeviceClassType.A;
-            this.unhandledExceptionCount = meter?.CreateCounter<int>(MetricRegistry.UnhandledExceptions);
         }
 
         /// <summary>
         /// Use constructor for test code only.
         /// </summary>
         internal LoRaDevice(DevAddr? devAddr, DevEui devEui)
-            : this(devAddr, devEui, NullLogger<LoRaDevice>.Instance, null)
+            : this(devAddr, devEui, NullLogger<LoRaDevice>.Instance)
         { }
 
         public void SetLastProcessingStationEui(StationEui s) => this.lastProcessingStationEui.Set(s);
@@ -432,7 +416,7 @@ namespace LoRaWan.NetworkServer
             return Task.FromResult(true);
         }
 
-     
+
         public void Dispose()
         {
             this.syncSave.Dispose();

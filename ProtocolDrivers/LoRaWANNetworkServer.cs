@@ -25,19 +25,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public List<string> Discover()
         {
-            List<string> deviceList = new List<string>();
-            foreach (var device in SearchDevicesResult.DeviceList)
-            {
-                deviceList.Add("lorawan://" + device);
-            }
-
-            return deviceList;
+            // LoRaWAN does not support discovery
+            return new List<string>();
         }
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
         {
-            string[] endpointParts = endpoint.Split(new char[] { ':', '/' });
-
             ThingDescription td = new()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },

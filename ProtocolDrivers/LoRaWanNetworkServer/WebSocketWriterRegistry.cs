@@ -9,7 +9,6 @@ namespace LoRaWan.NetworkServer
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
-    using System.Diagnostics.Metrics;
     using System.Linq;
     using System.Net.WebSockets;
     using System.Threading;
@@ -53,14 +52,10 @@ namespace LoRaWan.NetworkServer
     {
         private readonly Dictionary<TKey, (IWebSocketWriter<TMessage> Object, Handle Handle)> sockets = new();
         private readonly ILogger? logger;
-        private readonly ObservableGauge<int>? activeStationConnectionsHistogram;
-        private readonly Counter<int>? stationConnectivityLostCounter;
 
-        public WebSocketWriterRegistry(ILogger<WebSocketWriterRegistry<TKey, TMessage>>? logger, Meter? meter)
+        public WebSocketWriterRegistry(ILogger<WebSocketWriterRegistry<TKey, TMessage>>? logger)
         {
             this.logger = logger;
-            this.activeStationConnectionsHistogram = meter?.CreateObservableGauge(MetricRegistry.ActiveStationConnections, () => this.sockets.Count);
-            this.stationConnectivityLostCounter = meter?.CreateCounter<int>(MetricRegistry.StationConnectivityLost);
         }
 
         /// <summary>
@@ -114,7 +109,6 @@ namespace LoRaWan.NetworkServer
             {
                 if (this.sockets.TryGetValue(key, out var current))
                 {
-                    this.stationConnectivityLostCounter?.Add(1);
                     _ = this.sockets.Remove(key);
                     return current.Object;
                 }

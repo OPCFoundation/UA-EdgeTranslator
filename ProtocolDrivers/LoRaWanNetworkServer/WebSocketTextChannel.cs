@@ -41,13 +41,15 @@ namespace LoRaWan.NetworkServer
                 (Message, CancellationToken) = (message, cancellationToken);
 
             public string Message { get; }
+
             public CancellationToken CancellationToken { get; }
+
             public TaskCompletionSource<int> TaskCompletionSource { get; } = new();
         }
 
         private readonly WebSocket socket;
         private readonly Channel<Output> channel;
-        private readonly Synchronized<bool> isSendQueueProcessorRunning = new(false);
+        private bool isSendQueueProcessorRunning = false;
         private readonly TimeSpan sendTimeout;
 
         public WebSocketTextChannel(WebSocket socket, TimeSpan sendTimeout)
@@ -68,8 +70,10 @@ namespace LoRaWan.NetworkServer
         /// </remarks>
         public async Task ProcessSendQueueAsync(CancellationToken cancellationToken)
         {
-            if (!this.isSendQueueProcessorRunning.Write(true))
+            if (isSendQueueProcessorRunning)
+            {
                 throw new InvalidOperationException();
+            }
 
             try
             {
@@ -99,14 +103,17 @@ namespace LoRaWan.NetworkServer
             }
             finally
             {
-                _ = this.isSendQueueProcessorRunning.Write(false);
+                lock(this)
+                {
+                    isSendQueueProcessorRunning = false;
+                }
             }
         }
 
         /// <summary>
         /// Gets a Boolean indicating whether the WebSocket is closed.
         /// </summary>
-        public bool IsClosed => this.socket.State == WebSocketState.Closed;
+        public bool IsClosed => socket.State == WebSocketState.Closed;
 
         /// <summary>
         /// Asynchronously sends a message on the WebSocket via a queue to synchronize concurrent
@@ -122,8 +129,10 @@ namespace LoRaWan.NetworkServer
         /// </remarks>
         public async ValueTask SendAsync(string message, CancellationToken cancellationToken)
         {
-            if (!this.isSendQueueProcessorRunning.ReadDirty())
+            if (isSendQueueProcessorRunning)
+            {
                 throw new InvalidOperationException();
+            }
 
             var linkedCancellationTokens = cancellationToken.LinkWithTimeout(this.sendTimeout);
 

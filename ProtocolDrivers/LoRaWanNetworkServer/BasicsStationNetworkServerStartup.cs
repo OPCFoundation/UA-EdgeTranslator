@@ -3,12 +3,6 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using System;
-    using System.Diagnostics.Metrics;
-    using System.Globalization;
-    using System.Net.Http;
-    using System.Threading;
-    using System.Threading.Tasks;
     using global::LoRaWan;
     using LoRaWan.NetworkServer;
     using LoRaWan.NetworkServer.BasicsStation.Processors;
@@ -20,6 +14,11 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
+    using System;
+    using System.Globalization;
+    using System.Net.Http;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     internal sealed class BasicsStationNetworkServerStartup(IConfiguration configuration)
     {
@@ -52,9 +51,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 .AddSingleton<WebSocketWriterRegistry<StationEui, string>>()
                 .AddSingleton<IDownstreamMessageSender, DownstreamMessageSender>()
                 .AddTransient<ILnsProtocolMessageProcessor, LnsProtocolMessageProcessor>()
-                .AddSingleton<IConcentratorDeduplication, ConcentratorDeduplication>()
-                .AddSingleton(new RegistryMetricTagBag(NetworkServerConfiguration))
-                .AddSingleton(_ => new Meter(MetricRegistry.Namespace, MetricRegistry.Version));
+                .AddSingleton<IConcentratorDeduplication, ConcentratorDeduplication>();
 
             if (NetworkServerConfiguration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
             {

@@ -112,9 +112,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
                     }
                 }
             }
-            catch (MacCommandException ex) when (ExceptionFilterUtility.True(() => logger?.LogError(ex.ToString())))
+            catch (MacCommandException ex)
             {
-                // continue
+                logger?.LogError(ex.ToString());
             }
 
             return macCommands;

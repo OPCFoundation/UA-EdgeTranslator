@@ -7,12 +7,6 @@ using System.Runtime.CompilerServices;
 
 namespace LoRaWan.NetworkServer.BasicsStation.Processors
 {
-    using System;
-    using System.Diagnostics.Metrics;
-    using System.Net.WebSockets;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
     using LoRaTools.NetworkServerDiscovery;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
@@ -21,6 +15,11 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using System;
+    using System.Net.WebSockets;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using static LoRaWANContainer.LoRaWan.NetworkServer.Models.LnsData;
 
     internal class LnsProtocolMessageProcessor(IBasicsStationConfigurationService basicsStationConfigurationService,
@@ -28,14 +27,11 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                                        IDownstreamMessageSender downstreamMessageSender,
                                        IMessageDispatcher messageDispatcher,
                                        ILoggerFactory loggerFactory,
-                                       ILogger<LnsProtocolMessageProcessor> logger,
-                                       RegistryMetricTagBag registryMetricTagBag,
-                                       Meter meter) : ILnsProtocolMessageProcessor
+                                       ILogger<LnsProtocolMessageProcessor> logger) : ILnsProtocolMessageProcessor
     {
         private static readonly Action<ILogger, string, string, Exception> LogReceivedMessage =
             LoggerMessage.Define<string, string>(LogLevel.Information, default, "Received '{Type}' message: '{Json}'.");
-        private readonly Counter<int> uplinkMessageCounter = meter?.CreateCounter<int>(MetricRegistry.D2CMessagesReceived);
-        private readonly Counter<int> unhandledExceptionCount = meter?.CreateCounter<int>(MetricRegistry.UnhandledExceptions);
+
 
         public static readonly DateTime GpsEpoch = new DateTime(1980, 1, 6, 0, 0, 0, DateTimeKind.Utc);
 
@@ -70,8 +66,6 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                 : throw new InvalidOperationException($"{BasicsStationNetworkServer.RouterIdPathParameterName} was not present on path.");
 
             using var scope = logger.BeginEuiScope(stationEui);
-            registryMetricTagBag.StationEui.Value = stationEui;
-
             var channel = new WebSocketTextChannel(socket, sendTimeout: TimeSpan.FromSeconds(3));
             var handle = socketWriterRegistry.Register(stationEui, channel);
 
@@ -159,7 +153,6 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         var updf = JsonConvert.DeserializeObject<UpstreamDataMessage>(json);
 
                         using var scope = logger.BeginDeviceAddressScope(updf.DevAddr);
-                        this.uplinkMessageCounter?.Add(1);
 
                         var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
@@ -219,9 +212,9 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
             {
                 return await action().ConfigureAwait(false);
             }
-            catch (Exception ex) when (ExceptionFilterUtility.False(() => logger.LogError(ex, "An exception occurred while processing requests: {Exception}.", ex),
-                                                                    () => this.unhandledExceptionCount?.Add(1)))
+            catch (Exception ex)
             {
+                logger.LogError(ex, "An exception occurred while processing requests: {Exception}.", ex);
                 throw;
             }
         }
