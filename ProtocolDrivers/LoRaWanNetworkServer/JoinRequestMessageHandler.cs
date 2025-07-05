@@ -17,8 +17,8 @@ namespace LoRaWan.NetworkServer
     using static LoRaWan.ReceiveWindowNumber;
 
     public class JoinRequestMessageHandler(NetworkServerConfiguration configuration,
-                                     IConcentratorDeduplication concentratorDeduplication,
-                                     ILogger<JoinRequestMessageHandler> logger) : IJoinRequestMessageHandler
+                                           ConcentratorDeduplication concentratorDeduplication,
+                                           ILogger<JoinRequestMessageHandler> logger)
     {
         public void DispatchRequest(LoRaRequest request)
         {

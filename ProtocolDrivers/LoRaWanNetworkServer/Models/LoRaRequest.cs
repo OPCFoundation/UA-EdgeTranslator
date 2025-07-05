@@ -6,8 +6,8 @@ using LoRaWan.NetworkServer;
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
+    using global::LoRaWan.NetworkServer.BasicsStation;
     using System;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using static LoRaWANContainer.LoRaWan.NetworkServer.Models.LnsData;
 
     public class LoRaRequest
@@ -18,7 +18,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         public virtual LoRaPayload Payload { get; private set; }
 
-        public virtual IDownstreamMessageSender DownstreamMessageSender { get; }
+        public virtual DownstreamMessageSender DownstreamMessageSender { get; }
 
         public virtual DateTime StartTime { get; }
 
@@ -35,7 +35,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         public LoRaRequest(
             RadioMetadata radioMetadata,
-            IDownstreamMessageSender downstreamMessageSender,
+            DownstreamMessageSender downstreamMessageSender,
             DateTime startTime)
         {
             RadioMetadata = radioMetadata;

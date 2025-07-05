@@ -22,12 +22,12 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
     using System.Threading.Tasks;
     using static LoRaWANContainer.LoRaWan.NetworkServer.Models.LnsData;
 
-    internal class LnsProtocolMessageProcessor(IBasicsStationConfigurationService basicsStationConfigurationService,
+    internal class LnsProtocolMessageProcessor(BasicsStationConfigurationService basicsStationConfigurationService,
                                        WebSocketWriterRegistry<StationEui, string> socketWriterRegistry,
-                                       IDownstreamMessageSender downstreamMessageSender,
-                                       IMessageDispatcher messageDispatcher,
+                                       DownstreamMessageSender downstreamMessageSender,
+                                       MessageDispatcher messageDispatcher,
                                        ILoggerFactory loggerFactory,
-                                       ILogger<LnsProtocolMessageProcessor> logger) : ILnsProtocolMessageProcessor
+                                       ILogger<LnsProtocolMessageProcessor> logger)
     {
         private static readonly Action<ILogger, string, string, Exception> LogReceivedMessage =
             LoggerMessage.Define<string, string>(LogLevel.Information, default, "Received '{Type}' message: '{Json}'.");

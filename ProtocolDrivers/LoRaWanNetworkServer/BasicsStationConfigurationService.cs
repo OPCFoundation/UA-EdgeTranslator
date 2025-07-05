@@ -3,13 +3,11 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using System;
+    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using System.Threading;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
 
-    internal sealed class BasicsStationConfigurationService() : IBasicsStationConfigurationService
+    internal sealed class BasicsStationConfigurationService()
     {
         public Task<string> GetRouterConfigMessageAsync(StationEui stationEui, CancellationToken cancellationToken)
         {

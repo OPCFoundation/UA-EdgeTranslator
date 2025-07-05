@@ -13,8 +13,8 @@ namespace LoRaWan.NetworkServer
     /// </summary>
     public sealed class MessageDispatcher(
         NetworkServerConfiguration configuration,
-        IJoinRequestMessageHandler joinRequestHandler,
-        ILogger<MessageDispatcher> logger) : IMessageDispatcher
+        JoinRequestMessageHandler joinRequestHandler,
+        ILogger<MessageDispatcher> logger)
     {
         private readonly NetworkServerConfiguration configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 

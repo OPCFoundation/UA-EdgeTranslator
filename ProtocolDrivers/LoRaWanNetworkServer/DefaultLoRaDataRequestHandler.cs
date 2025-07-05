@@ -3,6 +3,7 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
@@ -15,12 +16,12 @@ namespace LoRaWan.NetworkServer
 
     public class DefaultLoRaDataRequestHandler(
         NetworkServerConfiguration configuration,
-        ILoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
-        IConcentratorDeduplication concentratorDeduplication,
-        ILoRaPayloadDecoder payloadDecoder,
-        ILoRaADRStrategyProvider loRaADRStrategyProvider,
-        ILoRAADRManagerFactory loRaADRManagerFactory,
-        ILogger<DefaultLoRaDataRequestHandler> logger) : ILoRaDataRequestHandler
+        LoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
+        ConcentratorDeduplication concentratorDeduplication,
+        LoRaPayloadDecoder payloadDecoder,
+        LoRaADRStrategyProvider loRaADRStrategyProvider,
+        LoRAADRManagerFactory loRaADRManagerFactory,
+        ILogger<DefaultLoRaDataRequestHandler> logger)
     {
         private IClassCDeviceMessageSender classCDeviceMessageSender;
 

@@ -10,12 +10,12 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     using System;
     using System.Threading;
 
-    public class LoRAADRManagerFactory(ILoggerFactory loggerFactory) : ILoRAADRManagerFactory
+    public class LoRAADRManagerFactory(ILoggerFactory loggerFactory)
     {
         private static readonly Lock InMemoryStoreLock = new Lock();
         private static volatile LoRaADRInMemoryStore inMemoryStore;
 
-        public ILoRaADRManager Create(ILoRaADRStrategyProvider strategyProvider,
+        public ILoRaADRManager Create(LoRaADRStrategyProvider strategyProvider,
                                       ILoRaDeviceFrameCounterUpdateStrategy frameCounterStrategy,
                                       LoRaDevice loRaDevice)
         {

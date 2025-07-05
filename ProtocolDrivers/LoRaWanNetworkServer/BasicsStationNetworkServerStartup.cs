@@ -23,6 +23,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
     internal sealed class BasicsStationNetworkServerStartup(IConfiguration configuration)
     {
         public IConfiguration Configuration { get; } = configuration;
+
         public NetworkServerConfiguration NetworkServerConfiguration { get; } = NetworkServerConfiguration.CreateFromEnvironmentVariables();
 
         public void ConfigureServices(IServiceCollection services)
@@ -39,19 +40,19 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 })
                 .AddMemoryCache()
                 .AddSingleton(NetworkServerConfiguration)
-                .AddSingleton<ILoRaDeviceFrameCounterUpdateStrategyProvider, LoRaDeviceFrameCounterUpdateStrategyProvider>()
-                .AddSingleton<ILoRaADRStrategyProvider, LoRaADRStrategyProvider>()
-                .AddSingleton<ILoRAADRManagerFactory, LoRAADRManagerFactory>()
-                .AddSingleton<ILoRaPayloadDecoder, LoRaPayloadDecoder>()
-                .AddSingleton<ILoRaDataRequestHandler, DefaultLoRaDataRequestHandler>()
-                .AddSingleton<IJoinRequestMessageHandler, JoinRequestMessageHandler>()
-                .AddSingleton<IMessageDispatcher, MessageDispatcher>()
-                .AddSingleton<IBasicsStationConfigurationService, BasicsStationConfigurationService>()
-                .AddSingleton<IClassCDeviceMessageSender, DefaultClassCDevicesMessageSender>()
+                .AddSingleton<LoRaDeviceFrameCounterUpdateStrategyProvider>()
+                .AddSingleton<LoRaADRStrategyProvider>()
+                .AddSingleton<LoRAADRManagerFactory>()
+                .AddSingleton<LoRaPayloadDecoder>()
+                .AddSingleton<DefaultLoRaDataRequestHandler>()
+                .AddSingleton<JoinRequestMessageHandler>()
+                .AddSingleton<MessageDispatcher>()
+                .AddSingleton<BasicsStationConfigurationService>()
+                .AddSingleton<DefaultClassCDevicesMessageSender>()
                 .AddSingleton<WebSocketWriterRegistry<StationEui, string>>()
-                .AddSingleton<IDownstreamMessageSender, DownstreamMessageSender>()
-                .AddTransient<ILnsProtocolMessageProcessor, LnsProtocolMessageProcessor>()
-                .AddSingleton<IConcentratorDeduplication, ConcentratorDeduplication>();
+                .AddSingleton<DownstreamMessageSender>()
+                .AddTransient<LnsProtocolMessageProcessor>()
+                .AddSingleton<ConcentratorDeduplication>();
 
             if (NetworkServerConfiguration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
             {
@@ -66,7 +67,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             // Manually set the class C as otherwise the DI fails.
             var classCMessageSender = app.ApplicationServices.GetService<IClassCDeviceMessageSender>();
-            var dataHandlerImplementation = app.ApplicationServices.GetService<ILoRaDataRequestHandler>();
+            var dataHandlerImplementation = app.ApplicationServices.GetService<DefaultLoRaDataRequestHandler>();
             dataHandlerImplementation.SetClassCMessageSender(classCMessageSender);
 
             _ = app.UseRouting()
@@ -74,10 +75,10 @@ namespace LoRaWan.NetworkServer.BasicsStation
                    .UseEndpoints(endpoints =>
                    {
                        Map(HttpMethod.Get, BasicsStationNetworkServer.DiscoveryEndpoint,
-                          (ILnsProtocolMessageProcessor processor) => processor.HandleDiscoveryAsync);
+                          (LnsProtocolMessageProcessor processor) => processor.HandleDiscoveryAsync);
 
                        Map(HttpMethod.Get, $"{BasicsStationNetworkServer.DataEndpoint}/{{{BasicsStationNetworkServer.RouterIdPathParameterName}:required}}",
-                          (ILnsProtocolMessageProcessor processor) => processor.HandleDataAsync);
+                          (LnsProtocolMessageProcessor processor) => processor.HandleDataAsync);
 
                        void Map<TService>(HttpMethod method, string pattern,
                                           Func<TService, Func<HttpContext, CancellationToken, Task>> handlerMapper)

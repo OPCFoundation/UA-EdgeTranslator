@@ -3,6 +3,7 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWan.NetworkServer.BasicsStation;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
@@ -12,8 +13,8 @@ namespace LoRaWan.NetworkServer
 
     public class DefaultClassCDevicesMessageSender(
         NetworkServerConfiguration configuration,
-        IDownstreamMessageSender downstreamMessageSender,
-        ILoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
+        DownstreamMessageSender downstreamMessageSender,
+        LoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
         ILogger<DefaultClassCDevicesMessageSender> logger) : IClassCDeviceMessageSender
     {
         public async Task<bool> SendAsync(IReceivedLoRaCloudToDeviceMessage message, CancellationToken cts = default)

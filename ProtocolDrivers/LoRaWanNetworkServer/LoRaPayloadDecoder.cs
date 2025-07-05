@@ -13,7 +13,7 @@ namespace LoRaWan.NetworkServer
     /// <summary>
     /// LoRa payload decoder.
     /// </summary>
-    public sealed class LoRaPayloadDecoder() : ILoRaPayloadDecoder
+    public sealed class LoRaPayloadDecoder()
     {
         public ValueTask<DecodePayloadResult> DecodeMessageAsync(DevEui devEui, byte[] payload, FramePort fport, string sensorDecoder)
         {

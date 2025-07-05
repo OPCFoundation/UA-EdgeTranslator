@@ -6,17 +6,17 @@
 namespace LoRaWan.NetworkServer
 {
     using System;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Caching.Memory;
     using Microsoft.Extensions.Logging;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
-    public sealed class ConcentratorDeduplication : IConcentratorDeduplication
+    public sealed class ConcentratorDeduplication
     {
         private static readonly TimeSpan DefaultExpiration = TimeSpan.FromMinutes(1);
 
         private readonly IMemoryCache cache;
-        private readonly ILogger<IConcentratorDeduplication> logger;
+        private readonly ILogger<ConcentratorDeduplication> logger;
         private static readonly object CacheLock = new object();
 
         internal sealed record DataMessageKey(DevEui DevEui, MessageIntegrityCode Mic, ushort FCnt);
@@ -25,7 +25,7 @@ namespace LoRaWan.NetworkServer
 
         public ConcentratorDeduplication(
             IMemoryCache cache,
-            ILogger<IConcentratorDeduplication> logger)
+            ILogger<ConcentratorDeduplication> logger)
         {
             this.cache = cache;
             this.logger = logger;

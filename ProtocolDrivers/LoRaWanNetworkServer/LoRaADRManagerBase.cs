@@ -13,10 +13,10 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     public class LoRaADRManagerBase : ILoRaADRManager
     {
         private readonly ILoRaADRStore store;
-        private readonly ILoRaADRStrategyProvider strategyProvider;
+        private readonly LoRaADRStrategyProvider strategyProvider;
         private readonly ILogger<LoRaADRManagerBase> logger;
 
-        public LoRaADRManagerBase(ILoRaADRStore store, ILoRaADRStrategyProvider strategyProvider, ILogger<LoRaADRManagerBase> logger)
+        public LoRaADRManagerBase(ILoRaADRStore store, LoRaADRStrategyProvider strategyProvider, ILogger<LoRaADRManagerBase> logger)
         {
             this.store = store;
             this.strategyProvider = strategyProvider;

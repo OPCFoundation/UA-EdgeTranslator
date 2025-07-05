@@ -3,6 +3,8 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
+    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
+    using Microsoft.Extensions.Logging;
     using System;
     using System.IO;
     using System.Runtime.CompilerServices;
@@ -10,12 +12,8 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
 
-    internal class DownstreamMessageSender(WebSocketWriterRegistry<StationEui, string> socketWriterRegistry,
-                                   ILogger<DownstreamMessageSender> logger) : IDownstreamMessageSender
+    public class DownstreamMessageSender(WebSocketWriterRegistry<StationEui, string> socketWriterRegistry, ILogger<DownstreamMessageSender> logger)
     {
         private static readonly Action<ILogger, StationEui, int, string, Exception> LogSendingMessage =
             LoggerMessage.Define<StationEui, int, string>(LogLevel.Debug, default,
