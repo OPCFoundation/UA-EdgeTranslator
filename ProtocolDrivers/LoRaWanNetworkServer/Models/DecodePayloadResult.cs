@@ -25,7 +25,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         /// <summary>
         /// Gets or sets a message to be sent to the device (optional)
-        /// Assigning a value to <see cref="ILoRaCloudToDeviceMessage.DevEUI"/> will send the message to a class C device.
+        /// Assigning a value to DevEUI will send the message to a class C device.
         /// </summary>
         [JsonProperty(Constants.CloudToDeviceDecoderElementName, NullValueHandling = NullValueHandling.Ignore)]
         public ReceivedLoRaCloudToDeviceMessage CloudToDeviceMessage { get; set; }

@@ -4,7 +4,6 @@
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Caching.Memory;
     using System;
@@ -19,7 +18,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     {
         private readonly MemoryCache cache;
 
-        protected static void AddEntryToTable(LoRaADRTable table, LoRaADRTableEntry entry)
+        protected void AddEntryToTable(LoRaADRTable table, LoRaADRTableEntry entry)
         {
             ArgumentNullException.ThrowIfNull(table);
             ArgumentNullException.ThrowIfNull(entry);

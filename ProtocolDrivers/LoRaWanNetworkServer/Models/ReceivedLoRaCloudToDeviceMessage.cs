@@ -9,7 +9,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
 
     /// <summary>
-    /// Defines a <see cref="LoRaCloudToDeviceMessage"/> that was received by the network server allowing it to abandon, reject and complete.
+    /// Defines a message that was received by the network server allowing it to abandon, reject and complete.
     /// </summary>
     public class ReceivedLoRaCloudToDeviceMessage : LoRaCloudToDeviceMessage, IReceivedLoRaCloudToDeviceMessage
     {
