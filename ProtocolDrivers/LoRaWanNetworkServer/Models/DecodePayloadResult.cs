@@ -3,7 +3,6 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Newtonsoft.Json;
 
     /// <summary>
@@ -12,7 +11,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     public class DecodePayloadResult
     {
         /// <summary>
-        /// Gets or sets the decoded value that will be sent to IoT Hub.
+        /// Gets or sets the decoded value
         /// </summary>
         [JsonProperty("value", NullValueHandling = NullValueHandling.Ignore)]
         public object Value { get; set; }

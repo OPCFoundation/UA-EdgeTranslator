@@ -371,46 +371,6 @@ namespace LoRaWan.NetworkServer
                 // Flag indicating if there is another C2D message waiting
                 var fpending = false;
 
-                // If downlink is enabled and we did not get a cloud to device message from decoder
-                // try to get one from IoT Hub C2D
-                if (loRaDevice.DownlinkEnabled && cloudToDeviceMessage == null)
-                {
-                    // ReceiveAsync has a longer timeout
-                    // But we wait less that the timeout (available time before 2nd window)
-                    // if message is received after timeout, keep it in loraDeviceInfo and return the next call
-                    var timeAvailableToCheckCloudToDeviceMessages = timeWatcher.GetAvailableTimeToCheckCloudToDeviceMessage(loRaDevice);
-                    if (timeAvailableToCheckCloudToDeviceMessages >= LoRaOperationTimeWatcher.MinimumAvailableTimeToCheckForCloudMessage)
-                    {
-                        cloudToDeviceMessage = null;
-                        if (cloudToDeviceMessage != null && !ValidateCloudToDeviceMessage(loRaDevice, request, cloudToDeviceMessage))
-                        {
-                            // Reject cloud to device message based on result from ValidateCloudToDeviceMessage
-                            state.Track(cloudToDeviceMessage.RejectAsync());
-                            cloudToDeviceMessage = null;
-                        }
-
-                        if (cloudToDeviceMessage != null)
-                        {
-                            if (!requiresConfirmation)
-                            {
-                                // The message coming from the device was not confirmed, therefore we did not computed the frame count down
-                                // Now we need to increment because there is a C2D message to be sent
-                                fcntDown = await EnsureHasFcntDownAsync(loRaDevice, fcntDown, payloadFcntAdjusted, frameCounterStrategy).ConfigureAwait(false);
-
-                                if (!fcntDown.HasValue || fcntDown <= 0)
-                                {
-                                    // We did not get a valid frame count down, therefore we should not process the message
-                                    state.Track(cloudToDeviceMessage.AbandonAsync());
-                                    cloudToDeviceMessage = null;
-                                }
-                                else
-                                {
-                                    requiresConfirmation = true;
-                                }
-                            }
-                        }
-                    }
-                }
 
                 if (loRaDevice.ClassType is LoRaDeviceClassType.C
                     && loRaDevice.LastProcessingStationEui != request.StationEui)
