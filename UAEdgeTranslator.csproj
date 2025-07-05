@@ -53,7 +53,7 @@
     <PackageReference Include="libplctag" Version="1.5.2" />
     <PackageReference Include="log4net" Version="3.1.0" />
     <PackageReference Include="McProtocol" Version="1.2.5" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.374.176" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.176" />
     <PackageReference Include="Serilog" Version="4.3.0" />
