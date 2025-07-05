@@ -8,7 +8,7 @@ namespace LoRaWan.NetworkServer
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
 
-    public sealed class SingleGatewayFrameCounterUpdateStrategy : ILoRaDeviceFrameCounterUpdateStrategy, ILoRaDeviceInitializer
+    public sealed class SingleGatewayFrameCounterUpdateStrategy : ILoRaDeviceFrameCounterUpdateStrategy
     {
         public Task<bool> ResetAsync(LoRaDevice loRaDevice, uint fcntUp, string gatewayId)
         {
@@ -35,18 +35,6 @@ namespace LoRaWan.NetworkServer
         private static async Task<bool> InternalSaveChangesAsync(LoRaDevice loRaDevice, bool force)
         {
             return await loRaDevice.SaveChangesAsync(force: force).ConfigureAwait(false);
-        }
-
-        // Initializes a device instance created
-        // For ABP increment down count by 10 to take into consideration failed save attempts
-        void ILoRaDeviceInitializer.Initialize(LoRaDevice loRaDevice)
-        {
-            // In order to handle a scenario where the network server is restarted and the fcntDown was not yet saved (we save every 10)
-            if (loRaDevice.IsABP)
-            {
-                // Increment so that the next frame count down causes the count to be saved
-                _ = loRaDevice.IncrementFcntDown(Constants.MaxFcntUnsavedDelta - 1);
-            }
         }
     }
 }

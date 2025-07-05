@@ -3,20 +3,50 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using System;
-    using System.Threading.Tasks;
     using global::LoRaWan;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Caching.Memory;
+    using System;
+    using System.Linq;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Stores ADR tables in memory on the gateway.
     /// This is the default implementation if we have a single gateway environment.
     /// </summary>
-    public sealed class LoRaADRInMemoryStore : LoRaADRStoreBase, ILoRaADRStore, IDisposable
+    public class LoRaADRInMemoryStore : IDisposable
     {
         private readonly MemoryCache cache;
+
+        protected static void AddEntryToTable(LoRaADRTable table, LoRaADRTableEntry entry)
+        {
+            ArgumentNullException.ThrowIfNull(table);
+            ArgumentNullException.ThrowIfNull(entry);
+
+            var existing = table.Entries.FirstOrDefault(itm => itm.FCnt == entry.FCnt);
+
+            if (existing == null)
+            {
+                // first for this framecount, simply add it
+                entry.GatewayCount = 1;
+                table.Entries.Add(entry);
+            }
+            else
+            {
+                if (existing.Snr < entry.Snr)
+                {
+                    // better SNR. Update
+                    existing.Snr = entry.Snr;
+                    existing.GatewayId = entry.GatewayId;
+                }
+
+                existing.GatewayCount++;
+            }
+
+            if (table.Entries.Count > LoRaADRTable.FrameCountCaptureCount)
+                table.Entries.RemoveAt(0);
+        }
 
         public LoRaADRInMemoryStore()
         {

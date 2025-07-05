@@ -6,11 +6,12 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
 
-    public sealed class LocalLnsDiscovery : ILnsDiscovery
+    public sealed class LocalLnsDiscovery
     {
         private readonly Uri lnsUri;
+
+        public const string EndpointName = "/router-info";
 
         public LocalLnsDiscovery(Uri lnsUri) => this.lnsUri = lnsUri;
 

@@ -3,20 +3,19 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using System;
-    using System.Threading.Tasks;
     using global::LoRaWan;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
+    using System;
+    using System.Threading.Tasks;
 
-    public class LoRaADRManagerBase : ILoRaADRManager
+    public class LoRaADRManagerBase
     {
-        private readonly ILoRaADRStore store;
+        private readonly LoRaADRInMemoryStore store;
         private readonly LoRaADRStrategyProvider strategyProvider;
         private readonly ILogger<LoRaADRManagerBase> logger;
 
-        public LoRaADRManagerBase(ILoRaADRStore store, LoRaADRStrategyProvider strategyProvider, ILogger<LoRaADRManagerBase> logger)
+        public LoRaADRManagerBase(LoRaADRInMemoryStore store, LoRaADRStrategyProvider strategyProvider, ILogger<LoRaADRManagerBase> logger)
         {
             this.store = store;
             this.strategyProvider = strategyProvider;

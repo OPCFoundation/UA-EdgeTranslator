@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-
-
-namespace LoRaWANContainer.LoRaWan.NetworkServer.Interfaces
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models
 {
-    using global::LoRaWan;
+    using LoRaWan;
     using Newtonsoft.Json;
 
     public class DeviceInfo(DevEui devEui)

@@ -6,7 +6,7 @@ namespace LoRaWan.NetworkServer
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
 
     /// <summary>
     /// Results of a <see cref="LoRaDeviceAPIServiceBase.SearchDevicesAsync"/> call.

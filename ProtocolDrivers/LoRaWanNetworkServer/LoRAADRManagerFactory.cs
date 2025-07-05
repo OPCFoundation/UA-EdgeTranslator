@@ -15,7 +15,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         private static readonly Lock InMemoryStoreLock = new Lock();
         private static volatile LoRaADRInMemoryStore inMemoryStore;
 
-        public ILoRaADRManager Create(LoRaADRStrategyProvider strategyProvider,
+        public LoRaADRManagerBase Create(LoRaADRStrategyProvider strategyProvider,
                                       ILoRaDeviceFrameCounterUpdateStrategy frameCounterStrategy,
                                       LoRaDevice loRaDevice)
         {

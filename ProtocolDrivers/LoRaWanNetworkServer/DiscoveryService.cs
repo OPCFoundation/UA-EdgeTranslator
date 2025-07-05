@@ -4,6 +4,7 @@
 namespace LoRaTools.NetworkServerDiscovery
 {
     using global::LoRaWan;
+    using LoRaWan.NetworkServer.BasicsStation;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
@@ -31,10 +32,10 @@ namespace LoRaTools.NetworkServerDiscovery
         }
 
         private const string DataEndpointPath = "router-data";
-        private readonly ILnsDiscovery lnsDiscovery;
+        private readonly LocalLnsDiscovery lnsDiscovery;
         private readonly ILogger<DiscoveryService> logger;
 
-        public DiscoveryService(ILnsDiscovery lnsDiscovery, ILogger<DiscoveryService> logger)
+        public DiscoveryService(LocalLnsDiscovery lnsDiscovery, ILogger<DiscoveryService> logger)
         {
             this.lnsDiscovery = lnsDiscovery;
             this.logger = logger;
