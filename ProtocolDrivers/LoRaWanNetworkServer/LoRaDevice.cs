@@ -3,10 +3,7 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Logging.Abstractions;
     using System;
     using System.Collections.Generic;
     using System.Threading;
@@ -25,7 +22,7 @@ namespace LoRaWan.NetworkServer
         /// </summary>
         internal const ushort DefaultJoinValues = 0;
 
-        public DevAddr? DevAddr { get; set; }
+        public DevAddr DevAddr { get; set; }
 
         // Gets if a device is activated by personalization
         public bool IsABP => AppKey == null;
@@ -79,7 +76,6 @@ namespace LoRaWan.NetworkServer
         public DataRateIndex DataRate => this.dataRate.Get();
 
         private readonly ChangeTrackingProperty<int> txPower = new ChangeTrackingProperty<int>(TwinProperty.TxPower);
-        private readonly ILogger<LoRaDevice> logger;
         private readonly ChangeTrackingProperty<int> nbRep = new ChangeTrackingProperty<int>(TwinProperty.NbRep);
 
         public DeduplicationMode Deduplication { get; set; }
@@ -137,11 +133,7 @@ namespace LoRaWan.NetworkServer
         /// <summary>
         /// Used to synchronize the async save operation to the twins for this particular device.
         /// </summary>
-#pragma warning disable CA2213 // Disposable fields should be disposed (disposed in async)
         private readonly SemaphoreSlim syncSave = new SemaphoreSlim(1, 1);
-#pragma warning restore CA2213 // Disposable fields should be disposed
-        private readonly Lock processingSyncLock = new Lock();
-        private readonly Queue<LoRaRequest> queuedRequests = new Queue<LoRaRequest>();
 
         public DataRateIndex? DesiredRX2DataRate { get; set; }
 
@@ -167,7 +159,7 @@ namespace LoRaWan.NetworkServer
         public RxDelay DesiredRXDelay { get; set; }
 
         /// <summary>
-        ///  Gets or sets a value indicating whether cloud to device messages are enabled for the device
+        ///  Gets or sets a value indicating whether device messages are enabled for the device
         ///  By default it is enabled. To disable, set the desired property "EnableC2D" to false.
         /// </summary>
         public bool DownlinkEnabled { get; set; }
@@ -179,24 +171,14 @@ namespace LoRaWan.NetworkServer
 
         public StationEui LastProcessingStationEui => this.lastProcessingStationEui.Get();
 
-        public LoRaDevice(DevAddr? devAddr, DevEui devEui, ILogger<LoRaDevice> logger)
+        public LoRaDevice(DevEui devEui)
         {
-            this.queuedRequests = new Queue<LoRaRequest>();
-            this.logger = logger;
-            DevAddr = devAddr;
             DevEUI = devEui;
             DownlinkEnabled = true;
             IsABPRelaxedFrameCounter = true;
             PreferredWindow = ReceiveWindow1;
             ClassType = LoRaDeviceClassType.A;
         }
-
-        /// <summary>
-        /// Use constructor for test code only.
-        /// </summary>
-        internal LoRaDevice(DevAddr? devAddr, DevEui devEui)
-            : this(devAddr, devEui, NullLogger<LoRaDevice>.Instance)
-        { }
 
         public void SetLastProcessingStationEui(StationEui s) => this.lastProcessingStationEui.Set(s);
 
@@ -216,15 +198,6 @@ namespace LoRaWan.NetworkServer
                 // before checking the current state and update again.
                 await this.syncSave.WaitAsync().ConfigureAwait(false);
 
-                var savedProperties = new List<ChangeTrackingProperty<object>>();
-                foreach (var prop in GetTrackableProperties())
-                {
-                    if (prop.IsDirty())
-                    {
-                        savedProperties.Add(prop);
-                    }
-                }
-
                 var fcntUpDelta = FCntUp >= LastSavedFCntUp ? FCntUp - LastSavedFCntUp : LastSavedFCntUp - FCntUp;
                 var fcntDownDelta = FCntDown >= LastSavedFCntDown ? FCntDown - LastSavedFCntDown : LastSavedFCntDown - FCntDown;
 
@@ -236,9 +209,6 @@ namespace LoRaWan.NetworkServer
                     var savedFcntUp = FCntUp;
 
                     InternalAcceptFrameCountChanges(savedFcntUp, savedFcntDown);
-
-                    for (var i = 0; i < savedProperties.Count; i++)
-                        savedProperties[i].AcceptChanges();
                 }
 
                 return true;
@@ -356,7 +326,7 @@ namespace LoRaWan.NetworkServer
         /// <summary>
         /// Updates device on the server after a join succeeded.
         /// </summary>
-        internal virtual Task<bool> UpdateAfterJoinAsync(LoRaDeviceJoinUpdateProperties updateProperties, CancellationToken cancellationToken)
+        internal virtual Task<bool> UpdateAfterJoinAsync(LoRaDeviceJoinUpdateProperties updateProperties)
         {
             var devAddrBeforeSave = DevAddr;
 
@@ -377,27 +347,15 @@ namespace LoRaWan.NetworkServer
                 {
                     ReportedRX1DROffset = DesiredRX1DROffset;
                 }
-                else
-                {
-                    this.logger.LogError("the provided RX1DROffset is not valid");
-                }
 
                 if (DesiredRX2DataRate.HasValue && currentRegion.RegionLimits.IsCurrentDownstreamDRIndexWithinAcceptableValue(DesiredRX2DataRate.Value))
                 {
                     ReportedRX2DataRate = DesiredRX2DataRate;
                 }
-                else
-                {
-                    this.logger.LogError("the provided RX2DataRate is not valid");
-                }
 
                 if (Enum.IsDefined(DesiredRXDelay))
                 {
                     ReportedRXDelay = DesiredRXDelay;
-                }
-                else
-                {
-                    this.logger.LogError("the provided RXDelay is not valid");
                 }
 
                 this.region.AcceptChanges();

@@ -14,6 +14,10 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
         DevStatusCmd = 6,
         NewChannelCmd = 7,
         RXTimingCmd = 8,
-        TxParamSetupCmd = 9
+        TxParamSetupCmd = 9,
+        DLChannelCmd = 10,
+        RekeyIndication = 11,
+        RekeyConf = 12,
+        DeviceTimeCmd = 13
     }
 }

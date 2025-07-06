@@ -20,8 +20,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
         ReceiveWindowMissed,
         ConfirmationResubmitThresholdExceeded,
         InvalidFrameCounter,
-        IoTHubProblem,
-        DeduplicationDrop,
-        DeviceClientConnectionFailed
+        DeviceNotJoined,
+        DeduplicationDrop
     }
 }

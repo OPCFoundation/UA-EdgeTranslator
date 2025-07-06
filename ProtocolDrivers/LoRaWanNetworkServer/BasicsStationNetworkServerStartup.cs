@@ -40,15 +40,12 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 })
                 .AddMemoryCache()
                 .AddSingleton(NetworkServerConfiguration)
-                .AddSingleton<LoRaDeviceFrameCounterUpdateStrategyProvider>()
                 .AddSingleton<LoRaADRStrategyProvider>()
                 .AddSingleton<LoRAADRManagerFactory>()
-                .AddSingleton<LoRaPayloadDecoder>()
-                .AddSingleton<DefaultLoRaDataRequestHandler>()
+                .AddSingleton<DataMessageHandler>()
                 .AddSingleton<JoinRequestMessageHandler>()
                 .AddSingleton<MessageDispatcher>()
                 .AddSingleton<BasicsStationConfigurationService>()
-                .AddSingleton<DefaultClassCDevicesMessageSender>()
                 .AddSingleton<WebSocketWriterRegistry<StationEui, string>>()
                 .AddSingleton<DownlinkMessageSender>()
                 .AddTransient<LnsProtocolMessageProcessor>()
@@ -65,11 +62,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
         public void Configure(IApplicationBuilder app)
 #pragma warning restore CA1822 // Mark members as static
         {
-            // Manually set the class C as otherwise the DI fails.
-            var classCMessageSender = app.ApplicationServices.GetService<DefaultClassCDevicesMessageSender>();
-            var dataHandlerImplementation = app.ApplicationServices.GetService<DefaultLoRaDataRequestHandler>();
-            dataHandlerImplementation.SetClassCMessageSender(classCMessageSender);
-
             _ = app.UseRouting()
                    .UseWebSockets()
                    .UseEndpoints(endpoints =>

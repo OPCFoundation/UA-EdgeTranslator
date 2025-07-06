@@ -4,13 +4,13 @@
 namespace LoRaTools.NetworkServerDiscovery
 {
     using global::LoRaWan;
-    using LoRaWan.NetworkServer.BasicsStation;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
     using System.IO;
     using System.Linq;
@@ -22,7 +22,7 @@ namespace LoRaTools.NetworkServerDiscovery
     using System.Threading;
     using System.Threading.Tasks;
 
-    public sealed partial class DiscoveryService
+    public sealed partial class DiscoveryMessageHandler
     {
         [DataContract]
         private class DiscoveryMessage
@@ -33,9 +33,9 @@ namespace LoRaTools.NetworkServerDiscovery
 
         private const string DataEndpointPath = "router-data";
         private readonly LocalLnsDiscovery lnsDiscovery;
-        private readonly ILogger<DiscoveryService> logger;
+        private readonly ILogger<DiscoveryMessageHandler> logger;
 
-        public DiscoveryService(LocalLnsDiscovery lnsDiscovery, ILogger<DiscoveryService> logger)
+        public DiscoveryMessageHandler(LocalLnsDiscovery lnsDiscovery, ILogger<DiscoveryMessageHandler> logger)
         {
             this.lnsDiscovery = lnsDiscovery;
             this.logger = logger;

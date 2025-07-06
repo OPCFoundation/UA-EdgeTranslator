@@ -19,28 +19,9 @@ namespace LoRaWan.NetworkServer
     {
         /// <summary>
         /// Gets the expected time required to package and send message back to message sender
-        /// 400ms.
-        /// </summary>
-        public static TimeSpan ExpectedTimeToPackageAndSendMessage { get; } = TimeSpan.FromMilliseconds(400);
-
-        /// <summary>
-        /// Gets the minimum available time to check for cloud to device messages
-        /// If we have less than this amount of time available no check is done
         /// 100ms.
         /// </summary>
-        public static TimeSpan MinimumAvailableTimeToCheckForCloudMessage { get; } = TimeSpan.FromMilliseconds(100);
-
-        /// <summary>
-        /// Gets the estimated overhead of calling receive message async (context switch, etc)
-        /// 100ms.
-        /// </summary>
-        public static TimeSpan CheckForCloudMessageCallEstimatedOverhead { get; } = TimeSpan.FromMilliseconds(100);
-
-        /// <summary>
-        /// Gets the expected time required to package and send message back to message sender plus the checking for cloud to device message overhead
-        /// 400ms.
-        /// </summary>
-        public static TimeSpan ExpectedTimeToPackageAndSendMessageAndCheckForCloudMessageOverhead { get; } = ExpectedTimeToPackageAndSendMessage + CheckForCloudMessageCallEstimatedOverhead;
+        public static TimeSpan ExpectedTimeToPackageAndSendMessage { get; } = TimeSpan.FromMilliseconds(100);
 
         // Gets start time
         public DateTimeOffset Start { get; }
@@ -177,35 +158,6 @@ namespace LoRaWan.NetworkServer
         private bool InTimeForJoinAcceptSecondWindow(TimeSpan elapsed)
         {
             return elapsed.Add(ExpectedTimeToPackageAndSendMessage).TotalSeconds <= this.loraRegion.JoinAcceptDelay2.ToSeconds();
-        }
-
-        /// <summary>
-        /// Gets the available time to check for cloud to device messages
-        /// It takes into consideration available time and <see cref="LoRaDevice.PreferredWindow"/>.
-        /// </summary>
-        /// <returns><see cref="TimeSpan.Zero"/> if there is no enough time or a positive <see cref="TimeSpan"/> value.</returns>
-        public TimeSpan GetAvailableTimeToCheckCloudToDeviceMessage(LoRaDevice loRaDevice)
-        {
-            ArgumentNullException.ThrowIfNull(loRaDevice);
-
-            var elapsed = GetElapsedTime();
-            if (loRaDevice.PreferredWindow is ReceiveWindow1)
-            {
-                var availableTimeForFirstWindow = TimeSpan.FromSeconds(GetReceiveWindow1Delay(loRaDevice)).Subtract(elapsed.Add(ExpectedTimeToPackageAndSendMessageAndCheckForCloudMessageOverhead));
-                if (availableTimeForFirstWindow >= LoRaOperationTimeWatcher.MinimumAvailableTimeToCheckForCloudMessage)
-                {
-                    return availableTimeForFirstWindow;
-                }
-            }
-
-            // 2nd window
-            var availableTimeForSecondWindow = TimeSpan.FromSeconds(GetReceiveWindow2Delay(loRaDevice)).Subtract(elapsed.Add(ExpectedTimeToPackageAndSendMessageAndCheckForCloudMessageOverhead));
-            if (availableTimeForSecondWindow >= LoRaOperationTimeWatcher.MinimumAvailableTimeToCheckForCloudMessage)
-            {
-                return availableTimeForSecondWindow;
-            }
-
-            return TimeSpan.Zero;
         }
 
         private static uint CalculateRXWindowsTime(uint windowTime, RxDelay rxDelay)

@@ -33,9 +33,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
         public bool IsConfirmed => MessageType is MacMessageType.ConfirmedDataDown or MacMessageType.ConfirmedDataUp;
 
         /// <summary>
-        /// Gets a value indicating whether does a Mac command require an answer?.
+        /// Gets a value indicating whether a MAC command requires an answer.
         /// </summary>
-        public bool IsMacAnswerRequired => MacCommands?.FirstOrDefault(x => x.Cid == Cid.LinkCheckCmd) != null;
+        public bool IsMacAnswerRequired => MacCommands?.FirstOrDefault(x => ((x.Cid == Cid.LinkCheckCmd) || (x.Cid == Cid.DeviceTimeCmd))) != null;
 
         public FrameControlFlags FrameControlFlags { get; }
 

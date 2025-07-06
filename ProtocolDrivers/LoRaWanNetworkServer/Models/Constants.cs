@@ -36,7 +36,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
         /// </summary>
         public const uint MaxFcntGap = 16384;
 
-        // Cloud to device message overhead
+        // Device message overhead
         public const int LoraProtocolOverheadSize = 8;
 
         /// <summary>

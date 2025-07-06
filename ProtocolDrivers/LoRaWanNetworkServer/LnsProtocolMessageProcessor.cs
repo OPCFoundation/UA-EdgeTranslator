@@ -15,9 +15,11 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
+    using Org.BouncyCastle.Ocsp;
     using System;
+    using System.Collections.Generic;
     using System.Net.WebSockets;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using static LoRaWANContainer.LoRaWan.NetworkServer.Models.LnsData;
@@ -32,8 +34,9 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
         private static readonly Action<ILogger, string, string, Exception> LogReceivedMessage =
             LoggerMessage.Define<string, string>(LogLevel.Information, default, "Received '{Type}' message: '{Json}'.");
 
-
         public static readonly DateTime GpsEpoch = new DateTime(1980, 1, 6, 0, 0, 0, DateTimeKind.Utc);
+
+        public static Dictionary<DevAddr, LoRaDevice> Devices { get; } = new();
 
         public Task HandleDiscoveryAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
             ExecuteWithExceptionHandlingAsync(async () =>
@@ -47,7 +50,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                 if (httpContext.Request.Host.Port is { } somePort)
                     uriBuilder.Port = somePort;
 
-                var discoveryService = new DiscoveryService(new LocalLnsDiscovery(uriBuilder.Uri), loggerFactory.CreateLogger<DiscoveryService>());
+                var discoveryService = new DiscoveryMessageHandler(new LocalLnsDiscovery(uriBuilder.Uri), loggerFactory.CreateLogger<DiscoveryMessageHandler>());
                 await discoveryService.HandleDiscoveryRequestAsync(httpContext, cancellationToken).ConfigureAwait(false);
                 return 0;
             });
@@ -137,7 +140,6 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         loraRequest.SetRegion(routerRegion);
                         loraRequest.SetStationEui(stationEui);
                         messageDispatcher.DispatchRequest(loraRequest);
-
                     }
                     catch (JsonException)
                     {
@@ -151,12 +153,18 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                     try
                     {
                         var updf = JsonConvert.DeserializeObject<UpstreamDataMessage>(json);
+                        RadioMetadata radioMetadata = new()
+                        {
+                            Frequency = new Hertz(updf.Frequency),
+                            DataRate = (DataRateIndex)updf.DR,
+                            UpInfo = updf.UpInfo
+                        };
 
                         using var scope = logger.BeginDeviceAddressScope(DevAddr.Parse(updf.DevAddr.ToString()));
 
                         var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
-                        var loraRequest = new LoRaRequest(updf.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
+                        var loraRequest = new LoRaRequest(radioMetadata, downstreamMessageSender, DateTime.UtcNow);
                         loraRequest.SetPayload(new LoRaPayloadData(new DevAddr(updf.DevAddr),
                                                                    new MacHeader((byte)updf.MacHeader),
                                                                    (FrameControlFlags)updf.FrameControlFlags,

@@ -22,14 +22,14 @@ namespace LoRaWan.NetworkServer
         private static readonly RandomNumberGenerator RndKeysGenerator = RandomNumberGenerator.Create();
 
         /// <summary>
-        /// Creates downlink message with ack for confirmation or cloud to device message.
+        /// Creates downlink message with ack for confirmation or device message.
         /// </summary>
         internal static DownlinkMessageBuilderResponse CreateDownlinkMessage(
             NetworkServerConfiguration configuration,
             LoRaDevice loRaDevice,
             LoRaRequest request,
             LoRaOperationTimeWatcher timeWatcher,
-            ReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
+            LoRaPayloadData payload,
             bool fpending,
             uint fcntDown,
             LoRaADRResult loRaADRResult,
@@ -97,7 +97,7 @@ namespace LoRaWan.NetworkServer
             var maxPayloadSize = loRaRegion.GetMaxPayloadSize(datr);
 
             // Deduct 8 bytes from max payload size.
-            maxPayloadSize -= LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.LoraProtocolOverheadSize;
+            maxPayloadSize -= Constants.LoraProtocolOverheadSize;
 
             var availablePayloadSize = maxPayloadSize;
 
@@ -109,21 +109,18 @@ namespace LoRaWan.NetworkServer
 
             byte[] frmPayload = null;
 
-            if (cloudToDeviceMessage != null)
+            if (payload != null)
             {
                 // Get C2D Mac coomands
-                var macCommandsC2d = PrepareMacCommandAnswer(null, cloudToDeviceMessage.MacCommands, request, null, logger);
+                var macCommandsC2d = PrepareMacCommandAnswer(null, payload.MacCommands, request, null, logger);
 
                 // Calculate total C2D payload size
-                var totalC2dSize = cloudToDeviceMessage.GetPayload()?.Length ?? 0;
+                var totalC2dSize = 0;
                 totalC2dSize += macCommandsC2d?.Sum(x => x.Length) ?? 0;
 
                 // Total C2D payload will fit
                 if (availablePayloadSize >= totalC2dSize)
                 {
-                    // Add frmPayload
-                    frmPayload = cloudToDeviceMessage.GetPayload();
-
                     // Add C2D Mac commands
                     if (macCommandsC2d?.Count > 0)
                     {
@@ -138,23 +135,12 @@ namespace LoRaWan.NetworkServer
                     // Deduct frmPayload size from available payload size, continue processing and log
                     availablePayloadSize -= (uint)totalC2dSize;
 
-                    if (cloudToDeviceMessage.Confirmed)
-                    {
-                        requiresDeviceAcknowlegement = true;
-                        loRaDevice.LastConfirmedC2DMessageID = cloudToDeviceMessage.MessageId ?? LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.C2D_MSG_ID_PLACEHOLDER;
-                    }
-
-                    if (cloudToDeviceMessage.Fport.IsAppSpecific() || cloudToDeviceMessage.Fport.IsReserved())
-                    {
-                        fport = cloudToDeviceMessage.Fport;
-                    }
-
-                    logger.LogInformation($"cloud to device message: {((frmPayload?.Length ?? 0) == 0 ? "empty" : frmPayload.ToHex())}, id: {cloudToDeviceMessage.MessageId ?? "undefined"}, fport: {(byte)(fport ?? FramePort.MacCommand)}, confirmed: {requiresDeviceAcknowlegement}, cidType: {macCommandType}, macCommand: {macCommands.Count > 0}");
+                    logger.LogInformation($"device message: {((frmPayload?.Length ?? 0) == 0 ? "empty" : frmPayload.ToHex())}, fport: {(byte)(fport ?? FramePort.MacCommand)}, confirmed: {requiresDeviceAcknowlegement}, cidType: {macCommandType}, macCommand: {macCommands.Count > 0}");
                 }
                 else
                 {
                     // Flag message to be abandoned and log`
-                    logger.LogDebug($"cloud to device message: empty, id: {cloudToDeviceMessage.MessageId ?? "undefined"}, fport: 0, confirmed: {requiresDeviceAcknowlegement} too long for current receive window. Abandoning.");
+                    logger.LogDebug($"device message: empty, fport: 0, confirmed: {requiresDeviceAcknowlegement} too long for current receive window. Abandoning.");
                     isMessageTooLong = true;
                 }
             }
@@ -250,100 +236,6 @@ namespace LoRaWan.NetworkServer
             return (ushort)fcntDown;
         }
 
-        internal static DownlinkMessageBuilderResponse CreateDownlinkMessage(
-            NetworkServerConfiguration configuration,
-            LoRaDevice loRaDevice,
-            Region loRaRegion,
-            ReceivedLoRaCloudToDeviceMessage cloudToDeviceMessage,
-            uint fcntDown,
-            ILogger logger)
-        {
-            var fcntDownToSend = ValidateAndConvert16bitFCnt(fcntDown);
-
-            // default fport
-            Cid? macCommandType = null;
-
-            var rndToken = new byte[2];
-            RndKeysGenerator.GetBytes(rndToken);
-
-            var isMessageTooLong = false;
-
-            var deviceJoinInfo = loRaRegion.LoRaRegion == LoRaRegionType.CN470RP2
-                ? new DeviceJoinInfo(loRaDevice.ReportedCN470JoinChannel, loRaDevice.DesiredCN470JoinChannel)
-                : null;
-
-            // Class C always uses RX2
-            DataRateIndex datr;
-            Hertz freq;
-
-            // Class C always use RX2
-            freq = loRaRegion.GetDownstreamRX2Freq(configuration.Rx2Frequency, deviceJoinInfo, logger);
-            datr = loRaRegion.GetDownstreamRX2DataRate(configuration.Rx2DataRate, loRaDevice.ReportedRX2DataRate, deviceJoinInfo, logger);
-
-            // get max. payload size based on data rate from LoRaRegion
-            var maxPayloadSize = loRaRegion.GetMaxPayloadSize(datr);
-
-            // Deduct 8 bytes from max payload size.
-            maxPayloadSize -= LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.LoraProtocolOverheadSize;
-
-            var availablePayloadSize = maxPayloadSize;
-
-            var macCommands = PrepareMacCommandAnswer(null, cloudToDeviceMessage.MacCommands, null, null, logger);
-
-            // Calculate total C2D payload size
-            var totalC2dSize = cloudToDeviceMessage.GetPayload()?.Length ?? 0;
-            totalC2dSize += macCommands?.Sum(x => x.Length) ?? 0;
-
-            // Total C2D payload will NOT fit
-            if (availablePayloadSize < totalC2dSize)
-            {
-                isMessageTooLong = true;
-                return new DownlinkMessageBuilderResponse(null, isMessageTooLong, ReceiveWindow2);
-            }
-
-            if (macCommands?.Count > 0)
-            {
-                macCommandType = macCommands.First().Cid;
-            }
-
-            if (cloudToDeviceMessage.Confirmed)
-            {
-                loRaDevice.LastConfirmedC2DMessageID = cloudToDeviceMessage.MessageId ?? LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants.C2D_MSG_ID_PLACEHOLDER;
-            }
-
-            var frmPayload = cloudToDeviceMessage.GetPayload();
-
-            if (logger.IsEnabled(LogLevel.Information))
-            {
-                logger.LogInformation($"cloud to device message: {frmPayload.ToHex()}, id: {cloudToDeviceMessage.MessageId ?? "undefined"}, fport: {cloudToDeviceMessage.Fport}, confirmed: {cloudToDeviceMessage.Confirmed}, cidType: {macCommandType}");
-            }
-
-            var msgType = cloudToDeviceMessage.Confirmed ? MacMessageType.ConfirmedDataDown : MacMessageType.UnconfirmedDataDown;
-            var ackLoRaMessage = new LoRaPayloadData(
-                msgType,
-                loRaDevice.DevAddr.Value,
-                FrameControlFlags.None,
-                fcntDownToSend,
-                macCommands,
-                cloudToDeviceMessage.Fport,
-                frmPayload,
-                1,
-                loRaDevice.Supports32BitFCnt ? fcntDown : null);
-
-            var loraDownLinkMessage = BuildDownstreamMessage(loRaDevice: loRaDevice,
-                                                             stationEUI: loRaDevice.LastProcessingStationEui,
-                                                             logger: logger,
-                                                             xTime: 0,
-                                                             null,
-                                                             new ReceiveWindow(datr, freq),
-                                                             RxDelay0,
-                                                             ackLoRaMessage,
-                                                             LoRaDeviceClassType.C);
-
-            // Class C always uses RX2.
-            return new DownlinkMessageBuilderResponse(loraDownLinkMessage, isMessageTooLong, ReceiveWindow2);
-        }
-
         /// <summary>
         /// Prepare the Mac Commands to be sent in the downstream message.
         /// </summary>
@@ -401,10 +293,10 @@ namespace LoRaWan.NetworkServer
                             }
                             else
                             {
-                                logger.LogError($"could not send the cloud to device MAC command {macCmd.Cid}, as such a property was already present in the message. Please resend the cloud to device message");
+                                logger.LogError($"could not send the device MAC command {macCmd.Cid}, as such a property was already present in the message. Please resend the cloud to device message");
                             }
 
-                            logger.LogInformation($"cloud to device MAC command {macCmd.Cid} received {macCmd}");
+                            logger.LogInformation($"device MAC command {macCmd.Cid} received {macCmd}");
                         }
                         catch (MacCommandException ex)
                         {

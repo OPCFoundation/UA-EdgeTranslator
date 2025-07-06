@@ -3,12 +3,11 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
-    using System;
-    using System.Collections.Generic;
-    using global::LoRaWan;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
 
     [JsonConverter(typeof(MacCommandJsonConverter))]
     public abstract class MacCommand
@@ -55,26 +54,24 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
                     var cid = (Cid)input.Span[pointer];
                     switch (cid)
                     {
-                        case Cid.LinkCheckCmd:
-                            var linkCheck = new LinkCheckRequest();
-                            pointer += linkCheck.Length;
-                            macCommands.Add(linkCheck);
-                            break;
                         case Cid.LinkADRCmd:
                             var linkAdrAnswer = new LinkADRAnswer(input.Span[pointer..]);
                             pointer += linkAdrAnswer.Length;
                             macCommands.Add(linkAdrAnswer);
                             break;
+
                         case Cid.DutyCycleCmd:
                             var dutyCycle = new DutyCycleAnswer();
                             pointer += dutyCycle.Length;
                             macCommands.Add(dutyCycle);
                             break;
+
                         case Cid.RXParamCmd:
                             var rxParamSetup = new RXParamSetupAnswer(input.Span[pointer..]);
                             pointer += rxParamSetup.Length;
                             macCommands.Add(rxParamSetup);
                             break;
+
                         case Cid.DevStatusCmd:
                             // Added this case to enable unit testing
                             if (input.Length == 1)
@@ -89,23 +86,32 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
                                 pointer += devStatus.Length;
                                 macCommands.Add(devStatus);
                             }
-
                             break;
+
                         case Cid.NewChannelCmd:
                             var newChannel = new NewChannelAnswer(input.Span[pointer..]);
                             pointer += newChannel.Length;
                             macCommands.Add(newChannel);
                             break;
+
                         case Cid.RXTimingCmd:
                             var rxTimingSetup = new RXTimingSetupAnswer();
                             pointer += rxTimingSetup.Length;
                             macCommands.Add(rxTimingSetup);
                             break;
+
                         case Cid.TxParamSetupCmd:
                             var txParamSetupAnswer = new TxParamSetupAnswer();
                             pointer += txParamSetupAnswer.Length;
                             macCommands.Add(txParamSetupAnswer);
                             break;
+
+                        case Cid.DeviceTimeCmd:
+                            var deviceTimeAnswer = new DeviceTimeAnswer();
+                            pointer += deviceTimeAnswer.Length;
+                            macCommands.Add(deviceTimeAnswer);
+                            break;
+
                         default:
                             logger?.LogError($"a transmitted Mac Command value ${input.Span[pointer]} was not from a supported type. Aborting Mac Command processing");
                             return null;

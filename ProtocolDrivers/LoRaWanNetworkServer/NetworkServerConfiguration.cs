@@ -30,9 +30,13 @@ namespace LoRaWan.NetworkServer
 
         /// <summary>
         /// Gets or sets  the logging level.
-        /// Default: 4 (Log level: Error).
+        /// Default: 4 (Log level: Error) fpr release builds, 1 (Log level: Debug) for debug builds.
         /// </summary>
-        public string LogLevel { get; set; } = "2";
+#if DEBUG
+        public string LogLevel { get; set; } = "1";
+#else
+        public string LogLevel { get; set; } = "4";
+#endif
 
         /// <summary>
         /// Gets or sets the gateway netword id.

@@ -3,11 +3,10 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using System;
     using System.Threading.Tasks;
 
-    public sealed class SingleGatewayFrameCounterUpdateStrategy : ILoRaDeviceFrameCounterUpdateStrategy
+    public sealed class FrameCounterUpdateStrategy
     {
         public Task<bool> ResetAsync(LoRaDevice loRaDevice, uint fcntUp, string gatewayId)
         {

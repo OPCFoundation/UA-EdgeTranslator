@@ -21,32 +21,5 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         [JsonProperty("errorDetail", NullValueHandling = NullValueHandling.Ignore)]
         public string ErrorDetail { get; set; }
-
-        /// <summary>
-        /// Gets or sets a message to be sent to the device (optional)
-        /// Assigning a value to DevEUI will send the message to a class C device.
-        /// </summary>
-        [JsonProperty(Constants.CloudToDeviceDecoderElementName, NullValueHandling = NullValueHandling.Ignore)]
-        public ReceivedLoRaCloudToDeviceMessage CloudToDeviceMessage { get; set; }
-
-        public DecodePayloadResult(object value)
-        {
-            Value = value;
-        }
-
-        public DecodePayloadResult()
-        {
-        }
-
-        public object GetDecodedPayload()
-        {
-            if (!string.IsNullOrEmpty(Error) ||
-                !string.IsNullOrEmpty(ErrorDetail))
-            {
-                return new DecodingFailedPayload(Error, ErrorDetail);
-            }
-
-            return Value;
-        }
     }
 }

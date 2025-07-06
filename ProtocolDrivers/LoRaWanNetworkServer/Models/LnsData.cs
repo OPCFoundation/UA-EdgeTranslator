@@ -136,8 +136,14 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             [DataMember(Name = "MIC")]
             public int Mic { get; set; }
 
-            [DataMember(Name = "RADIOMETADATA")]
-            public RadioMetadata RadioMetadata { get; set; }
+            [DataMember(Name = "DR")]
+            public int DR { get; set; }
+
+            [DataMember(Name = "Freq")]
+            public ulong Frequency { get; set; }
+
+            [DataMember(Name = "upinfo")]
+            public RadioMetadataUpInfo UpInfo { get; set; }
         }
 
         [DataContract]

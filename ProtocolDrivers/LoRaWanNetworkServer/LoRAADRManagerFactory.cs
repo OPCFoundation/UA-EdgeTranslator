@@ -5,7 +5,6 @@ using LoRaWan.NetworkServer;
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.Extensions.Logging;
     using System;
     using System.Threading;
@@ -16,8 +15,8 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         private static volatile LoRaADRInMemoryStore inMemoryStore;
 
         public LoRaADRManagerBase Create(LoRaADRStrategyProvider strategyProvider,
-                                      ILoRaDeviceFrameCounterUpdateStrategy frameCounterStrategy,
-                                      LoRaDevice loRaDevice)
+                                         FrameCounterUpdateStrategy frameCounterStrategy,
+                                         LoRaDevice loRaDevice)
         {
             ArgumentNullException.ThrowIfNull(loRaDevice);
 

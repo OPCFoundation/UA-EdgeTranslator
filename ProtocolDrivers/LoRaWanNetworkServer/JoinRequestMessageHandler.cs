@@ -3,6 +3,7 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWan.NetworkServer.BasicsStation.Processors;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
@@ -11,7 +12,6 @@ namespace LoRaWan.NetworkServer
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
     using System.Security.Cryptography;
-    using System.Threading;
     using System.Threading.Tasks;
     using static LoRaWan.ReceiveWindowNumber;
 
@@ -56,7 +56,7 @@ namespace LoRaWan.NetworkServer
             }
 
             var matchingDeviceInfo = searchDeviceResult.Devices[0];
-            return new LoRaDevice(null, matchingDeviceInfo.DevEUI) { AppKey = matchingDeviceInfo.AppKey };
+            return new LoRaDevice(matchingDeviceInfo.DevEUI) { AppKey = matchingDeviceInfo.AppKey };
         }
 
         internal async Task ProcessJoinRequestAsync(LoRaRequest request)
@@ -73,7 +73,6 @@ namespace LoRaWan.NetworkServer
             {
                 var timeWatcher = request.GetTimeWatcher();
                 var processingTimeout = timeWatcher.GetRemainingTimeToJoinAcceptSecondWindow() - TimeSpan.FromMilliseconds(100);
-                using var joinAcceptCancellationToken = new CancellationTokenSource(processingTimeout > TimeSpan.Zero ? processingTimeout : TimeSpan.Zero);
 
                 logger.LogInformation("join request received");
 
@@ -130,9 +129,7 @@ namespace LoRaWan.NetworkServer
                 var nwkSKey = OTAAKeysGenerator.CalculateNetworkSessionKey(appNonce, netId, joinReq.DevNonce, (AppKey)loRaDevice.AppKey);
                 var address = RandomNumberGenerator.GetInt32(toExclusive: DevAddr.MaxNetworkAddress + 1);
                 // The 7 LBS of the NetID become the NwkID of a DevAddr:
-                var devAddr = new DevAddr(unchecked((byte)netId.NetworkId), address);
-
-                var oldDevAddr = loRaDevice.DevAddr;
+                loRaDevice.DevAddr = new DevAddr(unchecked((byte)netId.NetworkId), address);
 
                 if (!timeWatcher.InTimeForJoinAccept())
                 {
@@ -144,7 +141,7 @@ namespace LoRaWan.NetworkServer
 
                 var updatedProperties = new LoRaDeviceJoinUpdateProperties
                 {
-                    DevAddr = devAddr,
+                    DevAddr = loRaDevice.DevAddr,
                     NwkSKey = nwkSKey,
                     AppSKey = appSKey,
                     AppNonce = appNonce,
@@ -175,11 +172,11 @@ namespace LoRaWan.NetworkServer
                     }
                 }
 
-                var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties, joinAcceptCancellationToken.Token).ConfigureAwait(false);
+                var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties).ConfigureAwait(false);
                 if (!deviceUpdateSucceeded)
                 {
-                    logger.LogError("join refused: join request could not save twin");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.IoTHubProblem);
+                    logger.LogError("join refused: join request could not save");
+                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.DeviceNotJoined);
                     return;
                 }
 
@@ -190,7 +187,6 @@ namespace LoRaWan.NetworkServer
                     request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.ReceiveWindowMissed);
                     return;
                 }
-
                 // Build join accept downlink message
 
                 // Build the DlSettings fields that is a superposition of RX2DR and RX1DROffset field
@@ -234,7 +230,7 @@ namespace LoRaWan.NetworkServer
 
                 var loRaPayloadJoinAccept = new LoRaPayloadJoinAccept(
                     netId, // NETID 0 / 1 is default test
-                    devAddr, // todo add device address management
+                    loRaDevice.DevAddr, // todo add device address management
                     appNonce,
                     dlSettings,
                     loraSpecDesiredRxDelay,
@@ -280,6 +276,15 @@ namespace LoRaWan.NetworkServer
                 else
                 {
                     logger.LogInformation("join accepted");
+                }
+
+                if (LnsProtocolMessageProcessor.Devices.Keys.Contains(loRaDevice.DevAddr))
+                {
+                    LnsProtocolMessageProcessor.Devices[loRaDevice.DevAddr] = loRaDevice;
+                }
+                else
+                {
+                    LnsProtocolMessageProcessor.Devices.Add(loRaDevice.DevAddr, loRaDevice);
                 }
             }
             catch (Exception ex)

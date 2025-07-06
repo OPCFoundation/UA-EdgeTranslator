@@ -14,6 +14,7 @@ namespace LoRaWan.NetworkServer
     public sealed class MessageDispatcher(
         NetworkServerConfiguration configuration,
         JoinRequestMessageHandler joinRequestHandler,
+        DataMessageHandler dataMessageHandler,
         ILogger<MessageDispatcher> logger)
     {
         private readonly NetworkServerConfiguration configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -49,7 +50,7 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                // TODO: Decode payload and persist last known values in key-value pairs in SearchDevicesResult.Devices
+                dataMessageHandler.ProcessData(request);
             }
             else
             {
