@@ -50,7 +50,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 .AddSingleton<BasicsStationConfigurationService>()
                 .AddSingleton<DefaultClassCDevicesMessageSender>()
                 .AddSingleton<WebSocketWriterRegistry<StationEui, string>>()
-                .AddSingleton<DownstreamMessageSender>()
+                .AddSingleton<DownlinkMessageSender>()
                 .AddTransient<LnsProtocolMessageProcessor>()
                 .AddSingleton<ConcentratorDeduplication>();
 

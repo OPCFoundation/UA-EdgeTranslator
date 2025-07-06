@@ -349,7 +349,7 @@ namespace LoRaWan.NetworkServer
 
                     if (downlinkMessageBuilderResp.DownlinkMessage != null)
                     {
-                        await request.DownstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
+                        await request.DownlinkMessageSender.SendDownlinkAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
 
                         if (cloudToDeviceMessage != null)
                         {
@@ -406,7 +406,7 @@ namespace LoRaWan.NetworkServer
 
                 if (confirmDownlinkMessageBuilderResp.DownlinkMessage != null)
                 {
-                    await SendMessageDownstreamAsync(request, confirmDownlinkMessageBuilderResp).ConfigureAwait(false);
+                    await SendMessageDownlinkAsync(request, confirmDownlinkMessageBuilderResp).ConfigureAwait(false);
                 }
 
                 return new LoRaDeviceRequestProcessResult(loRaDevice, request, confirmDownlinkMessageBuilderResp.DownlinkMessage);
@@ -437,12 +437,12 @@ namespace LoRaWan.NetworkServer
                 logger);
         }
 
-        protected virtual Task SendMessageDownstreamAsync(LoRaRequest request, DownlinkMessageBuilderResponse confirmDownlinkMessageBuilderResp)
+        protected virtual Task SendMessageDownlinkAsync(LoRaRequest request, DownlinkMessageBuilderResponse confirmDownlinkMessageBuilderResp)
         {
             _ = request ?? throw new ArgumentNullException(nameof(request));
             _ = confirmDownlinkMessageBuilderResp ?? throw new ArgumentNullException(nameof(confirmDownlinkMessageBuilderResp));
 
-            return request.DownstreamMessageSender.SendDownstreamAsync(confirmDownlinkMessageBuilderResp.DownlinkMessage);
+            return request.DownlinkMessageSender.SendDownlinkAsync(confirmDownlinkMessageBuilderResp.DownlinkMessage);
         }
 
         internal virtual async Task SaveChangesToDeviceAsync(LoRaDevice loRaDevice, bool force)

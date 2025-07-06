@@ -12,7 +12,7 @@ namespace LoRaWan.NetworkServer
 
     public class DefaultClassCDevicesMessageSender(
         NetworkServerConfiguration configuration,
-        DownstreamMessageSender downstreamMessageSender,
+        DownlinkMessageSender downstreamMessageSender,
         LoRaDeviceFrameCounterUpdateStrategyProvider frameCounterUpdateStrategyProvider,
         ILogger<DefaultClassCDevicesMessageSender> logger)
     {
@@ -111,7 +111,7 @@ namespace LoRaWan.NetworkServer
             {
                 try
                 {
-                    await downstreamMessageSender.SendDownstreamAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
+                    await downstreamMessageSender.SendDownlinkAsync(downlinkMessageBuilderResp.DownlinkMessage).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

@@ -24,7 +24,7 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
 
     internal class LnsProtocolMessageProcessor(BasicsStationConfigurationService basicsStationConfigurationService,
                                        WebSocketWriterRegistry<StationEui, string> socketWriterRegistry,
-                                       DownstreamMessageSender downstreamMessageSender,
+                                       DownlinkMessageSender downstreamMessageSender,
                                        MessageDispatcher messageDispatcher,
                                        ILoggerFactory loggerFactory,
                                        ILogger<LnsProtocolMessageProcessor> logger)

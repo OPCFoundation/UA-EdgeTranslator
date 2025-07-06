@@ -13,14 +13,14 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Threading;
     using System.Threading.Tasks;
 
-    public class DownstreamMessageSender(WebSocketWriterRegistry<StationEui, string> socketWriterRegistry, ILogger<DownstreamMessageSender> logger)
+    public class DownlinkMessageSender(WebSocketWriterRegistry<StationEui, string> socketWriterRegistry, ILogger<DownlinkMessageSender> logger)
     {
         private static readonly Action<ILogger, StationEui, int, string, Exception> LogSendingMessage =
             LoggerMessage.Define<StationEui, int, string>(LogLevel.Debug, default,
                                                      "sending message to station with EUI '{StationEui}' with diid {Diid}. Payload '{Payload}'.");
         private readonly Random random = new Random();
 
-        public async Task SendDownstreamAsync(DownlinkMessage message)
+        public async Task SendDownlinkAsync(DownlinkMessage message)
         {
             ArgumentNullException.ThrowIfNull(message);
 
@@ -81,7 +81,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                     writer.WriteNumber("xtime", message.Xtime);
                     break;
                 case LoRaDeviceClassType.B:
-                    throw new NotSupportedException($"{nameof(DownstreamMessageSender)} does not support class B devices yet.");
+                    throw new NotSupportedException($"{nameof(DownlinkMessageSender)} does not support class B devices yet.");
                 case LoRaDeviceClassType.C:
                     // if Xtime is not zero, it means that we are answering to a previous message
                     if (message.Xtime != 0)

@@ -18,7 +18,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         public virtual LoRaPayload Payload { get; private set; }
 
-        public virtual DownstreamMessageSender DownstreamMessageSender { get; }
+        public virtual DownlinkMessageSender DownlinkMessageSender { get; }
 
         public virtual DateTime StartTime { get; }
 
@@ -35,11 +35,11 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         public LoRaRequest(
             RadioMetadata radioMetadata,
-            DownstreamMessageSender downstreamMessageSender,
+            DownlinkMessageSender downstreamMessageSender,
             DateTime startTime)
         {
             RadioMetadata = radioMetadata;
-            DownstreamMessageSender = downstreamMessageSender;
+            DownlinkMessageSender = downstreamMessageSender;
             StartTime = startTime;
         }
 

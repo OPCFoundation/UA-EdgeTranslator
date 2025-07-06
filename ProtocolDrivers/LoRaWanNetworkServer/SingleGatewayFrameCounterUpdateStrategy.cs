@@ -3,10 +3,9 @@
 
 namespace LoRaWan.NetworkServer
 {
+    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using System;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Models;
 
     public sealed class SingleGatewayFrameCounterUpdateStrategy : ILoRaDeviceFrameCounterUpdateStrategy
     {

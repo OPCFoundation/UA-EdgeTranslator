@@ -268,7 +268,7 @@ namespace LoRaWan.NetworkServer
                                                           request.StationEui,
                                                           request.RadioMetadata.UpInfo.AntennaPreference);
 
-                _ = request.DownstreamMessageSender.SendDownstreamAsync(downlinkMessage);
+                _ = request.DownlinkMessageSender.SendDownlinkAsync(downlinkMessage);
 
                 request.NotifySucceeded(loRaDevice, downlinkMessage);
 
