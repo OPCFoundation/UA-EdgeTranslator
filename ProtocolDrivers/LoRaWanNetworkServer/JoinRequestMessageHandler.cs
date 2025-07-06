@@ -11,7 +11,6 @@ namespace LoRaWan.NetworkServer
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
     using System.Security.Cryptography;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using static LoRaWan.ReceiveWindowNumber;

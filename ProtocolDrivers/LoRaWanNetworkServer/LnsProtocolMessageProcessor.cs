@@ -132,8 +132,8 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         var loraRequest = new LoRaRequest(radioMetadata, downstreamMessageSender, DateTime.UtcNow);
                         loraRequest.SetPayload(new LoRaPayloadJoinRequest(JoinEui.Parse(jreq.JoinEui),
                                                                           DevEui.Parse(jreq.DevEui),
-                                                                          DevNonce.Read(Encoding.UTF8.GetBytes(jreq.DevNonce)),
-                                                                          MessageIntegrityCode.Read(Encoding.UTF8.GetBytes(jreq.Mic))));
+                                                                          new DevNonce(jreq.DevNonce),
+                                                                          new MessageIntegrityCode(jreq.Mic)));
                         loraRequest.SetRegion(routerRegion);
                         loraRequest.SetStationEui(stationEui);
                         messageDispatcher.DispatchRequest(loraRequest);
@@ -157,14 +157,14 @@ namespace LoRaWan.NetworkServer.BasicsStation.Processors
                         var routerRegion = await basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                         var loraRequest = new LoRaRequest(updf.RadioMetadata, downstreamMessageSender, DateTime.UtcNow);
-                        loraRequest.SetPayload(new LoRaPayloadData(DevAddr.Parse(updf.DevAddr.ToString()),
+                        loraRequest.SetPayload(new LoRaPayloadData(new DevAddr(updf.DevAddr),
                                                                    new MacHeader((byte)updf.MacHeader),
                                                                    (FrameControlFlags)updf.FrameControlFlags,
                                                                    (ushort)updf.Counter,
                                                                    updf.Options,
                                                                    updf.Payload,
                                                                    (FramePort)updf.Port,
-                                                                   MessageIntegrityCode.Read(Encoding.UTF8.GetBytes(updf.Mic.ToString())),
+                                                                   new MessageIntegrityCode(updf.Mic),
                                                                    logger));
                         loraRequest.SetRegion(routerRegion);
                         loraRequest.SetStationEui(stationEui);

@@ -156,10 +156,10 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             public string DevEui { get; set; }
 
             [DataMember(Name = "DevNonce")]
-            public string DevNonce { get; set; }
+            public ushort DevNonce { get; set; }
 
             [DataMember(Name = "MIC")]
-            public string Mic { get; set; }
+            public int Mic { get; set; }
 
             [DataMember(Name = "DR")]
             public int DR { get; set; }
