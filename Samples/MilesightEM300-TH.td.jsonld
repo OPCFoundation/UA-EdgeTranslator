@@ -26,7 +26,8 @@
       "observable": true,
       "forms": [
         {
-          "href": "0?quantity=2"
+          "href": "1?quantity=1",
+          "type": "117"
         }
       ]
     },
@@ -38,7 +39,8 @@
       "observable": true,
       "forms": [
         {
-          "href": "2?quantity=2"
+          "href": "4?quantity=1",
+          "type": "104"
         }
       ]
     },
@@ -50,7 +52,8 @@
       "observable": true,
       "forms": [
         {
-          "href": "4?quantity=2"
+          "href": "2?quantity=2",
+          "type": "103"
         }
       ]
     }
