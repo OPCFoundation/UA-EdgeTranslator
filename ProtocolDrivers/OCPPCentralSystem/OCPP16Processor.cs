@@ -8,6 +8,7 @@
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using static OCPPCentralSystem.WebsocketJsonMiddlewareOCPP;
 
     // Mandatory commands (charge point - i.e. the remote connected client - initiated):
     // Authorize
@@ -494,7 +495,7 @@
                     JObject.Parse(requestPayload) // payload
                 });
 
-                WebsocketJsonMiddlewareOCPP.PendingMessagess.TryAdd(cpId, serializedCommand);
+                PendingMessages.Enqueue(new QueuedMessage { Destination = cpId, Payload = serializedCommand });
 
                 return Task.CompletedTask;
             }

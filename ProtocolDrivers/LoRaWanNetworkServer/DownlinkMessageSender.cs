@@ -4,7 +4,6 @@
 namespace LoRaWan.NetworkServer.BasicsStation
 {
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
     using Serilog;
     using System;
     using System.IO;
@@ -12,8 +11,9 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using static LoRaWan.NetworkServer.WebsocketJsonMiddlewareLoRaWAN;
 
-    public class DownlinkMessageSender(ILogger<DownlinkMessageSender> logger)
+    public class DownlinkMessageSender()
     {
         private readonly Random random = new Random();
 
@@ -26,7 +26,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 throw new ArgumentException($"A proper StationEui needs to be set. Received '{message.StationEui}'.");
             }
 
-            WebsocketJsonMiddlewareLoRaWAN.PendingMessages.TryAdd(message.StationEui.ToString(), SerializeMessage(message));
+            PendingMessages.Enqueue(new QueuedMessage { Destination = message.StationEui.ToString(), Payload = SerializeMessage(message) });
 
             return Task.CompletedTask;
         }

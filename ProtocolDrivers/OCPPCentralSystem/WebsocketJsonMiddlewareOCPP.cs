@@ -23,12 +23,19 @@ namespace OCPPCentralSystem
 
     public class WebsocketJsonMiddlewareOCPP
     {
+        public class QueuedMessage
+        {
+            public string Destination { get; set; }
+
+            public string Payload { get; set; }
+        }
+
+        public static ConcurrentQueue<QueuedMessage> PendingMessages { get; } = new();
+
         private readonly RequestDelegate _next;
 
         private static ConcurrentDictionary<string, ChargePointConnection> _connectedChargePoints = new();
-
-        public static ConcurrentDictionary<string, string> PendingMessagess { get; set; } = new();
-
+                
         public WebsocketJsonMiddlewareOCPP(RequestDelegate next)
         {
             _next = next;
@@ -40,37 +47,33 @@ namespace OCPPCentralSystem
         {
             while (true)
             {
-                // process commands once a second
-                await Task.Delay(1000).ConfigureAwait(false);
+                // process commands every 10ms
+                await Task.Delay(10).ConfigureAwait(false);
 
                 // handle commands initiated by the central system
-                while (PendingMessagess.Count > 0)
+                while (PendingMessages.Count > 0)
                 {
+                    QueuedMessage message = PendingMessages.First();
+                    string chargePointName = message.Destination;
+
                     try
                     {
-                        if (!_connectedChargePoints.ContainsKey(PendingMessagess.FirstOrDefault().Key))
+                        if (!_connectedChargePoints.ContainsKey(chargePointName))
                         {
-                            Log.Logger.Error($"Charge point {PendingMessagess.FirstOrDefault().Key} not found in the connected charge points list!");
-                            PendingMessagess.TryRemove(PendingMessagess.FirstOrDefault().Key, out _);
+                            Log.Logger.Error($"Charge point {chargePointName} not found in the connected charge points list!");
+                            PendingMessages.TryDequeue(out _);
                             continue;
                         }
 
-                        string chargePointName = PendingMessagess.FirstOrDefault().Key;
-
                         if (_connectedChargePoints[chargePointName].WebSocket.State == WebSocketState.Open)
                         {
-                            string requestPayload = PendingMessagess.FirstOrDefault().Value;
-
                             try
                             {
-                                if (_connectedChargePoints[chargePointName].WebSocket.State == WebSocketState.Open)
-                                {
-                                    await _connectedChargePoints[chargePointName].WebSocket.SendAsync(Encoding.UTF8.GetBytes(requestPayload), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
-                                }
-                                else
-                                {
-                                    Log.Logger.Error($"WebSocket for charge point {chargePointName} is not open. Cannot send request.");
-                                }
+                                await _connectedChargePoints[chargePointName].WebSocket.SendAsync(
+                                    Encoding.UTF8.GetBytes(message.Payload),
+                                    WebSocketMessageType.Text,
+                                    true,
+                                    CancellationToken.None).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {
@@ -82,11 +85,11 @@ namespace OCPPCentralSystem
                             Log.Logger.Error($"WebSocket for charge point {chargePointName} is not open. Cannot send request.");
                         }
 
-                        PendingMessagess.TryRemove(chargePointName, out _);
+                        PendingMessages.TryDequeue(out _);
                     }
                     catch (Exception ex)
                     {
-                        Log.Logger.Error($"Exception while processing command for charge point {PendingMessagess.FirstOrDefault().Key}: {ex.Message}");
+                        Log.Logger.Error($"Exception while processing command for charge point {chargePointName}: {ex.Message}");
                     }
                 }
             }
@@ -270,13 +273,13 @@ namespace OCPPCentralSystem
                                 if (webSocket.SubProtocol == "ocpp1.6")
                                 {
                                     string response = await OCPP16Processor.ProcessRequestPayloadAsync(chargepointName, (string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
-                                    PendingMessagess.TryAdd(chargepointName, response);
+                                    PendingMessages.Enqueue(new QueuedMessage { Destination = chargepointName, Payload = response });
                                 }
 
                                 if ((webSocket.SubProtocol == "ocpp2.0") || (webSocket.SubProtocol == "ocpp2.0.1") || (webSocket.SubProtocol == "ocpp2.1"))
                                 {
                                     string response = await OCPP21Processor.ProcessRequestPayloadAsync(chargepointName, (string)ocppMessage[1], (string)ocppMessage[2], JsonConvert.SerializeObject(ocppMessage[3])).ConfigureAwait(false);
-                                    PendingMessagess.TryAdd(chargepointName, response);
+                                    PendingMessages.Enqueue(new QueuedMessage { Destination = chargepointName, Payload = response });
                                 }
 
                                 break;

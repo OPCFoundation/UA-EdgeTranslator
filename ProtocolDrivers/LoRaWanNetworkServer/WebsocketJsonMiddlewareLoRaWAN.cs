@@ -23,15 +23,22 @@ namespace LoRaWan.NetworkServer
 
     public class WebsocketJsonMiddlewareLoRaWAN
     {
+        public class QueuedMessage
+        {
+            public string Destination { get; set; }
+
+            public string Payload { get; set; }
+        }
+        
+        public static ConcurrentQueue<QueuedMessage> PendingMessages { get; } = new();
+        
+        public static ConcurrentDictionary<string, GatewayConnection> ConnectedGateways { get; } = new();
+
         private readonly RequestDelegate _next;
         private readonly BasicsStationConfigurationService _basicsStationConfigurationService;
         private readonly DownlinkMessageSender _downstreamMessageSender;
         private readonly MessageDispatcher _messageDispatcher;
-
-        public static ConcurrentDictionary<string, GatewayConnection> ConnectedGateways { get; } = new();
-
-        public static ConcurrentDictionary<string, string> PendingMessages { get; } = new();
-
+        
         public WebsocketJsonMiddlewareLoRaWAN(
             RequestDelegate next,
             BasicsStationConfigurationService basicsStationConfigurationService,
@@ -56,31 +63,28 @@ namespace LoRaWan.NetworkServer
                 // handle commands initiated by the central system
                 while (PendingMessages.Count > 0)
                 {
+                    QueuedMessage message = PendingMessages.First();
+                    string gatewayName = message.Destination;
+
                     try
                     {
-                        if (!ConnectedGateways.ContainsKey(PendingMessages.FirstOrDefault().Key))
+                        if (!ConnectedGateways.ContainsKey(gatewayName))
                         {
-                            Log.Logger.Error($"Gateway {PendingMessages.FirstOrDefault().Key} not found in the connected gateways list!");
-                            PendingMessages.TryRemove(PendingMessages.FirstOrDefault().Key, out _);
+                            Log.Logger.Error($"Gateway {gatewayName} not found in the connected gateways list!");
+                            PendingMessages.TryDequeue(out _);
                             continue;
                         }
-
-                        string gatewayName = PendingMessages.FirstOrDefault().Key;
-
+                        
                         if (ConnectedGateways[gatewayName].WebSocket.State == WebSocketState.Open)
                         {
-                            string requestPayload = PendingMessages.FirstOrDefault().Value;
-
                             try
                             {
-                                if (ConnectedGateways[gatewayName].WebSocket.State == WebSocketState.Open)
-                                {
-                                    await ConnectedGateways[gatewayName].WebSocket.SendAsync(Encoding.UTF8.GetBytes(requestPayload), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
-                                }
-                                else
-                                {
-                                    Log.Logger.Error($"WebSocket for gateway {gatewayName} is not open. Cannot send request.");
-                                }
+                                await ConnectedGateways[gatewayName].WebSocket.SendAsync(
+                                    Encoding.UTF8.GetBytes(message.Payload),
+                                    WebSocketMessageType.Text,
+                                    true,
+                                    CancellationToken.None).ConfigureAwait(false);
+                                
                             }
                             catch (Exception ex)
                             {
@@ -92,11 +96,11 @@ namespace LoRaWan.NetworkServer
                             Log.Logger.Error($"WebSocket for gateway {gatewayName} is not open. Cannot send request.");
                         }
 
-                        PendingMessages.TryRemove(gatewayName, out _);
+                        PendingMessages.TryDequeue(out _);
                     }
                     catch (Exception ex)
                     {
-                        Log.Logger.Error($"Exception while processing command for gateway {PendingMessages.FirstOrDefault().Key}: {ex.Message}");
+                        Log.Logger.Error($"Exception while processing command for gateway {gatewayName}: {ex.Message}");
                     }
                 }
             }
@@ -313,7 +317,7 @@ namespace LoRaWan.NetworkServer
                                     Uri = dataEnpoint.ToString()
                                 });
 
-                                PendingMessages.TryAdd(stationEui.ToString(), response);
+                                PendingMessages.Enqueue(new QueuedMessage { Destination = stationEui.ToString(), Payload = response });
                             }
                             catch (Exception ex)
                             {
@@ -325,7 +329,7 @@ namespace LoRaWan.NetworkServer
                                     Error = ex.Message
                                 });
 
-                                PendingMessages.TryAdd(stationEui.ToString(), response);
+                                PendingMessages.Enqueue(new QueuedMessage { Destination = stationEui.ToString(), Payload = response });
                                 throw;
                             }
                         }
@@ -340,7 +344,7 @@ namespace LoRaWan.NetworkServer
                                     Log.Logger.Information("Received 'version' message for station '{StationVersion}' with package '{StationPackage}'.", versionMessage.MessageType, versionMessage.Package);
 
                                     string routerConfigResponse = await _basicsStationConfigurationService.GetRouterConfigMessageAsync(StationEui.Parse(gatewayName), cancellationToken).ConfigureAwait(false);
-                                    PendingMessages.TryAdd(gatewayName, routerConfigResponse);
+                                    PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = routerConfigResponse });
                                     break;
 
                                 case LnsMessageType.JoinRequest:
@@ -419,7 +423,7 @@ namespace LoRaWan.NetworkServer
                                     var timeSyncData = JsonConvert.DeserializeObject<TimeSyncMessage>(payloadString);
                                     Log.Logger.Information($"Received TimeSync message: '{payloadString}'.", payloadString);
                                     timeSyncData.GpsTime = (ulong)DateTime.UtcNow.Subtract(new DateTime(1980, 1, 6, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds * 1000; // to microseconds
-                                    PendingMessages.TryAdd(gatewayName, JsonConvert.SerializeObject(timeSyncData));
+                                    PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = JsonConvert.SerializeObject(timeSyncData) });
 
                                     break;
 
