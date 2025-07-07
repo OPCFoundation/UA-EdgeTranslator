@@ -35,16 +35,15 @@ namespace LoRaWan.NetworkServer
             LoRaADRResult loRaADRResult,
             ILogger logger)
         {
-            var fcntDownToSend = ValidateAndConvert16bitFCnt(fcntDown);
+            ArgumentOutOfRangeException.ThrowIfZero(fcntDown);
 
-            var upstreamPayload = (LoRaPayloadData)request.Payload;
             var radioMetadata = request.RadioMetadata;
             var loRaRegion = request.Region;
             var isMessageTooLong = false;
 
             // default fport
             var fctrl = FrameControlFlags.None;
-            if (upstreamPayload.MessageType == MacMessageType.ConfirmedDataUp)
+            if (payload.MessageType == MacMessageType.ConfirmedDataUp)
             {
                 // Confirm receiving message to device
                 fctrl = FrameControlFlags.Ack;
@@ -105,48 +104,11 @@ namespace LoRaWan.NetworkServer
 
             FramePort? fport = null;
             var requiresDeviceAcknowlegement = false;
-            Cid? macCommandType = null;
 
             byte[] frmPayload = null;
 
-            if (payload != null)
-            {
-                // Get C2D Mac coomands
-                var macCommandsC2d = PrepareMacCommandAnswer(null, payload.MacCommands, request, null, logger);
-
-                // Calculate total C2D payload size
-                var totalC2dSize = 0;
-                totalC2dSize += macCommandsC2d?.Sum(x => x.Length) ?? 0;
-
-                // Total C2D payload will fit
-                if (availablePayloadSize >= totalC2dSize)
-                {
-                    // Add C2D Mac commands
-                    if (macCommandsC2d?.Count > 0)
-                    {
-                        macCommandType = macCommandsC2d.First().Cid;
-
-                        foreach (var macCommand in macCommandsC2d)
-                        {
-                            macCommands.Add(macCommand);
-                        }
-                    }
-
-                    // Deduct frmPayload size from available payload size, continue processing and log
-                    availablePayloadSize -= (uint)totalC2dSize;
-
-                    logger.LogInformation($"device message: {((frmPayload?.Length ?? 0) == 0 ? "empty" : frmPayload.ToHex())}, fport: {(byte)(fport ?? FramePort.MacCommand)}, confirmed: {requiresDeviceAcknowlegement}, cidType: {macCommandType}, macCommand: {macCommands.Count > 0}");
-                }
-                else
-                {
-                    // Flag message to be abandoned and log`
-                    logger.LogDebug($"device message: empty, fport: 0, confirmed: {requiresDeviceAcknowlegement} too long for current receive window. Abandoning.");
-                    isMessageTooLong = true;
-                }
-            }
-
             // Get request Mac commands
-            var macCommandsRequest = PrepareMacCommandAnswer(upstreamPayload.MacCommands, null, request, loRaADRResult, logger);
+            var macCommandsRequest = PrepareMacCommandAnswer(payload.MacCommands, request, loRaADRResult, logger);
 
             // Calculate request Mac commands size
             var macCommandsRequestSize = macCommandsRequest?.Sum(x => x.Length) ?? 0;
@@ -168,7 +130,7 @@ namespace LoRaWan.NetworkServer
                 fctrl |= FrameControlFlags.DownlinkFramePending;
             }
 
-            if (upstreamPayload.IsDataRateNetworkControlled)
+            if (payload.IsDataRateNetworkControlled)
             {
                 fctrl |= FrameControlFlags.Adr;
             }
@@ -176,64 +138,35 @@ namespace LoRaWan.NetworkServer
             var msgType = requiresDeviceAcknowlegement ? MacMessageType.ConfirmedDataDown : MacMessageType.UnconfirmedDataDown;
             var ackLoRaMessage = new LoRaPayloadData(
                 msgType,
-                upstreamPayload.DevAddr,
+                payload.DevAddr,
                 fctrl,
-                fcntDownToSend,
+                (ushort)fcntDown,
                 macCommands,
                 fport,
                 frmPayload,
                 1,
                 loRaDevice.Supports32BitFCnt ? fcntDown : null);
 
-            // following calculation is making sure that ReportedRXDelay is chosen if not default,
-            // todo: check the device twin preference if using confirmed or unconfirmed down
-            var downlinkMessage = BuildDownstreamMessage(loRaDevice,
-                                                         request.StationEui,
-                                                         logger,
-                                                         radioMetadata.UpInfo.Xtime,
-                                                         receiveWindow is ReceiveWindow2 ? null : new ReceiveWindow(datr, freq),
-                                                         rx2,
-                                                         loRaDevice.ReportedRXDelay,
-                                                         ackLoRaMessage,
-                                                         loRaDevice.ClassType,
-                                                         radioMetadata.UpInfo.AntennaPreference);
-
-            return new DownlinkMessageBuilderResponse(downlinkMessage, isMessageTooLong, receiveWindow);
-        }
-
-        private static DownlinkMessage BuildDownstreamMessage(LoRaDevice loRaDevice,
-                                                              StationEui stationEUI,
-                                                              ILogger logger,
-                                                              ulong xTime,
-                                                              ReceiveWindow? rx1,
-                                                              ReceiveWindow rx2,
-                                                              RxDelay lnsRxDelay,
-                                                              LoRaPayloadData loRaMessage,
-                                                              LoRaDeviceClassType deviceClassType,
-                                                              uint? antennaPreference = null)
-        {
-            var messageBytes = loRaMessage.Serialize(loRaDevice.AppSKey.Value, loRaDevice.NwkSKey.Value);
+            // following calculation is making sure that ReportedRXDelay is chosen if not default
+            var messageBytes = ackLoRaMessage.Serialize(loRaDevice.AppSKey.Value, loRaDevice.NwkSKey.Value);
             var downlinkMessage = new DownlinkMessage(
                 messageBytes,
-                xTime,
-                rx1, rx2,
+                radioMetadata.UpInfo.Xtime,
+                receiveWindow is ReceiveWindow2 ? null : new ReceiveWindow(datr, freq),
+                rx2,
                 loRaDevice.DevEUI,
-                lnsRxDelay,
-                deviceClassType,
-                stationEUI,
-                antennaPreference
+                loRaDevice.ReportedRXDelay,
+                loRaDevice.ClassType,
+                request.StationEui,
+                radioMetadata.UpInfo.AntennaPreference
                 );
 
             if (logger.IsEnabled(LogLevel.Debug))
-                logger.LogDebug($"{loRaMessage.MessageType} {JsonConvert.SerializeObject(downlinkMessage)}");
-            return downlinkMessage;
-        }
+            {
+                logger.LogDebug($"{ackLoRaMessage.MessageType} {JsonConvert.SerializeObject(downlinkMessage)}");
+            }
 
-        private static ushort ValidateAndConvert16bitFCnt(uint fcntDown)
-        {
-            ArgumentOutOfRangeException.ThrowIfZero(fcntDown);
-
-            return (ushort)fcntDown;
+            return new DownlinkMessageBuilderResponse(downlinkMessage, isMessageTooLong, receiveWindow);
         }
 
         /// <summary>
@@ -241,7 +174,6 @@ namespace LoRaWan.NetworkServer
         /// </summary>
         private static List<MacCommand> PrepareMacCommandAnswer(
            IEnumerable<MacCommand> requestedMacCommands,
-           IEnumerable<MacCommand> serverMacCommands,
            LoRaRequest loRaRequest,
            LoRaADRResult loRaADRResult,
            ILogger logger)
@@ -267,6 +199,17 @@ namespace LoRaWan.NetworkServer
                                 }
                             }
                             break;
+                        case Cid.DeviceTimeCmd:
+                            if (loRaRequest != null)
+                            {
+                                var deviceTime = new DeviceTimeAnswer();
+                                if (cids.Add(Cid.DeviceTimeCmd))
+                                {
+                                    macCommands.Add(deviceTime);
+                                    logger.LogInformation($"answering to a MAC command request {deviceTime}");
+                                }
+                            }
+                            break;
                         case Cid.DutyCycleCmd:
                         case Cid.RXParamCmd:
                         case Cid.DevStatusCmd:
@@ -275,33 +218,6 @@ namespace LoRaWan.NetworkServer
                         case Cid.TxParamSetupCmd:
                         default:
                             break;
-                    }
-                }
-            }
-
-            if (serverMacCommands != null)
-            {
-                foreach (var macCmd in serverMacCommands)
-                {
-                    if (macCmd != null)
-                    {
-                        try
-                        {
-                            if (cids.Add(macCmd.Cid))
-                            {
-                                macCommands.Add(macCmd);
-                            }
-                            else
-                            {
-                                logger.LogError($"could not send the device MAC command {macCmd.Cid}, as such a property was already present in the message. Please resend the cloud to device message");
-                            }
-
-                            logger.LogInformation($"device MAC command {macCmd.Cid} received {macCmd}");
-                        }
-                        catch (MacCommandException ex)
-                        {
-                            logger.LogError(ex.ToString());
-                        }
                     }
                 }
             }

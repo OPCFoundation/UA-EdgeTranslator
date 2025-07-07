@@ -218,7 +218,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             var frmPayloadLen = frmPayload == null ? 0 : frmPayload.Length;
             var fPortLen = fPort is null ? 0 : 1;
 
-            // TODO If there are mac commands to send and no payload, we need to put the mac commands in the frmpayload.
+            // If there are mac commands to send and no payload, we need to put the mac commands in the frmpayload.
             if (macBytes.Count > 0 && (frmPayload == null || frmPayload.Length == 0))
             {
                 frmPayload = fOpts;

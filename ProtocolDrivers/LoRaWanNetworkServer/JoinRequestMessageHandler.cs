@@ -27,8 +27,6 @@ namespace LoRaWan.NetworkServer
 
         public LoRaDevice GetDeviceForJoinRequestAsync(DevEui devEUI)
         {
-            logger.LogDebug("querying the registry for OTAA device");
-
             var searchDeviceResult = SearchDevicesResult.SearchForDevice(devEUI);
 
             if ((searchDeviceResult == null) || (searchDeviceResult?.Devices == null) || (searchDeviceResult.Devices.Count == 0))

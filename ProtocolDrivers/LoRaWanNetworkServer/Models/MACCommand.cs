@@ -3,13 +3,11 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
 
-    [JsonConverter(typeof(MacCommandJsonConverter))]
     public abstract class MacCommand
     {
         /// <summary>
@@ -54,6 +52,11 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
                     var cid = (Cid)input.Span[pointer];
                     switch (cid)
                     {
+                        case Cid.LinkCheckCmd:
+                            var linkCheck = new LinkCheckAnswer(input.Span[pointer..]);
+                            pointer += linkCheck.Length;
+                            macCommands.Add(linkCheck);
+                            break;
                         case Cid.LinkADRCmd:
                             var linkAdrAnswer = new LinkADRAnswer(input.Span[pointer..]);
                             pointer += linkAdrAnswer.Length;
@@ -121,54 +124,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             catch (MacCommandException ex)
             {
                 logger?.LogError(ex.ToString());
-            }
-
-            return macCommands;
-        }
-
-        /// <summary>
-        /// Create a List of Mac commands from server based on a sequence of bytes.
-        /// </summary>
-        public static IList<MacCommand> CreateServerMacCommandFromBytes(ReadOnlyMemory<byte> input, ILogger logger = null)
-        {
-            var pointer = 0;
-            var macCommands = new List<MacCommand>(3);
-
-            while (pointer < input.Length)
-            {
-                try
-                {
-                    var cid = (Cid)input.Span[pointer];
-                    switch (cid)
-                    {
-                        case Cid.LinkCheckCmd:
-                            var linkCheck = new LinkCheckAnswer(input.Span[pointer..]);
-                            pointer += linkCheck.Length;
-                            macCommands.Add(linkCheck);
-                            break;
-                        case Cid.DevStatusCmd:
-                            var devStatusRequest = new DevStatusRequest();
-                            pointer += devStatusRequest.Length;
-                            macCommands.Add(devStatusRequest);
-                            break;
-                        case Cid.LinkADRCmd:
-                        case Cid.DutyCycleCmd:
-                        case Cid.RXParamCmd:
-                        case Cid.NewChannelCmd:
-                        case Cid.RXTimingCmd:
-                        case Cid.TxParamSetupCmd:
-                        default:
-                            logger?.LogError($"a Mac command transmitted from the server, value ${input.Span[pointer]} was not from a supported type. Aborting Mac Command processing");
-                            return null;
-                    }
-
-                    var addedMacCommand = macCommands[^1];
-                    logger?.LogDebug($"{addedMacCommand.Cid} mac command detected in upstream payload: {addedMacCommand}");
-                }
-                catch (MacCommandException ex)
-                {
-                    logger?.LogError(ex.ToString());
-                }
             }
 
             return macCommands;
