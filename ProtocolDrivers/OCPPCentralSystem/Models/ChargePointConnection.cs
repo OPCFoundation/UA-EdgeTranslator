@@ -13,16 +13,10 @@ namespace OCPPCentralSystem.Models
         {
             ChargingPointName = name;
             WebSocket = webSocket;
-            WebsocketBusy = false;
-            WaitingForResponse = false;
         }
 
         public string ChargingPointName { get; set; }
 
         public WebSocket WebSocket { get; set; }
-
-        public bool WebsocketBusy { get; set; }
-
-        public bool WaitingForResponse { get; set; }
     }
 }

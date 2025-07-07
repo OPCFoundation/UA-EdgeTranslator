@@ -5,6 +5,7 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
+    using Microsoft.Extensions.Logging;
     using System;
     using System.Linq;
     using System.Net.Security;
@@ -12,8 +13,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
-    using Microsoft.Extensions.Logging;
 
     internal sealed partial class ClientCertificateValidatorService(ILogger<ClientCertificateValidatorService> logger)
     {
@@ -31,8 +30,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 logger.LogError("Could not find a possible StationEui in '{CommonName}'.", commonName);
                 return Task.FromResult(false);
             }
-
-            using var scope = logger.BeginEuiScope(stationEui);
 
             // Logging any chain related issue that is causing verification to fail
             if (chain.ChainStatus.Any(s => s.Status != X509ChainStatusFlags.NoError))

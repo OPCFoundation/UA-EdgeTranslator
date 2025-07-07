@@ -10,34 +10,30 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Runtime.CompilerServices;
     using System.Text;
     using System.Text.Json;
-    using System.Threading;
     using System.Threading.Tasks;
 
-    public class DownlinkMessageSender(WebSocketWriterRegistry<StationEui, string> socketWriterRegistry, ILogger<DownlinkMessageSender> logger)
+    public class DownlinkMessageSender(ILogger<DownlinkMessageSender> logger)
     {
         private static readonly Action<ILogger, StationEui, int, string, Exception> LogSendingMessage =
             LoggerMessage.Define<StationEui, int, string>(LogLevel.Debug, default,
                                                      "sending message to station with EUI '{StationEui}' with diid {Diid}. Payload '{Payload}'.");
         private readonly Random random = new Random();
 
-        public async Task SendDownlinkAsync(DownlinkMessage message)
+        public Task SendDownlinkAsync(DownlinkMessage message)
         {
             ArgumentNullException.ThrowIfNull(message);
 
-            if (message.StationEui == default) throw new ArgumentException($"A proper StationEui needs to be set. Received '{message.StationEui}'.");
+            if (message.StationEui == default)
+            {
+                throw new ArgumentException($"A proper StationEui needs to be set. Received '{message.StationEui}'.");
+            }
 
-            if (socketWriterRegistry.TryGetHandle(message.StationEui, out var webSocketWriterHandle))
-            {
-                var payload = Message(message);
-                await webSocketWriterHandle.SendAsync(payload, CancellationToken.None).ConfigureAwait(false);
-            }
-            else
-            {
-                logger.LogWarning("Could not retrieve an active connection for Station with EUI '{StationEui}'. The payload '{Payload}' will be dropped.", message.StationEui, message.Data.ToHex());
-            }
+            WebsocketJsonMiddlewareLoRaWAN.PendingMessages.TryAdd(message.StationEui.ToString(), SerializeMessage(message));
+
+            return Task.CompletedTask;
         }
 
-        private string Message(DownlinkMessage message)
+        private string SerializeMessage(DownlinkMessage message)
         {
             using var ms = new MemoryStream();
             using var writer = new Utf8JsonWriter(ms);

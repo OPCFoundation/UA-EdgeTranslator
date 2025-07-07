@@ -63,8 +63,6 @@ namespace LoRaWan.NetworkServer
 
         public string GatewayID { get; set; }
 
-        public string SensorDecoder { get; set; }
-
         public bool IsABPRelaxedFrameCounter { get; set; }
 
         public bool Supports32BitFCnt { get; set; }

@@ -3,11 +3,8 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using global::LoRaWan;
     using LoRaWan.NetworkServer;
-    using LoRaWan.NetworkServer.BasicsStation.Processors;
     using LoRaWANContainer.LoRaWan.NetworkServer;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -16,9 +13,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using Microsoft.Extensions.Logging;
     using System;
     using System.Globalization;
-    using System.Net.Http;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     internal sealed class BasicsStationNetworkServerStartup(IConfiguration configuration)
     {
@@ -46,9 +40,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 .AddSingleton<JoinRequestMessageHandler>()
                 .AddSingleton<MessageDispatcher>()
                 .AddSingleton<BasicsStationConfigurationService>()
-                .AddSingleton<WebSocketWriterRegistry<StationEui, string>>()
                 .AddSingleton<DownlinkMessageSender>()
-                .AddTransient<LnsProtocolMessageProcessor>()
                 .AddSingleton<ConcentratorDeduplication>();
 
             if (NetworkServerConfiguration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
@@ -57,32 +49,23 @@ namespace LoRaWan.NetworkServer.BasicsStation
             }
         }
 
-#pragma warning disable CA1822 // Mark members as static
         // Startup class methods should not be static
         public void Configure(IApplicationBuilder app)
-#pragma warning restore CA1822 // Mark members as static
         {
-            _ = app.UseRouting()
-                   .UseWebSockets()
-                   .UseEndpoints(endpoints =>
-                   {
-                       Map(HttpMethod.Get, BasicsStationNetworkServer.DiscoveryEndpoint,
-                          (LnsProtocolMessageProcessor processor) => processor.HandleDiscoveryAsync);
-
-                       Map(HttpMethod.Get, $"{BasicsStationNetworkServer.DataEndpoint}/{{{BasicsStationNetworkServer.RouterIdPathParameterName}:required}}",
-                          (LnsProtocolMessageProcessor processor) => processor.HandleDataAsync);
-
-                       void Map<TService>(HttpMethod method, string pattern,
-                                          Func<TService, Func<HttpContext, CancellationToken, Task>> handlerMapper)
-                       {
-                           _ = endpoints.MapMethods(pattern, [method.ToString()], async context =>
-                           {
-                               var processor = context.RequestServices.GetRequiredService<TService>();
-                               var handler = handlerMapper(processor);
-                               await handler(context, context.RequestAborted).ConfigureAwait(false);
-                           });
-                       }
-                   });
+            app.UseRouting()
+               .UseWebSockets()
+               .UseMiddleware<WebsocketJsonMiddlewareLoRaWAN>()
+               .Run(async (context) =>
+               {
+                    if (context.Request.Path.Value == "/")
+                    {
+                        await context.Response.WriteAsync("LoRaWAN Network Server running.").ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await context.Response.WriteAsync("Invalid Request").ConfigureAwait(false);
+                    }
+               });
         }
     }
 }

@@ -5,7 +5,6 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.AspNetCore;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Server.Kestrel.Https;

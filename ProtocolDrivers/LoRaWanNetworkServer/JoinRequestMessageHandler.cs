@@ -3,9 +3,7 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using LoRaWan.NetworkServer.BasicsStation.Processors;
     using LoRaWANContainer.LoRaWan.NetworkServer;
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -62,8 +60,6 @@ namespace LoRaWan.NetworkServer
             var joinReq = (LoRaPayloadJoinRequest)request.Payload;
 
             var devEui = joinReq.DevEUI;
-
-            using var scope = logger.BeginDeviceScope(devEui);
 
             LoRaDevice loRaDevice = null;
 
@@ -276,13 +272,13 @@ namespace LoRaWan.NetworkServer
                     logger.LogInformation("join accepted");
                 }
 
-                if (LnsProtocolMessageProcessor.Devices.Keys.Contains(loRaDevice.DevAddr))
+                if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Keys.Contains(loRaDevice.DevAddr))
                 {
-                    LnsProtocolMessageProcessor.Devices[loRaDevice.DevAddr] = loRaDevice;
+                    WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices[loRaDevice.DevAddr] = loRaDevice;
                 }
                 else
                 {
-                    LnsProtocolMessageProcessor.Devices.Add(loRaDevice.DevAddr, loRaDevice);
+                    WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Add(loRaDevice.DevAddr, loRaDevice);
                 }
             }
             catch (Exception ex)

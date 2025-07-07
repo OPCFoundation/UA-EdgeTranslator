@@ -63,9 +63,14 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             this.provider = consoleLoggerProvider;
         }
 
+        private sealed class Disposable : IDisposable
+        {
+            public void Dispose() { }
+        }
+
         public IDisposable BeginScope<TState>(TState state) where TState : notnull
         {
-            return this.provider.LoggerConfigurationMonitor.ScopeProvider is { } scopeProvider ? scopeProvider.Push(state) : NoopDisposable.Instance;
+            return this.provider.LoggerConfigurationMonitor.ScopeProvider is { } scopeProvider ? scopeProvider.Push(state) : new Disposable();
         }
 
         public bool IsEnabled(LogLevel logLevel) => logLevel >= this.provider.LogLevel;
@@ -82,7 +87,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             if (configuredEventId == 0 || configuredEventId == eventId)
             {
                 var formattedMessage = formatter(state, exception);
-                formattedMessage = LoggerHelper.AddScopeInformation(this.provider.LoggerConfigurationMonitor.ScopeProvider, formattedMessage);
 
                 if (logLevel == LogLevel.Error)
                     ConsoleWriteError(formattedMessage);

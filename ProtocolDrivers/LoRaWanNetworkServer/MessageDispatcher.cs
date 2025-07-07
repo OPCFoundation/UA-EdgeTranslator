@@ -3,7 +3,6 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using System;
@@ -42,7 +41,6 @@ namespace LoRaWan.NetworkServer
             }
             else if (request.Payload.MessageType is MacMessageType.UnconfirmedDataUp or MacMessageType.ConfirmedDataUp)
             {
-                using var scope = logger.BeginDeviceAddressScope(request.Payload.DevAddr);
                 if (!IsValidNetId(request.Payload.DevAddr))
                 {
                     logger.LogDebug($"device is using another network id, ignoring this message (network: {this.configuration.NetId}, devAddr: {request.Payload.DevAddr.NetworkId})");

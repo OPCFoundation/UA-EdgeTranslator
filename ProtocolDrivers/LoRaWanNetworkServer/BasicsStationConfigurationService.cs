@@ -7,7 +7,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using System.Threading;
     using System.Threading.Tasks;
 
-    internal sealed class BasicsStationConfigurationService()
+    public sealed class BasicsStationConfigurationService
     {
         public Task<string> GetRouterConfigMessageAsync(StationEui stationEui, CancellationToken cancellationToken)
         {

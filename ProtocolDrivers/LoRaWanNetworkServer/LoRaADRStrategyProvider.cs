@@ -3,7 +3,6 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using LoRaWANContainer.LoRaWan.NetworkServer.Interfaces;
     using Microsoft.Extensions.Logging;
 
     public class LoRaADRStrategyProvider

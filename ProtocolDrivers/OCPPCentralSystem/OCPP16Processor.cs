@@ -494,7 +494,7 @@
                     JObject.Parse(requestPayload) // payload
                 });
 
-                WebsocketJsonMiddlewareOCPP.Requests.TryAdd(cpId, serializedCommand);
+                WebsocketJsonMiddlewareOCPP.PendingMessagess.TryAdd(cpId, serializedCommand);
 
                 return Task.CompletedTask;
             }

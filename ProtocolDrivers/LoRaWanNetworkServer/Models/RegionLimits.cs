@@ -3,12 +3,10 @@
 
 #nullable enable
 
-using LoRaTools;
-
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
-    using System.Collections.Generic;
     using global::LoRaWan;
+    using System.Collections.Generic;
 
     public class RegionLimits
     {

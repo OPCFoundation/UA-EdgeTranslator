@@ -3,12 +3,12 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using LoRaWan.NetworkServer.BasicsStation.Processors;
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using Constants = LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants;
@@ -35,9 +35,9 @@ namespace LoRaWan.NetworkServer
             var payloadFcnt = loraPayload.Fcnt;
 
             LoRaDevice loRaDevice;
-            if (LnsProtocolMessageProcessor.Devices.Keys.Contains(request.Payload.DevAddr))
+            if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Keys.Contains(request.Payload.DevAddr))
             {
-                loRaDevice = LnsProtocolMessageProcessor.Devices[request.Payload.DevAddr];
+                loRaDevice = WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices[request.Payload.DevAddr];
             }
             else
             {
@@ -147,9 +147,7 @@ namespace LoRaWan.NetworkServer
                         logger.LogDebug($"valid frame counter, msg: {payloadFcntAdjusted} server: {loRaDevice.FCntUp}");
                     }
 
-                    object payloadData = null;
                     byte[] decryptedPayloadData = null;
-
                     if (loraPayload.Frmpayload.Length > 0)
                     {
                         try
@@ -216,11 +214,7 @@ namespace LoRaWan.NetworkServer
                     #endregion
                     if (loraPayload.Fport is { } payloadPort and not FramePort.MacCommand)
                     {
-                        if (string.IsNullOrEmpty(loRaDevice.SensorDecoder))
-                        {
-                            logger.LogDebug($"no decoder set. port: {(byte)payloadPort}");
-                            payloadData = new UndecodedPayload(decryptedPayloadData);
-                        }
+                        Decode(loraPayload.Frmpayload.ToArray());
                     }
 
                     if (request.Region is DwellTimeLimitedRegion someDwellTimeLimitedRegion
@@ -299,6 +293,47 @@ namespace LoRaWan.NetworkServer
                     await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice && !fcntResetSaved);
                 }
             }
+        }
+
+        public static Dictionary<string, object> Decode(byte[] payload)
+        {
+            var result = new Dictionary<string, object>();
+            byte[] bytes = payload;
+            int i = 0;
+
+            while (i < bytes.Length - 1)
+            {
+                byte channelId = bytes[i++];
+                byte channelType = bytes[i++];
+
+                // print channel ID, type and value for debugging purposes
+                Console.WriteLine($"Channel ID: {channelId:X2}, Type: {channelType:X2}");
+
+                // Battery: Channel ID 0x01, Type 0x75
+                if (channelId == 0x01 && channelType == 0x75)
+                {
+                    result["Battery (V)"] = bytes[i++] / 10.0;
+                }
+                // Humidity: Channel ID 0x03, Type 0x68
+                else if (channelId == 0x03 && channelType == 0x68)
+                {
+                    ushort raw = (ushort)(bytes[i++] | (bytes[i++] << 8));
+                    result["Humidity (%RH)"] = raw / 10.0;
+                }
+                // Temperature: Channel ID 0x04, Type 0x67
+                else if (channelId == 0x04 && channelType == 0x67)
+                {
+                    short raw = (short)(bytes[i++] | (bytes[i++] << 8));
+                    result["Temperature (°C)"] = raw / 10.0;
+                }
+                else
+                {
+                    // Skip unknown or unsupported channel
+                    i++;
+                }
+            }
+
+            return result;
         }
 
         internal virtual async Task SaveChangesToDeviceAsync(LoRaDevice loRaDevice, bool force)

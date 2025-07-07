@@ -3,8 +3,6 @@
 
 #nullable enable
 
-using LoRaTools;
-
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
     using System.Collections.Generic;

@@ -91,8 +91,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
                                string options,
                                string payload,
                                FramePort? port,
-                               MessageIntegrityCode? mic,
-                               ILogger logger)
+                               MessageIntegrityCode? mic)
         {
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(payload);
@@ -133,7 +132,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
             // Populate the MacCommands present in the payload.
             if (options.Length > 0)
-                MacCommands = MacCommand.CreateMacCommandFromBytes(Fopts, logger);
+                MacCommands = MacCommand.CreateMacCommandFromBytes(Fopts);
 
             // Setting FRMPayload
             var payloadBytes = new byte[payload.Length / 2];
