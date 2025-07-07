@@ -308,21 +308,18 @@ namespace LoRaWan.NetworkServer
                 byte channelId = bytes[i++];
                 byte channelType = bytes[i++];
 
-                // Battery: Channel ID 0x01, Type 0x75
                 if (channelId == 0x01 && channelType == 0x75)
                 {
                     Log.Logger.Information("Battery (%): " + bytes[i++].ToString());
                 }
-                // Humidity: Channel ID 0x04, Type 0x68
-                else if (channelId == 0x04 && channelType == 0x68)
-                {
-                    Log.Logger.Information("Humidity (%RH): " + bytes[i++].ToString());
-                }
-                // Temperature: Channel ID 0x03, Type 0x67
                 else if (channelId == 0x03 && channelType == 0x67)
                 {
                     short raw = (short)(bytes[i++] | (bytes[i++] << 8));
                     Log.Logger.Information("Temperature (°C): " + (raw / 10.0).ToString());
+                }
+                else if (channelId == 0x04 && channelType == 0x68)
+                {
+                    Log.Logger.Information("Humidity (%RH): " + bytes[i++].ToString());
                 }
                 else
                 {
