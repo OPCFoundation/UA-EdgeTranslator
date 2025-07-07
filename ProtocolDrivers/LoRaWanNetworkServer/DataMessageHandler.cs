@@ -7,6 +7,7 @@ namespace LoRaWan.NetworkServer
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -152,9 +153,9 @@ namespace LoRaWan.NetworkServer
                     {
                         try
                         {
-                            decryptedPayloadData = loraPayload.Fport == FramePort.MacCommand
-                                ? loraPayload.GetDecryptedPayload(loRaDevice.NwkSKey ?? throw new LoRaProcessingException("No NwkSKey set for the LoRaDevice.", LoRaProcessingErrorCode.PayloadDecryptionFailed))
-                                : loraPayload.GetDecryptedPayload(loRaDevice.AppSKey ?? throw new LoRaProcessingException("No AppSKey set for the LoRaDevice.", LoRaProcessingErrorCode.PayloadDecryptionFailed));
+                            decryptedPayloadData = (loraPayload.Fport == FramePort.MacCommand)?
+                                loraPayload.GetDecryptedPayload(loRaDevice.NwkSKey ?? throw new LoRaProcessingException("No NwkSKey set for the LoRaDevice.", LoRaProcessingErrorCode.PayloadDecryptionFailed))
+                              : loraPayload.GetDecryptedPayload(loRaDevice.AppSKey ?? throw new LoRaProcessingException("No AppSKey set for the LoRaDevice.", LoRaProcessingErrorCode.PayloadDecryptionFailed));
                         }
                         catch (LoRaProcessingException ex) when (ex.ErrorCode == LoRaProcessingErrorCode.PayloadDecryptionFailed)
                         {
@@ -214,7 +215,7 @@ namespace LoRaWan.NetworkServer
                     #endregion
                     if (loraPayload.Fport is { } payloadPort and not FramePort.MacCommand)
                     {
-                        Decode(loraPayload.Frmpayload.ToArray());
+                        Decode(decryptedPayloadData);
                     }
 
                     if (request.Region is DwellTimeLimitedRegion someDwellTimeLimitedRegion
@@ -295,36 +296,33 @@ namespace LoRaWan.NetworkServer
             }
         }
 
-        public static Dictionary<string, object> Decode(byte[] payload)
+        private void Decode(byte[] payload)
         {
             var result = new Dictionary<string, object>();
             byte[] bytes = payload;
             int i = 0;
 
+            Log.Logger.Information("Decoded payload: " + BitConverter.ToString(bytes).Replace("-", " "));
             while (i < bytes.Length - 1)
             {
                 byte channelId = bytes[i++];
                 byte channelType = bytes[i++];
 
-                // print channel ID, type and value for debugging purposes
-                Console.WriteLine($"Channel ID: {channelId:X2}, Type: {channelType:X2}");
-
                 // Battery: Channel ID 0x01, Type 0x75
                 if (channelId == 0x01 && channelType == 0x75)
                 {
-                    result["Battery (V)"] = bytes[i++] / 10.0;
+                    Log.Logger.Information("Battery (%): " + bytes[i++].ToString());
                 }
-                // Humidity: Channel ID 0x03, Type 0x68
-                else if (channelId == 0x03 && channelType == 0x68)
+                // Humidity: Channel ID 0x04, Type 0x68
+                else if (channelId == 0x04 && channelType == 0x68)
                 {
-                    ushort raw = (ushort)(bytes[i++] | (bytes[i++] << 8));
-                    result["Humidity (%RH)"] = raw / 10.0;
+                    Log.Logger.Information("Humidity (%RH): " + bytes[i++].ToString());
                 }
-                // Temperature: Channel ID 0x04, Type 0x67
-                else if (channelId == 0x04 && channelType == 0x67)
+                // Temperature: Channel ID 0x03, Type 0x67
+                else if (channelId == 0x03 && channelType == 0x67)
                 {
                     short raw = (short)(bytes[i++] | (bytes[i++] << 8));
-                    result["Temperature (°C)"] = raw / 10.0;
+                    Log.Logger.Information("Temperature (°C): " + (raw / 10.0).ToString());
                 }
                 else
                 {
@@ -332,8 +330,6 @@ namespace LoRaWan.NetworkServer
                     i++;
                 }
             }
-
-            return result;
         }
 
         internal virtual async Task SaveChangesToDeviceAsync(LoRaDevice loRaDevice, bool force)

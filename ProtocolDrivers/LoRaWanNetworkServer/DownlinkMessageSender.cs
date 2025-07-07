@@ -5,6 +5,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
 {
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
+    using Serilog;
     using System;
     using System.IO;
     using System.Runtime.CompilerServices;
@@ -14,9 +15,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
     public class DownlinkMessageSender(ILogger<DownlinkMessageSender> logger)
     {
-        private static readonly Action<ILogger, StationEui, int, string, Exception> LogSendingMessage =
-            LoggerMessage.Define<StationEui, int, string>(LogLevel.Debug, default,
-                                                     "sending message to station with EUI '{StationEui}' with diid {Diid}. Payload '{Payload}'.");
         private readonly Random random = new Random();
 
         public Task SendDownlinkAsync(DownlinkMessage message)
@@ -61,7 +59,8 @@ namespace LoRaWan.NetworkServer.BasicsStation
             var diid = this.random.Next(int.MinValue, int.MaxValue);
             writer.WriteNumber("diid", diid);
 #pragma warning restore CA5394 // Do not use insecure randomness
-            LogSendingMessage(logger, message.StationEui, diid, message.Data.ToHex(), null);
+
+            Log.Logger.Information("sending message to station with EUI '{StationEui}' with diid {Diid}. Payload '{Payload}'.", message.StationEui, diid, message.Data.ToHex());
 
             switch (message.DeviceClassType)
             {
