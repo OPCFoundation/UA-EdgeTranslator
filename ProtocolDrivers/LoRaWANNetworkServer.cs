@@ -79,43 +79,52 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public object Read(AssetTag tag)
         {
             object value = null;
+            byte[] tagBytes = null;
 
             string[] addressParts = tag.Address.Split(['?', '&', '=', '/']);
-
             if (addressParts.Length == 5)
             {
-                byte[] tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
+                tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
+            }
+            else if (addressParts.Length == 4)
+            {
+                tagBytes = Read(addressParts[0], addressParts[1], null, ushort.Parse(addressParts[3]));
+            }
 
-                if ((tagBytes != null) && (tagBytes.Length > 0))
+            if ((tagBytes != null) && tag.IsBigEndian)
+            {
+                tagBytes = ByteSwapper.Swap(tagBytes);
+            }
+
+            if ((tagBytes != null) && (tagBytes.Length > 0))
+            {
+                if (tag.Type == "Float")
                 {
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else if (tag.Type == "Short")
-                    {
-                        value = BitConverter.ToInt16(tagBytes);
-                    }
-                    else if (tag.Type == "Byte")
-                    {
-                        value = tagBytes[0];
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by LoRaWAN.");
-                    }
+                    value = BitConverter.ToSingle(tagBytes);
+                }
+                else if (tag.Type == "Boolean")
+                {
+                    value = BitConverter.ToBoolean(tagBytes);
+                }
+                else if (tag.Type == "Integer")
+                {
+                    value = BitConverter.ToInt32(tagBytes);
+                }
+                else if (tag.Type == "String")
+                {
+                    value = Encoding.UTF8.GetString(tagBytes);
+                }
+                else if (tag.Type == "Short")
+                {
+                    value = BitConverter.ToInt16(tagBytes);
+                }
+                else if (tag.Type == "Byte")
+                {
+                    value = tagBytes[0];
+                }
+                else
+                {
+                    throw new ArgumentException("Type not supported by LoRaWAN.");
                 }
             }
 
@@ -146,13 +155,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                                 byte[] payload = payloads.Value.Payload;
                                 for (int i = 0; i < payload.Length - 2; i++)
                                 {
-                                    // check if the payload matches the requested channelId and typeId and the timestamp is the latest one
-                                    if ((payload[i] == byte.Parse(channelId))
-                                     && (payload[i + 1] == byte.Parse(typeId))
-                                     && (latestTimestamp < payloads.Value.Timestamp))
+                                    // if typeId is null, the channelId is a simply an offset into the payload to read the value from
+                                    if (typeId == null)
                                     {
-                                        bestMatch = payload.AsSpan(i + 2, count).ToArray();
+                                        bestMatch = payload.AsSpan(byte.Parse(channelId), count).ToArray();
                                         latestTimestamp = payloads.Value.Timestamp;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // check if the payload matches the requested channelId and typeId and the timestamp is the latest one
+                                        if ((payload[i] == byte.Parse(channelId))
+                                         && (payload[i + 1] == byte.Parse(typeId))
+                                         && (latestTimestamp < payloads.Value.Timestamp))
+                                        {
+                                            bestMatch = payload.AsSpan(i + 2, count).ToArray();
+                                            latestTimestamp = payloads.Value.Timestamp;
+                                        }
                                     }
                                 }
                             }

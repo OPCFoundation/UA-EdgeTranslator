@@ -102,6 +102,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modv:entity")]
         public ModbusEntity ModbusEntity { get; set; }
 
+        [JsonProperty("modv:endianness")]
+        public Endianness Endianness { get; set; }
+
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
     }
@@ -116,6 +119,24 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("type")]
         public TypeString Type { get; set; }
+
+        [JsonProperty("pollingTime")]
+        public long PollingTime { get; set; }
+    }
+
+    public class LoRaWANForm
+    {
+        [JsonProperty("href")]
+        public string? Href { get; set; }
+
+        [JsonProperty("op")]
+        public Op[]? Op { get; set; }
+
+        [JsonProperty("type")]
+        public TypeString Type { get; set; }
+
+        [JsonProperty("lorav:endianness")]
+        public Endianness Endianness { get; set; }
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -195,6 +216,16 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [EnumMember(Value = "HoldingRegister")]
         HoldingRegister
+    };
+
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+    public enum Endianness
+    {
+        [EnumMember(Value = "big")]
+        Big,
+
+        [EnumMember(Value = "little")]
+        Little
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

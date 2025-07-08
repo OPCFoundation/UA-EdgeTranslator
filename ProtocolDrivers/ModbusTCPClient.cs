@@ -122,12 +122,16 @@
                 ushort quantity = ushort.Parse(addressParts[2]);
                 byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
 
+                if ((tagBytes != null) && tag.IsBigEndian)
+                {
+                    tagBytes = ByteSwapper.Swap(tagBytes);
+                }
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
                     if (tag.Type == "Float")
                     {
-                        value = BitConverter.ToSingle(ByteSwapper.Swap(tagBytes));
+                        value = BitConverter.ToSingle(tagBytes);
                     }
                     else if (tag.Type == "Boolean")
                     {
@@ -135,7 +139,7 @@
                     }
                     else if (tag.Type == "Integer")
                     {
-                        value = BitConverter.ToInt32(ByteSwapper.Swap(tagBytes));
+                        value = BitConverter.ToInt32(tagBytes);
                     }
                     else if (tag.Type == "String")
                     {
@@ -159,7 +163,7 @@
 
             if ((tag.Type == "Float") && (quantity == 2))
             {
-                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(float.Parse(value)));
+                tagBytes = BitConverter.GetBytes(float.Parse(value));
             }
             else if ((tag.Type == "Boolean") && (quantity == 1))
             {
@@ -167,7 +171,7 @@
             }
             else if ((tag.Type == "Integer") && (quantity == 2))
             {
-                tagBytes = ByteSwapper.Swap(BitConverter.GetBytes(int.Parse(value)));
+                tagBytes = BitConverter.GetBytes(int.Parse(value));
             }
             else if (tag.Type == "String")
             {
@@ -176,6 +180,11 @@
             else
             {
                 throw new ArgumentException("Type not supported by Modbus.");
+            }
+
+            if ((tagBytes != null) && tag.IsBigEndian)
+            {
+                tagBytes = ByteSwapper.Swap(tagBytes);
             }
 
             Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();

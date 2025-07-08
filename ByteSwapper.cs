@@ -65,7 +65,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            // don't swap anything my default
+            // don't swap anything by default
             return value;
         }
 

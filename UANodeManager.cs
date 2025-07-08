@@ -847,6 +847,7 @@ namespace Opc.Ua.Edge.Translator
                     Type = modbusForm.ModbusType.ToString(),
                     PollingInterval = (int)modbusForm.ModbusPollingTime,
                     Entity = modbusForm.ModbusEntity.ToString(),
+                    IsBigEndian = (modbusForm.Endianness == Endianness.Big),
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -865,7 +866,6 @@ namespace Opc.Ua.Edge.Translator
                     UnitID = unitId,
                     Type = opcuaForm.Type.ToString(),
                     PollingInterval = (int)opcuaForm.PollingTime,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -884,7 +884,6 @@ namespace Opc.Ua.Edge.Translator
                     UnitID = unitId,
                     Type = s7Form.Type.ToString(),
                     PollingInterval = (int)s7Form.PollingTime,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -902,8 +901,6 @@ namespace Opc.Ua.Edge.Translator
                     Address = mitsubishiForm.Href,
                     UnitID = unitId,
                     Type = mitsubishiForm.Type.ToString(),
-                    PollingInterval = 1000,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -922,7 +919,6 @@ namespace Opc.Ua.Edge.Translator
                     UnitID = unitId,
                     Type = eipForm.Type.ToString(),
                     PollingInterval = (int)eipForm.PollingTime,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -941,7 +937,6 @@ namespace Opc.Ua.Edge.Translator
                     UnitID = unitId,
                     Type = adsForm.Type.ToString(),
                     PollingInterval = (int)adsForm.PollingTime,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -959,8 +954,6 @@ namespace Opc.Ua.Edge.Translator
                     Address = bacnetForm.Href,
                     UnitID = unitId,
                     Type = bacnetForm.Type.ToString(),
-                    PollingInterval = 1000,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -978,8 +971,6 @@ namespace Opc.Ua.Edge.Translator
                     Address = iec61850Form.Href,
                     UnitID = unitId,
                     Type = iec61850Form.Type.ToString(),
-                    PollingInterval = 1000,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -990,15 +981,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
                 // create an asset tag and add to our list
-                GenericForm lorawanForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                LoRaWANForm lorawanForm = JsonConvert.DeserializeObject<LoRaWANForm>(form.ToString());
                 AssetTag tag = new()
                 {
                     Name = variableId,
                     Address = lorawanForm.Href,
                     UnitID = unitId,
                     Type = lorawanForm.Type.ToString(),
-                    PollingInterval = 1000,
-                    Entity = null,
+                    IsBigEndian = (lorawanForm.Endianness == Endianness.Big),
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -1016,8 +1006,6 @@ namespace Opc.Ua.Edge.Translator
                     Address = ocppForm.Href,
                     UnitID = unitId,
                     Type = ocppForm.Type.ToString(),
-                    PollingInterval = 1000,
-                    Entity = null,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
