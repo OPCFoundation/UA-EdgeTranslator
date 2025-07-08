@@ -9,20 +9,21 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     using Microsoft.Extensions.Logging;
     using System.Threading.Tasks;
 
-    public class LoRaADRDefaultManager(LoRaADRInMemoryStore store, LoRaADRStrategyProvider strategyProvider, FrameCounterUpdateStrategy frameCounterStrategy, LoRaDevice loRaDevice, ILogger<LoRaADRDefaultManager> logger) : LoRaADRManagerBase(store, strategyProvider, logger)
+    public class LoRaADRDefaultManager(LoRaADRInMemoryStore store, FrameCounterUpdateStrategy frameCounterStrategy, LoRaDevice loRaDevice, ILogger<LoRaADRDefaultManager> logger) : LoRaADRManagerBase(store, logger)
     {
         protected LoRaDevice LoRaDevice { get; private set; } = loRaDevice;
 
         protected override void UpdateState(LoRaADRResult loRaADRResult)
         {
             if (loRaADRResult != null)
+            {
                 LoRaDevice.UpdatedADRProperties(loRaADRResult.DataRate, loRaADRResult.TxPower.GetValueOrDefault(), loRaADRResult.NbRepetition.GetValueOrDefault());
+            }
         }
 
         public override Task<uint> NextFCntDown(DevEui devEUI, string gatewayId, uint clientFCntUp, uint clientFCntDown)
         {
             return frameCounterStrategy.NextFcntDown(LoRaDevice, clientFCntUp).AsTask();
-            // update twins
         }
     }
 }

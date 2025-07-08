@@ -12,13 +12,11 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     public class LoRaADRManagerBase
     {
         private readonly LoRaADRInMemoryStore store;
-        private readonly LoRaADRStrategyProvider strategyProvider;
         private readonly ILogger<LoRaADRManagerBase> logger;
 
-        public LoRaADRManagerBase(LoRaADRInMemoryStore store, LoRaADRStrategyProvider strategyProvider, ILogger<LoRaADRManagerBase> logger)
+        public LoRaADRManagerBase(LoRaADRInMemoryStore store, ILogger<LoRaADRManagerBase> logger)
         {
             this.store = store;
-            this.strategyProvider = strategyProvider;
             this.logger = logger;
         }
 
@@ -43,7 +41,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
                         ? await this.store.AddTableEntry(newEntry).ConfigureAwait(false)
                         : await this.store.GetADRTable(devEUI).ConfigureAwait(false);
 
-            var currentStrategy = this.strategyProvider.GetStrategy();
+            var currentStrategy = new LoRaADRStandardStrategy();
 
             var result = currentStrategy.ComputeResult(table, requiredSnr, dataRate, minTxPower, maxDr);
 

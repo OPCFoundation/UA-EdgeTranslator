@@ -17,7 +17,6 @@ namespace LoRaWan.NetworkServer
     public class DataMessageHandler(
         NetworkServerConfiguration configuration,
         ConcentratorDeduplication concentratorDeduplication,
-        LoRaADRStrategyProvider loRaADRStrategyProvider,
         LoRAADRManagerFactory loRaADRManagerFactory,
         ILogger<DataMessageHandler> logger)
     {
@@ -403,7 +402,7 @@ namespace LoRaWan.NetworkServer
             _ = request ?? throw new ArgumentNullException(nameof(request));
             _ = loraPayload ?? throw new ArgumentNullException(nameof(loraPayload));
 
-            var loRaADRManager = loRaADRManagerFactory.Create(loRaADRStrategyProvider, frameCounterStrategy, loRaDevice);
+            var loRaADRManager = loRaADRManagerFactory.Create(frameCounterStrategy, loRaDevice);
 
             var loRaADRTableEntry = new LoRaADRTableEntry()
             {

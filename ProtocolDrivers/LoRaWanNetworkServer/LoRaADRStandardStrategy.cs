@@ -5,7 +5,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
     using global::LoRaWan;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
+    using Serilog;
     using System.Linq;
 
     /// <summary>
@@ -28,7 +28,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             { 2, 3, 3 },
             { 3, 3, 3 }
         };
-        private readonly ILogger<LoRaADRStandardStrategy> logger;
 
         public int MinimumNumberOfResult => 20;
 
@@ -36,24 +35,19 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
         public int DefaultNbRep => 1;
 
-        public LoRaADRStandardStrategy(ILogger<LoRaADRStandardStrategy> logger)
-        {
-            this.logger = logger;
-        }
-
         public LoRaADRResult ComputeResult(LoRaADRTable table, float requiredSnr, DataRateIndex upstreamDataRate, int minTxPower, DataRateIndex maxDr)
         {
             // We do not have enough frame to calculate ADR. We can assume that a crash was the cause.
             if (table == null || table.Entries.Count < 20)
             {
-                this.logger.LogDebug("ADR: not enough frames captured. Sending default power values");
+                Log.Logger.Debug("ADR: not enough frames captured. Sending default power values");
                 return null;
             }
 
             // This is the first contact case to harmonize the txpower state between device and server or the crash case.
             if (!table.CurrentNbRep.HasValue || !table.CurrentTxPower.HasValue)
             {
-                this.logger.LogDebug("ADR: Sending the device default power values");
+                Log.Logger.Debug("ADR: Sending the device default power values");
                 return null;
             }
 

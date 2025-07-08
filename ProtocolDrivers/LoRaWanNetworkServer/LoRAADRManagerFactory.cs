@@ -14,15 +14,12 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         private static readonly Lock InMemoryStoreLock = new Lock();
         private static volatile LoRaADRInMemoryStore inMemoryStore;
 
-        public LoRaADRManagerBase Create(LoRaADRStrategyProvider strategyProvider,
-                                         FrameCounterUpdateStrategy frameCounterStrategy,
+        public LoRaADRManagerBase Create(FrameCounterUpdateStrategy frameCounterStrategy,
                                          LoRaDevice loRaDevice)
         {
             ArgumentNullException.ThrowIfNull(loRaDevice);
 
-            return !string.IsNullOrEmpty(loRaDevice.GatewayID)
-                    ? new LoRaADRDefaultManager(CurrentInMemoryStore, strategyProvider, frameCounterStrategy, loRaDevice, loggerFactory.CreateLogger<LoRaADRDefaultManager>())
-                    : new LoRaADRMultiGatewayManager(loRaDevice, loggerFactory.CreateLogger<LoRaADRMultiGatewayManager>());
+            return new LoRaADRDefaultManager(CurrentInMemoryStore, frameCounterStrategy, loRaDevice, loggerFactory.CreateLogger<LoRaADRDefaultManager>());
         }
 
         private static LoRaADRInMemoryStore CurrentInMemoryStore
@@ -30,16 +27,18 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             get
             {
                 if (inMemoryStore != null)
-                    return inMemoryStore;
-
-                lock (InMemoryStoreLock)
                 {
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable CA1508 // Avoid dead conditional code
-                    // False positive.
-                    if (inMemoryStore == null)
-                        inMemoryStore = new LoRaADRInMemoryStore();
-#pragma warning restore IDE0074 // Use compound assignment
+                    return inMemoryStore;
+                }
+                else
+                {
+                    lock (InMemoryStoreLock)
+                    {
+                        if (inMemoryStore == null)
+                        {
+                            inMemoryStore = new LoRaADRInMemoryStore();
+                        }
+                    }
                 }
 
                 return inMemoryStore;

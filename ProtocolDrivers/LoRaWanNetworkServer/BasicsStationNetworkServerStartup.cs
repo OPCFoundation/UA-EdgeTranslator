@@ -7,7 +7,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Server.Kestrel.Https;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +20,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             services.AddMemoryCache();
             services.AddSingleton(NetworkServerConfiguration);
-            services.AddSingleton<LoRaADRStrategyProvider>();
             services.AddSingleton<LoRAADRManagerFactory>();
             services.AddSingleton<DataMessageHandler>();
             services.AddSingleton<JoinRequestMessageHandler>();
@@ -29,11 +27,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
             services.AddSingleton<BasicsStationConfigurationService>();
             services.AddSingleton<DownlinkMessageSender>();
             services.AddSingleton<ConcentratorDeduplication>();
-
-            if (NetworkServerConfiguration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
-            {
-                services.AddSingleton<ClientCertificateValidatorService>();
-            }
+            services.AddSingleton<ClientCertificateValidatorService>();
         }
 
         // Startup class methods should not be static
