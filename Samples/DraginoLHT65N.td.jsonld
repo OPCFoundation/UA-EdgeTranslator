@@ -21,14 +21,15 @@
     "batteryLevel": {
       "title": "BatteryLevel",
       "type": "number",
-      "unit": "percent",
+      "unit": "mV",
       "readOnly": true,
       "observable": true,
       "forms": [
         {
           "href": "A84041B98D5CB233/0?quantity=2",
           "type": "xsd:short",
-          "lorav:endianness": "big"
+          "lorav:endianness": "big",
+          "lorav:bitmask": "0x03FF"
         }
       ]
     },
