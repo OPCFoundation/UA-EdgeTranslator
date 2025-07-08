@@ -35,7 +35,7 @@ namespace OCPPCentralSystem
         private readonly RequestDelegate _next;
 
         private static ConcurrentDictionary<string, ChargePointConnection> _connectedChargePoints = new();
-                
+
         public WebsocketJsonMiddlewareOCPP(RequestDelegate next)
         {
             _next = next;

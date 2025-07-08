@@ -29,16 +29,16 @@ namespace LoRaWan.NetworkServer
 
             public string Payload { get; set; }
         }
-        
+
         public static ConcurrentQueue<QueuedMessage> PendingMessages { get; } = new();
-        
+
         public static ConcurrentDictionary<string, GatewayConnection> ConnectedGateways { get; } = new();
 
         private readonly RequestDelegate _next;
         private readonly BasicsStationConfigurationService _basicsStationConfigurationService;
         private readonly DownlinkMessageSender _downstreamMessageSender;
         private readonly MessageDispatcher _messageDispatcher;
-        
+
         public WebsocketJsonMiddlewareLoRaWAN(
             RequestDelegate next,
             BasicsStationConfigurationService basicsStationConfigurationService,
@@ -74,7 +74,7 @@ namespace LoRaWan.NetworkServer
                             PendingMessages.TryDequeue(out _);
                             continue;
                         }
-                        
+
                         if (ConnectedGateways[gatewayName].WebSocket.State == WebSocketState.Open)
                         {
                             try
@@ -84,7 +84,7 @@ namespace LoRaWan.NetworkServer
                                     WebSocketMessageType.Text,
                                     true,
                                     CancellationToken.None).ConfigureAwait(false);
-                                
+
                             }
                             catch (Exception ex)
                             {
@@ -247,7 +247,6 @@ namespace LoRaWan.NetworkServer
                     CancellationToken cancellationToken = CancellationToken.None;
 
                     string payloadString = await ReceiveDataFromWebSocketAsync(webSocket, gatewayName).ConfigureAwait(false);
-                    Log.Logger.Information("Receiving data {payloadString} from gateway: {GatewayName}", payloadString, gatewayName);
                     if (payloadString != null)
                     {
                         if (gatewayName == "router-info")

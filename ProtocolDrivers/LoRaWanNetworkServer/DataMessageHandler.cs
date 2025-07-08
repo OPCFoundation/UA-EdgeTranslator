@@ -302,7 +302,6 @@ namespace LoRaWan.NetworkServer
             byte[] bytes = payload;
             int i = 0;
 
-            Log.Logger.Information("Decoded payload: " + BitConverter.ToString(bytes).Replace("-", " "));
             while (i < bytes.Length - 1)
             {
                 byte channelId = bytes[i++];
