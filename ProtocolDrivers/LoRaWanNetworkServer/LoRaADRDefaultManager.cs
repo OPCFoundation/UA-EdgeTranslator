@@ -6,10 +6,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
     using global::LoRaWan;
     using global::LoRaWan.NetworkServer;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
     using System.Threading.Tasks;
 
-    public class LoRaADRDefaultManager(LoRaADRInMemoryStore store, FrameCounterUpdateStrategy frameCounterStrategy, LoRaDevice loRaDevice, ILogger<LoRaADRDefaultManager> logger) : LoRaADRManagerBase(store, logger)
+    public class LoRaADRDefaultManager(LoRaADRInMemoryStore store, FrameCounterUpdateStrategy frameCounterStrategy, LoRaDevice loRaDevice) : LoRaADRManagerBase(store)
     {
         protected LoRaDevice LoRaDevice { get; private set; } = loRaDevice;
 

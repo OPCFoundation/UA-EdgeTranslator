@@ -74,8 +74,8 @@ namespace LoRaWan.NetworkServer
 
             if (receiveWindow is ReceiveWindow2)
             {
-                freq = loRaRegion.GetDownstreamRX2Freq(configuration.Rx2Frequency, deviceJoinInfo, logger);
-                datr = loRaRegion.GetDownstreamRX2DataRate(configuration.Rx2DataRate, loRaDevice.ReportedRX2DataRate, deviceJoinInfo, logger);
+                freq = loRaRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).Frequency;
+                datr = loRaRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).DataRate;
             }
             else
             {
@@ -89,8 +89,7 @@ namespace LoRaWan.NetworkServer
                 }
             }
 
-            var rx2 = new ReceiveWindow(loRaRegion.GetDownstreamRX2DataRate(configuration.Rx2DataRate, loRaDevice.ReportedRX2DataRate, deviceJoinInfo, logger),
-                                        loRaRegion.GetDownstreamRX2Freq(configuration.Rx2Frequency, deviceJoinInfo, logger));
+            var rx2 = new ReceiveWindow(loRaRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).DataRate, loRaRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).Frequency);
 
             // get max. payload size based on data rate from LoRaRegion
             var maxPayloadSize = loRaRegion.GetMaxPayloadSize(datr);

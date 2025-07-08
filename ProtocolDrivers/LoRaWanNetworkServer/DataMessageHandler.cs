@@ -7,9 +7,7 @@ namespace LoRaWan.NetworkServer
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
-    using Serilog;
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using Constants = LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants;

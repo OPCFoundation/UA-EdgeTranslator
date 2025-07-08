@@ -10,16 +10,13 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
 
-    internal sealed class BasicsStationNetworkServerStartup(IConfiguration configuration)
+    internal sealed class BasicsStationNetworkServerStartup()
     {
-        public IConfiguration Configuration { get; } = configuration;
-
-        public NetworkServerConfiguration NetworkServerConfiguration { get; } = NetworkServerConfiguration.CreateFromEnvironmentVariables();
-
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMemoryCache();
-            services.AddSingleton(NetworkServerConfiguration);
+
+            services.AddSingleton<NetworkServerConfiguration>();
             services.AddSingleton<LoRAADRManagerFactory>();
             services.AddSingleton<DataMessageHandler>();
             services.AddSingleton<JoinRequestMessageHandler>();

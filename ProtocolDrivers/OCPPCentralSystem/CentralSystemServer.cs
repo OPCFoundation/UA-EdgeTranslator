@@ -13,17 +13,17 @@ namespace OCPPCentralSystem
     {
         public static async Task RunServerAsync()
         {
-            bool requireCertificate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OCPP_USE_TLS"));
+            bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
             using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(requireCertificate ? [FormattableString.Invariant($"https://0.0.0.0:19521")]
-                                                                   : [FormattableString.Invariant($"http://0.0.0.0:19520")])
+                                       .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:19521")]
+                                                            : [FormattableString.Invariant($"http://0.0.0.0:19520")])
                                        .UseStartup<OCPPStartup>()
                                        .UseKestrel(config =>
                                        {
-                                           if (requireCertificate)
+                                           if (secureComms)
                                            {
                                                config.ConfigureHttpsDefaults(https =>
-                                                   ConfigureHttpsSettings(requireCertificate,
+                                                   ConfigureHttpsSettings(secureComms,
                                                                           config.ApplicationServices.GetService<OCPPClientCertificateValidatorService>(),
                                                                           https));
                                            }
@@ -40,13 +40,13 @@ namespace OCPPCentralSystem
             }
         }
 
-        internal static void ConfigureHttpsSettings(bool requireCertificate, 
+        internal static void ConfigureHttpsSettings(bool secureComms,
                                                     OCPPClientCertificateValidatorService clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
             https.ServerCertificate = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
 
-            if (requireCertificate)
+            if (secureComms)
             {
                 ArgumentNullException.ThrowIfNull(clientCertificateValidatorService);
 

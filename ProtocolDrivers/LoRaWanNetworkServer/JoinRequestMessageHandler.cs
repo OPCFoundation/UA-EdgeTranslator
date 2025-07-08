@@ -117,7 +117,7 @@ namespace LoRaWan.NetworkServer
                     return;
                 }
 
-                var netId = configuration.NetId;
+                var netId = new NetId(1);
                 var appNonce = new AppNonce(RandomNumberGenerator.GetInt32(toExclusive: AppNonce.MaxValue + 1));
                 var appSKey = OTAAKeysGenerator.CalculateAppSessionKey(appNonce, netId, joinReq.DevNonce, (AppKey)loRaDevice.AppKey);
                 var nwkSKey = OTAAKeysGenerator.CalculateNetworkSessionKey(appNonce, netId, joinReq.DevNonce, (AppKey)loRaDevice.AppKey);
@@ -245,8 +245,8 @@ namespace LoRaWan.NetworkServer
                         ? new ReceiveWindow(loraRegion.GetDownstreamDataRate(request.RadioMetadata.DataRate), freq)
                         : (ReceiveWindow?)null;
 
-                var rx2 = new ReceiveWindow(loraRegion.GetDownstreamRX2DataRate(configuration.Rx2DataRate, null, deviceJoinInfo, logger),
-                                            loraRegion.GetDownstreamRX2Freq(configuration.Rx2Frequency, deviceJoinInfo, logger));
+                var rx2 = new ReceiveWindow(loraRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).DataRate,
+                                            loraRegion.GetDefaultRX2ReceiveWindow(deviceJoinInfo).Frequency);
 
                 var downlinkMessage = new DownlinkMessage(joinAcceptBytes,
                                                           request.RadioMetadata.UpInfo.Xtime,

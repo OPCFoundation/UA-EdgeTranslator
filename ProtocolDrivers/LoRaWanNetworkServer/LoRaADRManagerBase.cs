@@ -5,19 +5,17 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
     using global::LoRaWan;
     using LoRaWANContainer.LoRaWan.NetworkServer.Models;
-    using Microsoft.Extensions.Logging;
+    using Serilog;
     using System;
     using System.Threading.Tasks;
 
     public class LoRaADRManagerBase
     {
         private readonly LoRaADRInMemoryStore store;
-        private readonly ILogger<LoRaADRManagerBase> logger;
 
-        public LoRaADRManagerBase(LoRaADRInMemoryStore store, ILogger<LoRaADRManagerBase> logger)
+        public LoRaADRManagerBase(LoRaADRInMemoryStore store)
         {
             this.store = store;
-            this.logger = logger;
         }
 
         protected virtual void UpdateState(LoRaADRResult loRaADRResult)
@@ -27,10 +25,14 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         public virtual async Task StoreADREntryAsync(LoRaADRTableEntry newEntry)
         {
             if (newEntry == null)
+            {
                 return;
+            }
 
             if (!newEntry.DevEUI.IsValid || string.IsNullOrEmpty(newEntry.GatewayId))
+            {
                 throw new ArgumentException("Missing Gateway ID or invalid DevEUI");
+            }
 
             _ = await this.store.AddTableEntry(newEntry).ConfigureAwait(false);
         }
@@ -38,8 +40,8 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         public virtual async Task<LoRaADRResult> CalculateADRResultAndAddEntryAsync(DevEui devEUI, string gatewayId, uint fCntUp, uint fCntDown, float requiredSnr, DataRateIndex dataRate, int minTxPower, DataRateIndex maxDr, LoRaADRTableEntry newEntry = null)
         {
             var table = newEntry != null
-                        ? await this.store.AddTableEntry(newEntry).ConfigureAwait(false)
-                        : await this.store.GetADRTable(devEUI).ConfigureAwait(false);
+                ? await this.store.AddTableEntry(newEntry).ConfigureAwait(false)
+                : await this.store.GetADRTable(devEUI).ConfigureAwait(false);
 
             var currentStrategy = new LoRaADRStandardStrategy();
 
@@ -78,7 +80,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             }
 
             result.NumberOfFrames = table.Entries.Count;
-            this.logger.LogDebug($"calculated ADR: CanConfirmToDevice: {result.CanConfirmToDevice}, TxPower: {result.TxPower}, DataRate: {result.DataRate}");
+
+            Log.Logger.Debug($"calculated ADR: CanConfirmToDevice: {result.CanConfirmToDevice}, TxPower: {result.TxPower}, DataRate: {result.DataRate}");
+
             return result;
         }
 

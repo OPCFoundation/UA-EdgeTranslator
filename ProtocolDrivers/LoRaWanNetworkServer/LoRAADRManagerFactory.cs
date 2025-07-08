@@ -5,11 +5,10 @@ using LoRaWan.NetworkServer;
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer
 {
-    using Microsoft.Extensions.Logging;
     using System;
     using System.Threading;
 
-    public class LoRAADRManagerFactory(ILoggerFactory loggerFactory)
+    public class LoRAADRManagerFactory()
     {
         private static readonly Lock InMemoryStoreLock = new Lock();
         private static volatile LoRaADRInMemoryStore inMemoryStore;
@@ -18,7 +17,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         {
             ArgumentNullException.ThrowIfNull(loRaDevice);
 
-            return new LoRaADRDefaultManager(CurrentInMemoryStore, frameCounterStrategy, loRaDevice, loggerFactory.CreateLogger<LoRaADRDefaultManager>());
+            return new LoRaADRDefaultManager(CurrentInMemoryStore, frameCounterStrategy, loRaDevice);
         }
 
         private static LoRaADRInMemoryStore CurrentInMemoryStore

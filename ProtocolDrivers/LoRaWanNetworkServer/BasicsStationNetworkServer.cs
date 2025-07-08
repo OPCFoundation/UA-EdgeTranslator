@@ -27,14 +27,14 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             ArgumentNullException.ThrowIfNull(configuration);
 
-            var requireCertificate = (configuration.ClientCertificateMode != ClientCertificateMode.NoCertificate);
+            bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
             using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(requireCertificate ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
-                                                                   : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
+                                       .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
+                                                            : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
                                        .UseStartup<BasicsStationNetworkServerStartup>()
                                        .UseKestrel(config =>
                                        {
-                                           if (requireCertificate)
+                                           if (secureComms)
                                            {
                                                config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(configuration,
                                                                                                              config.ApplicationServices.GetService<ClientCertificateValidatorService>(),
@@ -89,11 +89,12 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 File.WriteAllBytes(Path.Combine("pki/own/private", $"{configuration.GatewayID}-with-san.pfx"), https.ServerCertificate.Export(X509ContentType.Pfx, string.Empty));
             }
 
-            if (configuration.ClientCertificateMode is not ClientCertificateMode.NoCertificate)
+            bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
+            if (secureComms)
             {
                 ArgumentNullException.ThrowIfNull(clientCertificateValidatorService);
 
-                https.ClientCertificateMode = configuration.ClientCertificateMode;
+                https.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
                 https.ClientCertificateValidation = (cert, chain, err) => clientCertificateValidatorService.ValidateAsync(cert, chain, err, default).GetAwaiter().GetResult();
             }
         }

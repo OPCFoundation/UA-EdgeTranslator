@@ -17,11 +17,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         public LoRaWANNetworkServer()
         {
-            using var cts = new CancellationTokenSource();
-            var cancellationToken = cts.Token;
-
-            var configuration = NetworkServerConfiguration.CreateFromEnvironmentVariables();
-            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(configuration, cancellationToken));
+            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(new NetworkServerConfiguration(), new CancellationTokenSource().Token));
         }
 
         public List<string> Discover()

@@ -41,9 +41,9 @@ namespace LoRaWan.NetworkServer
             }
             else if (request.Payload.MessageType is MacMessageType.UnconfirmedDataUp or MacMessageType.ConfirmedDataUp)
             {
-                if (!IsValidNetId(request.Payload.DevAddr))
+                if (request.Payload.DevAddr.NetworkId != 1)
                 {
-                    logger.LogDebug($"device is using another network id, ignoring this message (network: {this.configuration.NetId}, devAddr: {request.Payload.DevAddr.NetworkId})");
+                    logger.LogDebug($"device is using another network id, ignoring this message (network: {request.Payload.DevAddr.NetworkId}, devAddr: {request.Payload.DevAddr.NetworkId})");
                     request.NotifyFailed(LoRaDeviceRequestFailedReason.InvalidNetId);
                     return;
                 }
@@ -54,24 +54,6 @@ namespace LoRaWan.NetworkServer
             {
                 logger.LogError("Unknwon message type in rxpk, message ignored");
             }
-        }
-
-        private bool IsValidNetId(DevAddr devAddr)
-        {
-            // Check if the current dev addr is in our network id
-            var devAddrNwkid = devAddr.NetworkId;
-            if (devAddrNwkid == this.configuration.NetId.NetworkId)
-            {
-                return true;
-            }
-
-            // If not, check if the devaddr is part of the allowed dev address list
-            if (this.configuration.AllowedDevAddresses != null && this.configuration.AllowedDevAddresses.Contains(devAddr))
-            {
-                return true;
-            }
-
-            return false;
         }
     }
 }
