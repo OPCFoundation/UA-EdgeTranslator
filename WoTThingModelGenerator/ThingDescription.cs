@@ -138,6 +138,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("lorav:endianness")]
         public Endianness Endianness { get; set; }
 
+        [JsonProperty("lorav:bitmask")]
+        public string? BitMask { get; set; }
+
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
     }

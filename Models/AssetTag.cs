@@ -13,6 +13,8 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public bool IsBigEndian { get; set; } = false;
 
+        public string BitMask { get; set; }
+
         public int PollingInterval { get; set; } = 1000;
 
         public string Entity { get; set; } = null;

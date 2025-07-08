@@ -989,6 +989,7 @@ namespace Opc.Ua.Edge.Translator
                     UnitID = unitId,
                     Type = lorawanForm.Type.ToString(),
                     IsBigEndian = (lorawanForm.Endianness == Endianness.Big),
+                    BitMask = lorawanForm.BitMask,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };

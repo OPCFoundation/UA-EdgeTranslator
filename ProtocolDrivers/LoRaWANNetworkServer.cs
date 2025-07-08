@@ -87,6 +87,26 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 tagBytes = Read(addressParts[0], addressParts[1], null, ushort.Parse(addressParts[3]));
             }
 
+            if ((tagBytes != null) && !string.IsNullOrEmpty(tag.BitMask))
+            {
+                // apply the bitmask to the tagBytes, depending on the length of the bitmask
+                if (tag.BitMask.Length == 4) // "0xNN"
+                {
+                    // apply a byte mask
+                    tagBytes[0] = (byte)(tagBytes[0] & byte.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
+                }
+                else if (tag.BitMask.Length == 6) // "0xNNNN"
+                {
+                    // apply a short mask
+                    tagBytes = BitConverter.GetBytes(BitConverter.ToInt16(tagBytes) & short.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
+                }
+                else if (tag.BitMask.Length == 10) // "0xNNNNNNNN"
+                {
+                    // apply an int mask
+                    tagBytes = BitConverter.GetBytes(BitConverter.ToInt32(tagBytes) & int.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
+                }
+            }
+
             if ((tagBytes != null) && tag.IsBigEndian)
             {
                 tagBytes = ByteSwapper.Swap(tagBytes);
