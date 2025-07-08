@@ -269,7 +269,7 @@ namespace LoRaWan.NetworkServer
                 }
                 else
                 {
-                    logger.LogInformation("join accepted");
+                    logger.LogInformation($"Join from {loRaDevice.DevEUI} via {request.StationEui} accepted", loRaDevice.DevEUI, request.StationEui);
                 }
 
                 if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Keys.Contains(loRaDevice.DevAddr))
