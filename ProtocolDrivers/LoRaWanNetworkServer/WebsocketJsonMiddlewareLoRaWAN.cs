@@ -388,6 +388,18 @@ namespace LoRaWan.NetworkServer
                                             UpInfo = updf.UpInfo
                                         };
 
+                                        // check if the device is registered with us
+                                        if (!ConnectedGateways.ContainsKey(gatewayName))
+                                        {
+                                            Log.Logger.Error($"Gateway {gatewayName} not found in the connected gateways list, ignoring updf message!");
+                                            return;
+                                        }
+                                        if (!ConnectedGateways[gatewayName].Devices.TryGetValue(new DevAddr(updf.DevAddr), out var device))
+                                        {
+                                            Log.Logger.Error($"Device with DevAddr {updf.DevAddr} not joined yet, ignoring updf message!");
+                                            return;
+                                        }
+
                                         var routerRegion = await _basicsStationConfigurationService.GetRegionAsync(StationEui.Parse(gatewayName), cancellationToken).ConfigureAwait(false);
 
                                         var loraRequest = new LoRaRequest(radioMetadata, _downstreamMessageSender, DateTime.UtcNow);

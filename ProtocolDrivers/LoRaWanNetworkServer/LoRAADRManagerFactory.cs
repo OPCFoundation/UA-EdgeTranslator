@@ -14,8 +14,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
         private static readonly Lock InMemoryStoreLock = new Lock();
         private static volatile LoRaADRInMemoryStore inMemoryStore;
 
-        public LoRaADRManagerBase Create(FrameCounterUpdateStrategy frameCounterStrategy,
-                                         LoRaDevice loRaDevice)
+        public LoRaADRManagerBase Create(FrameCounterUpdateStrategy frameCounterStrategy, LoRaDevice loRaDevice)
         {
             ArgumentNullException.ThrowIfNull(loRaDevice);
 

@@ -12,6 +12,13 @@ namespace LoRaWan.NetworkServer
 
     public class LoRaDevice : IDisposable
     {
+        public class ReceivedPayload
+        {
+            public byte[] Payload { get; set; }
+
+            public DateTime Timestamp { get; set; }
+        }
+
         /// <summary>
         /// Defines the maximum amount of times an ack resubmit will be sent.
         /// </summary>
@@ -168,6 +175,8 @@ namespace LoRaWan.NetworkServer
         private readonly ChangeTrackingProperty<StationEui> lastProcessingStationEui = new ChangeTrackingProperty<StationEui>(TwinProperty.LastProcessingStationEui, default);
 
         public StationEui LastProcessingStationEui => this.lastProcessingStationEui.Get();
+
+        public Dictionary<int, ReceivedPayload> LastKnownDecodedPayloads { get; internal set; } = new();
 
         public LoRaDevice(DevEui devEui)
         {
@@ -387,20 +396,6 @@ namespace LoRaWan.NetworkServer
             this.dataRate.Set(dataRate);
             this.txPower.Set(txPower);
             this.nbRep.Set(nbRep);
-        }
-
-        /// <summary>
-        /// Gets the properties that are trackable.
-        /// </summary>
-        private IEnumerable<ChangeTrackingProperty<object>> GetTrackableProperties()
-        {
-            yield return (object)preferredGatewayID as ChangeTrackingProperty<object>;
-            yield return (object)region as ChangeTrackingProperty<object>;
-            yield return (object)dataRate as ChangeTrackingProperty<object>;
-            yield return (object)txPower as ChangeTrackingProperty<object>;
-            yield return (object)nbRep as ChangeTrackingProperty<object>;
-            yield return (object)lastProcessingStationEui as ChangeTrackingProperty<object>;
-            yield return (object)reportedDwellTimeSetting as ChangeTrackingProperty<object>;
         }
 
         internal void UpdatePreferredGatewayID(string value, bool acceptChanges) =>

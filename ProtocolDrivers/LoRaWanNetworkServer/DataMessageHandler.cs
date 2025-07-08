@@ -214,7 +214,21 @@ namespace LoRaWan.NetworkServer
                     #endregion
                     if (loraPayload.Fport is { } payloadPort and not FramePort.MacCommand)
                     {
-                        Decode(decryptedPayloadData);
+                        // store the last known decoded payload with the device
+                        if (loRaDevice.LastKnownDecodedPayloads.ContainsKey(decryptedPayloadData.Length))
+                        {
+                            loRaDevice.LastKnownDecodedPayloads[decryptedPayloadData.Length] = new LoRaDevice.ReceivedPayload() {
+                                Payload = decryptedPayloadData,
+                                Timestamp = DateTime.UtcNow
+                            };
+                        }
+                        else
+                        {
+                            loRaDevice.LastKnownDecodedPayloads.Add(decryptedPayloadData.Length, new LoRaDevice.ReceivedPayload() {
+                                Payload = decryptedPayloadData,
+                                Timestamp = DateTime.UtcNow
+                            });
+                        }
                     }
 
                     if (request.Region is DwellTimeLimitedRegion someDwellTimeLimitedRegion
@@ -291,38 +305,6 @@ namespace LoRaWan.NetworkServer
                 if (loRaDevice.IsConnectionOwner is true)
                 {
                     await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice && !fcntResetSaved);
-                }
-            }
-        }
-
-        private void Decode(byte[] payload)
-        {
-            var result = new Dictionary<string, object>();
-            byte[] bytes = payload;
-            int i = 0;
-
-            while (i < bytes.Length - 1)
-            {
-                byte channelId = bytes[i++];
-                byte channelType = bytes[i++];
-
-                if (channelId == 0x01 && channelType == 0x75)
-                {
-                    Log.Logger.Information("Battery (%): " + bytes[i++].ToString());
-                }
-                else if (channelId == 0x03 && channelType == 0x67)
-                {
-                    short raw = (short)(bytes[i++] | (bytes[i++] << 8));
-                    Log.Logger.Information("Temperature (°C): " + (raw / 10.0).ToString());
-                }
-                else if (channelId == 0x04 && channelType == 0x68)
-                {
-                    Log.Logger.Information("Humidity (%RH): " + bytes[i++].ToString());
-                }
-                else
-                {
-                    // Skip unknown or unsupported channel
-                    i++;
                 }
             }
         }

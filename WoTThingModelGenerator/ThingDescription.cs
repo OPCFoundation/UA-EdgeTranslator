@@ -264,7 +264,13 @@ namespace Opc.Ua.Edge.Translator.Models
         Integer,
 
         [EnumMember(Value = "xsd:string")]
-        String
+        String,
+
+        [EnumMember(Value = "xsd:short")]
+        Short,
+
+        [EnumMember(Value = "xsd:byte")]
+        Byte
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

@@ -26,21 +26,8 @@
       "observable": true,
       "forms": [
         {
-          "href": "1?quantity=1",
-          "type": "117"
-        }
-      ]
-    },
-    "humidity": {
-      "title": "Humidity",
-      "type": "number",
-      "unit": "percent",
-      "readOnly": true,
-      "observable": true,
-      "forms": [
-        {
-          "href": "4?quantity=1",
-          "type": "104"
+          "href": "24E124136E440353/1/117?quantity=1",
+          "type": "xsd:byte"
         }
       ]
     },
@@ -52,8 +39,21 @@
       "observable": true,
       "forms": [
         {
-          "href": "2?quantity=2",
-          "type": "103"
+          "href": "24E124136E440353/3/103?quantity=2",
+          "type": "xsd:short"
+        }
+      ]
+    },
+    "humidity": {
+      "title": "Humidity",
+      "type": "number",
+      "unit": "percent",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "24E124136E440353/4/104?quantity=1",
+          "type": "xsd:byte"
         }
       ]
     }

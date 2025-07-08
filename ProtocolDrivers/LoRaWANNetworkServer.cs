@@ -11,6 +11,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using static LoRaWan.NetworkServer.LoRaDevice;
 
     public class LoRaWANNetworkServer : IAsset
     {
@@ -79,11 +80,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             object value = null;
 
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            string[] addressParts = tag.Address.Split(['?', '&', '=', '/']);
 
-            if (addressParts.Length == 3)
+            if (addressParts.Length == 5)
             {
-                byte[] tagBytes = Read(addressParts[0], ushort.Parse(addressParts[2])).GetAwaiter().GetResult();
+                byte[] tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
@@ -103,6 +104,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     {
                         value = Encoding.UTF8.GetString(tagBytes);
                     }
+                    else if (tag.Type == "Short")
+                    {
+                        value = BitConverter.ToInt16(tagBytes);
+                    }
+                    else if (tag.Type == "Byte")
+                    {
+                        value = tagBytes[0];
+                    }
                     else
                     {
                         throw new ArgumentException("Type not supported by LoRaWAN.");
@@ -115,60 +124,60 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Write(AssetTag tag, string value)
         {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by LoRaWAN.");
-            }
-
-            Write(addressParts[0], tagBytes, false).GetAwaiter().GetResult();
+            // Writing sensor values is not supported by LoRaWAN.
         }
 
-        private Task<byte[]> Read(string addressWithinAsset, ushort count)
+        private byte[] Read(string devEUI, string channelId, string typeId, ushort count)
         {
             try
             {
-                // TODO
+                foreach (KeyValuePair<string, GatewayConnection> gateways in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways)
+                {
+                    foreach (KeyValuePair<DevAddr, LoRaDevice> device in gateways.Value.Devices)
+                    {
+                        if (device.Value.DevEUI == DevEui.Parse(devEUI))
+                        {
+                            // track best match in case we find mutiple entries in different payloads
+                            DateTime latestTimestamp = DateTime.MinValue;
+                            byte[] bestMatch = null;
 
-                return Task.FromResult((byte[])null);
+                            foreach (KeyValuePair<int, ReceivedPayload> payloads in device.Value.LastKnownDecodedPayloads)
+                            {
+                                byte[] payload = payloads.Value.Payload;
+                                for (int i = 0; i < payload.Length - 2; i++)
+                                {
+                                    // check if the payload matches the requested channelId and typeId and the timestamp is the latest one
+                                    if ((payload[i] == byte.Parse(channelId))
+                                     && (payload[i + 1] == byte.Parse(typeId))
+                                     && (latestTimestamp < payloads.Value.Timestamp))
+                                    {
+                                        bestMatch = payload.AsSpan(i + 2, count).ToArray();
+                                        latestTimestamp = payloads.Value.Timestamp;
+                                    }
+                                }
+                            }
+
+                            if (bestMatch != null)
+                            {
+                                // if we found a match, return it now
+                                return bestMatch;
+                            }
+                            else
+                            {
+                                // save some time as we already know we will not find a match in this gateway
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
                 Log.Logger.Error(ex.Message);
-                return Task.FromResult((byte[])null);
+                return null;
             }
-        }
-
-        private Task Write(string addressWithinAsset, byte[] values, bool singleBitOnly)
-        {
-            try
-            {
-                // TODO
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex.Message);
-            }
-
-            return Task.CompletedTask;
         }
 
         public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)

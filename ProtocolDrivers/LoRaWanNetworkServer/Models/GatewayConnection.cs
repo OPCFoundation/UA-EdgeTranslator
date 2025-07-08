@@ -11,11 +11,11 @@ namespace LoRaWan
     {
         public GatewayConnection(string name, WebSocket webSocket)
         {
-            GatewayPointName = name;
+            GatewayName = name;
             WebSocket = webSocket;
         }
 
-        public string GatewayPointName { get; set; }
+        public string GatewayName { get; set; }
 
         public WebSocket WebSocket { get; set; }
 
