@@ -29,7 +29,7 @@
           "href": "A84041B98D5CB233/0?quantity=2",
           "type": "xsd:short",
           "lorav:endianness": "big",
-          "lorav:bitmask": "0x03FF"
+          "lorav:bitmask": "0x3FFF"
         }
       ]
     },
