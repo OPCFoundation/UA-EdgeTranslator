@@ -25,10 +25,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
             var rawAppKey = new byte[AppKey.Size];
             _ = appKey.Write(rawAppKey);
             aes.Key = rawAppKey;
-#pragma warning disable CA5358 // Review cipher mode usage with cryptography experts
+
             // Cipher is part of the LoRaWAN specification
             aes.Mode = CipherMode.ECB;
-#pragma warning restore CA5358 // Review cipher mode usage with cryptography experts
             aes.Padding = PaddingMode.None;
 
             var buffer = new byte[1 + AppNonce.Size + NetId.Size + DevNonce.Size + 7];
@@ -43,10 +42,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
             aes.IV = new byte[16];
             ICryptoTransform cipher;
-#pragma warning disable CA5401 // Do not use CreateEncryptor with non-default IV
+
             // Part of the LoRaWAN specification
             cipher = aes.CreateEncryptor();
-#pragma warning restore CA5401 // Do not use CreateEncryptor with non-default IV
 
             return cipher.TransformFinalBlock(buffer, 0, buffer.Length);
         }

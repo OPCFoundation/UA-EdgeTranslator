@@ -70,11 +70,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             // Only MHDR is not encrypted with the key
             // ( PHYPayload = MHDR[1] | MACPayload[..] | MIC[4] )
             MHdr = new MacHeader(inputMessage[0]);
-            // Then we will take the rest and decrypt it
-            // DecryptPayload(inputMessage);
-            // var decrypted = PerformEncryption(appKey);
-            // Array.Copy(decrypted, 0, inputMessage, 0, decrypted.Length);
-            // DecryptPayload(inputMessage);
+
             var aesEngine = new AesEngine();
             var rawKey = new byte[AppKey.Size];
             _ = appKey.Write(rawKey);
@@ -82,24 +78,23 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             using var aes = Aes.Create();
             aes.Key = rawKey;
             aes.IV = new byte[16];
-#pragma warning disable CA5358 // Review cipher mode usage with cryptography experts
+
             // Cipher is part of the LoRaWAN specification
             aes.Mode = CipherMode.ECB;
-#pragma warning restore CA5358 // Review cipher mode usage with cryptography experts
             aes.Padding = PaddingMode.None;
-
             ICryptoTransform cipher;
 
-#pragma warning disable CA5401 // Do not use CreateEncryptor with non-default IV
             // Part of the LoRaWAN specification
             cipher = aes.CreateEncryptor();
-#pragma warning restore CA5401 // Do not use CreateEncryptor with non-default IV
+
             var pt = new byte[inputMessage.Length - 1];
             Array.Copy(inputMessage, 1, pt, 0, pt.Length);
-            // Array.Reverse(pt);
+
             var decryptedPayload = cipher.TransformFinalBlock(pt, 0, pt.Length);
+
             // We will copy back in the main inputMessage the content
             Array.Copy(decryptedPayload, 0, inputMessage, 1, decryptedPayload.Length);
+
             // ( MACPayload = AppNonce[3] | NetID[3] | DevAddr[4] | DLSettings[1] | RxDelay[1] | CFList[0|15] )
             AppNonce = AppNonce.Read(inputMessage.AsSpan(1));
             NetId = NetId.Read(inputMessage.AsSpan(4));
@@ -108,6 +103,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             Array.Copy(inputMessage, 11, dlSettings, 0, 1);
             DlSettings = new Memory<byte>(dlSettings);
             RxDelay = (RxDelay)(inputMessage[12] & 0b1111); // upper bits are reserved for future use
+
             // It's the configuration list, it can be empty or up to 15 bytes
             // - 17 = - 1 - 3 - 3 - 4 - 1 - 1 - 4
             // This is the size of all mandatory elements of the message
@@ -126,7 +122,7 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
             var channelFrequencies = !CfList.Span.IsEmpty ? CfList.ToArray() : [];
 
             var buffer = new byte[AppNonce.Size + NetId.Size + DevAddr.Size + DlSettings.Length +
-                                  sizeof(RxDelay) + channelFrequencies.Length + MessageIntegrityCode.Size];
+                         sizeof(RxDelay) + channelFrequencies.Length + MessageIntegrityCode.Size];
 
             var pt = buffer.AsSpan();
             pt = AppNonce.Write(pt);
@@ -145,10 +141,9 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
             aes.Key = rawKey;
             aes.IV = new byte[16];
-#pragma warning disable CA5358 // Review cipher mode usage with cryptography experts
+
             // Cipher is part of the LoRaWAN specification
             aes.Mode = CipherMode.ECB;
-#pragma warning restore CA5358 // Review cipher mode usage with cryptography experts
             aes.Padding = PaddingMode.None;
 
             return [.. aes.CreateDecryptor()

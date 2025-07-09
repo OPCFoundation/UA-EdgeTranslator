@@ -15,7 +15,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             services.AddMemoryCache();
 
-            services.AddSingleton<LoRAADRManagerFactory>();
+            services.AddSingleton<LoRaADRInMemoryStore>();
             services.AddSingleton<DataMessageHandler>();
             services.AddSingleton<JoinRequestMessageHandler>();
             services.AddSingleton<MessageDispatcher>();

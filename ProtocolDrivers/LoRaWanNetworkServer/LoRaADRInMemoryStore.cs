@@ -49,7 +49,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer
 
         public LoRaADRInMemoryStore()
         {
-            // REVIEW: can we set a size limit?
             this.cache = new MemoryCache(new MemoryCacheOptions());
         }
 

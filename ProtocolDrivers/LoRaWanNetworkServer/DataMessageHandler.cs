@@ -14,8 +14,8 @@ namespace LoRaWan.NetworkServer
     using Constants = LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants;
 
     public class DataMessageHandler(
+        LoRaADRInMemoryStore store,
         ConcentratorDeduplication concentratorDeduplication,
-        LoRAADRManagerFactory loRaADRManagerFactory,
         ILogger<DataMessageHandler> logger)
     {
         public void ProcessData(LoRaRequest request)
@@ -400,7 +400,7 @@ namespace LoRaWan.NetworkServer
                 }
             }
 
-            var loRaADRManager = loRaADRManagerFactory.Create(frameCounterStrategy, loRaDevice);
+            var loRaADRManager = new LoRaADRDefaultManager(store, frameCounterStrategy, loRaDevice);
 
             var loRaADRTableEntry = new LoRaADRTableEntry()
             {
