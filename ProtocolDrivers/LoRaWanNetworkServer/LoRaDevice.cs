@@ -50,10 +50,6 @@ namespace LoRaWan.NetworkServer
 
         public NetId? NetId { get; set; }
 
-        public bool IsOurDevice { get; set; }
-
-        public string LastConfirmedC2DMessageID { get; set; }
-
         public uint FCntUp => this.fcntUp;
 
         /// <summary>
@@ -67,8 +63,6 @@ namespace LoRaWan.NetworkServer
         /// Gets the last saved value for <see cref="FCntDown"/>.
         /// </summary>
         public uint LastSavedFCntDown => this.lastSavedFcntDown;
-
-        public string GatewayID { get; set; }
 
         public bool IsABPRelaxedFrameCounter { get; set; }
 
@@ -330,53 +324,39 @@ namespace LoRaWan.NetworkServer
             }
         }
 
-        /// <summary>
-        /// Updates device on the server after a join succeeded.
-        /// </summary>
-        internal virtual Task<bool> UpdateAfterJoinAsync(LoRaDeviceJoinUpdateProperties updateProperties)
+        internal virtual Task<bool> ApplyDeviceSettings(LoRaDeviceJoinUpdateProperties updateProperties)
         {
-            var devAddrBeforeSave = DevAddr;
-
             _ = RegionManager.TryTranslateToRegion(updateProperties.Region, out var currentRegion);
 
-            // Only save if the devAddr remains the same, otherwise ignore the save
-            if (devAddrBeforeSave == DevAddr)
+            DevAddr = updateProperties.DevAddr;
+            NwkSKey = updateProperties.NwkSKey;
+            AppSKey = updateProperties.AppSKey;
+            AppNonce = updateProperties.AppNonce;
+            DevNonce = updateProperties.DevNonce;
+            NetId = updateProperties.NetId;
+            ReportedCN470JoinChannel = updateProperties.CN470JoinChannel;
+
+            if (currentRegion.IsValidRX1DROffset(DesiredRX1DROffset))
             {
-                DevAddr = updateProperties.DevAddr;
-                NwkSKey = updateProperties.NwkSKey;
-                AppSKey = updateProperties.AppSKey;
-                AppNonce = updateProperties.AppNonce;
-                DevNonce = updateProperties.DevNonce;
-                NetId = updateProperties.NetId;
-                ReportedCN470JoinChannel = updateProperties.CN470JoinChannel;
-
-                if (currentRegion.IsValidRX1DROffset(DesiredRX1DROffset))
-                {
-                    ReportedRX1DROffset = DesiredRX1DROffset;
-                }
-
-                if (DesiredRX2DataRate.HasValue && currentRegion.RegionLimits.IsCurrentDownstreamDRIndexWithinAcceptableValue(DesiredRX2DataRate.Value))
-                {
-                    ReportedRX2DataRate = DesiredRX2DataRate;
-                }
-
-                if (Enum.IsDefined(DesiredRXDelay))
-                {
-                    ReportedRXDelay = DesiredRXDelay;
-                }
-
-                this.region.AcceptChanges();
-                this.preferredGatewayID.AcceptChanges();
-                this.lastProcessingStationEui.AcceptChanges();
-
-                ResetFcnt();
-                InternalAcceptFrameCountChanges(this.fcntUp, this.fcntDown);
+                ReportedRX1DROffset = DesiredRX1DROffset;
             }
-            else
+
+            if (DesiredRX2DataRate.HasValue && currentRegion.RegionLimits.IsCurrentDownstreamDRIndexWithinAcceptableValue(DesiredRX2DataRate.Value))
             {
-                this.region.Rollback();
-                this.preferredGatewayID.Rollback();
+                ReportedRX2DataRate = DesiredRX2DataRate;
             }
+
+            if (Enum.IsDefined(DesiredRXDelay))
+            {
+                ReportedRXDelay = DesiredRXDelay;
+            }
+
+            region.AcceptChanges();
+            preferredGatewayID.AcceptChanges();
+            lastProcessingStationEui.AcceptChanges();
+
+            ResetFcnt();
+            InternalAcceptFrameCountChanges(fcntUp, fcntDown);
 
             return Task.FromResult(true);
         }

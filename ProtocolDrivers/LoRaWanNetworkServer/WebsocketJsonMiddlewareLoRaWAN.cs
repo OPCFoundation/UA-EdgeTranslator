@@ -11,6 +11,7 @@ namespace LoRaWan.NetworkServer
     using Serilog;
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Net.NetworkInformation;
@@ -32,7 +33,7 @@ namespace LoRaWan.NetworkServer
 
         public static ConcurrentQueue<QueuedMessage> PendingMessages { get; } = new();
 
-        public static ConcurrentDictionary<string, GatewayConnection> ConnectedGateways { get; } = new();
+        public static ConcurrentDictionary<StationEui, GatewayConnection> ConnectedGateways { get; } = new();
 
         private readonly RequestDelegate _next;
         private readonly BasicsStationConfigurationService _basicsStationConfigurationService;
@@ -64,7 +65,7 @@ namespace LoRaWan.NetworkServer
                 while (PendingMessages.Count > 0)
                 {
                     QueuedMessage message = PendingMessages.First();
-                    string gatewayName = message.Destination;
+                    StationEui gatewayName = StationEui.Parse(message.Destination);
 
                     try
                     {
@@ -131,19 +132,20 @@ namespace LoRaWan.NetworkServer
 
         public static string ExecuteCommand(string gatewayName, string command, string[] inputArgs, string[] outputArgs)
         {
-            if (!ConnectedGateways.ContainsKey(gatewayName))
+            StationEui stationEui = StationEui.Parse(gatewayName);
+            if (!ConnectedGateways.ContainsKey(stationEui))
             {
                 Log.Logger.Error($"Gateway {gatewayName} not found in the connected gateway list!");
                 return null;
             }
 
-            if (ConnectedGateways[gatewayName].WebSocket.State != WebSocketState.Open)
+            if (ConnectedGateways[stationEui].WebSocket.State != WebSocketState.Open)
             {
                 Log.Logger.Error($"WebSocket for gateway {gatewayName} is not open. Cannot send request.");
                 return null;
             }
 
-            string subProtocol = ConnectedGateways[gatewayName].WebSocket.SubProtocol;
+            string subProtocol = ConnectedGateways[stationEui].WebSocket.SubProtocol;
 
             //OCPP16Processor.SendCentralStationCommand(gatewayName, command, inputArgs);
 
@@ -166,30 +168,31 @@ namespace LoRaWan.NetworkServer
 
                 if (gatewayName != "router-info")
                 {
+                    StationEui stationEui = StationEui.Parse(gatewayName);
                     // store the websocket connection in the dictionary
-                    if (!ConnectedGateways.ContainsKey(gatewayName))
+                    if (!ConnectedGateways.ContainsKey(stationEui))
                     {
-                        ConnectedGateways.TryAdd(gatewayName, new GatewayConnection(gatewayName, socket));
+                        ConnectedGateways.TryAdd(stationEui, new GatewayConnection(gatewayName, socket));
                     }
                     else
                     {
                         try
                         {
-                            var oldSocket = ConnectedGateways[gatewayName].WebSocket;
-                            ConnectedGateways[gatewayName].WebSocket = socket;
+                            var oldSocket = ConnectedGateways[stationEui].WebSocket;
+                            ConnectedGateways[stationEui].WebSocket = socket;
 
                             if (oldSocket != null)
                             {
-                                Log.Logger.Information($"New websocket request received for {gatewayName}");
+                                Log.Logger.Information($"New websocket request received for {stationEui}");
                                 if (oldSocket != socket && oldSocket.State != WebSocketState.Closed)
                                 {
-                                    Log.Logger.Information($"Closing old websocket for {gatewayName}");
+                                    Log.Logger.Information($"Closing old websocket for {stationEui}");
 
                                     await oldSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Client sent new websocket request", CancellationToken.None).ConfigureAwait(false);
                                 }
                             }
 
-                            Log.Logger.Information($"Websocket replaced successfully for {gatewayName}");
+                            Log.Logger.Information($"Websocket replaced successfully for {stationEui}");
                         }
                         catch (Exception ex)
                         {
@@ -219,7 +222,7 @@ namespace LoRaWan.NetworkServer
             {
                 if (gatewayName != "router-info")
                 {
-                    if (ConnectedGateways.TryRemove(gatewayName, out GatewayConnection gateway))
+                    if (ConnectedGateways.TryRemove(StationEui.Parse(gatewayName), out GatewayConnection gateway))
                     {
                         Log.Logger.Information($"Removed gateway {gatewayName}");
                     }
@@ -258,16 +261,16 @@ namespace LoRaWan.NetworkServer
                             Log.Logger.Information("Received discovery request from: {StationEui}", stationEui);
 
                             // store the websocket connection in the dictionary
-                            if (!ConnectedGateways.ContainsKey(stationEui.ToString()))
+                            if (!ConnectedGateways.ContainsKey(stationEui))
                             {
-                                ConnectedGateways.TryAdd(stationEui.ToString(), new GatewayConnection(stationEui.ToString(), webSocket));
+                                ConnectedGateways.TryAdd(stationEui, new GatewayConnection(stationEui.ToString(), webSocket));
                             }
                             else
                             {
                                 try
                                 {
-                                    var oldSocket = ConnectedGateways[stationEui.ToString()].WebSocket;
-                                    ConnectedGateways[stationEui.ToString()].WebSocket = webSocket;
+                                    var oldSocket = ConnectedGateways[stationEui].WebSocket;
+                                    ConnectedGateways[stationEui].WebSocket = webSocket;
 
                                     if (oldSocket != null)
                                     {
@@ -389,18 +392,31 @@ namespace LoRaWan.NetworkServer
                                         };
 
                                         // check if the device is registered with us
-                                        if (!ConnectedGateways.ContainsKey(gatewayName))
+                                        StationEui stationEui = StationEui.Parse(gatewayName);
+                                        if (!ConnectedGateways.ContainsKey(stationEui))
                                         {
-                                            Log.Logger.Error($"Gateway {gatewayName} not found in the connected gateways list, ignoring updf message!");
+                                            Log.Logger.Error($"Gateway {stationEui} not found in the connected gateways list, ignoring updf message!");
                                             return;
                                         }
-                                        if (!ConnectedGateways[gatewayName].Devices.TryGetValue(new DevAddr(updf.DevAddr), out var device))
+
+                                        // check if the device is registered with us
+                                        bool deviceFound = false;
+                                        foreach (KeyValuePair<DevEui, LoRaDevice> device in ConnectedGateways[stationEui].Devices)
+                                        {
+                                            if (device.Value.DevAddr == new DevAddr(updf.DevAddr))
+                                            {
+                                                deviceFound = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (!deviceFound)
                                         {
                                             Log.Logger.Error($"Device with DevAddr {updf.DevAddr} not joined yet, ignoring updf message!");
                                             return;
                                         }
 
-                                        var routerRegion = await _basicsStationConfigurationService.GetRegionAsync(StationEui.Parse(gatewayName), cancellationToken).ConfigureAwait(false);
+                                        var routerRegion = await _basicsStationConfigurationService.GetRegionAsync(stationEui, cancellationToken).ConfigureAwait(false);
 
                                         var loraRequest = new LoRaRequest(radioMetadata, _downstreamMessageSender, DateTime.UtcNow);
                                         loraRequest.SetPayload(new LoRaPayloadData(new DevAddr(updf.DevAddr),
@@ -475,7 +491,7 @@ namespace LoRaWan.NetworkServer
                     // client sent close frame
                     if (result.CloseStatus.HasValue)
                     {
-                        if ((gatewayName != "router-info") && (webSocket != ConnectedGateways[gatewayName].WebSocket))
+                        if ((gatewayName != "router-info") && (webSocket != ConnectedGateways[StationEui.Parse(gatewayName)].WebSocket))
                         {
                             if (webSocket.State != WebSocketState.CloseReceived)
                             {
@@ -499,7 +515,7 @@ namespace LoRaWan.NetworkServer
             }
             catch (WebSocketException websocex)
             {
-                if (webSocket != ConnectedGateways[gatewayName].WebSocket)
+                if (webSocket != ConnectedGateways[StationEui.Parse(gatewayName)].WebSocket)
                 {
                     Log.Logger.Error($"WebsocketException occured in the old socket while receiving payload from gateway {gatewayName}. Error : {websocex.Message}");
                 }

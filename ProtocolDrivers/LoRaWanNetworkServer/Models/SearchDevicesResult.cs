@@ -3,46 +3,20 @@
 
 namespace LoRaWan.NetworkServer
 {
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
+    using System;
+    using System.Collections.Generic;
 
-    /// <summary>
-    /// Results of a <see cref="LoRaDeviceAPIServiceBase.SearchDevicesAsync"/> call.
-    /// </summary>
-    public class SearchDevicesResult : IReadOnlyList<DeviceInfo>
+    public class SearchDevicesResult
     {
         public static readonly Dictionary<string, string> DeviceList = new();
 
-        /// <summary>
-        /// Gets list of devices that match the criteria.
-        /// </summary>
         public IReadOnlyList<DeviceInfo> Devices { get; } = Array.Empty<DeviceInfo>();
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the dev nonce was already used.
-        /// </summary>
-        public bool IsDevNonceAlreadyUsed { get; set; }
-
-        public string RefusedMessage { get; set; }
-
-        public int Count => Devices.Count;
-
-        public DeviceInfo this[int index] => Devices[index];
-
-        public SearchDevicesResult() { }
 
         public SearchDevicesResult(IReadOnlyList<DeviceInfo> devices)
         {
             Devices = devices ?? Array.Empty<DeviceInfo>();
         }
-
-        public IEnumerator<DeviceInfo> GetEnumerator() =>
-            Devices.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() =>
-            GetEnumerator();
 
         public static SearchDevicesResult SearchForDevice(DevEui devEUI, DevNonce? nounce = null)
         {

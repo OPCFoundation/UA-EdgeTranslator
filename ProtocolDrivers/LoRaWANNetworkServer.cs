@@ -17,7 +17,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         public LoRaWANNetworkServer()
         {
-            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(new NetworkServerConfiguration(), new CancellationTokenSource().Token));
+            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(new CancellationTokenSource().Token));
         }
 
         public List<string> Discover()
@@ -174,11 +174,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             try
             {
-                foreach (KeyValuePair<string, GatewayConnection> gateways in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways)
+                foreach (KeyValuePair<StationEui, GatewayConnection> gateway in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways)
                 {
-                    foreach (KeyValuePair<DevAddr, LoRaDevice> device in gateways.Value.Devices)
+                    foreach (KeyValuePair<DevEui, LoRaDevice> device in gateway.Value.Devices)
                     {
-                        if (device.Value.DevEUI == DevEui.Parse(devEUI))
+                        if (device.Key == DevEui.Parse(devEUI))
                         {
                             // track best match in case we find mutiple entries in different payloads
                             DateTime latestTimestamp = DateTime.MinValue;

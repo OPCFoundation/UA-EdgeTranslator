@@ -8,7 +8,7 @@ namespace LoRaWan.NetworkServer
 
     public sealed class FrameCounterUpdateStrategy
     {
-        public Task<bool> ResetAsync(LoRaDevice loRaDevice, uint fcntUp, string gatewayId)
+        public Task<bool> ResetAsync(LoRaDevice loRaDevice)
         {
             ArgumentNullException.ThrowIfNull(loRaDevice);
 

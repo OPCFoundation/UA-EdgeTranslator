@@ -19,9 +19,8 @@
   "title": "Dragino LHT65N-E3",
   "properties": {
     "batteryLevel": {
-      "title": "BatteryLevel",
       "type": "number",
-      "unit": "mV",
+      "uav:mapToNodeId": "s=A84041B98D5CB233_BatteryLevel",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -34,9 +33,8 @@
       ]
     },
     "temperature": {
-      "title": "Temperature",
       "type": "number",
-      "unit": "degree Celsius",
+      "uav:mapToNodeId": "s=A84041B98D5CB233_Temperature",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -48,9 +46,8 @@
       ]
     },
     "humidity": {
-      "title": "Humidity",
       "type": "number",
-      "unit": "percent",
+      "uav:mapToNodeId": "s=A84041B98D5CB233_Humidity",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -62,28 +59,13 @@
       ]
     },
     "extTemperature": {
-      "title": "External Temperature",
       "type": "number",
-      "unit": "degree Celsius",
+      "uav:mapToNodeId": "s=A84041B98D5CB233_ExternalTemperature",
       "readOnly": true,
       "observable": true,
       "forms": [
         {
           "href": "A84041B98D5CB233/7?quantity=2",
-          "type": "xsd:short",
-          "lorav:endianness": "big"
-        }
-      ]
-    },
-    "extHumidity": {
-      "title": "External Humidity",
-      "type": "number",
-      "unit": "percent",
-      "readOnly": true,
-      "observable": true,
-      "forms": [
-        {
-          "href": "A84041B98D5CB233/9?quantity=2",
           "type": "xsd:short",
           "lorav:endianness": "big"
         }

@@ -7,7 +7,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
     using LoRaWANContainer.LoRaWan.NetworkServer;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
-    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
 
     internal sealed class BasicsStationNetworkServerStartup()
@@ -16,7 +15,6 @@ namespace LoRaWan.NetworkServer.BasicsStation
         {
             services.AddMemoryCache();
 
-            services.AddSingleton<NetworkServerConfiguration>();
             services.AddSingleton<LoRAADRManagerFactory>();
             services.AddSingleton<DataMessageHandler>();
             services.AddSingleton<JoinRequestMessageHandler>();

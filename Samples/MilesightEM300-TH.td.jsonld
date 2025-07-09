@@ -19,9 +19,8 @@
   "title": "Milesight EM300-TH",
   "properties": {
     "batteryLevel": {
-      "title": "BatteryLevel",
       "type": "number",
-      "unit": "percent",
+      "uav:mapToNodeId": "s=24E124136E440353_BatteryLevel",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -32,9 +31,8 @@
       ]
     },
     "temperature": {
-      "title": "Temperature",
       "type": "number",
-      "unit": "degree Celsius",
+      "uav:mapToNodeId": "s=24E124136E440353_Temperature",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -45,9 +43,8 @@
       ]
     },
     "humidity": {
-      "title": "Humidity",
       "type": "number",
-      "unit": "percent",
+      "uav:mapToNodeId": "s=24E124136E440353_Humidity",
       "readOnly": true,
       "observable": true,
       "forms": [

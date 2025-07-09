@@ -8,12 +8,12 @@ namespace LoRaWan.NetworkServer
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using Constants = LoRaWANContainer.LoRaWan.NetworkServer.Models.Constants;
 
     public class DataMessageHandler(
-        NetworkServerConfiguration configuration,
         ConcentratorDeduplication concentratorDeduplication,
         LoRAADRManagerFactory loRaADRManagerFactory,
         ILogger<DataMessageHandler> logger)
@@ -32,10 +32,20 @@ namespace LoRaWan.NetworkServer
 
             var payloadFcnt = loraPayload.Fcnt;
 
-            LoRaDevice loRaDevice;
-            if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Keys.Contains(request.Payload.DevAddr))
+            DevEui devEui = new();
+            foreach (KeyValuePair<DevEui, LoRaDevice> device in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui].Devices)
             {
-                loRaDevice = WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices[request.Payload.DevAddr];
+                if (device.Value.DevAddr == request.Payload.DevAddr)
+                {
+                    devEui = device.Key;
+                    break;
+                }
+            }
+
+            LoRaDevice loRaDevice;
+            if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui].Devices.TryGetValue(devEui, out var value))
+            {
+                loRaDevice = value;
             }
             else
             {
@@ -78,7 +88,6 @@ namespace LoRaWan.NetworkServer
                 return new LoRaDeviceRequestProcessResult(loRaDevice, request, someFailedReason);
             }
 
-            var useMultipleGateways = string.IsNullOrEmpty(loRaDevice.GatewayID);
             var fcntResetSaved = false;
 
             try
@@ -268,7 +277,6 @@ namespace LoRaWan.NetworkServer
                 if (requiresConfirmation && loRaDevice.DownlinkEnabled)
                 {
                     var downlinkMessageBuilderResp = DownlinkMessageBuilder.CreateDownlinkMessage(
-                        configuration,
                         loRaDevice,
                         request,
                         timeWatcher,
@@ -382,13 +390,23 @@ namespace LoRaWan.NetworkServer
             _ = request ?? throw new ArgumentNullException(nameof(request));
             _ = loraPayload ?? throw new ArgumentNullException(nameof(loraPayload));
 
+            // find our gateway id
+            string gatewayId = string.Empty;
+            foreach (KeyValuePair<StationEui, GatewayConnection> gatewayConnection in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways)
+            {
+                if (gatewayConnection.Value.Devices.ContainsKey(loRaDevice.DevEUI))
+                {
+                    gatewayId = gatewayConnection.Key.ToString();
+                }
+            }
+
             var loRaADRManager = loRaADRManagerFactory.Create(frameCounterStrategy, loRaDevice);
 
             var loRaADRTableEntry = new LoRaADRTableEntry()
             {
                 DevEUI = loRaDevice.DevEUI,
                 FCnt = payloadFcnt,
-                GatewayId = configuration.GatewayID,
+                GatewayId = gatewayId,
                 Snr = request.RadioMetadata.UpInfo.SignalNoiseRatio
             };
 
@@ -401,7 +419,7 @@ namespace LoRaWan.NetworkServer
             {
                 loRaADRResult = await loRaADRManager.CalculateADRResultAndAddEntryAsync(
                     loRaDevice.DevEUI,
-                    configuration.GatewayID,
+                    gatewayId,
                     payloadFcnt,
                     loRaDevice.FCntDown,
                     (float)request.Region.RequiredSnr(request.RadioMetadata.DataRate),
@@ -489,7 +507,7 @@ namespace LoRaWan.NetworkServer
                         // fcnt down calculations
                         if (concentratorDeduplicationResult is ConcentratorDeduplicationResult.NotDuplicate)
                         {
-                            _ = await frameCounterStrategy.ResetAsync(loRaDevice, payloadFcnt, configuration.GatewayID).ConfigureAwait(false);
+                            _ = await frameCounterStrategy.ResetAsync(loRaDevice).ConfigureAwait(false);
                         }
                         isFrameCounterFromNewlyStartedDevice = true;
                     }

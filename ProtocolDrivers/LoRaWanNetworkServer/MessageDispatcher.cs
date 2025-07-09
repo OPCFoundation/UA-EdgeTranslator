@@ -7,20 +7,11 @@ namespace LoRaWan.NetworkServer
     using Microsoft.Extensions.Logging;
     using System;
 
-    /// <summary>
-    /// Message dispatcher.
-    /// </summary>
     public sealed class MessageDispatcher(
-        NetworkServerConfiguration configuration,
         JoinRequestMessageHandler joinRequestHandler,
         DataMessageHandler dataMessageHandler,
         ILogger<MessageDispatcher> logger)
     {
-        private readonly NetworkServerConfiguration configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-        /// <summary>
-        /// Dispatches a request.
-        /// </summary>
         public void DispatchRequest(LoRaRequest request)
         {
             ArgumentNullException.ThrowIfNull(request);

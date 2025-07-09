@@ -24,8 +24,6 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 
         public LoRaRegionType Region { get; set; }
 
-        public string PreferredGatewayID { get; set; }
-
         public AppNonce AppNonce { get; set; }
 
         /// <summary>

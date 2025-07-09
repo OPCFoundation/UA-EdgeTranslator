@@ -9,17 +9,16 @@ namespace LoRaWan.NetworkServer
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.ProtocolDrivers.LoRaWanNetworkServer.Models;
     using System;
+    using System.Collections.Generic;
     using System.Security.Cryptography;
     using System.Threading.Tasks;
     using static LoRaWan.ReceiveWindowNumber;
 
-    public class JoinRequestMessageHandler(NetworkServerConfiguration configuration,
-                                           ConcentratorDeduplication concentratorDeduplication,
+    public class JoinRequestMessageHandler(ConcentratorDeduplication concentratorDeduplication,
                                            ILogger<JoinRequestMessageHandler> logger)
     {
         public void DispatchRequest(LoRaRequest request)
         {
-            // Unobserved task exceptions are logged as part of ProcessJoinRequestAsync.
             _ = Task.Run(() => ProcessJoinRequestAsync(request));
         }
 
@@ -30,12 +29,6 @@ namespace LoRaWan.NetworkServer
             if ((searchDeviceResult == null) || (searchDeviceResult?.Devices == null) || (searchDeviceResult.Devices.Count == 0))
             {
                 logger.LogInformation("join refused: no devices found matching join request");
-                return null;
-            }
-
-            if (searchDeviceResult.IsDevNonceAlreadyUsed)
-            {
-                logger.LogInformation("join refused: Join already processed by another gateway.");
                 return null;
             }
 
@@ -74,7 +67,7 @@ namespace LoRaWan.NetworkServer
                 if (deduplicationResult is ConcentratorDeduplicationResult.Duplicate)
                 {
                     request.NotifyFailed(devEui.ToString(), LoRaDeviceRequestFailedReason.DeduplicationDrop);
-                    // we do not log here as the concentratorDeduplication service already does more detailed logging
+                    logger.LogInformation("join request dropped due to deduplication");
                     return;
                 }
 
@@ -82,40 +75,12 @@ namespace LoRaWan.NetworkServer
                 if (loRaDevice == null)
                 {
                     request.NotifyFailed(devEui.ToString(), LoRaDeviceRequestFailedReason.UnknownDevice);
-                    // we do not log here as we assume that the deviceRegistry does a more informed logging if returning null
+                    logger.LogInformation("join request failed: device not found");
                     return;
                 }
 
                 loRaDevice.DevNonce = joinReq.DevNonce;
                 loRaDevice.AppEui = joinReq.AppEui;
-                loRaDevice.GatewayID = configuration.GatewayID;
-                loRaDevice.IsOurDevice = true;
-
-                if (loRaDevice.AppEui != joinReq.AppEui)
-                {
-                    logger.LogError("join refused: AppEUI for OTAA does not match device");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.InvalidJoinRequest);
-                    return;
-                }
-
-                // Make sure that is a new request and not a replay
-                if (loRaDevice.DevNonce is { } devNonce && devNonce == joinReq.DevNonce)
-                {
-                    if (string.IsNullOrEmpty(loRaDevice.GatewayID))
-                    {
-                        logger.LogInformation("join refused: join already processed by another gateway");
-                        request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.JoinDevNonceAlreadyUsed);
-                        return;
-                    }
-                }
-
-                // Check that the device is joining through the linked gateway and not another
-                if (!loRaDevice.IsOurDevice)
-                {
-                    logger.LogInformation("join refused: trying to join not through its linked gateway, ignoring join request");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.HandledByAnotherGateway);
-                    return;
-                }
 
                 var netId = new NetId(1);
                 var appNonce = new AppNonce(RandomNumberGenerator.GetInt32(toExclusive: AppNonce.MaxValue + 1));
@@ -141,8 +106,7 @@ namespace LoRaWan.NetworkServer
                     AppNonce = appNonce,
                     DevNonce = joinReq.DevNonce,
                     NetId = netId,
-                    Region = request.Region.LoRaRegion,
-                    PreferredGatewayID = configuration.GatewayID,
+                    Region = request.Region.LoRaRegion
                 };
 
                 if (loRaDevice.ClassType == LoRaDeviceClassType.C)
@@ -166,13 +130,7 @@ namespace LoRaWan.NetworkServer
                     }
                 }
 
-                var deviceUpdateSucceeded = await loRaDevice.UpdateAfterJoinAsync(updatedProperties).ConfigureAwait(false);
-                if (!deviceUpdateSucceeded)
-                {
-                    logger.LogError("join refused: join request could not save");
-                    request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.DeviceNotJoined);
-                    return;
-                }
+                await loRaDevice.ApplyDeviceSettings(updatedProperties).ConfigureAwait(false);
 
                 var windowToUse = timeWatcher.ResolveJoinAcceptWindowToUse();
                 if (windowToUse is null)
@@ -181,8 +139,45 @@ namespace LoRaWan.NetworkServer
                     request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.ReceiveWindowMissed);
                     return;
                 }
-                // Build join accept downlink message
 
+                // check if the device is already joined
+                bool deviceFound = false;
+                foreach (KeyValuePair<StationEui, GatewayConnection> gateway in WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways)
+                {
+                    foreach (KeyValuePair<DevEui, LoRaDevice> device in gateway.Value.Devices)
+                    {
+                        // check if this is the same device that is already joined
+                        if (device.Value.DevEUI != loRaDevice.DevEUI)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            deviceFound = true;
+                            if (device.Value.DevNonce == joinReq.DevNonce)
+                            {
+                                logger.LogError($"join refused: Device {loRaDevice.DevAddr} already joined and device nounce the same -> replay attack!");
+                                request.NotifyFailed(loRaDevice, LoRaDeviceRequestFailedReason.JoinDevNonceAlreadyUsed);
+                                return;
+                            }
+                            else
+                            {
+                                // replace the device with the one that is joining
+                                WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[gateway.Key].Devices[device.Key] = loRaDevice;
+                                logger.LogInformation($"join request succeeded: device {loRaDevice.DevAddr} already joined, replacing with new device");
+                            }
+                        }
+                    }
+                }
+
+                if (!deviceFound)
+                {
+                    // add the device to the connected gateways
+                    WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui].Devices.Add(loRaDevice.DevEUI, loRaDevice);
+                    logger.LogInformation($"join request succeeded: device {loRaDevice.DevAddr} added to connected gateways");
+                }
+
+                // Build join accept downlink message
                 // Build the DlSettings fields that is a superposition of RX2DR and RX1DROffset field
                 var dlSettings = new byte[1];
 
@@ -270,15 +265,6 @@ namespace LoRaWan.NetworkServer
                 else
                 {
                     logger.LogInformation($"Join from {loRaDevice.DevEUI} via {request.StationEui} accepted", loRaDevice.DevEUI, request.StationEui);
-                }
-
-                if (WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Keys.Contains(loRaDevice.DevAddr))
-                {
-                    WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices[loRaDevice.DevAddr] = loRaDevice;
-                }
-                else
-                {
-                    WebsocketJsonMiddlewareLoRaWAN.ConnectedGateways[request.StationEui.ToString()].Devices.Add(loRaDevice.DevAddr, loRaDevice);
                 }
             }
             catch (Exception ex)

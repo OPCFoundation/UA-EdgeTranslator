@@ -224,11 +224,11 @@ namespace Opc.Ua.Edge.Translator.Models
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum Endianness
     {
-        [EnumMember(Value = "big")]
-        Big,
-
         [EnumMember(Value = "little")]
-        Little
+        Little,
+
+        [EnumMember(Value = "big")]
+        Big
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

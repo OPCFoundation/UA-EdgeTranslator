@@ -19,6 +19,6 @@ namespace LoRaWan
 
         public WebSocket WebSocket { get; set; }
 
-        public Dictionary<DevAddr, LoRaDevice> Devices { get; } = new();
+        public Dictionary<DevEui, LoRaDevice> Devices { get; } = new();
     }
 }

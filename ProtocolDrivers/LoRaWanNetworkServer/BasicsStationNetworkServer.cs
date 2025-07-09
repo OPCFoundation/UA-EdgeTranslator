@@ -23,10 +23,8 @@ namespace LoRaWan.NetworkServer.BasicsStation
         internal const int LnsSecurePort = 5001;
         internal const int LnsPort = 5000;
 
-        public static async Task RunServerAsync(NetworkServerConfiguration configuration, CancellationToken cancellationToken)
+        public static async Task RunServerAsync(CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(configuration);
-
             bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
             using var webHost = WebHost.CreateDefaultBuilder()
                                        .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
@@ -36,8 +34,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
                                        {
                                            if (secureComms)
                                            {
-                                               config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(configuration,
-                                                                                                             config.ApplicationServices.GetService<ClientCertificateValidatorService>(),
+                                               config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(config.ApplicationServices.GetService<ClientCertificateValidatorService>(),
                                                                                                              https));
                                            }
                                        })
@@ -53,15 +50,14 @@ namespace LoRaWan.NetworkServer.BasicsStation
             }
         }
 
-        internal static void ConfigureHttpsSettings(NetworkServerConfiguration configuration,
-                                                    ClientCertificateValidatorService? clientCertificateValidatorService,
+        internal static void ConfigureHttpsSettings(ClientCertificateValidatorService? clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
             X509Certificate2 opcuaCert = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
 
-            if (File.Exists(Path.Combine("pki/own/private", $"{configuration.GatewayID}-with-san.pfx")))
+            if (File.Exists(Path.Combine("pki/own/private", $"UAEdgeTranslator-with-san.pfx")))
             {
-                https.ServerCertificate = X509CertificateLoader.LoadPkcs12FromFile(Path.Combine("pki/own/private", $"{configuration.GatewayID}-with-san.pfx"), string.Empty);
+                https.ServerCertificate = X509CertificateLoader.LoadPkcs12FromFile(Path.Combine("pki/own/private", $"UAEdgeTranslator-with-san.pfx"), string.Empty);
             }
             else
             {
@@ -85,8 +81,8 @@ namespace LoRaWan.NetworkServer.BasicsStation
                 }
                 pem += "-----END CERTIFICATE-----\n";
 
-                File.WriteAllText(Path.Combine("pki/own/private", $"{configuration.GatewayID}-with-san.pem"), pem);
-                File.WriteAllBytes(Path.Combine("pki/own/private", $"{configuration.GatewayID}-with-san.pfx"), https.ServerCertificate.Export(X509ContentType.Pfx, string.Empty));
+                File.WriteAllText(Path.Combine("pki/own/private", $"UAEdgeTranslator-with-san.pem"), pem);
+                File.WriteAllBytes(Path.Combine("pki/own/private", $"UAEdgeTranslator-with-san.pfx"), https.ServerCertificate.Export(X509ContentType.Pfx, string.Empty));
             }
 
             bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));

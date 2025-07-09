@@ -12,7 +12,6 @@ namespace LoRaWan.NetworkServer
     using System.Linq;
     using System.Security.Cryptography;
     using static ReceiveWindowNumber;
-    using static RxDelay;
 
     /// <summary>
     /// Helper class to create <see cref="DownlinkMessage"/>.
@@ -25,7 +24,6 @@ namespace LoRaWan.NetworkServer
         /// Creates downlink message with ack for confirmation or device message.
         /// </summary>
         internal static DownlinkMessageBuilderResponse CreateDownlinkMessage(
-            NetworkServerConfiguration configuration,
             LoRaDevice loRaDevice,
             LoRaRequest request,
             LoRaOperationTimeWatcher timeWatcher,
