@@ -89,21 +89,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             if ((tagBytes != null) && !string.IsNullOrEmpty(tag.BitMask))
             {
-                // apply the bitmask to the tagBytes, depending on the length of the bitmask
-                if (tag.BitMask.Length == 4) // "0xNN"
+                byte[] bitMaskBytes = HexToBytes(tag.BitMask);
+
+                if (bitMaskBytes.Length != tagBytes.Length)
                 {
-                    // apply a byte mask
-                    tagBytes[0] = (byte)(tagBytes[0] & byte.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
+                    throw new ArgumentException($"Bitmask length {bitMaskBytes.Length} does not match tag bytes length {tagBytes.Length}.");
                 }
-                else if (tag.BitMask.Length == 6) // "0xNNNN"
+
+                for (int i = 0; i < tagBytes.Length; i++)
                 {
-                    // apply a short mask
-                    tagBytes = BitConverter.GetBytes(BitConverter.ToInt16(tagBytes) & short.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
-                }
-                else if (tag.BitMask.Length == 10) // "0xNNNNNNNN"
-                {
-                    // apply an int mask
-                    tagBytes = BitConverter.GetBytes(BitConverter.ToInt32(tagBytes) & int.Parse(tag.BitMask.Substring(2), System.Globalization.NumberStyles.HexNumber));
+                    tagBytes[i] = (byte)(tagBytes[i] & bitMaskBytes[i]);
                 }
             }
 
@@ -145,6 +140,29 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             return value;
+        }
+
+        private byte[] HexToBytes(string hex)
+        {
+            // Remove the "0x" prefix if present
+            if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                hex = hex.Substring(2);
+            }
+
+            // Ensure even length
+            if (hex.Length % 2 != 0)
+            {
+                hex = "0" + hex;
+            }
+
+            byte[] bytes = new byte[hex.Length / 2];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            }
+
+            return bytes;
         }
 
         public void Write(AssetTag tag, string value)
