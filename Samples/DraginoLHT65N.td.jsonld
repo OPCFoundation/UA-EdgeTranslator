@@ -15,7 +15,7 @@
     "Thing"
   ],
   "name": "Dragino LHT65N-E3 A84041B98D5CB233",
-  "base": "lorawan://A84041B98D5CB233/569F632C48146DBB92E7ECA0859F12A7",
+  "base": "lorawan://A84041B98D5CB233/569F632C48146DBB92E7ECA0859F12A7/device",
   "title": "Dragino LHT65N-E3",
   "properties": {
     "batteryLevel": {

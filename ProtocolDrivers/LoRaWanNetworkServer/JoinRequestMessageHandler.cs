@@ -24,28 +24,13 @@ namespace LoRaWan.NetworkServer
 
         public LoRaDevice GetDeviceForJoinRequestAsync(DevEui devEUI)
         {
-            var searchDeviceResult = SearchDevicesResult.SearchForDevice(devEUI);
-
-            if ((searchDeviceResult == null) || (searchDeviceResult?.Devices == null) || (searchDeviceResult.Devices.Count == 0))
+            if (!SearchDevicesResult.DeviceList.ContainsKey(devEUI.ToString()))
             {
                 logger.LogInformation("join refused: no devices found matching join request");
                 return null;
             }
 
-            if (searchDeviceResult.Devices.Count > 1)
-            {
-                logger.LogError("join refused: multiple devices found matching join request");
-                return null;
-            }
-
-            if (searchDeviceResult.Devices[0].DevEUI != devEUI)
-            {
-                logger.LogError("join refused: device EUI does not match the one in the join request");
-                return null;
-            }
-
-            var matchingDeviceInfo = searchDeviceResult.Devices[0];
-            return new LoRaDevice(matchingDeviceInfo.DevEUI) { AppKey = matchingDeviceInfo.AppKey };
+            return new LoRaDevice(devEUI) { AppKey = AppKey.Parse(SearchDevicesResult.DeviceList[devEUI.ToString()]) };
         }
 
         internal async Task ProcessJoinRequestAsync(LoRaRequest request)

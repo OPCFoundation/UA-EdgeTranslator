@@ -15,7 +15,7 @@
     "Thing"
   ],
   "name": "Milesight EM300-TH 24E124136E440353",
-  "base": "lorawan://24E124136E440353/5572404c696e6b4c6f52613230313823",
+  "base": "lorawan://24E124136E440353/5572404c696e6b4c6f52613230313823/device",
   "title": "Milesight EM300-TH",
   "properties": {
     "batteryLevel": {

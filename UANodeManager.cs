@@ -981,18 +981,34 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
                 // create an asset tag and add to our list
-                LoRaWANForm lorawanForm = JsonConvert.DeserializeObject<LoRaWANForm>(form.ToString());
-                AssetTag tag = new()
+                AssetTag tag;
+                if (td.Base.ToLower().EndsWith("routerconfig"))
                 {
-                    Name = variableId,
-                    Address = lorawanForm.Href,
-                    UnitID = unitId,
-                    Type = lorawanForm.Type.ToString(),
-                    IsBigEndian = (lorawanForm.Endianness == Endianness.Big),
-                    BitMask = lorawanForm.BitMask,
-                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
-                    MappedUAFieldPath = fieldPath
-                };
+                    tag = new()
+                    {
+                        Name = variableId,
+                        Address = td.Base.ToLower(),
+                        UnitID = unitId,
+                        Type = TypeString.String.ToString(),
+                        MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                        MappedUAFieldPath = fieldPath
+                    };
+                }
+                else
+                {
+                    LoRaWANForm lorawanForm = JsonConvert.DeserializeObject<LoRaWANForm>(form.ToString());
+                    tag = new()
+                    {
+                        Name = variableId,
+                        Address = lorawanForm.Href,
+                        UnitID = unitId,
+                        Type = lorawanForm.Type.ToString(),
+                        IsBigEndian = (lorawanForm.Endianness == Endianness.Big),
+                        BitMask = lorawanForm.BitMask,
+                        MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                        MappedUAFieldPath = fieldPath
+                    };
+                }
 
                 _tags[assetId].Add(tag);
             }
@@ -1145,9 +1161,9 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 5) || (address[0] != "lorawan"))
+                if ((address.Length != 6) || (address[0] != "lorawan"))
                 {
-                    throw new Exception("Expected LoRaWAN Gateway address in the format lorawan://deviceeui/appkey!");
+                    throw new Exception("Expected LoRaWAN address in the format lorawan://deviceeui/appkey/device or lorawan://deviceeui/gatewaymodel/routerconfig!");
                 }
 
                 _lorawanNetworkServer.Connect(td.Base, 0);

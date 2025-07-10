@@ -3,11 +3,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using LoRaWan;
     using LoRaWan.NetworkServer;
     using LoRaWan.NetworkServer.BasicsStation;
+    using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -52,9 +54,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 // register the device with the LoRaWAN Network Server
                 var devEui = DevEui.Parse(addressParts[2]);
-                var appKey = AppKey.Parse(addressParts[3]);
 
-                SearchDevicesResult.AddDevice(devEui, appKey);
+                if (addressParts[4] == "routerconfig")
+                {
+                    // parse the router configuration from the WoT Thing Description
+                    ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(
+                        File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings") + "/" + addressParts[3] + ".jsonld"));
+
+                    string payload = td.Properties["routerConfig"].Forms[0].ToString();
+                    SearchDevicesResult.AddDevice(devEui, payload);
+                }
+                else
+                {
+                    SearchDevicesResult.AddDevice(devEui, addressParts[3]);
+                }
             }
             catch (Exception ex)
             {
@@ -80,7 +93,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string[] addressParts = tag.Address.Split(['?', '&', '=', '/']);
             if (addressParts.Length == 5)
             {
-                tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
+                if (addressParts[4] == "routerconfig")
+                {
+                    if (SearchDevicesResult.DeviceList.ContainsKey(addressParts[2].ToUpper()))
+                    {
+                        // read the router configuration from the stored WoT Thing Description
+                        value = SearchDevicesResult.DeviceList[addressParts[2].ToUpper()];
+                    }
+                }
+                else
+                {
+                    tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
+                }
             }
             else if (addressParts.Length == 4)
             {

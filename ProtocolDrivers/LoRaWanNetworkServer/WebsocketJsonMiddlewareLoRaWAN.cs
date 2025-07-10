@@ -342,15 +342,18 @@ namespace LoRaWan.NetworkServer
                             switch (basic.MessageType)
                             {
                                 case LnsMessageType.Version:
+
                                     VersionMessage versionMessage = JsonConvert.DeserializeObject<VersionMessage>(payloadString);
+
                                     Log.Logger.Information("Received 'version' message for station '{StationVersion}' with package '{StationPackage}'.", versionMessage.MessageType, versionMessage.Package);
 
-                                    string routerConfigResponse = await _basicsStationConfigurationService.GetRouterConfigMessageAsync(StationEui.Parse(gatewayName), cancellationToken).ConfigureAwait(false);
-                                    PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = routerConfigResponse });
+                                    PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = _basicsStationConfigurationService.GetRouterConfigMessage(gatewayName) });
                                     break;
 
                                 case LnsMessageType.JoinRequest:
+
                                     Log.Logger.Information($"Received jreq message: '{payloadString}'.", payloadString);
+
                                     try
                                     {
                                         JoinRequestMessage jreq = JsonConvert.DeserializeObject<JoinRequestMessage>(payloadString);
@@ -379,10 +382,12 @@ namespace LoRaWan.NetworkServer
                                     break;
 
                                 case LnsMessageType.UplinkDataFrame:
+
                                     Log.Logger.Information($"Received updf message: '{payloadString}'.", payloadString);
+
                                     try
                                     {
-                                        var updf = JsonConvert.DeserializeObject<UpstreamDataMessage>(payloadString);
+                                        UpstreamDataMessage updf = JsonConvert.DeserializeObject<UpstreamDataMessage>(payloadString);
                                         RadioMetadata radioMetadata = new()
                                         {
                                             Frequency = new Hertz(updf.Frequency),
@@ -437,6 +442,7 @@ namespace LoRaWan.NetworkServer
                                     break;
 
                                 case LnsMessageType.TransmitConfirmation:
+
                                     Log.Logger.Information($"Received dntxed message: '{payloadString}'.", payloadString);
 
                                     break;
@@ -445,17 +451,20 @@ namespace LoRaWan.NetworkServer
                                     throw new NotSupportedException($"'{messageType}' is not a valid message type for this endpoint and is only valid for 'downstream' messages.");
 
                                 case LnsMessageType.TimeSync:
-                                    var timeSyncData = JsonConvert.DeserializeObject<TimeSyncMessage>(payloadString);
+
+                                    TimeSyncMessage timeSyncData = JsonConvert.DeserializeObject<TimeSyncMessage>(payloadString);
+
                                     Log.Logger.Information($"Received TimeSync message: '{payloadString}'.", payloadString);
+
                                     timeSyncData.GpsTime = (ulong)DateTime.UtcNow.Subtract(new DateTime(1980, 1, 6, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds * 1000; // to microseconds
                                     PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = JsonConvert.SerializeObject(timeSyncData) });
 
                                     break;
 
                                 case var messageType and (LnsMessageType.ProprietaryDataFrame
-                                                          or LnsMessageType.MulticastSchedule
-                                                          or LnsMessageType.RunCommand
-                                                          or LnsMessageType.RemoteShell):
+                                                       or LnsMessageType.MulticastSchedule
+                                                       or LnsMessageType.RunCommand
+                                                       or LnsMessageType.RemoteShell):
                                     Log.Logger.Warning("'{MessageType}' ({MessageTypeBasicStationString}) is not handled in current LoRaWan Network Server implementation.", messageType, messageType.ToBasicStationString());
 
                                     break;
