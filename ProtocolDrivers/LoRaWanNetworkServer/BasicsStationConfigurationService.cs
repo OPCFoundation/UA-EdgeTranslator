@@ -58,13 +58,33 @@ namespace LoRaWan.NetworkServer.BasicsStation
             return Task.FromResult(routerConfig);
         }
 
-        public Task<Region> GetRegionAsync(StationEui stationEui, CancellationToken cancellationToken)
+        public Region GetRegion(ulong frequencyHz)
         {
-            // default to EU
-            // TODO: Support other regions
-            Region region = new RegionEU868();
-
-            return Task.FromResult(region);
+            if (frequencyHz >= 863000000 && frequencyHz <= 870000000)
+            {
+                return new RegionEU868();
+            }
+            else if (frequencyHz >= 902000000 && frequencyHz <= 928000000)
+            {
+                return new RegionUS915();
+            }
+            else if (frequencyHz >= 470000000 && frequencyHz <= 510000000)
+            {
+                return new RegionCN470RP1();
+            }
+            else if (frequencyHz >= 915000000 && frequencyHz <= 928000000)
+            {
+                return new RegionAU915RP1();
+            }
+            else if (frequencyHz >= 920000000 && frequencyHz <= 923000000)
+            {
+                return new RegionAS923();
+            }
+            else
+            {
+                // default to RegionEU868
+                return new RegionEU868();
+            }
         }
     }
 }
