@@ -62,7 +62,6 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Sharp7" Version="1.1.84" />
     <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>
