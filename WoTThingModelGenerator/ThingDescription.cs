@@ -102,8 +102,11 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modv:entity")]
         public ModbusEntity ModbusEntity { get; set; }
 
-        [JsonProperty("modv:endianness")]
-        public Endianness Endianness { get; set; }
+        [JsonProperty("modv:mostSignificantByte")]
+        public bool MostSignificantByte { get; set; } // big endian on a per byte basis
+
+        [JsonProperty("modv:mostSignificantWord")]
+        public bool MostSignificantWord { get; set; } // big endian on a per word basis
 
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
@@ -135,11 +138,17 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("type")]
         public TypeString Type { get; set; }
 
-        [JsonProperty("lorav:endianness")]
-        public Endianness Endianness { get; set; }
+        [JsonProperty("lorav:mostSignificantByte")]
+        public bool MostSignificantByte { get; set; } // big endian on a per byte basis
+
+        [JsonProperty("lorav:mostSignificantWord")]
+        public bool MostSignificantWord { get; set; } // big endian on a per word basis
 
         [JsonProperty("lorav:bitmask")]
-        public string? BitMask { get; set; }
+        public string? BitMask { get; set; } // bitmask to apply to the value
+
+        [JsonProperty("lorav:multiplier")]
+        public float? Multiplier { get; set; } // multiplier to multiply the value with to get the correct unit of measure
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -219,16 +228,6 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [EnumMember(Value = "HoldingRegister")]
         HoldingRegister
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum Endianness
-    {
-        [EnumMember(Value = "little")]
-        Little,
-
-        [EnumMember(Value = "big")]
-        Big
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

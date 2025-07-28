@@ -128,14 +128,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             if ((tagBytes != null) && tag.IsBigEndian)
             {
-                tagBytes = ByteSwapper.Swap(tagBytes);
+                tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
             }
 
             if ((tagBytes != null) && (tagBytes.Length > 0))
             {
                 if (tag.Type == "Float")
                 {
-                    value = BitConverter.ToSingle(tagBytes);
+                    value = BitConverter.ToSingle(tagBytes) * tag.Multiplier;
                 }
                 else if (tag.Type == "Boolean")
                 {
@@ -143,7 +143,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else if (tag.Type == "Integer")
                 {
-                    value = BitConverter.ToInt32(tagBytes);
+                    value = BitConverter.ToInt32(tagBytes) * tag.Multiplier;
                 }
                 else if (tag.Type == "String")
                 {
@@ -151,11 +151,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else if (tag.Type == "Short")
                 {
-                    value = BitConverter.ToInt16(tagBytes);
+                    value = BitConverter.ToInt16(tagBytes) * tag.Multiplier;
                 }
                 else if (tag.Type == "Byte")
                 {
-                    value = tagBytes[0];
+                    value = tagBytes[0] * tag.Multiplier;
                 }
                 else
                 {

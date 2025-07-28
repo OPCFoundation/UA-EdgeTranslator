@@ -27,8 +27,9 @@
         {
           "href": "A84041B98D5CB233/0?quantity=2",
           "type": "xsd:short",
-          "lorav:endianness": "big",
-          "lorav:bitmask": "0x3FFF"
+          "lorav:mostSignificantByte": true,
+          "lorav:bitmask": "0x3FFF",
+          "lorav:multiplier": 0.001
         }
       ]
     },
@@ -41,7 +42,8 @@
         {
           "href": "A84041B98D5CB233/2?quantity=2",
           "type": "xsd:short",
-          "lorav:endianness": "big"
+          "lorav:mostSignificantByte": true,
+          "lorav:multiplier": 0.01
         }
       ]
     },
@@ -54,7 +56,8 @@
         {
           "href": "A84041B98D5CB233/4?quantity=2",
           "type": "xsd:short",
-          "lorav:endianness": "big"
+          "lorav:mostSignificantByte": true,
+          "lorav:multiplier": 0.1
         }
       ]
     },
@@ -67,7 +70,8 @@
         {
           "href": "A84041B98D5CB233/7?quantity=2",
           "type": "xsd:short",
-          "lorav:endianness": "big"
+          "lorav:mostSignificantByte": true,
+          "lorav:multiplier": 0.01
         }
       ]
     }

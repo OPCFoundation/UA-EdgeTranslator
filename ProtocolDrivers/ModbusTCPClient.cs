@@ -124,7 +124,7 @@
 
                 if ((tagBytes != null) && tag.IsBigEndian)
                 {
-                    tagBytes = ByteSwapper.Swap(tagBytes);
+                    tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
                 }
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
@@ -184,7 +184,7 @@
 
             if ((tagBytes != null) && tag.IsBigEndian)
             {
-                tagBytes = ByteSwapper.Swap(tagBytes);
+                tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
             }
 
             Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();

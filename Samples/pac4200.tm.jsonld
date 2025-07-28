@@ -37,7 +37,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -58,7 +58,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -79,7 +79,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -97,7 +97,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -115,7 +115,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -133,7 +133,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -154,7 +154,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -175,7 +175,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -196,7 +196,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -217,7 +217,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -238,7 +238,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -259,7 +259,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -277,7 +277,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -295,7 +295,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -313,7 +313,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]
@@ -331,7 +331,7 @@
           ],
           "modv:type": "xsd:float",
           "modv:entity": "HoldingRegister",
-          "modv:endianness": "big",
+          "modv:mostSignificantByte": true,
           "modv:pollingTime": 2000
         }
       ]

@@ -847,7 +847,8 @@ namespace Opc.Ua.Edge.Translator
                     Type = modbusForm.ModbusType.ToString(),
                     PollingInterval = (int)modbusForm.ModbusPollingTime,
                     Entity = modbusForm.ModbusEntity.ToString(),
-                    IsBigEndian = (modbusForm.Endianness == Endianness.Big),
+                    IsBigEndian = modbusForm.MostSignificantByte || modbusForm.MostSignificantWord,
+                    SwapPerWord = modbusForm.MostSignificantWord,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -1003,7 +1004,9 @@ namespace Opc.Ua.Edge.Translator
                         Address = lorawanForm.Href,
                         UnitID = unitId,
                         Type = lorawanForm.Type.ToString(),
-                        IsBigEndian = (lorawanForm.Endianness == Endianness.Big),
+                        IsBigEndian = lorawanForm.MostSignificantByte || lorawanForm.MostSignificantWord,
+                        SwapPerWord = lorawanForm.MostSignificantWord,
+                        Multiplier = lorawanForm.Multiplier?? 1.0f,
                         BitMask = lorawanForm.BitMask,
                         MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                         MappedUAFieldPath = fieldPath

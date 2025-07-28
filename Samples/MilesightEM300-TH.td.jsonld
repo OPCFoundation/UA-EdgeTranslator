@@ -38,7 +38,8 @@
       "forms": [
         {
           "href": "24E124136E440353/3/103?quantity=2",
-          "type": "xsd:short"
+          "type": "xsd:short",
+          "lorav:multiplier": 0.1
         }
       ]
     },
@@ -50,7 +51,8 @@
       "forms": [
         {
           "href": "24E124136E440353/4/104?quantity=1",
-          "type": "xsd:byte"
+          "type": "xsd:byte",
+          "lorav:multiplier": 0.5
         }
       ]
     }
