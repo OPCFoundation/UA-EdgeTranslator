@@ -343,6 +343,9 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 outputArguments[0] = assetNode.NodeId;
+
+                RaiseModelChangedEvent(assetNode.NodeId, ModelChangeStructureVerbMask.NodeAdded);
+
                 return ServiceResult.Good;
             }
         }
@@ -394,6 +397,30 @@ namespace Opc.Ua.Edge.Translator
                 assetNode = asset;
                 return true;
            }
+        }
+
+        public void RaiseModelChangedEvent(NodeId nodeId, ModelChangeStructureVerbMask verb)
+        {
+            ModelChangeStructureDataType[] changes = new ModelChangeStructureDataType[]
+            {
+                new ModelChangeStructureDataType
+                {
+                    Affected = nodeId,
+                    AffectedType = ObjectTypeIds.BaseObjectType,
+                    Verb = (byte)verb
+                }
+            };
+
+            var ev = new GeneralModelChangeEventState(null);
+
+            ev.Initialize(SystemContext, null, EventSeverity.Medium, new LocalizedText("Model change"));
+            ev.Changes = new PropertyState<ModelChangeStructureDataType[]>(ev);
+            ev.Changes.Value = changes;
+
+            ev.SetChildValue(SystemContext, BrowseNames.SourceNode, _assetManagement, false);
+            ev.SetChildValue(SystemContext, BrowseNames.SourceName, "AssetManagement", false);
+
+            Server.ReportEvent(ev);
         }
 
         public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
@@ -451,6 +478,8 @@ namespace Opc.Ua.Edge.Translator
                         i++;
                     }
                 }
+
+                RaiseModelChangedEvent(asset.NodeId, ModelChangeStructureVerbMask.NodeDeleted);
 
                 return ServiceResult.Good;
             }
@@ -561,6 +590,8 @@ namespace Opc.Ua.Edge.Translator
                 OnboardAssetFromWoTFile(assetNode, contents);
 
                 System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
+
+                RaiseModelChangedEvent(assetNode.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
                 return ServiceResult.Good;
             }

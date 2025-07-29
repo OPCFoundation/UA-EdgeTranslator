@@ -15,13 +15,17 @@
   <ItemGroup>
     <Compile Remove="arm64\**" />
     <Compile Remove="linux-arm64\**" />
+    <Compile Remove="Workshop\**" />
     <Compile Remove="WoTThingModelGenerator\**" />
+    <Content Remove="Workshop\**" />
     <Content Remove="WoTThingModelGenerator\**" />
     <EmbeddedResource Remove="arm64\**" />
     <EmbeddedResource Remove="linux-arm64\**" />
+    <EmbeddedResource Remove="Workshop\**" />
     <EmbeddedResource Remove="WoTThingModelGenerator\**" />
     <None Remove="arm64\**" />
     <None Remove="linux-arm64\**" />
+    <None Remove="Workshop\**" />
     <None Remove="WoTThingModelGenerator\**" />
   </ItemGroup>
 

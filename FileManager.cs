@@ -279,6 +279,8 @@ namespace Opc.Ua.Edge.Translator
                 {
                     _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
 
+                    _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
+
                     File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
                 }
 
