@@ -1451,11 +1451,12 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 string assetId = method.Parent.BrowseName.Name;
-                string actionName = method.BrowseName.Name;
                 string[] actionInputArgs = inputArguments.Select(arg => arg?.ToString()).ToArray();
                 string[] actionOutputArgs = outputArguments.Select(arg => arg?.ToString()).ToArray();
 
-                string result = _assets[assetId].ExecuteAction(assetId, actionName, actionInputArgs, actionOutputArgs);
+                string result = _assets[assetId].ExecuteAction(method, actionInputArgs, ref actionOutputArgs);
+
+                outputArguments = actionOutputArgs;
 
                 return new ServiceResult(StatusCodes.Good, new LocalizedText(result));
             }

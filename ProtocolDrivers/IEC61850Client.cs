@@ -249,7 +249,7 @@
             return Task.CompletedTask;
         }
 
-        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
             throw new NotImplementedException();
         }

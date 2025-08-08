@@ -63,6 +63,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Title = name,
                 Properties = new Dictionary<string, Property>(),
                 Actions = new Dictionary<string, TDAction>()
+
+                // TODO: Add support for browsing OPC UA nodes and generating properties/actions
             };
 
             return td;
@@ -390,9 +392,63 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             reconnectHandler.Dispose();
         }
 
-        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
-            throw new NotImplementedException();
+            CallMethodRequestCollection requests = new CallMethodRequestCollection
+            {
+                new CallMethodRequest
+                {
+                    ObjectId = new NodeId(method.Parent.NodeId),
+                    MethodId = method.NodeId
+                }
+            };
+
+            if (inputArgs != null)
+            {
+                requests[0].InputArguments = new VariantCollection();
+
+                foreach (var arg in inputArgs)
+                {
+                    requests[0].InputArguments.Add(new Variant(arg));
+                }
+            }
+
+            CallMethodResultCollection results;
+            DiagnosticInfoCollection diagnosticInfos;
+
+            ResponseHeader responseHeader = _session.Call(
+                null,
+                requests,
+                out results,
+                out diagnosticInfos);
+
+            ClientBase.ValidateResponse(results, requests);
+            ClientBase.ValidateDiagnosticInfos(diagnosticInfos, requests);
+
+            StatusCode status = new StatusCode(0);
+            if ((results != null) && (results.Count > 0))
+            {
+                status = results[0].StatusCode;
+
+                if (StatusCode.IsBad(results[0].StatusCode) && (responseHeader.StringTable != null) && (responseHeader.StringTable.Count > 0))
+                {
+                    return responseHeader.StringTable[0];
+                }
+
+                if ((results[0].OutputArguments != null) && (results[0].OutputArguments.Count > 0))
+                {
+                    string[] outputStrings = new string[results[0].OutputArguments.Count];
+
+                    for (int i = 0; i < results[0].OutputArguments.Count; i++)
+                    {
+                        outputStrings[i] = results[0].OutputArguments[i].Value?.ToString();
+                    }
+
+                    outputArgs = outputStrings;
+                }
+            }
+
+            return "Action executed successfully.";
         }
     }
 }

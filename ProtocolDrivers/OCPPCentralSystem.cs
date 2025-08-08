@@ -57,19 +57,148 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Actions = new Dictionary<string, TDAction>()
             };
 
-            // add an action property for executing commands on the charge point
-            td.Actions.Add("ExecuteCommand", new TDAction
+            // add actions
+            td.Actions.Add("ChangeAvailability", new TDAction
             {
-                 Input = new Dictionary<string, TDArgument>() { { "Command", new TDArgument() { Type = TypeEnum.String  } } },
-                 Output = new Dictionary<string, TDArgument>() { { "Result", new TDArgument() { Type = TypeEnum.String } } }
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "Type", new TDArgument { Type = TypeEnum.String }
+                    }
+                 }
             });
-
-            // add 5 command arguments
-            td.Actions["ExecuteCommand"].Input.Add("Arg1", new TDArgument { Type = TypeEnum.String });
-            td.Actions["ExecuteCommand"].Input.Add("Arg2", new TDArgument { Type = TypeEnum.String });
-            td.Actions["ExecuteCommand"].Input.Add("Arg3", new TDArgument { Type = TypeEnum.String });
-            td.Actions["ExecuteCommand"].Input.Add("Arg4", new TDArgument { Type = TypeEnum.String });
-            td.Actions["ExecuteCommand"].Input.Add("Arg5", new TDArgument { Type = TypeEnum.String });
+            td.Actions.Add("ChangeConfiguration", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "Key", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "Value", new TDArgument { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("ClearCache", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("GetConfiguration", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "Key", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("RemoteStartTransaction", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "IdTag", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("GetTransactionStatusRequest", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "TransactionId", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("RemoteStopTransaction", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "TransactionId", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("Reset", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("UnlockConnector", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("SetChargingProfile", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "Limit", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "NumberOfPhases", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("SetVariables", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "AttributeType", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "AttributeValue", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
+            td.Actions.Add("GetVariables", new TDAction
+            {
+                Input = new Dictionary<string, TDArgument>() {
+                    {
+                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                    },
+                    {
+                        "AttributeType", new TDArgument() { Type = TypeEnum.String }
+                    }
+                 }
+            });
 
             // add properties for the requested charge point
             if (ChargePoints.TryGetValue(endpointParts[3], out ChargePoint chargePoint))
@@ -88,8 +217,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                     });
 
-                    td.Properties.Add("Connector" + connector.ID.ToString() + "Status", new Property
-                    {
+                    td.Properties.Add("Connector" + connector.ID.ToString() + "Status", new Property {
                         Type = TypeEnum.String,
                         ReadOnly = true,
                         Observable = true,
@@ -193,28 +321,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // TODO: Implement the write logic to the charge point
         }
 
-        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
-            // find our charge point
-            foreach (ChargePoint chargePoint in ChargePoints.Values)
+            if (inputArgs.Length > 0)
             {
-                if (chargePoint.ID == address)
+                if (WebsocketJsonMiddlewareOCPP.ExecuteCommand(inputArgs[0], method.BrowseName.Name, inputArgs, outputArgs))
                 {
-                    string commandName = inputArgs?[0];
-
-                    for (int i = 0; i < inputArgs?.Length - 1; i++)
-                    {
-                        inputArgs[i] = inputArgs?[i + 1];
-                    }
-
-                    Array.Resize(ref inputArgs, inputArgs.Length - 1);
-
-                    WebsocketJsonMiddlewareOCPP.ExecuteCommand(chargePoint.ID, commandName, inputArgs, outputArgs);
-                    break;
+                    return "Action executed successfully.";
+                }
+                else
+                {
+                    throw new Exception("Failed to execute action: " + method.BrowseName.Name);
                 }
             }
-
-            return string.Empty; // TODO: Return result
+            else
+            {
+                throw new ArgumentException("No input arguments provided for action: " + method.BrowseName.Name);
+            }
         }
     }
 }

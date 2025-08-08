@@ -318,7 +318,7 @@
             }
         }
 
-        public static Task SendCentralStationCommand(string cpId, string action, string[] arguments)
+        public static bool SendCentralStationCommand(string cpId, string action, string[] arguments)
         {
             string requestPayload = "{}";
 
@@ -339,8 +339,8 @@
                     case "SetVariables":
                         if (arguments.Length < 2)
                         {
-                            Log.Logger.Error("SetVariables requires at least 2 arguments: variable type and value.");
-                            return Task.CompletedTask;
+                            Log.Logger.Error("SetVariables requires at least 2 arguments: attribute type and value.");
+                            return false;
                         }
 
                         SetVariablesRequest setVariablesRequest = new() {
@@ -364,8 +364,8 @@
 
                         if (arguments.Length < 1)
                         {
-                            Log.Logger.Error("GetVariables requires at least 1 argument: variable type.");
-                            return Task.CompletedTask;
+                            Log.Logger.Error("GetVariables requires at least 1 argument: attribute type.");
+                            return false;
                         }
 
                         GetVariablesRequest getVariablesRequest = new() {
@@ -391,7 +391,7 @@
                         if (arguments.Length < 2)
                         {
                             Log.Logger.Error("ChangeAvailability requires at least 2 arguments: connectorId and type.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         ChangeAvailabilityRequest changeAvailabilityRequest = new();
@@ -417,7 +417,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("RemoteStartTransaction requires at least 1 argument: idTag.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         RemoteStartTransactionRequest remoteStartRequest = new() {
@@ -435,7 +435,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("GetTransactionStatusRequest requires at least 1 argument: transactionId.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         GetTransactionStatusRequest getTransactionStatusRequest = new()
@@ -454,7 +454,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("RemoteStopTransaction requires at least 1 argument: transactionId.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         RemoteStopTransactionRequest remoteStopRequest = new();
@@ -481,8 +481,8 @@
 
                         if (arguments.Length < 3)
                         {
-                            Log.Logger.Error("SetChargingProfile requires at least 3 arguments: EVSE ID, limit and number of phases.");
-                            return Task.CompletedTask;
+                            Log.Logger.Error("SetChargingProfile requires at least 3 arguments: connectorId, limit and number of phases.");
+                            return false;
                         }
 
                         SetChargingProfileRequest21 setChargingProfileRequest = new() {
@@ -519,7 +519,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("UnlockConnector requires at least 1 argument: connectorId.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         UnlockConnectorRequest unlockRequest = new();
@@ -545,13 +545,13 @@
 
                 PendingMessages.Enqueue(new QueuedMessage { Destination = cpId, Payload = serializedCommand });
 
-                return Task.CompletedTask;
+                return true;
             }
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
 
-                return Task.CompletedTask;
+                return false;
             }
         }
 

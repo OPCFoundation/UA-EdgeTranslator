@@ -303,7 +303,7 @@
             }
         }
 
-        public static Task SendCentralStationCommand(string cpId, string action, string[] arguments)
+        public static bool SendCentralStationCommand(string cpId, string action, string[] arguments)
         {
             string requestPayload = "{}";
 
@@ -314,6 +314,7 @@
             else
             {
                 Log.Logger.Error("Chargepoint " + cpId + " not found. Cannot send command: " + action);
+                return false;
             }
 
             try
@@ -326,7 +327,7 @@
                         if (arguments.Length < 2)
                         {
                             Log.Logger.Error("ChangeAvailability requires at least 2 arguments: connectorId and type.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         ChangeAvailabilityRequest changeAvailabilityRequest = new();
@@ -344,7 +345,7 @@
                         if (arguments.Length < 2)
                         {
                             Log.Logger.Error("ChangeConfiguration requires at least 2 arguments: key and value.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         ChangeConfigurationRequest changeConfigRequest = new();
@@ -390,7 +391,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("RemoteStartTransaction requires at least 1 argument: idTag.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         RemoteStartTransactionRequest remoteStartRequest = new()
@@ -409,7 +410,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("RemoteStopTransaction requires at least 1 argument: transactionId.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         RemoteStopTransactionRequest remoteStopRequest = new();
@@ -437,7 +438,7 @@
                         if (arguments.Length < 1)
                         {
                             Log.Logger.Error("UnlockConnector requires at least 1 argument: connectorId.");
-                            return Task.CompletedTask;
+                            return false;
                         }
 
                         UnlockConnectorRequest unlockRequest = new();
@@ -454,7 +455,7 @@
                             if (arguments.Length < 3)
                             {
                                 Log.Logger.Error("SetChargingProfile requires at least 3 arguments: connectorId, limit and number of phases.");
-                                return Task.CompletedTask;
+                                return false;
                             }
 
                             SetChargingProfileRequest setChargingProfileRequest = new() {
@@ -497,13 +498,13 @@
 
                 PendingMessages.Enqueue(new QueuedMessage { Destination = cpId, Payload = serializedCommand });
 
-                return Task.CompletedTask;
+                return true;
             }
             catch (Exception ex)
             {
                 Log.Logger.Error("Exception: " + ex.Message);
 
-                return Task.CompletedTask;
+                return false;
             }
         }
 

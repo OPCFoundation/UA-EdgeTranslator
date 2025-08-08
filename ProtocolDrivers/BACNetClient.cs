@@ -237,7 +237,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _client.WritePropertyRequest(adr, bacnetObject, property, NoScalarValue);
         }
 
-        public string ExecuteAction(string address, string actionName, string[] inputArgs, string[] outputArgs)
+        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
             throw new NotImplementedException();
         }

@@ -117,33 +117,33 @@ namespace OCPPCentralSystem
             }
         }
 
-        public static string ExecuteCommand(string chargePointName, string command, string[] inputArgs, string[] outputArgs)
+        public static bool ExecuteCommand(string chargePointName, string command, string[] inputArgs, string[] outputArgs)
         {
             if (!_connectedChargePoints.ContainsKey(chargePointName))
             {
                 Log.Logger.Error($"Charge point {chargePointName} not found in the connected charge points list!");
-                return null;
+                return false;
             }
 
             if (_connectedChargePoints[chargePointName].WebSocket.State != WebSocketState.Open)
             {
                 Log.Logger.Error($"WebSocket for charge point {chargePointName} is not open. Cannot send request.");
-                return null;
+                return false;
             }
 
             string subProtocol = _connectedChargePoints[chargePointName].WebSocket.SubProtocol;
 
             if (subProtocol == "ocpp1.6")
             {
-                OCPP16Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
+                return OCPP16Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
             }
 
             if ((subProtocol == "ocpp2.0") || (subProtocol == "ocpp2.0.1") || (subProtocol == "ocpp2.1"))
             {
-                OCPP21Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
+                return OCPP21Processor.SendCentralStationCommand(chargePointName, command, inputArgs);
             }
 
-            return string.Empty;
+            return false;
         }
 
         private async Task AddWebSocketAsync(HttpContext httpContext)
