@@ -33,6 +33,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Mitsubishi MC Protocol (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
+* Matter (experimental)
 * OCPP V2.1 (experimental). Bidirectional Power Transfer (BPT) for Electric Vehicles based in ISO 15118-20 is in the works!
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
