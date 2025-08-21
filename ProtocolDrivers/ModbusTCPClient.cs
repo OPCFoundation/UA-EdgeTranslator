@@ -91,11 +91,6 @@
             return _tcpClient.Client.RemoteEndPoint.ToString();
         }
 
-        public bool IsConnected()
-        {
-            return _tcpClient != null;
-        }
-
         public void Disconnect()
         {
             if (_tcpClient != null)

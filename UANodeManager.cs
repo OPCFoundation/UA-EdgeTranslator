@@ -501,6 +501,7 @@ namespace Opc.Ua.Edge.Translator
                 allAddresses.AddRange(new IEC61850Client().Discover());
                 allAddresses.AddRange(_lorawanNetworkServer.Discover());
                 allAddresses.AddRange(_ocppCentralSystem.Discover());
+                allAddresses.AddRange(new MatterClient().Discover());
             }
             catch (Exception ex)
             {
@@ -581,6 +582,11 @@ namespace Opc.Ua.Edge.Translator
                 if (assetEndpoint.StartsWith("ocpp://"))
                 {
                     td = _ocppCentralSystem.BrowseAndGenerateTD(assetName, assetEndpoint);
+                }
+
+                if (assetEndpoint.StartsWith("matter://"))
+                {
+                    td = new MatterClient().BrowseAndGenerateTD(assetName, assetEndpoint);
                 }
 
                 string contents = JsonConvert.SerializeObject(td);
@@ -1064,6 +1070,23 @@ namespace Opc.Ua.Edge.Translator
                 _tags[assetId].Add(tag);
             }
 
+            if (td.Base.ToLower().StartsWith("matter://"))
+            {
+                // create an asset tag and add to our list
+                GenericForm matterForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = matterForm.Href,
+                    UnitID = unitId,
+                    Type = matterForm.Type.ToString(),
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+
         }
 
         private void AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -1217,6 +1240,21 @@ namespace Opc.Ua.Edge.Translator
                 assetInterface = _ocppCentralSystem;
             }
 
+            if (td.Base.ToLower().StartsWith("matter://"))
+            {
+                string[] address = td.Base.Split(new char[] { ':', '/' });
+                if ((address.Length != 6) || (address[0] != "matter"))
+                {
+                    throw new Exception("Expected Matter device address in the format matter://ipaddress:port!");
+                }
+
+                // check if we can reach the Matter asset
+                MatterClient client = new();
+                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+
+                assetInterface = client;
+            }
+
             _assets.Add(td.Name, assetInterface);
         }
 
@@ -1264,7 +1302,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
-                    value = new string[10] {
+                    value = new string[11] {
                         "https://www.w3.org/2019/wot/modbus",
                         "https://www.w3.org/2019/wot/opcua",
                         "https://www.w3.org/2019/wot/s7",
@@ -1274,7 +1312,8 @@ namespace Opc.Ua.Edge.Translator
                         "https://www.w3.org/2019/wot/iec61850",
                         "http://www.w3.org/2022/bacnet",
                         "https://www.w3.org/2019/wot/lorawan",
-                        "https://www.w3.org/2019/wot/ocpp"
+                        "https://www.w3.org/2019/wot/ocpp",
+                        "https://www.w3.org/2019/wot/matter"
                     };
 
                     timestamp = DateTime.UtcNow;
