@@ -58,8 +58,8 @@ namespace Opc.Ua.Edge.Translator
         private const uint _cWoTCreateAssetOutputArguments = 34;
         private const uint _cWoTDeleteAsset = 35;
         private const uint _cWoTDeleteAssetInputArguments = 36;
-        private const uint _cIWoTAssetType = 56;
-        private const uint _cWoTAssetFileType = 86;
+        private const uint _cIWoTAssetType = 42;
+        private const uint _cWoTAssetFileType = 110;
         private const uint _cWoTAssetConfigurationType = 105;
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)

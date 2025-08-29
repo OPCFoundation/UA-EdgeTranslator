@@ -7,7 +7,7 @@
     {
         private readonly UANodeManager _manager;
 
-        private const uint _cHasWoTComponent = 83;
+        private const uint _cHasWoTComponent = 142;
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
 
         public NodeFactory(UANodeManager manager)
