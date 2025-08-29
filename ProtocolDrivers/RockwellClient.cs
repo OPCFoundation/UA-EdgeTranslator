@@ -603,6 +603,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 default: break;
             }
 
+            tag.Write();
+
             return Task.CompletedTask;
         }
 
