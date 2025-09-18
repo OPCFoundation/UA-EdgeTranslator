@@ -1243,14 +1243,14 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("matter://"))
             {
                 string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 6) || (address[0] != "matter"))
+                if ((address.Length != 5) || (address[0] != "matter"))
                 {
-                    throw new Exception("Expected Matter device address in the format matter://ipaddress:port!");
+                    throw new Exception("Expected Matter device address in the format matter://threadDatasetTLV/deviceSetupCode!");
                 }
 
                 // check if we can reach the Matter asset
                 MatterClient client = new();
-                client.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+                client.Connect(td.Base, 0);
 
                 assetInterface = client;
             }

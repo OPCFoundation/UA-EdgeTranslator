@@ -1,0 +1,33 @@
+﻿{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:onvis-smart-plug-s4",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "Onvis Smart Plug S4",
+  "base": "matter://0e080000000000010000000300000c4a0300001035060004001fffe00208efbdba1bdb2e38d70708fd3f8a470baab4af0510359144cb1018f34a364d8cfedc90a5c0030f4f70656e5468726561642d643838320102d88204102d70dadaf18737c60aeb93db56f245de0c0402a0f7f8/UTBA0-2S02LPO91.L10",
+  "title": "Onvis Smart Plug S4",
+  "actions": {
+    "switch": {
+      "type": "boolean",
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "",
+          "type": "xsd:boolean"
+        }
+      ]
+    }
+  }
+}

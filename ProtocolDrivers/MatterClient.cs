@@ -15,19 +15,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Connect(string ipAddress, int port)
         {
-            // Parse configJson to extract device info and attribute mappings
-            var config = MatterAssetConfig.Parse(ipAddress);
+            try
+            {
+                // Parse configJson to extract device info and attribute mappings
+                string[] commissionPayload = ipAddress.Split(['/']);
 
-            _controller = new Controller(config.ThreadNetworkCredentials);
+                _controller = new Controller(commissionPayload[2]);
 
-            // Commission device
-            // TODO: Replace with actual commissioning payload
-            CommissioningPayload payload = CommissioningPayload.FromQR("MT:Y.K9042C00KA0648G00");
-
-            CommissioningState state = _controller.StartCommissioning(payload).Result;
-            var network = state.FindWiFi("Linksys-24G")!;
-            _controller.CompleteCommissioning(state, network, "password123");
-            _controller.Save("example.fabric", "example.key");
+                CommissioningState state = _controller.StartCommissioning(CommissioningPayload.FromQR("MT:" + commissionPayload[3])).GetAwaiter().GetResult();
+                _controller.CompleteCommissioning(state).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Failed to connect to Matter device: " + ex.Message);
+            }
         }
 
         public List<string> Discover()
@@ -107,30 +108,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class MatterAttributeMapping
-    {
-        public string DeviceId { get; set; }
-
-        public int Endpoint { get; set; }
-
-        public int ClusterId { get; set; }
-
-        public int AttributeId { get; set; }
-    }
-
-    public class MatterAssetConfig
-    {
-        public string DeviceId { get; set; }
-
-        public string ThreadNetworkCredentials { get; set; }
-
-        public static MatterAssetConfig Parse(string json)
-        {
-            // Implement JSON parsing logic here
             throw new NotImplementedException();
         }
     }
