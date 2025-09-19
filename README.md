@@ -36,15 +36,15 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Matter (experimental)
 * OCPP V2.1 (experimental). Bidirectional Power Transfer (BPT) for Electric Vehicles based in ISO 15118-20 is in the works!
 
-> **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively, i.e. NOT within a Docker container!
+> **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively or with the --net=host flag within a Docker container!
 
-> **Note**: Network discovery for Rockwell PLCs only works when running UA Edge Translator natively, i.e. NOT within a Docker container!
+> **Note**: Network discovery for Rockwell PLCs only works when running UA Edge Translator natively or with the --net=host flag within a Docker container!
 
 > **Note**: The LoRaWAN Network Server is available on port 5000 (not secure) and port 5001 (secure), which needs to be mapped to the Docker host for access. If you need a LoRaWAN Gateway, you can use the open-source [Basic Station](https://github.com/lorabasics/basicstation) together with a [LoRaWAN HAT for Raspberry Pi](https://www.waveshare.com/wiki/SX1302_LoRaWAN_Gateway_HAT).
 
 > **Note**: The OCPP Central System is available on port 19520 (not secure) and on port 19521 (secure), which needs to be mapped to the Docker host for access.
 
-> **Note**: For testing the Matter asset interface, you will also need create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi).
+> **Note**: For testing the Matter asset interface, you will also need create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). For commissioning Matter devices, you can use the [CHIP Tool](https://docs.nordicsemi.com/bundle/ncs-latest/page/matter/chip_tool_guide.html) on Linux with Bluetooth enabled (Matter uses Bluetooth for commissioning).
 
 Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
 
