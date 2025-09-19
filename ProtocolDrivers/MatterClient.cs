@@ -1,29 +1,34 @@
 ﻿
 namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
-    using MatterDotNet.Entities;
-    using MatterDotNet.OperationalDiscovery;
+    using Matter.Core;
+    using Matter.Core.Fabrics;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class MatterClient : IAsset
     {
-        private Controller _controller;
+        private IMatterController _controller;
 
         public void Connect(string ipAddress, int port)
         {
+            string[] ipParts = ipAddress.Split(['/']);
+
             try
             {
-                // Parse configJson to extract device info and attribute mappings
-                string[] commissionPayload = ipAddress.Split(['/']);
+                IFabricStorageProvider fabricStorageProvider = new FabricDiskStorage(Directory.GetCurrentDirectory());
+                _controller = new MatterController(fabricStorageProvider);
 
-                _controller = new Controller(commissionPayload[2]);
+                _controller.InitAsync().GetAwaiter().GetResult();
+                Task.Run(() => _controller.RunAsync().GetAwaiter().GetResult());
 
-                CommissioningState state = _controller.StartCommissioning(CommissioningPayload.FromQR("MT:" + commissionPayload[3])).GetAwaiter().GetResult();
-                _controller.CompleteCommissioning(state).GetAwaiter().GetResult();
+                Node asset = _controller.GetNodeAsync(new Org.BouncyCastle.Math.BigInteger(ipParts[3])).GetAwaiter().GetResult();
+                asset.Connect(null).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
