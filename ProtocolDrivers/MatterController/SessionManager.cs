@@ -10,11 +10,11 @@ namespace Matter.Core.Sessions
     {
         private Dictionary<Node, ISession> _secureSessions = new();
         private Channel<Node> _connectionsQueue = Channel.CreateUnbounded<Node>();
-        private readonly INodeRegister _nodeRegister;
+        //private readonly INodeRegister _nodeRegister;
 
-        public SessionManager(INodeRegister nodeRegister)
+        public SessionManager()
         {
-            _nodeRegister = nodeRegister ?? throw new ArgumentNullException(nameof(nodeRegister));
+            //_nodeRegister = nodeRegister ?? throw new ArgumentNullException(nameof(nodeRegister));
         }
 
         public ISession GetSecureSession(Node node)
@@ -40,7 +40,7 @@ namespace Matter.Core.Sessions
                     var fullNodeName = nodeNeedingConnection.Fabric.GetFullNodeName(nodeNeedingConnection);
                     Console.WriteLine($"Attempting to connect to node {fullNodeName}...");
 
-                    await nodeNeedingConnection.Connect(_nodeRegister);
+                    await nodeNeedingConnection.Connect();
                 }
                 catch (Exception ex)
                 {

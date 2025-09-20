@@ -29,7 +29,7 @@ namespace Matter.Core
 
         public List<Endpoint> Endpoints { get; set; } = [];
 
-        public async Task Connect(INodeRegister nodeRegister)
+        public async Task Connect()
         {
             try
             {

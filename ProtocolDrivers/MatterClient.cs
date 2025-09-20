@@ -8,16 +8,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Net;
     using System.Text;
     using System.Threading.Tasks;
 
     public class MatterClient : IAsset
     {
-        private IMatterController _controller;
+        private Matter.Core.MatterController _controller;
 
         public void Connect(string ipAddress, int port)
         {
-            string[] ipParts = ipAddress.Split(['/']);
+            string[] ipParts = ipAddress.Split(['/', ':']);
 
             try
             {
@@ -28,7 +29,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Task.Run(() => _controller.RunAsync().GetAwaiter().GetResult());
 
                 Node asset = _controller.GetNodeAsync(new Org.BouncyCastle.Math.BigInteger(ipParts[3])).GetAwaiter().GetResult();
-                asset.Connect(null).GetAwaiter().GetResult();
+                asset.Connect().GetAwaiter().GetResult();
+
+                _controller.Fabric.AddCommissionedNodeAsync(asset.NodeId, IPAddress.Parse(ipParts[3]), ushort.Parse(ipParts[4]));
             }
             catch (Exception ex)
             {

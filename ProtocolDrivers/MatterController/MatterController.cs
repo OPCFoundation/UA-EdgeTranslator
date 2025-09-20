@@ -1,5 +1,4 @@
-﻿using Matter.Core.Commissioning;
-using Matter.Core.Fabrics;
+﻿using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Math;
@@ -10,53 +9,54 @@ using System.Threading.Tasks;
 
 namespace Matter.Core
 {
-    public class MatterController : IMatterController
+    public class MatterController
     {
         private readonly FabricManager _fabricManager;
         //private readonly mDNSService _mDNSService;
         //private readonly MulticastService _mDNSService;
         //private readonly ServiceDiscovery _serviceDiscovery;
         private readonly ISessionManager _sessionManager;
-        private readonly INodeRegister _nodeRegister;
+        //private readonly INodeRegister _nodeRegister;
 
-        private Fabric _fabric;
-        private Dictionary<int, ICommissioner> _commissioners;
+        public Fabric Fabric { get; private set; }
+
+        //private Dictionary<int, ICommissioner> _commissioners;
 
         //public event IMatterController.ReconnectedToNode ReconnectedToNodeEvent;
-        public event IMatterController.CommissionableNodeDiscovered CommissionableNodeDiscoveredEvent;
-        public event IMatterController.MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
+        //public event IMatterController.CommissionableNodeDiscovered CommissionableNodeDiscoveredEvent;
+        //public event IMatterController.MatterNodeAddedToFabric MatterNodeAddedToFabricEvent;
 
         public MatterController(IFabricStorageProvider fabricStorageProvider)
         {
             _fabricManager = new FabricManager(fabricStorageProvider);
-            _commissioners = new Dictionary<int, ICommissioner>();
-            _nodeRegister = new NodeRegister();
+            //_commissioners = new Dictionary<int, ICommissioner>();
+            //_nodeRegister = new NodeRegister();
 
             //_nodeRegister.CommissionableNodeDiscoveredEvent += (object sender, CommissionableNodeDiscoveredEventArgs args) =>
             //{
             //    CommissionableNodeDiscoveredEvent?.Invoke(this);
             //};
 
-            _sessionManager = new SessionManager(_nodeRegister);
+            _sessionManager = new SessionManager();
 
             //_mDNSService = new mDNSService(new NullLogger<mDNSService>());
             //_mDNSService = new MulticastService();
             //_serviceDiscovery = new ServiceDiscovery(_mDNSService);
         }
 
-        public Task<ICommissioner> CreateCommissionerAsync()
-        {
-            if (_fabric == null)
-            {
-                throw new InvalidOperationException($"Fabric not initialized. Call {nameof(InitAsync)}() first.");
-            }
+        //public Task<ICommissioner> CreateCommissionerAsync()
+        //{
+        //    if (_fabric == null)
+        //    {
+        //        throw new InvalidOperationException($"Fabric not initialized. Call {nameof(InitAsync)}() first.");
+        //    }
 
-            ICommissioner commissioner = new NetworkCommissioner(_fabric, _nodeRegister);
+        //    ICommissioner commissioner = new NetworkCommissioner(_fabric, _nodeRegister);
 
-            _commissioners.Add(commissioner.Id, commissioner);
+        //    _commissioners.Add(commissioner.Id, commissioner);
 
-            return Task.FromResult(commissioner);
-        }
+        //    return Task.FromResult(commissioner);
+        //}
 
         public async Task InitAsync()
         {
@@ -73,8 +73,8 @@ namespace Matter.Core
             //_serviceDiscovery.ServiceDiscovered += _serviceDiscovery_ServiceDiscovered;
             //_serviceDiscovery.ServiceInstanceDiscovered += _serviceDiscovery_ServiceInstanceDiscovered;
 
-            _fabric = await _fabricManager.GetAsync("Test");
-            _fabric.NodeAdded += OnNodeAddedToFabric;
+            Fabric = await _fabricManager.GetAsync("Test");
+            //_fabric.NodeAdded += OnNodeAddedToFabric;
         }
 
         //private void _mDNSService_AnswerReceived(object sender, MessageEventArgs e)
@@ -146,7 +146,7 @@ namespace Matter.Core
 
         public async Task RunAsync()
         {
-            if (_fabric == null)
+            if (Fabric == null)
             {
                 throw new InvalidOperationException($"Fabric not initialized. Call {nameof(InitAsync)}() first.");
             }
@@ -158,25 +158,25 @@ namespace Matter.Core
 
             // Reconnect to the nodes we have already commissioned.
             //
-            await _sessionManager.Start(_fabric!);
+            await _sessionManager.Start(Fabric!);
         }
 
-        private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)
-        {
-            MatterNodeAddedToFabricEvent?.Invoke(this, new MatterNodeAddedToFabricEventArgs()
-            {
+        //private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)
+        //{
+        //    MatterNodeAddedToFabricEvent?.Invoke(this, new MatterNodeAddedToFabricEventArgs()
+        //    {
 
-            });
-        }
+        //    });
+        //}
 
         public Task<IEnumerable<Node>> GetNodesAsync()
         {
-            return Task.FromResult(_fabric.Nodes.AsEnumerable());
+            return Task.FromResult(Fabric.Nodes.AsEnumerable());
         }
 
         public Task<Node> GetNodeAsync(BigInteger nodeId)
         {
-            return Task.FromResult(_fabric.Nodes.First(x => x.NodeId.ToString() == nodeId.ToString()));
+            return Task.FromResult(Fabric.Nodes.First(x => x.NodeId.ToString() == nodeId.ToString()));
         }
     }
 }
