@@ -54,8 +54,8 @@ namespace Matter.Core.Sessions
 
             Console.WriteLine("spake1InitiatorRandomBytes: {0}", BitConverter.ToString(spake1InitiatorRandomBytes));
             Console.WriteLine("RootPublicKeyBytes: {0}", BitConverter.ToString(_fabric.RootPublicKeyBytes));
-            Console.WriteLine("FabricId: {0}", BitConverter.ToUInt64(_fabric.FabricId.ToByteArrayUnsigned()));
-            Console.WriteLine("NodeId: {0}", BitConverter.ToUInt64(_node.NodeId.ToByteArrayUnsigned()));
+            Console.WriteLine("FabricId: {0}", _fabric.FabricId);
+            Console.WriteLine("NodeId: {0}", _node.NodeId);
 
             // Destination identifier is a composite.
             //
@@ -102,9 +102,9 @@ namespace Matter.Core.Sessions
 
             var sigma2MessageFrame = await caseExchange.WaitForNextMessageAsync();
 
-            Console.WriteLine("┌───────────────────────┐");
-            Console.WriteLine("| SENDING CASE - Sigma2 |");
-            Console.WriteLine("└───────────────────────┘");
+            Console.WriteLine("┌────────────────────────┐");
+            Console.WriteLine("| RECEIVED CASE - Sigma2 |");
+            Console.WriteLine("└────────────────────────┘");
 
             var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
 

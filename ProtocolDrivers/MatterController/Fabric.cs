@@ -13,7 +13,6 @@ using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 
 namespace Matter.Core.Fabrics
 {
@@ -119,19 +118,24 @@ namespace Matter.Core.Fabrics
             return (noc, keyPair);
         }
 
-        internal void AddCommissionedNodeAsync(BigInteger peerNodeId, System.Net.IPAddress address, ushort port)
+        public Node AddCommissionedNodeAsync(BigInteger peerNodeId, System.Net.IPAddress address, ushort port)
         {
-            Nodes.Add(new Node()
+            Node node = new()
             {
                 NodeId = peerNodeId,
                 LastKnownIpAddress = address,
                 LastKnownPort = port,
-            });
+                Fabric = this
+            };
+
+            Nodes.Add(node);
 
             NodeAdded?.Invoke(this, new NodeAddedToFabricEventArgs()
             {
                 NodeId = peerNodeId,
             });
+
+            return node;
         }
 
         internal Node CreateNode()

@@ -36,14 +36,6 @@ namespace Matter.Core
                 IPAddress ipAddress = LastKnownIpAddress;
                 ushort? port = LastKnownPort;
 
-                //var addresses = nodeRegister.GetCommissionedNodeAddresses(Fabric.GetFullNodeName(this));
-
-                //if (addresses.Count() == 0)
-                //{
-                //    IsConnected = false;
-                //    return;
-                //}
-
                 var connection = new UdpConnection(ipAddress!, port!.Value);
 
                 var unsecureSession = new UnsecureSession(connection);

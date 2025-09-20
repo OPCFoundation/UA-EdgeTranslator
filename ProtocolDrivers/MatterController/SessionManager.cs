@@ -10,12 +10,6 @@ namespace Matter.Core.Sessions
     {
         private Dictionary<Node, ISession> _secureSessions = new();
         private Channel<Node> _connectionsQueue = Channel.CreateUnbounded<Node>();
-        //private readonly INodeRegister _nodeRegister;
-
-        public SessionManager()
-        {
-            //_nodeRegister = nodeRegister ?? throw new ArgumentNullException(nameof(nodeRegister));
-        }
 
         public ISession GetSecureSession(Node node)
         {

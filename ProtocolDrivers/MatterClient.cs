@@ -18,7 +18,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Connect(string ipAddress, int port)
         {
-            string[] ipParts = ipAddress.Split(['/', ':']);
+            string[] ipParts = ipAddress.Split(['/']);
 
             try
             {
@@ -28,10 +28,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 _controller.InitAsync().GetAwaiter().GetResult();
                 Task.Run(() => _controller.RunAsync().GetAwaiter().GetResult());
 
-                Node asset = _controller.GetNodeAsync(new Org.BouncyCastle.Math.BigInteger(ipParts[3])).GetAwaiter().GetResult();
-                asset.Connect().GetAwaiter().GetResult();
-
-                _controller.Fabric.AddCommissionedNodeAsync(asset.NodeId, IPAddress.Parse(ipParts[3]), ushort.Parse(ipParts[4]));
+                Node asset = _controller.Fabric.AddCommissionedNodeAsync(new Org.BouncyCastle.Math.BigInteger(ipParts[4]), IPAddress.Parse(ipParts[2]), ushort.Parse(ipParts[3]));
             }
             catch (Exception ex)
             {

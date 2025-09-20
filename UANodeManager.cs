@@ -1242,10 +1242,10 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("matter://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
-                if ((address.Length != 5) || (address[0] != "matter"))
+                string[] address = td.Base.Split(new char[] { '/' });
+                if ((address.Length != 5) || (address[0] != "matter:"))
                 {
-                    throw new Exception("Expected Matter device address in the format matter://threadDatasetTLV/deviceSetupCode!");
+                    throw new Exception("Expected Matter device address in the format matter://IPv6Address/Port/NodeId!");
                 }
 
                 // check if we can reach the Matter asset
