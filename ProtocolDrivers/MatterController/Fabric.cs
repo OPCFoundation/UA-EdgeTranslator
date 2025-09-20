@@ -1,4 +1,5 @@
 ﻿using Matter.Core.Certificates;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;

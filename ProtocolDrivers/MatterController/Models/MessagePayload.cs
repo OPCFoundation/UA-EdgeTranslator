@@ -1,7 +1,7 @@
-﻿using Matter.Core.TLV;
+﻿using Matter.Core;
 using System;
 
-namespace Matter.Core
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     public class MessagePayload
     {

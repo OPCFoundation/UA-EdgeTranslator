@@ -1,4 +1,4 @@
-﻿using Matter.Core.Events;
+﻿using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Math;
 using System.Collections.Generic;
 using System.Threading.Tasks;

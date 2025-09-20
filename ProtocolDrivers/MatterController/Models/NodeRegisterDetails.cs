@@ -1,4 +1,4 @@
-﻿namespace Matter.Core
+﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     public class NodeRegisterDetails
     {

@@ -1,5 +1,6 @@
 ﻿namespace Matter.Core
 {
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
     using System.Threading.Tasks;
 
     public interface INodeRegister

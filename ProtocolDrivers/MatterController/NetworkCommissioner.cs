@@ -1,7 +1,7 @@
 ﻿using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
-using Matter.Core.TLV;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;

@@ -1,6 +1,6 @@
 ﻿using Org.BouncyCastle.Math;
 
-namespace Matter.Core.Fabrics
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     public class NodeAddedToFabricEventArgs
     {

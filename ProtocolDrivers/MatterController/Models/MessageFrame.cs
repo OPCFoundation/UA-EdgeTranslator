@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Matter.Core
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     public class MessageFrame
     {
@@ -37,7 +37,7 @@ namespace Matter.Core
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             return sb.ToString();
         }
     }

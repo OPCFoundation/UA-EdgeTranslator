@@ -1,4 +1,4 @@
-﻿using Matter.Core.Commissioning;
+﻿using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using System.Threading.Tasks;
 
 namespace Matter.Core

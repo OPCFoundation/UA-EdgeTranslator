@@ -1,4 +1,5 @@
 ﻿using Matter.Core.Sessions;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using System;
 using System.Threading;
 using System.Threading.Channels;

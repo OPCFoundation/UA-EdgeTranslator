@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
+using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 

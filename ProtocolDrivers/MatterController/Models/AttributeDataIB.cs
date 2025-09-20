@@ -1,6 +1,4 @@
-﻿using Matter.Core.TLV;
-
-namespace Matter.Core.InteractionModel
+﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     public class AttributeDataIB
     {

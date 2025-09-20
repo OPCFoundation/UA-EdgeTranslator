@@ -1,6 +1,7 @@
 ﻿using Matter.Core.Commissioning;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Math;
 using System;
 using System.Collections.Generic;
@@ -162,7 +163,7 @@ namespace Matter.Core
 
         private void OnNodeAddedToFabric(object sender, NodeAddedToFabricEventArgs args)
         {
-            MatterNodeAddedToFabricEvent?.Invoke(this, new Events.MatterNodeAddedToFabricEventArgs()
+            MatterNodeAddedToFabricEvent?.Invoke(this, new MatterNodeAddedToFabricEventArgs()
             {
 
             });

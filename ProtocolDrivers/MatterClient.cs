@@ -22,7 +22,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 IFabricStorageProvider fabricStorageProvider = new FabricDiskStorage(Directory.GetCurrentDirectory());
-                _controller = new MatterController(fabricStorageProvider);
+                _controller = new Matter.Core.MatterController(fabricStorageProvider);
 
                 _controller.InitAsync().GetAwaiter().GetResult();
                 Task.Run(() => _controller.RunAsync().GetAwaiter().GetResult());

@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Matter.Core;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Matter.Core.TLV
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models
 {
     /// <summary>
     /// See Appendix A of the Matter Specification for the TLV encoding.
@@ -279,7 +280,7 @@ namespace Matter.Core.TLV
 
         public void OpenStructure(int? tag)
         {
-            int tagControl = _values[_pointer] >> 5;
+            var tagControl = _values[_pointer] >> 5;
 
             if ((0x1F & _values[_pointer++]) != 0x15) // Structure
             {
@@ -304,7 +305,7 @@ namespace Matter.Core.TLV
 
         public void OpenArray(int? tag)
         {
-            int tagControl = _values[_pointer] >> 5;
+            var tagControl = _values[_pointer] >> 5;
 
             if ((0x1F & _values[_pointer++]) != 0x16) // Array
             {
@@ -329,7 +330,7 @@ namespace Matter.Core.TLV
 
         public void OpenList(int? tag)
         {
-            int tagControl = _values[_pointer] >> 5;
+            var tagControl = _values[_pointer] >> 5;
 
             if ((0x1F & _values[_pointer++]) != 0x17) // List
             {
@@ -361,7 +362,7 @@ namespace Matter.Core.TLV
                 throw new Exception("Expected Boolean not found");
             }
 
-            bool value = selectedByte == 0x29; // True
+            var value = selectedByte == 0x29; // True
 
             if (_values[_pointer++] != (byte)tag)
             {
@@ -375,7 +376,7 @@ namespace Matter.Core.TLV
         {
             // Check the Control Octet.
             //
-            int length = 0;
+            var length = 0;
 
             if ((0x1F & _values[_pointer]) == 0x13)
             {
@@ -439,7 +440,7 @@ namespace Matter.Core.TLV
         {
             // Check the Control Octet.
             //
-            int length = 0;
+            var length = 0;
 
             if ((0x1F & _values[_pointer]) == 0x0C)
             {
@@ -502,7 +503,7 @@ namespace Matter.Core.TLV
 
         internal long GetSignedInt(int? tag)
         {
-            var elementType = (0x1F & _values[_pointer++]);
+            var elementType = 0x1F & _values[_pointer++];
 
             if (tag is null)
             {
@@ -536,7 +537,7 @@ namespace Matter.Core.TLV
 
         internal ulong GetUnsignedInt(int? tag)
         {
-            var elementType = (0x1F & _values[_pointer++]);
+            var elementType = 0x1F & _values[_pointer++];
 
             if (tag is null)
             {
@@ -558,7 +559,7 @@ namespace Matter.Core.TLV
                     value = Convert.ToUInt64(_values[_pointer++]);
                     break;
                 case 0x05: // 2 Byte Unsigned Integer
-                    value = (ulong)BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
                     _pointer += 2;
                     break;
                 default:
@@ -580,7 +581,7 @@ namespace Matter.Core.TLV
                 throw new Exception("Expected tag number not found");
             }
 
-            byte value = _values[_pointer++];
+            var value = _values[_pointer++];
 
             return value;
         }
@@ -664,7 +665,7 @@ namespace Matter.Core.TLV
 
             var indent = (StringBuilder sb) =>
             {
-                for (int x = 0; x < indentation; x++)
+                for (var x = 0; x < indentation; x++)
                 {
                     sb.Append(" ");
                 }
@@ -672,10 +673,10 @@ namespace Matter.Core.TLV
 
             var renderTag = (byte[] bytes, int index) =>
             {
-                int tagControl = bytes[index] >> 5;
-                int elementType = bytes[index] >> 0 & 0x1F;
+                var tagControl = bytes[index] >> 5;
+                var elementType = bytes[index] >> 0 & 0x1F;
 
-                int length = 1; // We have read the tagControl/elementType byte
+                var length = 1; // We have read the tagControl/elementType byte
 
                 sb.Append("|");
                 indent(sb);
@@ -974,8 +975,8 @@ namespace Matter.Core.TLV
 
         public object GetData(int? tag)
         {
-            int tagControl = _values[_pointer] >> 5;
-            int elementType = _values[_pointer] >> 0 & 0x1F;
+            var tagControl = _values[_pointer] >> 5;
+            var elementType = _values[_pointer] >> 0 & 0x1F;
 
             switch (elementType)
             {

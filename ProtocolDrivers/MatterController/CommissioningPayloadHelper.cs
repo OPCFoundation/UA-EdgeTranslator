@@ -1,5 +1,6 @@
 ﻿namespace Matter.Core.Commissioning
 {
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
     using System;
 
     public class CommissioningPayloadHelper

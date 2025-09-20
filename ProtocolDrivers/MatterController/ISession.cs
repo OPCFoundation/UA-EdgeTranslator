@@ -1,5 +1,6 @@
 ﻿namespace Matter.Core.Sessions
 {
+    using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
     using System.Threading;
     using System.Threading.Tasks;
 

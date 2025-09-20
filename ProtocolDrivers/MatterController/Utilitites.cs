@@ -1,4 +1,4 @@
-﻿using Matter.Core.TLV;
+﻿using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.X509;
 using System;
 using System.Linq;

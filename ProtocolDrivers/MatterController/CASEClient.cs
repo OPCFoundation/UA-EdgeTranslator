@@ -1,6 +1,6 @@
 ﻿using Matter.Core.Certificates;
 using Matter.Core.Fabrics;
-using Matter.Core.TLV;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;

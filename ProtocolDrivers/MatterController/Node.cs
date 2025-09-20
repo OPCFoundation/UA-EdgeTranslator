@@ -1,7 +1,7 @@
 ﻿using Matter.Core.Fabrics;
 using Matter.Core.InteractionModel;
 using Matter.Core.Sessions;
-using Matter.Core.TLV;
+using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using Org.BouncyCastle.Math;
 using System;
 using System.Collections.Generic;

@@ -1,4 +1,4 @@
-﻿using Matter.Core.TLV;
+﻿using Opc.Ua.Edge.Translator.ProtocolDrivers.MatterController.Models;
 using System.Collections.Generic;
 
 namespace Matter.Core.InteractionModel
