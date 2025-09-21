@@ -3,13 +3,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using MatterDotNet;
     using MatterDotNet.Clusters;
+    using MatterDotNet.Clusters.General;
     using MatterDotNet.Entities;
     using MatterDotNet.OperationalDiscovery;
+    using Microsoft.AspNetCore.Mvc;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading.Tasks;
     using Controller = MatterDotNet.Entities.Controller;
 
     public class MatterClient : IAsset
@@ -22,18 +25,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             try
             {
-                //    IFabricStorageProvider fabricStorageProvider = new FabricDiskStorage(Directory.GetCurrentDirectory());
-                //    _controller = new Matter.Core.MatterController(fabricStorageProvider);
-
-                //    _controller.InitAsync().GetAwaiter().GetResult();
-                //    Task.Run(() => _controller.RunAsync().GetAwaiter().GetResult());
-
-                //    var commissioningPayload = CommissioningPayloadHelper.ParseManualSetupCode(manualPairingCode);
-                //    ICommissioner commissioner = _controller.CreateCommissionerAsync().GetAwaiter().GetResult();
-                //    commissioner.CommissionNodeAsync(commissioningPayload).GetAwaiter().GetResult();
-
-                //    Node asset = _controller.Fabric.AddCommissionedNodeAsync(new Org.BouncyCastle.Math.BigInteger(ipParts[4]), IPAddress.Parse(ipParts[2]), ushort.Parse(ipParts[3]));
-
                 // Parse configJson to extract device info and attribute mappings
                 string[] commissionPayload = ipAddress.Split(['/']);
 
@@ -41,11 +32,26 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 CommissioningState state = _controller.StartCommissioning(CommissioningPayload.FromQR("MT:" + commissionPayload[2])).GetAwaiter().GetResult();
                 _controller.CompleteCommissioning(state).GetAwaiter().GetResult();
-
+                
                 _controller.EnumerateFabric().GetAwaiter().GetResult();
 
-                foreach(Node node in _controller.Nodes)
+                foreach (Node node in _controller.Nodes)
                 {
+                    if (node.Root.HasCluster<On_Off>())
+                    {
+                        var @switch = node.Root.GetCluster<On_Off>();
+                        if (@switch != null)
+                        {
+                            @switch.On(node.GetCASESession().GetAwaiter().GetResult()).GetAwaiter().GetResult();
+                            Console.WriteLine("Switch turned on!");
+
+                            Task.Delay(2000).GetAwaiter().GetResult();
+
+                            @switch.Off(node.GetCASESession().GetAwaiter().GetResult()).GetAwaiter().GetResult();
+                            Console.WriteLine("Switch turned off!");
+                        }
+                    }
+
                     foreach (DeviceTypeEnum deviceType in node.Root.DeviceTypes)
                     {
                         Console.WriteLine("Matter device type: " + deviceType.ToString());
