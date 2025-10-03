@@ -671,13 +671,16 @@ namespace Opc.Ua.Edge.Translator
             }
 
             // create nodes for each TD property
-            foreach (KeyValuePair<string, Property> property in td.Properties)
+            if ((td.Properties != null) && (td.Properties.Count > 0))
             {
-                if ((property.Value.Forms != null) && (property.Value.Forms.Length > 0))
+                foreach (KeyValuePair<string, Property> property in td.Properties)
                 {
-                    foreach (object form in property.Value.Forms)
+                    if ((property.Value.Forms != null) && (property.Value.Forms.Length > 0))
                     {
-                        AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                        foreach (object form in property.Value.Forms)
+                        {
+                            AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                        }
                     }
                 }
             }
