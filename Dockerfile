@@ -18,7 +18,7 @@ RUN dotnet build "UAEdgeTranslator.csproj" -c Release -o /app/build
 
 FROM build AS publish
 ARG TARGET_FRAMEWORK=net9.0
-RUN dotnet publish "UAEdgeTranslator.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "UAEdgeTranslator.csproj" -c Release -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
