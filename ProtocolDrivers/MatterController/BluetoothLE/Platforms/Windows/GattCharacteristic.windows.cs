@@ -47,7 +47,7 @@ namespace InTheHand.Bluetooth
             Service = service;
         }
 
-        public GattCharacteristicProperties Properties { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public GattCharacteristicProperties Properties { get; set; }
 
         public async Task WriteValue(byte[] value, bool requireResponse)
         {
