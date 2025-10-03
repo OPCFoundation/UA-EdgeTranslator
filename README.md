@@ -46,7 +46,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 > **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --net=host argument as well as with the -v /run/dbus:/run/dbus:ro argument within a Docker container!
 
-> **Note**: For testing the Matter asset interface, you will also need create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://tommie.github.io/tools/matter-qr-decoder).
+> **Note**: For testing the Matter asset interface, you will also need to create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, the setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://tommie.github.io/tools/matter-qr-decoder).
 
 Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
 
