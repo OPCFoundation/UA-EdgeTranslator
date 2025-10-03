@@ -48,6 +48,8 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly OCPPCentralSystem _ocppCentralSystem = new();
 
+        private readonly MatterController _matterController = new();
+
         private uint _ticks = 0;
 
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
@@ -501,7 +503,7 @@ namespace Opc.Ua.Edge.Translator
                 allAddresses.AddRange(new IEC61850Client().Discover());
                 allAddresses.AddRange(_lorawanNetworkServer.Discover());
                 allAddresses.AddRange(_ocppCentralSystem.Discover());
-                allAddresses.AddRange(new MatterClient().Discover());
+                allAddresses.AddRange(_matterController.Discover());
             }
             catch (Exception ex)
             {
@@ -586,7 +588,7 @@ namespace Opc.Ua.Edge.Translator
 
                 if (assetEndpoint.StartsWith("matter://"))
                 {
-                    td = new MatterClient().BrowseAndGenerateTD(assetName, assetEndpoint);
+                    td = _matterController.BrowseAndGenerateTD(assetName, assetEndpoint);
                 }
 
                 string contents = JsonConvert.SerializeObject(td);
@@ -1249,10 +1251,9 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 // check if we can reach the Matter asset
-                MatterClient client = new();
-                client.Connect(td.Base, 0);
+                _matterController.Connect(td.Base, 0);
 
-                assetInterface = client;
+                assetInterface = _matterController;
             }
 
             _assets.Add(td.Name, assetInterface);
