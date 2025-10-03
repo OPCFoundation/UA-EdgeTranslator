@@ -78,7 +78,7 @@ namespace Matter.Core.Commissioning
 
             _receivedAdvertisments.Add(e.Device.Id);
 
-            foreach (var section in e.ManufacturerData())
+            if (e.ServiceData().ContainsKey(BTPConnection.MATTER_UUID))
             {
                 try
                 {
@@ -88,7 +88,7 @@ namespace Matter.Core.Commissioning
 
                     if (disriminator != _payload.Discriminator)
                     {
-                        continue;
+                        return;
                     }
 
                     Console.WriteLine("Matter device discovered with the specified discriminator of {0}", disriminator);

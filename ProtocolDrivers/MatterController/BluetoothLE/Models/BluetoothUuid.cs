@@ -176,12 +176,32 @@ namespace InTheHand.Bluetooth
 
         public override bool Equals(object obj)
         {
-            throw new NotImplementedException();
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj.GetType() != GetType())
+            {
+                return false;
+            }
+
+            if (Equals(this, obj))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public override int GetHashCode()
         {
-            throw new NotImplementedException();
+            return _uuid.GetHashCode();
         }
     }
 }
