@@ -58,11 +58,11 @@ namespace Matter.Core.Commissioning
             opts.AcceptAllAdvertisements = false;
             opts.KeepRepeatedDevices = false;
 
-            // scan for 5 seconds
+            // scan for 15 seconds
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
 
             await _bluetooth.StartLEScanAsync(opts).ConfigureAwait(false);
-            await Task.Delay(5000).ConfigureAwait(false);
+            await Task.Delay(15000).ConfigureAwait(false);
             await _bluetooth.StopLEScanAsync().ConfigureAwait(false);
 
             _bluetooth.AdvertisementReceived -= Bluetooth_AdvertisementReceived;
