@@ -7,7 +7,6 @@
 
 #if WINDOWS
 
-using Linux.Bluetooth;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

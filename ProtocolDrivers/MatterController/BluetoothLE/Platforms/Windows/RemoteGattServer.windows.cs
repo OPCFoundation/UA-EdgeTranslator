@@ -48,12 +48,15 @@ namespace InTheHand.Bluetooth
                 {
                     Mtu = session.MaxPduSize;
                     session.MaxPduSizeChanged += Session_MaxPduSizeChanged;
+
                     // Even though this is a local variable, we still want to add it to our dispose list so
                     // we don't have to rely on the GC to clean it up.
                     ((BluetoothDeviceWindows)Device).AddDisposableObject(this, session);
 
                     if (session.CanMaintainConnection)
+                    {
                         session.MaintainConnection = true;
+                    }
                 }
 
                 // need to request something to force a connection
@@ -69,6 +72,8 @@ namespace InTheHand.Bluetooth
                         break;
                     }
                 }
+
+                IsConnected = true;
             }
             else
             {
@@ -78,7 +83,7 @@ namespace InTheHand.Bluetooth
 
         public void Session_MaxPduSizeChanged(Windows.Devices.Bluetooth.GenericAttributeProfile.GattSession sender, object args)
         {
-            System.Diagnostics.Debug.WriteLine($"MaxPduSizeChanged Size:{sender.MaxPduSize}");
+            Console.WriteLine($"MaxPduSizeChanged Size:{sender.MaxPduSize}");
             Mtu = sender.MaxPduSize;
         }
 

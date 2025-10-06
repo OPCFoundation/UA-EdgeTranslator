@@ -181,17 +181,12 @@ namespace InTheHand.Bluetooth
                 return false;
             }
 
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
             if (obj.GetType() != GetType())
             {
                 return false;
             }
 
-            if (Equals(this, obj))
+            if (Value == ((BluetoothUuid)obj).Value)
             {
                 return true;
             }

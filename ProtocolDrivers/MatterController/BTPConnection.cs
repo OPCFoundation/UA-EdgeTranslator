@@ -39,11 +39,11 @@ namespace Matter.Core.BTP
 
         public IConnection OpenConnection()
         {
-            AckTimer = new Timer(SendAck, null, ACK_TIME, ACK_TIME);
+            //AckTimer = new Timer(SendAck, null, ACK_TIME, ACK_TIME);
 
             if (!device.GattServer.IsConnected)
             {
-                device.GattServer.ConnectAsync();
+                device.GattServer.ConnectAsync().GetAwaiter().GetResult();
             }
 
             device.GattServerDisconnected += Device_GattServerDisconnected;
@@ -57,7 +57,9 @@ namespace Matter.Core.BTP
 
             Read.StartNotificationsAsync();
 
-            SendHandshake().WaitAsync(CONN_RSP_TIMEOUT);
+            connected = true;
+
+            //SendHandshake().WaitAsync(CONN_RSP_TIMEOUT);
 
             return this;
         }
@@ -93,9 +95,9 @@ namespace Matter.Core.BTP
             ServerWindow = frame.WindowSize;
 
             if (frame.Version != BTPFrame.MATTER_BT_VERSION1)
+            {
                 throw new NotSupportedException($"Version {frame.Version} not supported");
-
-            connected = true;
+            }
 
             Console.WriteLine($"MTU: {MTU}, Window: {ServerWindow}");
         }

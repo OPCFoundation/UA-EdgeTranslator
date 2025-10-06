@@ -13,7 +13,6 @@ using System.Collections.ObjectModel;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Foundation;
 
 namespace InTheHand.Bluetooth
 {
@@ -25,29 +24,15 @@ namespace InTheHand.Bluetooth
 
         public BluetoothAdvertisingEventWindows(BluetoothLEAdvertisementReceivedEventArgs args)
         {
-            IAsyncOperation<BluetoothLEDevice> deviceAsync = BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress, args.BluetoothAddressType);
+            ((BluetoothDeviceWindows)Device).NativeDevice = BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress, args.BluetoothAddressType).GetAwaiter().GetResult();
+            
+            Device.Id = ((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId.Id;
 
-            if (deviceAsync.AsTask().Wait(7000))
-            {
-                ((BluetoothDeviceWindows)Device).NativeDevice = deviceAsync.GetResults();
-            }
-            else
-            {
-                try
-                {
-                    // The documents state that it is not possible to cancel 'FromBluetoothAddressAsync'
-                    // so mask any exceptions before calling this.
-                    deviceAsync.Cancel();
-                }
-                catch
-                {
-                }
-            }
+            Device.GattServer = new RemoteGattServerWindows();
+            Device.GattServer.Device = Device;
 
             _advertisement = args.Advertisement;
         }
-
-
 
         public IReadOnlyDictionary<ushort,byte[]> ManufacturerData()
         {
@@ -73,35 +58,33 @@ namespace InTheHand.Bluetooth
                 {
                     // read uuid
                     data.Data.CopyTo(0, uuidBytes, 0, 16);
+
                     // read data
                     byte[] dataBytes = new byte[data.Data.Length - 16];
                     data.Data.CopyTo(16, dataBytes, 0, dataBytes.Length);
                     serviceData.Add(new Guid(uuidBytes), dataBytes);
                 }
-                else if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData32BitUuids)
+
+                if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData32BitUuids)
                 {
                     // read uuid
                     data.Data.CopyTo(0, uuidBytes, 0, 4);
+
                     // read data
                     byte[] dataBytes = new byte[data.Data.Length - 4];
                     data.Data.CopyTo(4, dataBytes, 0, dataBytes.Length);
                     serviceData.Add(BluetoothUuid.FromShortId(BitConverter.ToUInt16(uuidBytes, 0)), dataBytes);
                 }
-                else if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData16BitUuids)
+
+                if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData16BitUuids)
                 {
                     // read uuid
                     data.Data.CopyTo(0, uuidBytes, 0, 2);
+
                     // read data
                     byte[] dataBytes = new byte[data.Data.Length - 2];
                     data.Data.CopyTo(2, dataBytes, 0, dataBytes.Length);
                     serviceData.Add(BluetoothUuid.FromShortId(BitConverter.ToUInt16(uuidBytes, 0)), dataBytes);
-                }
-                else
-                {
-                    if (data.DataType != BluetoothLEAdvertisementDataTypes.Flags)
-                    {
-                        System.Diagnostics.Debug.WriteLine(data.DataType);
-                    }
                 }
             }
 
