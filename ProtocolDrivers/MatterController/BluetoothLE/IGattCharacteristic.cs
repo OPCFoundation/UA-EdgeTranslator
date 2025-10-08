@@ -5,10 +5,7 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
-using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
-using System.Reflection.PortableExecutable;
 using System.Threading.Tasks;
 
 namespace InTheHand.Bluetooth

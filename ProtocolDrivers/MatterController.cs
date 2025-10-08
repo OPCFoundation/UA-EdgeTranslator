@@ -260,8 +260,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 var instanceName = server.Name.ToString();
 
-                Console.WriteLine($"Processing '{instanceName}'");
-
                 if (instanceName.Contains("_matter._tcp.local"))
                 {
                     Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
@@ -280,13 +278,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private void _serviceDiscovery_ServiceInstanceDiscovered(object sender, ServiceInstanceDiscoveryEventArgs e)
         {
-            Console.WriteLine($"Service Instance Discovered '{e.ServiceInstanceName}'");
             _mDNSService.SendQuery(e.ServiceInstanceName, type: DnsType.SRV);
         }
 
         private void _serviceDiscovery_ServiceDiscovered(object sender, DomainName serviceName)
         {
-            Console.WriteLine($"Service Discovered '{serviceName}'");
             _mDNSService.SendQuery(serviceName, type: DnsType.PTR);
         }
     }

@@ -11,6 +11,8 @@ using System;
 using System.Security;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
+using Windows.Devices.Enumeration;
 
 namespace InTheHand.Bluetooth
 {
@@ -40,10 +42,10 @@ namespace InTheHand.Bluetooth
             }
 
             var status = await ((BluetoothDeviceWindows)Device).NativeDevice.RequestAccessAsync();
-            if (status == Windows.Devices.Enumeration.DeviceAccessStatus.Allowed)
+            if (status == DeviceAccessStatus.Allowed)
             {
                 ((BluetoothDeviceWindows)Device).LastKnownAddress = ((BluetoothDeviceWindows)Device).NativeDevice.BluetoothAddress;
-                var session = await Windows.Devices.Bluetooth.GenericAttributeProfile.GattSession.FromDeviceIdAsync(((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId);
+                var session = await GattSession.FromDeviceIdAsync(((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId);
                 if (session != null)
                 {
                     Mtu = session.MaxPduSize;
@@ -62,8 +64,8 @@ namespace InTheHand.Bluetooth
                 // need to request something to force a connection
                 for (int i = 0; i < 3; i++)
                 {
-                    var services = await ((BluetoothDeviceWindows)Device).NativeDevice.GetGattServicesForUuidAsync(GattServiceUuids.GenericAccess, Windows.Devices.Bluetooth.BluetoothCacheMode.Uncached);
-                    if (services.Status == Windows.Devices.Bluetooth.GenericAttributeProfile.GattCommunicationStatus.Success)
+                    var services = await ((BluetoothDeviceWindows)Device).NativeDevice.GetGattServicesForUuidAsync(GattServiceUuids.GenericAccess, BluetoothCacheMode.Uncached);
+                    if (services.Status == GattCommunicationStatus.Success)
                     {
                         foreach (var service in services.Services)
                         {
@@ -81,7 +83,7 @@ namespace InTheHand.Bluetooth
             }
         }
 
-        public void Session_MaxPduSizeChanged(Windows.Devices.Bluetooth.GenericAttributeProfile.GattSession sender, object args)
+        public void Session_MaxPduSizeChanged(GattSession sender, object args)
         {
             Console.WriteLine($"MaxPduSizeChanged Size:{sender.MaxPduSize}");
             Mtu = sender.MaxPduSize;

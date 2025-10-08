@@ -247,7 +247,7 @@ namespace Matter.Core.Commissioning
                     armFailsafeMessageFrame.SecurityFlags = 0x00;
                     armFailsafeMessageFrame.SourceNodeID = 0x00;
                     paseExchange.SendAsync(armFailsafeMessageFrame).GetAwaiter().GetResult();
-                    paseExchange.ReceiveAsync().GetAwaiter().GetResult();
+                    paseExchange.WaitForNextMessageAsync().GetAwaiter().GetResult();
 
                     var csrRequest = new MatterTLV();
                     csrRequest.AddStructure();

@@ -75,7 +75,7 @@ namespace Matter.Core.Fabrics
 
                 Fabric = new Fabric() {
                     FabricId = fabricId,
-                    FabricName = "Fabric",
+                    FabricName = "fabric",
                     RootNodeId = rootNodeId,
                     AdminVendorId = 0xFFF1, // Default value from Matter specification
                     RootCAKeyPair = keyPair,

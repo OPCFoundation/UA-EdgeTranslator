@@ -84,7 +84,7 @@ namespace Matter.Core
         /// This is a message pump. It waits for data to be available and passes it to
         /// the _incomingMessageChannel
         /// </summary>
-        public async Task ReceiveAsync()
+        private async Task ReceiveAsync()
         {
             do
             {

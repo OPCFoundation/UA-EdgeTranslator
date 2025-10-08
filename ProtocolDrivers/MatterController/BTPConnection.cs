@@ -27,7 +27,7 @@ namespace Matter.Core.BTP
         byte rxCounter = 0;
         byte rxAcknowledged = 255; //Ensures we acknowledge the handshake
         byte txAcknowledged = 0;
-        Timer AckTimer;
+        //Timer AckTimer;
         SemaphoreSlim WriteLock = new SemaphoreSlim(1, 1);
         bool connected;
         IBluetoothDevice device;
@@ -55,11 +55,12 @@ namespace Matter.Core.BTP
             Write = service.GetCharacteristicAsync(C1_UUID).GetAwaiter().GetResult();
             Read = service.GetCharacteristicAsync(C2_UUID).GetAwaiter().GetResult();
 
-            Read.StartNotificationsAsync();
+            Read.CharacteristicValueChanged += Read_CharacteristicValueChanged;
+            Read.StartNotificationsAsync().GetAwaiter().GetResult();
 
             connected = true;
 
-            //SendHandshake().WaitAsync(CONN_RSP_TIMEOUT);
+            SendHandshake().GetAwaiter().GetResult();
 
             return this;
         }
@@ -72,9 +73,9 @@ namespace Matter.Core.BTP
         private void Device_GattServerDisconnected(object sender, EventArgs e)
         {
             connected = false;
-            AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            //AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             rxAcknowledged = 255;
-            Console.WriteLine(DateTime.Now + "** Disconnected **");
+            Console.WriteLine(DateTime.Now + "** GATT Disconnected **");
         }
 
         private async Task SendHandshake()
@@ -86,9 +87,6 @@ namespace Matter.Core.BTP
             handshake.ATT_MTU = MTU;
 
             await Write.WriteValueWithResponseAsync(handshake.Serialize(9));
-            Read.CharacteristicValueChanged += Read_CharacteristicValueChanged;
-
-            await Read.StartNotificationsAsync();
 
             BTPFrame frame = await instream.Reader.ReadAsync();
             MTU = frame.ATT_MTU;
@@ -138,16 +136,22 @@ namespace Matter.Core.BTP
                 BTPFrame frame = new BTPFrame(e.Value!);
                 Console.WriteLine("BTP Received: " + frame);
 
-                AckTimer?.Change(ACK_TIME, ACK_TIME);
+                //AckTimer?.Change(ACK_TIME, ACK_TIME);
 
                 if ((frame.Flags & BTPFlags.Acknowledge) != 0)
+                {
                     txAcknowledged = frame.Acknowledge;
+                }
 
                 if ((frame.Flags & BTPFlags.Handshake) == 0)
+                {
                     rxCounter = frame.Sequence;
+                }
 
                 if ((frame.Flags & BTPFlags.Continuing) != 0 || (frame.Flags & BTPFlags.Beginning) != 0)
+                {
                     instream.Writer.TryWrite(frame);
+                }
             }
         }
 
@@ -164,12 +168,10 @@ namespace Matter.Core.BTP
 
             try
             {
-                byte? ack = null;
                 if (rxCounter != rxAcknowledged)
                 {
-                    ack = rxCounter;
                     rxAcknowledged = rxCounter;
-                    AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                    //AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
                 }
 
                 await WaitForWindow(CancellationToken.None).ConfigureAwait(false);

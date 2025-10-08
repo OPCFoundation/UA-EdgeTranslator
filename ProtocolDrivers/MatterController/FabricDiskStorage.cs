@@ -48,16 +48,16 @@ namespace Matter.Core.Fabrics
 
         public bool DoesFabricExist()
         {
-            return Directory.Exists(GetFullPath("Fabric"));
+            return Directory.Exists(GetFullPath("pki/fabric"));
         }
 
         public async Task<Fabric> LoadFabricAsync()
         {
-            var allFiles = Directory.GetFiles(GetFullPath("Fabric"));
+            var allFiles = Directory.GetFiles(GetFullPath("pki/fabric"));
 
             var fabric = new Fabric()
             {
-                FabricName = "Fabric",
+                FabricName = "fabric",
             };
 
             foreach (var file in allFiles)
@@ -98,7 +98,7 @@ namespace Matter.Core.Fabrics
                 }
             }
 
-            var allDirectories = Directory.GetDirectories(GetFullPath("Fabric"));
+            var allDirectories = Directory.GetDirectories(GetFullPath("pki/fabric"));
 
             foreach (var directory in allDirectories)
             {
