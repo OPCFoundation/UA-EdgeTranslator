@@ -72,12 +72,19 @@ namespace InTheHand.Bluetooth
         public async Task StartNotificationsAsync()
         {
             var value = Uap.GattClientCharacteristicConfigurationDescriptorValue.None;
+
             if (_characteristic.CharacteristicProperties.HasFlag(Uap.GattCharacteristicProperties.Notify))
+            {
                 value = Uap.GattClientCharacteristicConfigurationDescriptorValue.Notify;
+            }
             else if (_characteristic.CharacteristicProperties.HasFlag(Uap.GattCharacteristicProperties.Indicate))
+            {
                 value = Uap.GattClientCharacteristicConfigurationDescriptorValue.Indicate;
+            }
             else
+            {
                 return;
+            }
 
             try
             {
