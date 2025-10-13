@@ -14,7 +14,8 @@ COPY ["UAEdgeTranslator.csproj", "."]
 RUN dotnet restore "./UAEdgeTranslator.csproj"
 COPY . .
 WORKDIR "/src/."
-RUN dotnet build "UAEdgeTranslator.csproj" -c Release -o /app/build
+ARG TARGET_FRAMEWORK=net9.0
+RUN dotnet build "UAEdgeTranslator.csproj" -c Release -o /app/build -f $TARGET_FRAMEWORK
 
 FROM build AS publish
 ARG TARGET_FRAMEWORK=net9.0
