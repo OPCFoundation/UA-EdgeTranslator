@@ -10,89 +10,77 @@
 using System;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
-using Uap = Windows.Devices.Bluetooth.GenericAttributeProfile;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 
 namespace InTheHand.Bluetooth
 {
     public class GattCharacteristicWindows : IGattCharacteristic
     {
-        private readonly Uap.GattCharacteristic _characteristic;
+        private readonly GattCharacteristic _characteristicWindows;
 
-        public IGattService Service { get; set; }
-
-        private EventHandler<GattCharacteristicValueChangedEventArgs> _characteristicValueChanged;
+        private event EventHandler<GattCharacteristicValueChangedEventArgs> _characteristicValueChanged;
 
         public event EventHandler<GattCharacteristicValueChangedEventArgs> CharacteristicValueChanged
         {
             add
             {
                 _characteristicValueChanged += value;
-                AddCharacteristicValueChanged();
+                _characteristicWindows.ValueChanged += OnCharacteristicValueChangedInternal;
             }
+
             remove
             {
                 _characteristicValueChanged -= value;
-                RemoveCharacteristicValueChanged();
+                _characteristicWindows.ValueChanged -= OnCharacteristicValueChangedInternal;
             }
         }
 
-        public void OnCharacteristicValueChanged(GattCharacteristicValueChangedEventArgs args)
+        private void OnCharacteristicValueChangedInternal(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            _characteristicValueChanged?.Invoke(this, args);
+            _characteristicValueChanged?.Invoke(this, new GattCharacteristicValueChangedEventArgs(args.CharacteristicValue.Length == 0 ? [] : args.CharacteristicValue.ToArray()));
         }
 
-        internal GattCharacteristicWindows(IGattService service, Uap.GattCharacteristic characteristic)
+        public GattCharacteristicWindows(GattCharacteristic characteristic)
         {
-            _characteristic = characteristic;
-            Service = service;
+            _characteristicWindows = characteristic;
         }
 
-        public GattCharacteristicProperties Properties { get; set; }
-
-        public async Task WriteValue(byte[] value, bool requireResponse)
+        public async Task WriteAsync(byte[] value)
         {
-            await _characteristic.WriteValueAsync(value.AsBuffer(), requireResponse ? Uap.GattWriteOption.WriteWithResponse : Uap.GattWriteOption.WriteWithoutResponse);
-        }
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
 
-        private void AddCharacteristicValueChanged()
-        {
-            _characteristic.ValueChanged += Characteristic_ValueChanged;
-        }
+            if (value.Length > 512)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be larger than 512 bytes.");
+            }
 
-        private void Characteristic_ValueChanged(Uap.GattCharacteristic sender, Uap.GattValueChangedEventArgs args)
-        {
-            OnCharacteristicValueChanged(new GattCharacteristicValueChangedEventArgs(args.CharacteristicValue.Length == 0 ? [] : args.CharacteristicValue.ToArray()));
-        }
-
-        void RemoveCharacteristicValueChanged()
-        {
-            _characteristic.ValueChanged -= Characteristic_ValueChanged;
+            await _characteristicWindows.WriteValueAsync(value.AsBuffer(), GattWriteOption.WriteWithResponse);
         }
 
         public async Task StartNotificationsAsync()
         {
-            var value = Uap.GattClientCharacteristicConfigurationDescriptorValue.None;
+            var value = GattClientCharacteristicConfigurationDescriptorValue.None;
 
-            if (_characteristic.CharacteristicProperties.HasFlag(Uap.GattCharacteristicProperties.Notify))
+            if (_characteristicWindows.CharacteristicProperties.HasFlag(Windows.Devices.Bluetooth.GenericAttributeProfile.GattCharacteristicProperties.Notify))
             {
-                value = Uap.GattClientCharacteristicConfigurationDescriptorValue.Notify;
+                value |= GattClientCharacteristicConfigurationDescriptorValue.Notify;
             }
-            else if (_characteristic.CharacteristicProperties.HasFlag(Uap.GattCharacteristicProperties.Indicate))
+
+            if (_characteristicWindows.CharacteristicProperties.HasFlag(Windows.Devices.Bluetooth.GenericAttributeProfile.GattCharacteristicProperties.Indicate))
             {
-                value = Uap.GattClientCharacteristicConfigurationDescriptorValue.Indicate;
-            }
-            else
-            {
-                return;
+                value |= GattClientCharacteristicConfigurationDescriptorValue.Indicate;
             }
 
             try
             {
-                var result = await _characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(value);
+                await _characteristicWindows.WriteClientCharacteristicConfigurationDescriptorAsync(value);
             }
-            catch(UnauthorizedAccessException)
+            catch (Exception)
             {
-                // not supported
+                throw new NotSupportedException("Notifications not supported for this GATT characteristic!");
             }
         }
 
@@ -100,12 +88,11 @@ namespace InTheHand.Bluetooth
         {
             try
             {
-                var result = await _characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(Uap.GattClientCharacteristicConfigurationDescriptorValue.None);
+                await _characteristicWindows.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
             }
-            catch
+            catch (Exception)
             {
-                throw new NotSupportedException();
-                // HRESULT 0x800704D6 means that a connection to the server could not be made because the limit on the number of concurrent connections for this account has been reached.
+                throw new NotSupportedException("Notifications not supported for this GATT characteristic!");
             }
         }
     }

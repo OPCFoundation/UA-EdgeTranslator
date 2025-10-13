@@ -16,14 +16,10 @@ namespace InTheHand.Bluetooth
     partial class GattServiceWindows : IGattService
     {
         private readonly WBluetooth.GattDeviceService _service;
-        private readonly WBluetooth.GattSession _session;
-        private readonly bool _isPrimary;
 
-        internal GattServiceWindows(IBluetoothDevice device, WBluetooth.GattDeviceService service, bool isPrimary)
+        internal GattServiceWindows(WBluetooth.GattDeviceService service)
         {
             _service = service;
-            _session = _service.Session;
-            _isPrimary = isPrimary;
         }
 
         public async Task<bool> OpenAsync()
@@ -57,7 +53,9 @@ namespace InTheHand.Bluetooth
             var result = await _service.GetCharacteristicsForUuidAsync(characteristic);
 
             if (result.Status == WBluetooth.GattCommunicationStatus.Success && result.Characteristics.Count > 0)
-                return new GattCharacteristicWindows(this, result.Characteristics[0]);
+            {
+                return new GattCharacteristicWindows(result.Characteristics[0]);
+            }
 
             return null;
         }

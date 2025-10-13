@@ -76,7 +76,6 @@ namespace Matter.Core
 
         public async Task<MessageFrame> WaitForNextMessageAsync()
         {
-            Console.WriteLine("Waiting for incoming message...");
             return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
         }
 

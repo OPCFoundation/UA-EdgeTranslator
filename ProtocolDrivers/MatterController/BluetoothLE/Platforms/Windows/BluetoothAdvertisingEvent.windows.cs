@@ -13,6 +13,7 @@ using System.Collections.ObjectModel;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Foundation;
 
 namespace InTheHand.Bluetooth
 {
@@ -24,26 +25,30 @@ namespace InTheHand.Bluetooth
 
         public BluetoothAdvertisingEventWindows(BluetoothLEAdvertisementReceivedEventArgs args)
         {
-            ((BluetoothDeviceWindows)Device).NativeDevice = BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress, args.BluetoothAddressType).GetAwaiter().GetResult();
-            
-            Device.Id = ((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId.Id;
+            IAsyncOperation<BluetoothLEDevice> deviceAsync = BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress, args.BluetoothAddressType);
 
+            // Wait some time for this task to complete as otherwise the event will fire before the 'Device' property is set.
+            if (deviceAsync.AsTask().Wait(7000))
+            {
+                ((BluetoothDeviceWindows)Device).NativeDevice = deviceAsync.GetResults();
+            }
+            else
+            {
+                try
+                {
+                    deviceAsync.Cancel();
+                }
+                catch (Exception)
+                {
+                    // do nothing
+                }
+            }
+
+            Device.Id = ((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId.Id;
             Device.GattServer = new RemoteGattServerWindows();
             Device.GattServer.Device = Device;
 
             _advertisement = args.Advertisement;
-        }
-
-        public IReadOnlyDictionary<ushort,byte[]> ManufacturerData()
-        {
-            var manufacturerData = new Dictionary<ushort, byte[]>();
-
-            foreach(BluetoothLEManufacturerData data in _advertisement.ManufacturerData)
-            {
-                manufacturerData.Add(data.CompanyId, data.Data.ToArray());
-            }
-
-            return new ReadOnlyDictionary<ushort,byte[]>(manufacturerData);
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()

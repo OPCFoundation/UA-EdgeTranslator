@@ -13,8 +13,6 @@ namespace InTheHand.Bluetooth
     {
         public IBluetoothDevice Device { get; set; }
 
-        public IReadOnlyDictionary<ushort,byte[]> ManufacturerData();
-
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData();
     }
 }

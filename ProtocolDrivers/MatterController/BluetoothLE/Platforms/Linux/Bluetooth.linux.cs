@@ -5,6 +5,8 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
+#if !WINDOWS
+
 using Linux.Bluetooth;
 using System;
 using System.Linq;
@@ -52,3 +54,5 @@ public class BluetoothLinux : IBluetooth
         AdvertisementReceived?.Invoke(this, eventInfo);
     }
 }
+
+#endif

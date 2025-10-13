@@ -5,6 +5,8 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
+#if !WINDOWS
+
 using Linux.Bluetooth;
 using Linux.Bluetooth.Extensions;
 using System.Threading.Tasks;
@@ -36,3 +38,5 @@ namespace InTheHand.Bluetooth
         }
     }
 }
+
+#endif

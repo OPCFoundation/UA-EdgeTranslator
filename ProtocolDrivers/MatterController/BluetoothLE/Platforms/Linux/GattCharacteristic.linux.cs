@@ -5,6 +5,8 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
+#if !WINDOWS
+
 using Linux.Bluetooth;
 using System;
 using System.Collections.Generic;
@@ -14,20 +16,58 @@ namespace InTheHand.Bluetooth
 {
     public class GattCharacteristicLinux : IGattCharacteristic
     {
-        private readonly IGattCharacteristic1 _characteristic;
+        private readonly IGattCharacteristic1 _characteristicLinux;
+        private IDisposable _eventHandler;
+        private GattCharacteristicProperties _properties;
 
-        public event EventHandler<GattCharacteristicValueChangedEventArgs> CharacteristicValueChanged;
+        private event EventHandler<GattCharacteristicValueChangedEventArgs> _characteristicValueChanged;
 
-        public void OnCharacteristicValueChanged(GattCharacteristicValueChangedEventArgs args)
+        public event EventHandler<GattCharacteristicValueChangedEventArgs> CharacteristicValueChanged
         {
-            CharacteristicValueChanged?.Invoke(this, args);
+            add
+            {
+                _characteristicValueChanged += value;
+                AddCharacteristicValueChanged();
+            }
+
+            remove
+            {
+                _characteristicValueChanged -= value;
+                RemoveCharacteristicValueChanged();
+            }
         }
 
-        public GattCharacteristicProperties Properties { get; set; }
+        private void AddCharacteristicValueChanged()
+        {
+            Task.Run(async () =>
+            {
+                _eventHandler = await _characteristicLinux.WatchPropertiesAsync(OnCharacteristicValueChangedInternal);
+            });
+        }
+
+        private void OnCharacteristicValueChangedInternal(Tmds.DBus.PropertyChanges changes)
+        {
+            foreach (var change in changes.Changed)
+            {
+                if (change.Key == "Value")
+                {
+                    _characteristicValueChanged?.Invoke(this, new GattCharacteristicValueChangedEventArgs((byte[])change.Value));
+                }
+            }
+        }
+
+        private void RemoveCharacteristicValueChanged()
+        {
+            if (_eventHandler != null)
+            {
+                _eventHandler.Dispose();
+                _eventHandler = null;
+            }
+        }
 
         internal GattCharacteristicLinux(IGattCharacteristic1 characteristic, BluetoothUuid uuid)
         {
-            _characteristic = characteristic;
+            _characteristicLinux = characteristic;
         }
 
         internal async Task Init()
@@ -37,51 +77,51 @@ namespace InTheHand.Bluetooth
 
         private async Task UpdateCharacteristicProperties()
         {
-            string[] flags = await GattCharacteristic1Extensions.GetFlagsAsync(_characteristic);
+            string[] flags = await GattCharacteristic1Extensions.GetFlagsAsync(_characteristicLinux);
 
-            var characteristicProperties = GattCharacteristicProperties.None;
+            _properties = GattCharacteristicProperties.None;
             foreach (var flag in flags)
             {
                 switch (flag)
                 {
                     case "broadcast":
-                        characteristicProperties |= GattCharacteristicProperties.Broadcast;
+                        _properties |= GattCharacteristicProperties.Broadcast;
                         break;
 
                     case "read":
-                        characteristicProperties |= GattCharacteristicProperties.Read;
+                        _properties |= GattCharacteristicProperties.Read;
                         break;
 
                     case "write-without-response":
-                        characteristicProperties |= GattCharacteristicProperties.WriteWithoutResponse;
+                        _properties |= GattCharacteristicProperties.WriteWithoutResponse;
                         break;
 
                     case "write":
-                        characteristicProperties |= GattCharacteristicProperties.Write;
+                        _properties |= GattCharacteristicProperties.Write;
                         break;
 
                     case "notify":
-                        characteristicProperties |= GattCharacteristicProperties.Notify;
+                        _properties |= GattCharacteristicProperties.Notify;
                         break;
 
                     case "indicate":
-                        characteristicProperties |= GattCharacteristicProperties.Indicate;
+                        _properties |= GattCharacteristicProperties.Indicate;
                         break;
 
                     case "authenticated-signed-writes":
-                        characteristicProperties |= GattCharacteristicProperties.AuthenticatedSignedWrites;
+                        _properties |= GattCharacteristicProperties.AuthenticatedSignedWrites;
                         break;
 
                     case "extended-properties":
-                        characteristicProperties |= GattCharacteristicProperties.ExtendedProperties;
+                        _properties |= GattCharacteristicProperties.ExtendedProperties;
                         break;
 
                     case "reliable-write":
-                        characteristicProperties |= GattCharacteristicProperties.ReliableWrites;
+                        _properties |= GattCharacteristicProperties.ReliableWrites;
                         break;
 
                     case "writable-auxiliaries":
-                        characteristicProperties |= GattCharacteristicProperties.WriteableAuxiliaries;
+                        _properties |= GattCharacteristicProperties.WriteableAuxiliaries;
                         break;
 
                     /* Not handled values:
@@ -101,24 +141,22 @@ namespace InTheHand.Bluetooth
                      */
                 }
             }
-
-            Properties = characteristicProperties;
         }
 
-        public async Task WriteValue(byte[] value, bool requireResponse)
+        public async Task WriteAsync(byte[] value)
         {
             var options = new Dictionary<string, object> {
-                { "type", requireResponse ? "request" : "command" }
+                { "type", "request" }
             };
 
-            await _characteristic.WriteValueAsync(value, options).ConfigureAwait(false);
+            await _characteristicLinux.WriteValueAsync(value, options).ConfigureAwait(false);
         }
 
         public Task StartNotificationsAsync()
         {
-            if (Properties.HasFlag(GattCharacteristicProperties.Notify) | Properties.HasFlag(GattCharacteristicProperties.Indicate))
+            if (_properties.HasFlag(GattCharacteristicProperties.Notify) || _properties.HasFlag(GattCharacteristicProperties.Indicate))
             {
-                return _characteristic.StartNotifyAsync();
+                return _characteristicLinux.StartNotifyAsync();
             }
 
             return Task.CompletedTask;
@@ -126,7 +164,9 @@ namespace InTheHand.Bluetooth
 
         public Task StopNotificationsAsync()
         {
-            return _characteristic.StopNotifyAsync();
+            return _characteristicLinux.StopNotifyAsync();
         }
     }
 }
+
+#endif

@@ -15,28 +15,9 @@ namespace InTheHand.Bluetooth
     /// </summary>
     public interface IGattCharacteristic
     {
-        public GattCharacteristicProperties Properties { get; set; }
-
-        public Task WriteValueWithResponseAsync(byte[] value)
-        {
-            if (value == null)
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
-
-            if (value.Length > 512)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be larger than 512 bytes.");
-            }
-
-            return WriteValue(value, true);
-        }
-
-        public Task WriteValue(byte[] value, bool requireResponse);
+        public Task WriteAsync(byte[] value);
 
         public event EventHandler<GattCharacteristicValueChangedEventArgs> CharacteristicValueChanged;
-
-        public void OnCharacteristicValueChanged(GattCharacteristicValueChangedEventArgs args);
 
         public Task StartNotificationsAsync();
 

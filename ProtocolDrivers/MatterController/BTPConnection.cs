@@ -54,9 +54,7 @@ namespace Matter.Core.BTP
 
             Write = service.GetCharacteristicAsync(C1_UUID).GetAwaiter().GetResult();
             Read = service.GetCharacteristicAsync(C2_UUID).GetAwaiter().GetResult();
-
             Read.CharacteristicValueChanged += Read_CharacteristicValueChanged;
-            Read.StartNotificationsAsync().GetAwaiter().GetResult();
 
             connected = true;
 
@@ -86,18 +84,16 @@ namespace Matter.Core.BTP
             handshake.WindowSize = 8;
             handshake.ATT_MTU = MTU;
 
-            await Write.WriteValueWithResponseAsync(handshake.Serialize(9));
+            await Write.WriteAsync(handshake.Serialize(9)).ConfigureAwait(false);
+            await Read.StartNotificationsAsync().ConfigureAwait(false);
 
             BTPFrame frame = await instream.Reader.ReadAsync();
-            MTU = frame.ATT_MTU;
-            ServerWindow = frame.WindowSize;
-
             if (frame.Version != BTPFrame.MATTER_BT_VERSION1)
             {
                 throw new NotSupportedException($"Version {frame.Version} not supported");
             }
 
-            Console.WriteLine($"MTU: {MTU}, Window: {ServerWindow}");
+            Console.WriteLine($"MTU: {frame.ATT_MTU}, Window: {frame.WindowSize}");
         }
 
         private async void SendAck(object state)
@@ -118,7 +114,7 @@ namespace Matter.Core.BTP
 
                 Console.WriteLine("[StandaloneAck] Wrote Segment: " + segment);
 
-                await Write.WriteValueWithResponseAsync(segment.Serialize(MTU));
+                await Write.WriteAsync(segment.Serialize(MTU));
             }
             catch (OperationCanceledException)
             {
@@ -175,7 +171,7 @@ namespace Matter.Core.BTP
                 }
 
                 await WaitForWindow(CancellationToken.None).ConfigureAwait(false);
-                await Write.WriteValueWithResponseAsync(message).ConfigureAwait(false);
+                await Write.WriteAsync(message).ConfigureAwait(false);
             }
             finally
             {

@@ -104,7 +104,7 @@ namespace InTheHand.Bluetooth
                     return null;
                 }
 
-                return new GattServiceWindows(Device, result, true);
+                return new GattServiceWindows(result);
             }
             catch (Exception ex)
             {

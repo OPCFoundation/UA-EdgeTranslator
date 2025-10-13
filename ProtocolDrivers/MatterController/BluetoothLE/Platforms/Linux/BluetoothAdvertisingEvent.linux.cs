@@ -5,6 +5,8 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
+#if !WINDOWS
+
 using Linux.Bluetooth;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -13,21 +15,11 @@ namespace InTheHand.Bluetooth
 {
     partial class BluetoothAdvertisingEventLinux : IBluetoothAdvertisingEvent
     {
-        private ushort _appearance;
-
-        internal BluetoothAdvertisingEventLinux(Device device, ushort appearance)
-        {
-            _appearance = appearance;
-            Device.Id = device.GetNameAsync().GetAwaiter().GetResult();
-        }
-
         public IBluetoothDevice Device { get; set; } = new BluetoothDeviceLinux();
 
-        public IReadOnlyDictionary<ushort, byte[]> ManufacturerData()
+        public BluetoothAdvertisingEventLinux(Device device, ushort appearance)
         {
-            var manufacturerData = new Dictionary<ushort, byte[]>();
-
-            return new ReadOnlyDictionary<ushort, byte[]>(manufacturerData);
+            Device.Id = device.GetNameAsync().GetAwaiter().GetResult();
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()
@@ -38,3 +30,5 @@ namespace InTheHand.Bluetooth
         }
     }
 }
+
+#endif
