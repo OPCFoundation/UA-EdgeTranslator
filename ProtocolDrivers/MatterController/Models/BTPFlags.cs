@@ -4,7 +4,7 @@ namespace Matter.Core
     using System;
 
     [Flags]
-    internal enum BTPFlags : byte
+    public enum BTPFlags : byte
     {
         Beginning = 0x1,
         Continuing = 0x2,

@@ -1,8 +1,7 @@
 ﻿
 using InTheHand.Bluetooth;
-using MatterDotNet.Protocol.Payloads;
-using MatterDotNet.Protocol.Payloads.OpCodes;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -15,190 +14,278 @@ namespace Matter.Core.BTP
         private static readonly BluetoothUuid C1_UUID = BluetoothUuid.FromGuid(Guid.Parse("18EE2EF5-263D-4559-959F-4F9C429F9D11"));
         private static readonly BluetoothUuid C2_UUID = BluetoothUuid.FromGuid(Guid.Parse("18EE2EF5-263D-4559-959F-4F9C429F9D12"));
 
-        private static readonly TimeSpan CONN_RSP_TIMEOUT = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan ACK_TIME = TimeSpan.FromSeconds(6);
+        private IGattCharacteristic _read;
+        private IGattCharacteristic _write;
 
-        private IGattCharacteristic Read;
-        private IGattCharacteristic Write;
-        Channel<BTPFrame> instream = Channel.CreateBounded<BTPFrame>(10);
-        ushort MTU = 0;
-        byte ServerWindow = 0;
-        byte txCounter = 0; // First is 0
-        byte rxCounter = 0;
-        byte rxAcknowledged = 255; //Ensures we acknowledge the handshake
-        byte txAcknowledged = 0;
-        //Timer AckTimer;
-        SemaphoreSlim WriteLock = new SemaphoreSlim(1, 1);
-        bool connected;
-        IBluetoothDevice device;
+        private Channel<BTPFrame> _instream = Channel.CreateBounded<BTPFrame>(10);
+        private Timer _acknowledgementTimer;
+        private ushort _mtu = 0;
+        private ushort _serverWindow = 0;
+        private byte _txCounter = 0; // First is 0
+        private byte _rxCounter = 0;
+        private byte _rxAcknowledged = 255; //Ensures we acknowledge the handshake
+        private byte _txAcknowledged = 0;
+
+        private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+        private bool _connected = false;
+        private IBluetoothDevice _device;
 
         public BTPConnection(IBluetoothDevice device)
         {
-            this.device = device;
+            _device = device;
         }
 
         public IConnection OpenConnection()
         {
-            //AckTimer = new Timer(SendAck, null, ACK_TIME, ACK_TIME);
-
-            if (!device.GattServer.IsConnected)
+            if (!_device.GattServer.IsConnected)
             {
-                device.GattServer.ConnectAsync().GetAwaiter().GetResult();
+                _device.GattServer.ConnectAsync().GetAwaiter().GetResult();
             }
 
-            device.GattServerDisconnected += Device_GattServerDisconnected;
+            _device.GattServerDisconnected += Device_GattServerDisconnected;
 
-            MTU = (ushort)Math.Min(device.GattServer.Mtu, 244);
+            _mtu = (ushort)Math.Min(_device.GattServer.Mtu, 244);
 
-            IGattService service = device.GattServer.GetPrimaryServiceAsync(MATTER_UUID).GetAwaiter().GetResult();
+            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
 
-            Write = service.GetCharacteristicAsync(C1_UUID).GetAwaiter().GetResult();
-            Read = service.GetCharacteristicAsync(C2_UUID).GetAwaiter().GetResult();
-            Read.CharacteristicValueChanged += Read_CharacteristicValueChanged;
+            IGattService service = _device.GattServer.GetPrimaryServiceAsync(MATTER_UUID).GetAwaiter().GetResult();
 
-            connected = true;
+            _write = service.GetCharacteristicAsync(C1_UUID).GetAwaiter().GetResult();
+            _read = service.GetCharacteristicAsync(C2_UUID).GetAwaiter().GetResult();
+            _read.CharacteristicValueChanged += ReadCharacteristicValueChanged;
 
-            SendHandshake().GetAwaiter().GetResult();
+            SendHandshakeAsync().GetAwaiter().GetResult();
 
             return this;
         }
 
         public void Close()
         {
-            Read.StopNotificationsAsync().GetAwaiter().GetResult();
+            _acknowledgementTimer.Dispose();
+            _read.StopNotificationsAsync().GetAwaiter().GetResult();
         }
 
         private void Device_GattServerDisconnected(object sender, EventArgs e)
         {
-            connected = false;
-            //AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            rxAcknowledged = 255;
+            _connected = false;
+
+            _rxAcknowledged = 255;
+
+            _acknowledgementTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+
             Console.WriteLine(DateTime.Now + "** GATT Disconnected **");
         }
 
-        private async Task SendHandshake()
-        {
-            Console.WriteLine("Send Handshake Request");
-            BTPFrame handshake = new BTPFrame(BTPFlags.Handshake | BTPFlags.Management | BTPFlags.Beginning | BTPFlags.Ending);
-            handshake.OpCode = BTPManagementOpcode.Handshake;
-            handshake.WindowSize = 8;
-            handshake.ATT_MTU = MTU;
-
-            await Write.WriteAsync(handshake.Serialize(9)).ConfigureAwait(false);
-            await Read.StartNotificationsAsync().ConfigureAwait(false);
-
-            BTPFrame frame = await instream.Reader.ReadAsync();
-            if (frame.Version != BTPFrame.MATTER_BT_VERSION1)
-            {
-                throw new NotSupportedException($"Version {frame.Version} not supported");
-            }
-
-            Console.WriteLine($"MTU: {frame.ATT_MTU}, Window: {frame.WindowSize}");
-        }
-
-        private async void SendAck(object state)
-        {
-            await WriteLock.WaitAsync();
-            if (!connected)
-                return;
-            try
-            {
-                BTPFrame segment = new BTPFrame(BTPFlags.Acknowledge);
-                segment.Sequence = txCounter++;
-
-                if (rxCounter != rxAcknowledged)
-                {
-                    segment.Acknowledge = rxCounter;
-                    rxAcknowledged = rxCounter;
-                }
-
-                Console.WriteLine("[StandaloneAck] Wrote Segment: " + segment);
-
-                await Write.WriteAsync(segment.Serialize(MTU));
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            finally
-            {
-                WriteLock.Release();
-            }
-        }
-
-        private void Read_CharacteristicValueChanged(object sender, GattCharacteristicValueChangedEventArgs e)
+        private void ReadCharacteristicValueChanged(object sender, GattCharacteristicValueChangedEventArgs e)
         {
             if (e.Value != null)
             {
-                BTPFrame frame = new BTPFrame(e.Value!);
-                Console.WriteLine("BTP Received: " + frame);
+                _acknowledgementTimer.Change(2000, 5000);
 
-                //AckTimer?.Change(ACK_TIME, ACK_TIME);
-
-                if ((frame.Flags & BTPFlags.Acknowledge) != 0)
+                BTPFrame frame = new BTPFrame(e.Value);
+                if ((frame.ControlFlags & BTPFlags.Acknowledge) != 0)
                 {
-                    txAcknowledged = frame.Acknowledge;
+                    _txAcknowledged = frame.AcknowledgeNumber;
                 }
 
-                if ((frame.Flags & BTPFlags.Handshake) == 0)
+                if ((frame.ControlFlags & BTPFlags.Handshake) == 0)
                 {
-                    rxCounter = frame.Sequence;
+                    _rxCounter = frame.Sequence;
                 }
 
-                if ((frame.Flags & BTPFlags.Continuing) != 0 || (frame.Flags & BTPFlags.Beginning) != 0)
+                if ((frame.ControlFlags & BTPFlags.Beginning) != 0 || (frame.ControlFlags & BTPFlags.Continuing) != 0)
                 {
-                    instream.Writer.TryWrite(frame);
+                    _instream.Writer.WriteAsync(frame).GetAwaiter().GetResult();
                 }
             }
         }
 
         public async Task SendAsync(byte[] message)
         {
-            if (!connected)
+            if (!_connected)
             {
                 OpenConnection();
             }
 
-            await WaitForWindow(CancellationToken.None);
+            await WaitForWindow(CancellationToken.None).ConfigureAwait(false);
 
-            await WriteLock.WaitAsync();
+            await _writeLock.WaitAsync().ConfigureAwait(false);
 
             try
             {
-                if (rxCounter != rxAcknowledged)
+                if (_rxAcknowledged != _rxCounter)
                 {
-                    rxAcknowledged = rxCounter;
-                    //AckTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                    _rxAcknowledged = _rxCounter;
+                    _acknowledgementTimer.Change(2000, 5000);
                 }
 
                 await WaitForWindow(CancellationToken.None).ConfigureAwait(false);
-                await Write.WriteAsync(message).ConfigureAwait(false);
+
+                BTPFrame[] segments = GetSegments(message);
+
+                Console.WriteLine("BTP Message has been split into {0} BTP frame segments", segments.Length);
+
+                foreach (var btpFrame in segments)
+                {
+                    btpFrame.Sequence = _txCounter++;
+
+                    Console.WriteLine("Sending BTP frame segment [{0}] [{1}]...", btpFrame.Sequence, Convert.ToString((byte)btpFrame.ControlFlags, 2).PadLeft(8, '0'));
+
+                    var btpWriter = new MatterMessageWriter();
+
+                    btpFrame.Serialize(btpWriter);
+
+                    await _write.WriteAsync(btpWriter.GetBytes()).ConfigureAwait(false);
+                }
             }
             finally
             {
-                WriteLock.Release();
+                _writeLock.Release();
             }
         }
 
         private async Task WaitForWindow(CancellationToken token)
         {
-            while (txCounter - txAcknowledged > ServerWindow)
+            while ((_txCounter - _txAcknowledged) > _serverWindow)
             {
-                await instream.Reader.WaitToReadAsync(token);
+                await _instream.Reader.WaitToReadAsync(token).ConfigureAwait(false);
             }
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            BTPFrame segment = await instream.Reader.ReadAsync().ConfigureAwait(false);
+            BTPFrame segment = await _instream.Reader.ReadAsync().ConfigureAwait(false);
 
-            if ((segment.Flags & BTPFlags.Ending) == 0x0)
+            return segment.Payload;
+        }
+
+        private async void SendStandaloneAcknowledgement(object state)
+        {
+            if (!_connected)
             {
-                return null;
+                return;
             }
-            else
+
+            await _writeLock.WaitAsync().ConfigureAwait(false);
+
+            try
             {
-                return segment.Payload.ToArray();
+                Console.WriteLine($"Sending Standalone Acknowledgement for {_rxCounter}");
+
+                BTPFrame acknowledgementFrame = new(new byte[10]);
+                acknowledgementFrame.Sequence = _txCounter++;
+                acknowledgementFrame.ControlFlags = BTPFlags.Acknowledge;
+
+                if (_rxAcknowledged != _rxCounter)
+                {
+                    _rxAcknowledged = _rxCounter;
+                    acknowledgementFrame.AcknowledgeNumber = _rxAcknowledged;
+                }
+
+                var writer = new MatterMessageWriter();
+                acknowledgementFrame.Serialize(writer);
+
+                await _write.WriteAsync(writer.GetBytes()).ConfigureAwait(false);
             }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        public async Task<bool> SendHandshakeAsync()
+        {
+            byte[] handshakePayload = new byte[9];
+            handshakePayload[0] = 0x65; // Handshake flag
+            handshakePayload[1] = 0x6C;
+            handshakePayload[2] = 0x04; // Version
+            handshakePayload[3] = 0x00;
+            handshakePayload[4] = 0x00;
+            handshakePayload[5] = 0x00;
+            handshakePayload[6] = 0x00;
+            handshakePayload[7] = 0x00;
+            handshakePayload[8] = 0x02; // Only accept two frames at a time!
+
+            await _write.WriteAsync(handshakePayload).ConfigureAwait(false);
+            await _read.StartNotificationsAsync().ConfigureAwait(false);
+
+            var handshakeResponseFrame = await _instream.Reader.ReadAsync().ConfigureAwait(false);
+
+            _mtu = handshakeResponseFrame.ATTSize;
+            _serverWindow = handshakeResponseFrame.WindowSize;
+
+            // If we have matching versions from the handshake, we're good to go!
+            _connected = handshakeResponseFrame.Version == 0x04;
+
+            return _connected;
+        }
+
+        private BTPFrame[] GetSegments(byte[] messageBytes)
+        {
+            // We might need multiple frames to transport this message.
+            var segments = new List<BTPFrame>();
+            var messageBytesAddedToSegments = 0;
+
+            do
+            {
+                BTPFrame segment = new(messageBytes);
+
+                // If we have not created the first segment, this one will
+                // have the Beginning control flag. It will also include the MessageLength.
+                //
+                // If we already have segments, set Continuing flag
+                //
+                // Depending on the type of message, we have different header lengths. E.g. for Beginning
+                // we must inlude the MessageLength in the payload. For Continuing, we don't!
+                // We start with the ControlFlags and the sequence number.
+                var headerLength = 2;
+
+                if (segments.Count == 0)
+                {
+                    segment.ControlFlags = BTPFlags.Beginning;
+                    segment.MessageLength = (ushort)messageBytes.Length;
+                    headerLength += 2; // Add two bytes to the header length to indicate we have the MessageLength.
+
+                    // If we have any outstanding messages to acknowledges, add it here!
+                    if (_rxAcknowledged != _rxCounter)
+                    {
+                        _rxAcknowledged = _rxCounter;
+                        segment.AcknowledgeNumber = _rxAcknowledged;
+                        segment.ControlFlags |= BTPFlags.Acknowledge;
+                        headerLength += 1;
+                    }
+                }
+                else
+                {
+                    segment.ControlFlags = BTPFlags.Continuing;
+                }
+
+                // Work out how much of the messageBytes we're putting into the slice.
+                var howManyBytesLeftToSend = messageBytes.Length - messageBytesAddedToSegments;
+                var howMuchSpaceAvailableInBTPFrame = _mtu - headerLength;
+
+                ushort segmentSize = (ushort)Math.Min(howManyBytesLeftToSend, howMuchSpaceAvailableInBTPFrame);
+
+                var segmentBytes = new byte[segmentSize];
+
+                // Copy from our messageBytes into segmentBytes
+                Buffer.BlockCopy(messageBytes, messageBytesAddedToSegments, segmentBytes, 0, segmentBytes.Length);
+
+                // If the current segmentSize + all the bytes already added equals the total,
+                // we send the Ending flag.
+                if (segmentSize + messageBytesAddedToSegments == messageBytes.Length)
+                {
+                    segment.ControlFlags |= BTPFlags.Ending;
+                }
+
+                segment.Payload = segmentBytes;
+                segments.Add(segment);
+
+                messageBytesAddedToSegments += segmentSize;
+            }
+            while (messageBytesAddedToSegments < messageBytes.Length);
+
+            return segments.ToArray();
         }
     }
 }

@@ -1,111 +1,100 @@
-﻿// MatterDotNet Copyright (C) 2025
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or any later version.
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY, without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU Affero General Public License for more details.
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-using Matter.Core;
-using MatterDotNet.Protocol.Payloads.OpCodes;
+﻿
 using System;
-using System.Buffers.Binary;
 
-namespace MatterDotNet.Protocol.Payloads
+namespace Matter.Core
 {
-    internal class BTPFrame
+    public class BTPFrame
     {
-        public const byte MATTER_BT_VERSION1 = 0x04;
+        public BTPFrame(byte[] readData)
+        {
+            // Check the ControlFlags.
+            ControlFlags = (BTPFlags)readData[0];
+            bool isHandshake = ((byte)ControlFlags & 0x20) != 0;
+            bool isManagement = ((byte)ControlFlags & 0x10) != 0;
+            bool isAcknowledgement = ((byte)ControlFlags & 0x8) != 0;
+            bool isEndingSegment = ((byte)ControlFlags & 0x4) != 0;
+            bool isContinuingSegment = ((byte)ControlFlags & 0x2) != 0;
+            bool isBeginningSegment = ((byte)ControlFlags & 0x1) != 0;
 
-        public BTPFlags Flags {  get; set; }
+            if (isHandshake)
+            {
+                Version = readData[2];
+                ATTSize = BitConverter.ToUInt16(readData, 3);
+                WindowSize = readData[5];
+                return;
+            }
 
-        public BTPManagementOpcode OpCode { get; set; }
+            int offset = 1;
 
-        public byte Acknowledge { get; set; }
+            if (isManagement)
+            {
+                // TODO Grab the Management OpCode.
+                offset++;
+            }
+
+            if (isBeginningSegment)
+            {
+                MessageLength = BitConverter.ToUInt16(readData, offset);
+                offset += 2;
+            }
+
+            if (isAcknowledgement)
+            {
+                AcknowledgeNumber = readData[offset];
+                offset++;
+            }
+
+            if (isBeginningSegment || isContinuingSegment || isEndingSegment)
+            {
+                Sequence = readData[offset];
+
+                offset++;
+
+                Payload = new byte[readData.Length - offset];
+
+                Array.Copy(readData, offset, Payload, 0, readData.Length - offset);
+            }
+        }
+
+        public BTPFlags ControlFlags { get; set; }
+
+        public byte[] Payload { get; set; }
+
+        public ushort MessageLength { get; set; }
+
+        public byte AcknowledgeNumber { get; set; }
 
         public byte Sequence { get; set; }
 
-        public ushort Length { get; set; }
+        public ushort Version { get; }
 
-        public Memory<byte> Payload { get; set; }
+        public ushort ATTSize { get; }
 
-        public ushort ATT_MTU { get; set; }
+        public ushort WindowSize { get; }
 
-        public byte WindowSize { get; set; }
-
-        public byte Version { get; private set; }
-
-        private BTPFrame() { }
-
-        public BTPFrame(BTPFlags flags)
+        internal void Serialize(MatterMessageWriter writer)
         {
-            Flags = flags;
-        }
+            writer.Write((byte)ControlFlags);
 
-        public BTPFrame(Memory<byte> payload)
-        {
-            int pos = 0;
-            Span<byte> span = payload.Span;
-            Flags = (BTPFlags)span[pos++];
-
-            if ((Flags & BTPFlags.Management) != 0)
+            // If this is an acknowledge message, send the number we're acknowldgeing.
+            if ((ControlFlags & BTPFlags.Acknowledge) != 0)
             {
-                OpCode = (BTPManagementOpcode)span[pos++];
-                Version = (byte)(span[pos++] & 0xF);
-            }
-            if ((Flags & BTPFlags.Acknowledge) != 0)
-                Acknowledge = span[pos++];
-
-            if ((Flags & BTPFlags.Handshake) == 0)
-            {
-                Sequence = span[pos++];
-                if ((Flags & BTPFlags.Beginning) != 0)
-                {
-                    Length = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(pos, 2));
-                    pos += 2;
-                }
-                Payload = payload.Slice(pos);
+                writer.Write(AcknowledgeNumber);
             }
 
-            if ((Flags & BTPFlags.Handshake) != 0)
+            // If this isn't a handshake, include the sequence.
+            if ((ControlFlags & BTPFlags.Handshake) == 0)
             {
-                ATT_MTU = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(pos, 2));
-                WindowSize = span[pos + 2];
-            }
-        }
-
-        public byte[] Serialize(int mtu)
-        {
-            PayloadWriter stream = new PayloadWriter(mtu);
-            stream.Write((byte)Flags);
-
-            if ((Flags & BTPFlags.Management) != 0)
-                stream.Write((byte)OpCode);
-
-            if ((Flags & BTPFlags.Acknowledge) != 0)
-                stream.Write(Acknowledge);
-
-            if ((Flags & BTPFlags.Handshake) == 0)
-            {
-                stream.Write(Sequence);
-
-                if ((Flags & BTPFlags.Beginning) != 0)
-                    stream.Write(Length);
-
-                stream.Write(Payload.Span);
-            }
-            else
-            {
-                stream.Write([MATTER_BT_VERSION1, 0x0, 0x0, 0x0]);
-                stream.Write(ATT_MTU);
-                stream.Write(WindowSize);
+                writer.Write(Sequence);
             }
 
-            return stream.GetPayload().ToArray();
+            // If this is a Beginning message, we need to include the MessageLength.
+            if ((ControlFlags & BTPFlags.Beginning) != 0)
+            {
+                writer.Write(MessageLength);
+            }
+
+            writer.Write(Payload);
         }
     }
 }

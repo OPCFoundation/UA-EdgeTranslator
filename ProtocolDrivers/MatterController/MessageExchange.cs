@@ -41,25 +41,20 @@ namespace Matter.Core
         public async Task SendAsync(MessageFrame message)
         {
             // Set the common data on the MessageFrame.
-            //
             message.SessionID = _session.PeerSessionId;
             message.SourceNodeID = _session.SourceNodeId;
             message.DestinationNodeId = _session.DestinationNodeId;
             message.MessagePayload.ExchangeID = _exchangeId;
             message.MessageCounter = _session.MessageCounter;
 
-            uint? messageToAck = null;
-
             // Do we have any unacknowledged messages?
             // If yes, add the acknowledgement to this outgoing message.
-            //
             if (_acknowledgedMessageCounter != _receivedMessageCounter)
             {
                 _acknowledgedMessageCounter = _receivedMessageCounter;
 
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
                 message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
-                messageToAck = _acknowledgedMessageCounter;
             }
 
             if (_session.UseMRP)
