@@ -27,7 +27,7 @@ namespace Matter.Core.BTP
         private byte _serverWindow = 6;
         private byte _txCounter = 0;
         private byte _rxCounter = 0;
-        private byte _rxAcknowledged = 255;
+        private byte _rxAcknowledged = 0;
         private byte _txAcknowledged = 0;
 
         public BTPConnection(IBluetoothDevice device)
@@ -45,6 +45,7 @@ namespace Matter.Core.BTP
             _device.GattServerDisconnected += Device_GattServerDisconnected;
 
             _mtu = (ushort)Math.Min(_device.GattServer.Mtu, 244);
+            _rxAcknowledged = 255;
 
             _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, Timeout.Infinite, Timeout.Infinite);
 
@@ -65,6 +66,7 @@ namespace Matter.Core.BTP
 
         public void Close()
         {
+            _connected = false;
             _acknowledgementTimer.Dispose();
             _read.StopNotificationsAsync().GetAwaiter().GetResult();
         }
@@ -72,10 +74,6 @@ namespace Matter.Core.BTP
         private void Device_GattServerDisconnected(object sender, EventArgs e)
         {
             _connected = false;
-
-            _rxAcknowledged = 255;
-
-            // stop the auto ack timer
             _acknowledgementTimer?.Change(Timeout.Infinite, Timeout.Infinite);
 
             Console.WriteLine(DateTime.Now + "** GATT Disconnected **");
@@ -151,9 +149,16 @@ namespace Matter.Core.BTP
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            BTPFrame segment = await _instream.Reader.ReadAsync().ConfigureAwait(false);
+            try
+            {
+                BTPFrame segment = await _instream.Reader.ReadAsync(token).ConfigureAwait(false);
 
-            return segment.Payload;
+                return segment.Payload;
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
         }
 
         private async void SendStandaloneAcknowledgement(object state)

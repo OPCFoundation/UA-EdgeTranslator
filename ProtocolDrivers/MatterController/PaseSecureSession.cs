@@ -72,12 +72,12 @@ namespace Matter.Core.Sessions
 
         public async Task SendAsync(byte[] message)
         {
-            await _connection.SendAsync(message);
+            await _connection.SendAsync(message).ConfigureAwait(false);
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _connection.ReadAsync(token);
+            return await _connection.ReadAsync(token).ConfigureAwait(false);
         }
 
         public byte[] Encode(MessageFrame messageFrame)

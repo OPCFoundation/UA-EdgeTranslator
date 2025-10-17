@@ -10,7 +10,7 @@ namespace Matter.Core
     {
         private ushort _exchangeId;
         private ISession _session;
-        private Thread _readingThread;
+        private Task _readingThread;
 
         private uint _receivedMessageCounter = 255;
         private uint _acknowledgedMessageCounter = 255;
@@ -26,14 +26,13 @@ namespace Matter.Core
             _exchangeId = exchangeId;
             _session = session;
 
-            _readingThread = new Thread(async () => await ReceiveAsync().ConfigureAwait(false));
-            _readingThread.Start();
+            _readingThread = Task.Run(ReceiveAsync);
         }
 
         public void Close()
         {
             _cancellationTokenSource.Cancel();
-            _readingThread.Join();
+            _readingThread.Wait();
 
             Console.WriteLine("Closed MessageExchange [E: {0}]", _exchangeId);
         }
@@ -95,6 +94,10 @@ namespace Matter.Core
                 try
                 {
                     bytes = await _session.ReadAsync(_cancellationTokenSource.Token);
+                    if (bytes == null)
+                    {
+                        continue;
+                    }
 
                     var messageFrameParts = new MessageFrameParts(bytes);
 

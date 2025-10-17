@@ -81,12 +81,19 @@ namespace Matter.Core
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _receivedDataChannel.Reader.ReadAsync(token);
-        }
+            try
+            {
+                return await _receivedDataChannel.Reader.ReadAsync(token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+}
 
         public async Task SendAsync(byte[] bytes)
         {
-            await _udpClient!.SendAsync(bytes, _cancellationTokenSource.Token);
+            await _udpClient!.SendAsync(bytes, _cancellationTokenSource.Token).ConfigureAwait(false);
 
             // TODO Ensure we get an acknowledgement of the frame we just sent!
             //
