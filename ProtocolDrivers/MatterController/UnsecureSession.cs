@@ -47,7 +47,7 @@ namespace Matter.Core.Sessions
 
         public MessageExchange CreateExchange()
         {
-            // We're going to Exchange messages in this session, so we need an MessageExchange
+            // We're going to Exchange messages in this session, so we need a MessageExchange
             // to track it (4.10).
             //
             // TODO Ensure the ExchangeId is unique!
@@ -62,20 +62,18 @@ namespace Matter.Core.Sessions
 
                 var exchangeId = trueRandom;
 
-                Console.WriteLine($"Created Unsecure Exchange ID: {exchangeId}");
-
                 return new MessageExchange(exchangeId, this);
             }
         }
 
         public async Task SendAsync(byte[] message)
         {
-            await _connection.SendAsync(message);
+            await _connection.SendAsync(message).ConfigureAwait(false);
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
-            return await _connection.ReadAsync(token);
+            return await _connection.ReadAsync(token).ConfigureAwait(false);
         }
 
         public byte[] Encode(MessageFrame messageFrame)

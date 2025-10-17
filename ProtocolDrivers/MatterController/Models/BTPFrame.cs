@@ -5,54 +5,44 @@ namespace Matter.Core
 {
     public class BTPFrame
     {
-        public BTPFrame(byte[] readData)
+        public BTPFrame(byte[] payload)
         {
-            // Check the ControlFlags.
-            ControlFlags = (BTPFlags)readData[0];
-            bool isHandshake = ((byte)ControlFlags & 0x20) != 0;
-            bool isManagement = ((byte)ControlFlags & 0x10) != 0;
-            bool isAcknowledgement = ((byte)ControlFlags & 0x8) != 0;
-            bool isEndingSegment = ((byte)ControlFlags & 0x4) != 0;
-            bool isContinuingSegment = ((byte)ControlFlags & 0x2) != 0;
-            bool isBeginningSegment = ((byte)ControlFlags & 0x1) != 0;
-
-            if (isHandshake)
-            {
-                Version = readData[2];
-                ATTSize = BitConverter.ToUInt16(readData, 3);
-                WindowSize = readData[5];
-                return;
-            }
-
-            int offset = 1;
+            int index = 0;
+            ControlFlags = (BTPFlags)payload[index++];
+            bool isHandshake = (ControlFlags & BTPFlags.Handshake) != 0;
+            bool isManagement = (ControlFlags & BTPFlags.Management) != 0;
+            bool isAcknowledgement = (ControlFlags & BTPFlags.Acknowledge) != 0;
+            bool isBeginningSegment = (ControlFlags & BTPFlags.Beginning) != 0;
 
             if (isManagement)
             {
-                // TODO Grab the Management OpCode.
-                offset++;
-            }
-
-            if (isBeginningSegment)
-            {
-                MessageLength = BitConverter.ToUInt16(readData, offset);
-                offset += 2;
+                index++; // skip opcode
+                Version = (byte)(payload[index++] & 0xF);
             }
 
             if (isAcknowledgement)
             {
-                AcknowledgeNumber = readData[offset];
-                offset++;
+                AcknowledgeNumber = payload[index++];
             }
 
-            if (isBeginningSegment || isContinuingSegment || isEndingSegment)
+            if (isHandshake)
             {
-                Sequence = readData[offset];
+                ATTSize = BitConverter.ToUInt16(payload, index);
+                index += 2;
+                WindowSize = payload[index++];
+            }
+            else
+            {
+                Sequence = payload[index++];
 
-                offset++;
+                if (isBeginningSegment)
+                {
+                    MessageLength = BitConverter.ToUInt16(payload, index);
+                    index += 2;
+                }
 
-                Payload = new byte[readData.Length - offset];
-
-                Array.Copy(readData, offset, Payload, 0, readData.Length - offset);
+                Payload = new byte[payload.Length - index];
+                Array.Copy(payload, index, Payload, 0, payload.Length - index);
             }
         }
 

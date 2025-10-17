@@ -44,7 +44,7 @@ namespace InTheHand.Bluetooth
                 }
             }
 
-            Device.Id = ((BluetoothDeviceWindows)Device).NativeDevice.BluetoothDeviceId.Id;
+            Device.Id = ((BluetoothDeviceWindows)Device).NativeDevice?.BluetoothDeviceId?.Id;
             Device.GattServer = new RemoteGattServerWindows();
             Device.GattServer.Device = Device;
 

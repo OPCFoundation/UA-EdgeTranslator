@@ -54,7 +54,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     var commissioningPayload = ParseManualSetupCode(ipParts[2]);
                     _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
 
-                    // wait until we have an IP address for the node
+                    // wait 100 seconds or until we have an IP address for the node
                     uint numRetries = 100;
                     while ((numRetries > 0) && !_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[2] && n.LastKnownIpAddress != null))
                     {
@@ -70,6 +70,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if ((node != null) && !node.IsConnected)
                 {
                     node.Connect().GetAwaiter().GetResult();
+                    node.FetchDescriptionsAsync().GetAwaiter().GetResult();
                 }
 
             }

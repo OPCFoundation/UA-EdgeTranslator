@@ -39,8 +39,6 @@ namespace Matter.Core
 
         public MessageFrameParts(byte[] messageFrameBytes)
         {
-            Console.WriteLine("┌─────────────────────────────────── {0} ──────────────────────────────────────────\n│ {1}\n└──────────────────────────────────────────────────────────────────────────────", messageFrameBytes.Length, BitConverter.ToString(messageFrameBytes));
-
             var messageFlags = (MessageFlags)messageFrameBytes[0];
             var SessionID = BitConverter.ToUInt16(messageFrameBytes, 1);
             var SecurityFlags = (SecurityFlags)messageFrameBytes[3];

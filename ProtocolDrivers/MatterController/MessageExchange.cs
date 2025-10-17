@@ -62,16 +62,24 @@ namespace Matter.Core
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
             }
 
-            Console.WriteLine("\n>>> Sending Message {0}", message.DebugInfo());
+            Console.WriteLine("Sending Message {0}", message.DebugInfo());
 
             var bytes = _session.Encode(message);
 
-            await _session.SendAsync(bytes);
+            await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
         public async Task<MessageFrame> WaitForNextMessageAsync()
         {
-            return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
+            try
+            {
+                return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("MessageExchange has been closed.");
+                return null;
+            }
         }
 
         /// <summary>
@@ -100,8 +108,6 @@ namespace Matter.Core
 
                     var messageFrame = _session.Decode(messageFrameParts);
 
-                    Console.WriteLine("\n<<< Received Message {0}", messageFrame.DebugInfo());
-
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
                     {
@@ -121,7 +127,7 @@ namespace Matter.Core
 
                     // This message needs processing, so put it onto the queue.
                     //
-                    await _incomingMessageChannel.Writer.WriteAsync(messageFrame);
+                    await _incomingMessageChannel.Writer.WriteAsync(messageFrame).ConfigureAwait(false);
 
                 }
                 catch (Exception ex)
@@ -153,7 +159,7 @@ namespace Matter.Core
             messageFrame.SourceNodeID = _session.SourceNodeId;
             messageFrame.MessageCounter = _session.MessageCounter;
 
-            await SendAsync(messageFrame);
+            await SendAsync(messageFrame).ConfigureAwait(false);
         }
     }
 }

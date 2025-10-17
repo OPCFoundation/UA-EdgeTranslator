@@ -27,8 +27,6 @@ namespace Matter.Core.Sessions
             PeerSessionId = peerSessionId;
 
             _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
-
-            Console.WriteLine($"Created PASE Secure Session: {SessionId}, PeerSessionId: {PeerSessionId}");
         }
 
         public IConnection CreateNewConnection()
@@ -65,7 +63,6 @@ namespace Matter.Core.Sessions
 
             var exchangeId = trueRandom;
 
-            Console.WriteLine($"Created Exchange ID: {exchangeId}");
             var exchange = new MessageExchange(exchangeId, this);
 
             _exchanges.Add(exchange);
@@ -95,9 +92,6 @@ namespace Matter.Core.Sessions
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var nonce = memoryStream.ToArray();
-
-            //Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
-
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 
@@ -108,9 +102,6 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var additionalData = memoryStream.ToArray();
-
-            //Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
-
             byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
             byte[] tag = new byte[16];
 
@@ -126,15 +117,8 @@ namespace Matter.Core.Sessions
         {
             // Run this through the decoder. We need to start reading the bytes until we
             // get to the payload. We then need to decrypt the payload.
-            //
-
-            //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
-            //Console.WriteLine("Incoming Encrypted MessagePayload: {0}", BitConverter.ToString(parts.MessagePayload));
 
             var messageFrame = parts.MessageFrameWithHeaders();
-
-            Console.WriteLine("Decrypting MessagePayload [M: {0}, S: {1}] ...", messageFrame.MessageCounter, messageFrame.SessionID);
-
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
 
@@ -143,7 +127,6 @@ namespace Matter.Core.Sessions
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var nonce = memoryStream.ToArray();
-
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 
@@ -153,12 +136,7 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
 
             var additionalData = memoryStream.ToArray();
-
-            Console.WriteLine("Nonce: {0}", BitConverter.ToString(nonce));
-            Console.WriteLine("Additional Data: {0}", BitConverter.ToString(additionalData));
-
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
-
             var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
             var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
 
@@ -166,8 +144,6 @@ namespace Matter.Core.Sessions
             {
                 var encryptor = new AesCcm(_decryptionKey);
                 encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
-
-                //Console.WriteLine("Decrypted MessagePayload: {0}", BitConverter.ToString(decryptedPayload));
 
                 messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 

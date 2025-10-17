@@ -84,8 +84,6 @@ namespace Matter.Core
                 writer.Write(AcknowledgedMessageCounter);
             }
 
-            // Write the bytes of the payload!
-            //
             if (ApplicationPayload is not null)
             {
                 ApplicationPayload.Serialize(writer);

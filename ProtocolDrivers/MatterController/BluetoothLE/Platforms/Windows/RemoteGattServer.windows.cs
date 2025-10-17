@@ -85,7 +85,6 @@ namespace InTheHand.Bluetooth
 
         public void Session_MaxPduSizeChanged(GattSession sender, object args)
         {
-            Console.WriteLine($"MaxPduSizeChanged Size:{sender.MaxPduSize}");
             Mtu = sender.MaxPduSize;
         }
 

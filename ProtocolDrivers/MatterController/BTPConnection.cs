@@ -19,16 +19,16 @@ namespace Matter.Core.BTP
 
         private Channel<BTPFrame> _instream = Channel.CreateBounded<BTPFrame>(10);
         private Timer _acknowledgementTimer;
-        private ushort _mtu = 0;
-        private ushort _serverWindow = 0;
-        private byte _txCounter = 0; // First is 0
-        private byte _rxCounter = 0;
-        private byte _rxAcknowledged = 255; //Ensures we acknowledge the handshake
-        private byte _txAcknowledged = 0;
-
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private bool _connected = false;
         private IBluetoothDevice _device;
+
+        private ushort _mtu = 0;
+        private byte _serverWindow = 6;
+        private byte _txCounter = 0;
+        private byte _rxCounter = 0;
+        private byte _rxAcknowledged = 255;
+        private byte _txAcknowledged = 0;
 
         public BTPConnection(IBluetoothDevice device)
         {
@@ -46,7 +46,7 @@ namespace Matter.Core.BTP
 
             _mtu = (ushort)Math.Min(_device.GattServer.Mtu, 244);
 
-            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, 2000, 5000);
+            _acknowledgementTimer = new Timer(SendStandaloneAcknowledgement, null, Timeout.Infinite, Timeout.Infinite);
 
             IGattService service = _device.GattServer.GetPrimaryServiceAsync(MATTER_UUID).GetAwaiter().GetResult();
 
@@ -54,7 +54,11 @@ namespace Matter.Core.BTP
             _read = service.GetCharacteristicAsync(C2_UUID).GetAwaiter().GetResult();
             _read.CharacteristicValueChanged += ReadCharacteristicValueChanged;
 
-            SendHandshakeAsync().GetAwaiter().GetResult();
+            if (SendHandshakeAsync().GetAwaiter().GetResult())
+            {
+                // start the auto-ack on successful connection
+                _acknowledgementTimer.Change(5000, 5000);
+            }
 
             return this;
         }
@@ -71,6 +75,7 @@ namespace Matter.Core.BTP
 
             _rxAcknowledged = 255;
 
+            // stop the auto ack timer
             _acknowledgementTimer?.Change(Timeout.Infinite, Timeout.Infinite);
 
             Console.WriteLine(DateTime.Now + "** GATT Disconnected **");
@@ -80,9 +85,10 @@ namespace Matter.Core.BTP
         {
             if (e.Value != null)
             {
-                _acknowledgementTimer.Change(2000, 5000);
+                // start the auto ack timer again
+                _acknowledgementTimer.Change(5000, 5000);
 
-                BTPFrame frame = new BTPFrame(e.Value);
+                BTPFrame frame = new(e.Value);
                 if ((frame.ControlFlags & BTPFlags.Acknowledge) != 0)
                 {
                     _txAcknowledged = frame.AcknowledgeNumber;
@@ -113,29 +119,20 @@ namespace Matter.Core.BTP
 
             try
             {
-                if (_rxAcknowledged != _rxCounter)
-                {
-                    _rxAcknowledged = _rxCounter;
-                    _acknowledgementTimer.Change(2000, 5000);
-                }
-
                 await WaitForWindow(CancellationToken.None).ConfigureAwait(false);
 
                 BTPFrame[] segments = GetSegments(message);
-
-                Console.WriteLine("BTP Message has been split into {0} BTP frame segments", segments.Length);
-
                 foreach (var btpFrame in segments)
                 {
                     btpFrame.Sequence = _txCounter++;
 
-                    Console.WriteLine("Sending BTP frame segment [{0}] [{1}]...", btpFrame.Sequence, Convert.ToString((byte)btpFrame.ControlFlags, 2).PadLeft(8, '0'));
-
-                    var btpWriter = new MatterMessageWriter();
+                    MatterMessageWriter btpWriter = new();
 
                     btpFrame.Serialize(btpWriter);
 
-                    await _write.WriteAsync(btpWriter.GetBytes()).ConfigureAwait(false);
+                    byte[] payload = btpWriter.GetBytes();
+
+                    await _write.WriteAsync(payload).ConfigureAwait(false);
                 }
             }
             finally
@@ -170,8 +167,6 @@ namespace Matter.Core.BTP
 
             try
             {
-                Console.WriteLine($"Sending Standalone Acknowledgement for {_rxCounter}");
-
                 BTPFrame acknowledgementFrame = new(new byte[10]);
                 acknowledgementFrame.Sequence = _txCounter++;
                 acknowledgementFrame.ControlFlags = BTPFlags.Acknowledge;
@@ -195,27 +190,32 @@ namespace Matter.Core.BTP
 
         public async Task<bool> SendHandshakeAsync()
         {
-            byte[] handshakePayload = new byte[9];
-            handshakePayload[0] = 0x65; // Handshake flag
-            handshakePayload[1] = 0x6C;
-            handshakePayload[2] = 0x04; // Version
-            handshakePayload[3] = 0x00;
-            handshakePayload[4] = 0x00;
-            handshakePayload[5] = 0x00;
-            handshakePayload[6] = 0x00;
-            handshakePayload[7] = 0x00;
-            handshakePayload[8] = 0x02; // Only accept two frames at a time!
+            byte[] handshakePayload = [
+                0x65, // Handshake/Management/Beginning/End flags
+                0x6C, // Handshake opcode
+                0x04, // Request version 4
+                0x00,
+                0x00,
+                0x00,
+                BitConverter.GetBytes(_mtu)[0],
+                BitConverter.GetBytes(_mtu)[1],
+                _serverWindow
+            ];
 
             await _write.WriteAsync(handshakePayload).ConfigureAwait(false);
             await _read.StartNotificationsAsync().ConfigureAwait(false);
 
-            var handshakeResponseFrame = await _instream.Reader.ReadAsync().ConfigureAwait(false);
+            BTPFrame handshakeResponseFrame = await _instream.Reader.ReadAsync().ConfigureAwait(false);
 
-            _mtu = handshakeResponseFrame.ATTSize;
-            _serverWindow = handshakeResponseFrame.WindowSize;
+            // check for matching versions
+            if (handshakeResponseFrame.Version == 0x04)
+            {
+                // update negotiated MTU and windows size
+                _mtu = handshakeResponseFrame.ATTSize;
+                _serverWindow = (byte)handshakeResponseFrame.WindowSize;
 
-            // If we have matching versions from the handshake, we're good to go!
-            _connected = handshakeResponseFrame.Version == 0x04;
+                _connected = true;
+            }
 
             return _connected;
         }
@@ -253,6 +253,9 @@ namespace Matter.Core.BTP
                         segment.AcknowledgeNumber = _rxAcknowledged;
                         segment.ControlFlags |= BTPFlags.Acknowledge;
                         headerLength += 1;
+
+                        // stop the timer as we're just about to sent an acknowledgement
+                        _acknowledgementTimer?.Change(Timeout.Infinite, Timeout.Infinite);
                     }
                 }
                 else

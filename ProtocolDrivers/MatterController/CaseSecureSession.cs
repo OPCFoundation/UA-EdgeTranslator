@@ -33,8 +33,6 @@ namespace Matter.Core.Sessions
             PeerSessionId = peerSessionId;
 
             _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
-
-            Console.WriteLine($"Created CASE Secure Session: {SessionId}");
         }
 
         public void Close()
@@ -75,7 +73,6 @@ namespace Matter.Core.Sessions
 
             var exchangeId = trueRandom;
 
-            Console.WriteLine($"Created Exchange ID: {exchangeId}");
             return new MessageExchange(exchangeId, this);
         }
 
@@ -102,9 +99,6 @@ namespace Matter.Core.Sessions
 
             var nonce = memoryStream.ToArray();
 
-            //Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
-            //Console.WriteLine("encryptionKey: {0}", BitConverter.ToString(_encryptionKey));
-
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 
@@ -115,8 +109,6 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var additionalData = memoryStream.ToArray();
-
-            //Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
 
             byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
             byte[] tag = new byte[16];
@@ -133,14 +125,8 @@ namespace Matter.Core.Sessions
         {
             // Run this through the decoder. We need to start reading the bytes until we
             // get to the payload. We then need to decrypt the payload.
-            //
-            //Console.WriteLine("Incoming Header: {0}", BitConverter.ToString(parts.Header));
-            //Console.WriteLine("Incoming Encrypted MessagePayload: {0}", BitConverter.ToString(parts.MessagePayload));
 
             var messageFrame = parts.MessageFrameWithHeaders();
-
-            //Console.WriteLine("Decrypting MessagePayload...");
-
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
 
@@ -149,14 +135,9 @@ namespace Matter.Core.Sessions
 
             // We are receiving a message from the other node.
             // The MessageFrame might not have the SourceNodeId in it, as its not always sent.
-            //
             nonceWriter.Write(BitConverter.GetBytes(DestinationNodeId));
 
             var nonce = memoryStream.ToArray();
-
-            //Console.WriteLine("nonce: {0}", BitConverter.ToString(nonce));
-            //Console.WriteLine("decryptionKey: {0}", BitConverter.ToString(_decryptionKey));
-
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 
@@ -167,9 +148,6 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
 
             var additionalData = memoryStream.ToArray();
-
-            //Console.WriteLine("add: {0}", BitConverter.ToString(additionalData));
-
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
 
             var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);

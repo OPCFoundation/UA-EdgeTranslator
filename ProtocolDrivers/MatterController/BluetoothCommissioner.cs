@@ -19,6 +19,7 @@ using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.X509;
 using System;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Linq;
@@ -30,7 +31,7 @@ namespace Matter.Core.Commissioning
 {
     public class BluetoothCommissioner
     {
-        private readonly List<string> _receivedAdvertisments = new();
+        private readonly ConcurrentDictionary<string, IBluetoothAdvertisingEvent> _receivedAdvertisments = new();
         private Fabric _fabric;
         private IBluetooth _bluetooth;
         private CommissioningPayload _payload;
@@ -46,6 +47,7 @@ namespace Matter.Core.Commissioning
             Console.WriteLine("Running on Linux");
             _bluetooth = new BluetoothLinux();
 #endif
+            Task.Run(CommissionDiscoveredDevices);
         }
 
         public async Task StartBluetoothDiscovery(CommissioningPayload payload)
@@ -71,41 +73,54 @@ namespace Matter.Core.Commissioning
 
         void Bluetooth_AdvertisementReceived(object sender, IBluetoothAdvertisingEvent e)
         {
-            // If we got this advertisment already, just ignore it.
-            if (_receivedAdvertisments.Contains(e.Device.Id))
-            {
-                return;
-            }
-
-            _receivedAdvertisments.Add(e.Device.Id);
-
             if (e.ServiceData().ContainsKey(BTPConnection.MATTER_UUID))
             {
+                // If we got this advertisment already, just ignore it.
+                if (_receivedAdvertisments.ContainsKey(e.Device.Id))
+                {
+                    return;
+                }
+                else
+                {
+                    _receivedAdvertisments.TryAdd(e.Device.Id, e);
+                }
+            }
+        }
+
+        void CommissionDiscoveredDevices()
+        {
+            while (true)
+            {
+                if (_receivedAdvertisments.Count == 0)
+                {
+                    Task.Delay(1000).GetAwaiter().GetResult();
+                    continue;
+                }
+
                 try
                 {
-                    byte[] data = e.ServiceData()[BTPConnection.MATTER_UUID];
-                    var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)data).Slice(1, 2)) & 0xFFF);
+                    IBluetoothAdvertisingEvent e = _receivedAdvertisments.First().Value;
+                    _receivedAdvertisments.Remove(e.Device.Id, out e);
+
+                    var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)e.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
                     Console.WriteLine("Matter device advertisment received from {0} with a discriminator of {1}", e.Device.Id, discriminator);
 
                     if (discriminator != _payload.Discriminator)
                     {
+                        Console.WriteLine("Discriminator {0} doesn't match expected discriminator {1}", discriminator, _payload.Discriminator);
                         return;
                     }
 
-                    _bluetooth.StopLEScanAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-
-                    Console.WriteLine("Matter device discovered with the specified discriminator of {0}", discriminator);
-
                     BTPConnection btpConnection = new(e.Device);
                     btpConnection.OpenConnection();
+                    UnsecureSession unsecureSession = new(btpConnection);
 
                     Console.WriteLine("BTPSession has been established. Starting PASE Exchange...");
 
-                    UnsecureSession unsecureSession = new(btpConnection);
                     MessageExchange unsecureExchange = unsecureSession.CreateExchange();
                     ushort initiatorSessionId = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(16));
 
-                    // param request
+                    // Password-Based Key Derivation Function param request
                     MatterTLV PBKDFParamRequest = new();
                     PBKDFParamRequest.AddStructure();
                     PBKDFParamRequest.AddOctetString(1, RandomNumberGenerator.GetBytes(32));
@@ -113,18 +128,19 @@ namespace Matter.Core.Commissioning
                     PBKDFParamRequest.AddUInt16(3, 0);
                     PBKDFParamRequest.AddBool(4, false);
                     PBKDFParamRequest.EndContainer();
-                    MessageFrame responseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, PBKDFParamRequest, 0, 0x20).GetAwaiter().GetResult();
+                    MessageFrame responseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, PBKDFParamRequest, 0, 0x20, 0).GetAwaiter().GetResult();
                     if (MessageFrame.IsStatusReport(responseMessageFrame))
                     {
+                        Console.WriteLine("Received status report in response to PBKDF param request message, abandoning commissioning!");
                         return;
                     }
 
+                    // Simple Password Authenticated Key Exchange (SPAKE)
                     MatterTLV PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
                     PBKDFParamResponse.OpenStructure();
                     var initiatorRandomBytes2 = PBKDFParamResponse.GetOctetString(1);
                     var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
-                    var responderSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
-                    var peerSessionId = responderSessionId;
+                    var peerSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
 
                     PBKDFParamResponse.OpenStructure(4);
                     var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
@@ -140,11 +156,11 @@ namespace Matter.Core.Commissioning
 
                     var pake1 = new MatterTLV();
                     pake1.AddStructure();
-                    var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(20202021, iterations, salt);
+                    var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(_payload.Passcode, iterations, salt);
                     var byteString = X.GetEncoded(false).ToArray();
                     pake1.AddOctetString(1, byteString);
                     pake1.EndContainer();
-                    MessageFrame pake2MessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake1, 0, 0x22).GetAwaiter().GetResult();
+                    MessageFrame pake2MessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake1, 0, 0x22, 0).GetAwaiter().GetResult();
 
                     var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
                     pake2.OpenStructure();
@@ -162,7 +178,7 @@ namespace Matter.Core.Commissioning
                     pake3.AddStructure();
                     pake3.AddOctetString(1, hAY);
                     pake3.EndContainer();
-                    MessageFrame pakeFinishedMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake3, 0, 0x24).GetAwaiter().GetResult();
+                    MessageFrame pakeFinishedMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake3, 0, 0x24, 0).GetAwaiter().GetResult();
 
                     unsecureExchange.AcknowledgeMessageAsync(pakeFinishedMessageFrame.MessageCounter).GetAwaiter().GetResult();
                     unsecureExchange.Close();
@@ -177,6 +193,7 @@ namespace Matter.Core.Commissioning
                     var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
                     var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                     var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
+
                     var paseSession = new PaseSecureSession(btpConnection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
                     var paseExchange = paseSession.CreateExchange();
 
@@ -190,7 +207,7 @@ namespace Matter.Core.Commissioning
                     armFailsafeRequest.EndContainer(); // Close the list
                     armFailsafeRequest.EndContainer(); // Close the array
                     armFailsafeRequest.EndContainer(); // Close the structure
-                    SendAndReceiveMessageAsync(unsecureExchange, armFailsafeRequest, 1, 0x09).GetAwaiter().GetResult();
+                    SendAndReceiveMessageAsync(paseExchange, armFailsafeRequest, 1, 0x09, 0).GetAwaiter().GetResult();
 
                     var csrRequest = new MatterTLV();
                     csrRequest.AddStructure();
@@ -210,7 +227,7 @@ namespace Matter.Core.Commissioning
                     csrRequest.EndContainer(); // Close the array
                     csrRequest.AddUInt8(255, 12); // interactionModelRevision
                     csrRequest.EndContainer(); // Close the structure
-                    MessageFrame csrResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, csrRequest, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame csrResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, csrRequest, 1, 0x08, 0).GetAwaiter().GetResult();
 
                     var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
                     csrResponsePayload.OpenStructure();
@@ -331,10 +348,11 @@ namespace Matter.Core.Commissioning
                     addTrustedRootCertificateRequest.EndContainer(); // Close the array
                     addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
                     addTrustedRootCertificateRequest.EndContainer(); // Close the structure
-                    MessageFrame addTrustedRootCertificateResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addTrustedRootCertificateRequest, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame addTrustedRootCertificateResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addTrustedRootCertificateRequest, 1, 0x08, 0).GetAwaiter().GetResult();
                     paseExchange.AcknowledgeMessageAsync(addTrustedRootCertificateResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
 
                     paseExchange = paseSession.CreateExchange();
+
                     var encodedPeerNocCertificate = new MatterTLV();
                     encodedPeerNocCertificate.AddStructure();
                     encodedPeerNocCertificate.AddOctetString(1, peerNoc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
@@ -395,17 +413,15 @@ namespace Matter.Core.Commissioning
                     addNocRequest.EndContainer(); // Close the array
                     addNocRequest.AddUInt8(255, 12); // interactionModelRevision
                     addNocRequest.EndContainer(); // Close the structure
-                    MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, addNocRequest, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, addNocRequest, 1, 0x08, 0).GetAwaiter().GetResult();
 
                     paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
 
-                    var caseExchange = unsecureSession.CreateExchange();
                     var caseClient = new CASEClient(new Node() { NodeId = BigInteger.ValueOf(int.Parse(e.Device.Id)) }, _fabric, unsecureSession);
                     var caseSession = caseClient.EstablishSessionAsync().GetAwaiter().GetResult();
-                    caseExchange.Close();
+                    MessageExchange caseExchange = caseSession.CreateExchange();
 
-                    caseExchange = caseSession.CreateExchange();
                     var commissioningCompletePayload = new MatterTLV();
                     commissioningCompletePayload.AddStructure();
                     commissioningCompletePayload.AddBool(0, false);
@@ -427,10 +443,10 @@ namespace Matter.Core.Commissioning
                     //commissioningCompleteMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
                     //commissioningCompleteMessageFrame.DestinationNodeId = BitConverter.ToUInt64(Encoding.UTF8.GetBytes(e.Device.Id));
 
-                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(caseExchange, commissioningCompletePayload, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(caseExchange, commissioningCompletePayload, 1, 0x08, 0).GetAwaiter().GetResult();
                     caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
 
-                    Console.WriteLine("Commissioning of Node {0} is complete.", e.Device.Id);
+                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", e.Device.Id);
                 }
                 catch (Exception exp)
                 {
@@ -440,7 +456,7 @@ namespace Matter.Core.Commissioning
             }
         }
 
-        private async Task<MessageFrame> SendAndReceiveMessageAsync(MessageExchange exchange, MatterTLV payload, byte protocolId, byte opCode)
+        private async Task<MessageFrame> SendAndReceiveMessageAsync(MessageExchange exchange, MatterTLV payload, byte protocolId, byte opCode, ushort sessionId)
         {
             MessagePayload messagePayload = new(payload);
             messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
@@ -449,7 +465,7 @@ namespace Matter.Core.Commissioning
 
             MessageFrame messageFrame = new(messagePayload);
             messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SessionID = 0x00;
+            messageFrame.SessionID = sessionId;
             messageFrame.SecurityFlags = 0x00;
             messageFrame.SourceNodeID = 0x00;
 
