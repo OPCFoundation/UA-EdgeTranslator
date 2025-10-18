@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -12,34 +13,22 @@ namespace Matter.Core.Sessions
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
         private uint _messageCounter = 0;
 
-        public CaseSecureSession(IConnection connection,
-                                 ulong sourceNodeId,
-                                 ulong destinationNodeId,
-                                 ushort sessionId,
-                                 ushort peerSessionId,
-                                 byte[] encryptionKey,
-                                 byte[] decryptionKey)
+        public CaseSecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
             _encryptionKey = encryptionKey;
             _decryptionKey = decryptionKey;
-
-            SourceNodeId = sourceNodeId;
-            DestinationNodeId = destinationNodeId;
 
             SessionId = sessionId;
             PeerSessionId = peerSessionId;
 
             _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
         }
-
-        public void Close()
-        {
-            _connection.Close();
-        }
-
+		
         public IConnection CreateNewConnection()
         {
             return _connection.OpenConnection();
@@ -47,9 +36,9 @@ namespace Matter.Core.Sessions
 
         public IConnection Connection => _connection;
 
-        public ulong SourceNodeId { get; }
+        public ulong SourceNodeId { get; } = 0x00;
 
-        public ulong DestinationNodeId { get; }
+        public ulong DestinationNodeId { get; } = 0x00;
 
         public ushort SessionId { get; }
 
@@ -59,21 +48,26 @@ namespace Matter.Core.Sessions
 
         public uint MessageCounter => _messageCounter++;
 
+        public void Close()
+        {
+            _cancellationTokenSource.Cancel();
+            _connection.Close();
+        }
+		
         public MessageExchange CreateExchange()
         {
             // We're going to Exchange messages in this session, so we need an MessageExchange
             // to track it (4.10).
-            //
-            using var rng = RandomNumberGenerator.Create();
-
-            var randomBytes = new byte[2];
-
-            rng.GetBytes(randomBytes);
-            ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
+  
+            ushort trueRandom = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2));
 
             var exchangeId = trueRandom;
 
-            return new MessageExchange(exchangeId, this);
+            var exchange = new MessageExchange(exchangeId, this);
+
+            _exchanges.Add(exchange);
+
+            return exchange;
         }
 
         public async Task SendAsync(byte[] message)
@@ -89,7 +83,6 @@ namespace Matter.Core.Sessions
         public byte[] Encode(MessageFrame messageFrame)
         {
             var parts = new MessageFrameParts(messageFrame);
-
             var memoryStream = new MemoryStream();
             var nonceWriter = new BinaryWriter(memoryStream);
 
@@ -98,7 +91,6 @@ namespace Matter.Core.Sessions
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var nonce = memoryStream.ToArray();
-
             memoryStream = new MemoryStream();
             var additionalDataWriter = new BinaryWriter(memoryStream);
 
@@ -133,9 +125,7 @@ namespace Matter.Core.Sessions
             nonceWriter.Write((byte)messageFrame.SecurityFlags);
             nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
 
-            // We are receiving a message from the other node.
-            // The MessageFrame might not have the SourceNodeId in it, as its not always sent.
-            nonceWriter.Write(BitConverter.GetBytes(DestinationNodeId));
+            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
 
             var nonce = memoryStream.ToArray();
             memoryStream = new MemoryStream();
@@ -145,20 +135,27 @@ namespace Matter.Core.Sessions
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
             additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
             additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
+            //additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
 
             var additionalData = memoryStream.ToArray();
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
-
-            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
             var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
+            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
 
-            var encryptor = new AesCcm(_decryptionKey);
-            encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+            try
+            {
+                var encryptor = new AesCcm(_decryptionKey);
+                encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
 
-            messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
+                messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
 
-            return messageFrame;
+                return messageFrame;
+            }
+            catch (Exception exp)
+            {
+                Console.WriteLine("Decryption failed - {0}", exp.Message);
+                throw;
+            }
         }
     }
 }

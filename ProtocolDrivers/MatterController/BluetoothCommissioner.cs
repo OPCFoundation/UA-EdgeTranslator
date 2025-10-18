@@ -424,8 +424,6 @@ namespace Matter.Core.Commissioning
 
                     var caseSession = new CaseSecureSession(
                         btpConnection,
-                        BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned()),
-                        matterNodeId,
                         initiatorSessionId,
                         peerSessionId,
                         encryptKey,
