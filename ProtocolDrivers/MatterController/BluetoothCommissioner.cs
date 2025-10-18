@@ -111,6 +111,17 @@ namespace Matter.Core.Commissioning
                         return;
                     }
 
+                    // parse Matter node ID from advertisment
+                    string[] parts = e.Device.Id.Split('-');
+                    if (parts.Length < 2)
+                    {
+                        Console.WriteLine("Invalid Bluetooth ID format: " + e.Device.Id);
+                        return;
+                    }
+
+                    string matterPart = parts[1].Replace(":", "");
+                    ulong matterNodeId = Convert.ToUInt64(matterPart, 16);
+
                     BTPConnection btpConnection = new(e.Device);
                     btpConnection.OpenConnection();
                     UnsecureSession unsecureSession = new(btpConnection);
@@ -128,7 +139,7 @@ namespace Matter.Core.Commissioning
                     PBKDFParamRequest.AddUInt16(3, 0);
                     PBKDFParamRequest.AddBool(4, false);
                     PBKDFParamRequest.EndContainer();
-                    MessageFrame responseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, PBKDFParamRequest, 0, 0x20, 0).GetAwaiter().GetResult();
+                    MessageFrame responseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, PBKDFParamRequest, 0, 0x20).GetAwaiter().GetResult();
                     if (MessageFrame.IsStatusReport(responseMessageFrame))
                     {
                         Console.WriteLine("Received status report in response to PBKDF param request message, abandoning commissioning!");
@@ -160,7 +171,7 @@ namespace Matter.Core.Commissioning
                     var byteString = X.GetEncoded(false).ToArray();
                     pake1.AddOctetString(1, byteString);
                     pake1.EndContainer();
-                    MessageFrame pake2MessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake1, 0, 0x22, 0).GetAwaiter().GetResult();
+                    MessageFrame pake2MessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake1, 0, 0x22).GetAwaiter().GetResult();
 
                     var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
                     pake2.OpenStructure();
@@ -178,7 +189,7 @@ namespace Matter.Core.Commissioning
                     pake3.AddStructure();
                     pake3.AddOctetString(1, hAY);
                     pake3.EndContainer();
-                    MessageFrame pakeFinishedMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake3, 0, 0x24, 0).GetAwaiter().GetResult();
+                    MessageFrame pakeFinishedMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake3, 0, 0x24).GetAwaiter().GetResult();
 
                     unsecureExchange.AcknowledgeMessageAsync(pakeFinishedMessageFrame.MessageCounter).GetAwaiter().GetResult();
                     unsecureExchange.Close();
@@ -207,7 +218,7 @@ namespace Matter.Core.Commissioning
                     armFailsafeRequest.EndContainer(); // Close the list
                     armFailsafeRequest.EndContainer(); // Close the array
                     armFailsafeRequest.EndContainer(); // Close the structure
-                    SendAndReceiveMessageAsync(paseExchange, armFailsafeRequest, 1, 0x09, 0).GetAwaiter().GetResult();
+                    SendAndReceiveMessageAsync(paseExchange, armFailsafeRequest, 1, 0x09).GetAwaiter().GetResult();
 
                     var csrRequest = new MatterTLV();
                     csrRequest.AddStructure();
@@ -227,7 +238,7 @@ namespace Matter.Core.Commissioning
                     csrRequest.EndContainer(); // Close the array
                     csrRequest.AddUInt8(255, 12); // interactionModelRevision
                     csrRequest.EndContainer(); // Close the structure
-                    MessageFrame csrResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, csrRequest, 1, 0x08, 0).GetAwaiter().GetResult();
+                    MessageFrame csrResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, csrRequest, 1, 0x08).GetAwaiter().GetResult();
 
                     var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
                     csrResponsePayload.OpenStructure();
@@ -267,10 +278,7 @@ namespace Matter.Core.Commissioning
                     var subjectValues = new List<string>();
                     subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.1")); // NodeId
                     subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.5")); // FabricId
-                    var t = Encoding.UTF8.GetBytes(e.Device.Id);
-                    t.Reverse();
-                    var s1 = BitConverter.ToString(t).Replace("-", "");
-                    subjectValues.Add(s1);
+                    subjectValues.Add(matterPart);
                     subjectValues.Add("FAB000000000001D");
                     X509Name subjectDN = new X509Name(subjectOids, subjectValues);
                     certGenerator.SetSubjectDN(subjectDN);
@@ -292,8 +300,6 @@ namespace Matter.Core.Commissioning
                     var peerNoc = certGenerator.Generate(signatureFactory);
                     peerNoc.CheckValidity();
                     paseExchange.AcknowledgeMessageAsync(csrResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
-
-                    paseExchange = paseSession.CreateExchange();
 
                     var encodedRootCertificate = new MatterTLV();
                     encodedRootCertificate.AddStructure();
@@ -348,10 +354,8 @@ namespace Matter.Core.Commissioning
                     addTrustedRootCertificateRequest.EndContainer(); // Close the array
                     addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
                     addTrustedRootCertificateRequest.EndContainer(); // Close the structure
-                    MessageFrame addTrustedRootCertificateResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addTrustedRootCertificateRequest, 1, 0x08, 0).GetAwaiter().GetResult();
+                    MessageFrame addTrustedRootCertificateResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addTrustedRootCertificateRequest, 1, 0x08).GetAwaiter().GetResult();
                     paseExchange.AcknowledgeMessageAsync(addTrustedRootCertificateResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
-
-                    paseExchange = paseSession.CreateExchange();
 
                     var encodedPeerNocCertificate = new MatterTLV();
                     encodedPeerNocCertificate.AddStructure();
@@ -365,7 +369,7 @@ namespace Matter.Core.Commissioning
                     encodedPeerNocCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
                     encodedPeerNocCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
                     encodedPeerNocCertificate.AddList(6); // Subject
-                    encodedPeerNocCertificate.AddUInt64(17, Encoding.UTF8.GetBytes(e.Device.Id)); // NodeId
+                    encodedPeerNocCertificate.AddUInt64(17, matterNodeId); // NodeId
                     encodedPeerNocCertificate.AddUInt64(21, _fabric.FabricId.ToByteArrayUnsigned()); // FabricId
                     encodedPeerNocCertificate.EndContainer(); // Close List
                     encodedPeerNocCertificate.AddUInt8(7, 1); // public-key-algorithm
@@ -413,13 +417,20 @@ namespace Matter.Core.Commissioning
                     addNocRequest.EndContainer(); // Close the array
                     addNocRequest.AddUInt8(255, 12); // interactionModelRevision
                     addNocRequest.EndContainer(); // Close the structure
-                    MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, addNocRequest, 1, 0x08, 0).GetAwaiter().GetResult();
+                    MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addNocRequest, 1, 0x08).GetAwaiter().GetResult();
 
                     paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
 
-                    var caseClient = new CASEClient(new Node() { NodeId = BigInteger.ValueOf(int.Parse(e.Device.Id)) }, _fabric, unsecureSession);
-                    var caseSession = caseClient.EstablishSessionAsync().GetAwaiter().GetResult();
+                    var caseSession = new CaseSecureSession(
+                        btpConnection,
+                        BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned()),
+                        matterNodeId,
+                        initiatorSessionId,
+                        peerSessionId,
+                        encryptKey,
+                        decryptKey
+                    );
                     MessageExchange caseExchange = caseSession.CreateExchange();
 
                     var commissioningCompletePayload = new MatterTLV();
@@ -441,12 +452,12 @@ namespace Matter.Core.Commissioning
                     commissioningCompletePayload.EndContainer(); // Close the structure
 
                     //commissioningCompleteMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
-                    //commissioningCompleteMessageFrame.DestinationNodeId = BitConverter.ToUInt64(Encoding.UTF8.GetBytes(e.Device.Id));
+                    //commissioningCompleteMessageFrame.DestinationNodeId = matterNodeId);
 
-                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(caseExchange, commissioningCompletePayload, 1, 0x08, 0).GetAwaiter().GetResult();
+                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(caseExchange, commissioningCompletePayload, 1, 0x08).GetAwaiter().GetResult();
                     caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
 
-                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", e.Device.Id);
+                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", matterNodeId);
                 }
                 catch (Exception exp)
                 {
@@ -456,7 +467,7 @@ namespace Matter.Core.Commissioning
             }
         }
 
-        private async Task<MessageFrame> SendAndReceiveMessageAsync(MessageExchange exchange, MatterTLV payload, byte protocolId, byte opCode, ushort sessionId)
+        private async Task<MessageFrame> SendAndReceiveMessageAsync(MessageExchange exchange, MatterTLV payload, byte protocolId, byte opCode)
         {
             MessagePayload messagePayload = new(payload);
             messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
@@ -465,9 +476,9 @@ namespace Matter.Core.Commissioning
 
             MessageFrame messageFrame = new(messagePayload);
             messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SessionID = sessionId;
-            messageFrame.SecurityFlags = 0x00;
-            messageFrame.SourceNodeID = 0x00;
+            messageFrame.SessionID = 0;
+            messageFrame.SecurityFlags = 0;
+            messageFrame.SourceNodeID = 0;
 
             await exchange.SendAsync(messageFrame).ConfigureAwait(false);
             return await exchange.WaitForNextMessageAsync().ConfigureAwait(false);

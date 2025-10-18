@@ -18,6 +18,8 @@ namespace Matter.Core.BTP
         private IGattCharacteristic _write;
 
         private Channel<BTPFrame> _instream = Channel.CreateBounded<BTPFrame>(10);
+        List<BTPFrame> segments = new();
+
         private Timer _acknowledgementTimer;
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private bool _connected = false;
@@ -87,6 +89,8 @@ namespace Matter.Core.BTP
                 _acknowledgementTimer.Change(5000, 5000);
 
                 BTPFrame frame = new(e.Value);
+                Console.WriteLine("Received response from device with Control flags: " + frame.ControlFlags.ToString());
+
                 if ((frame.ControlFlags & BTPFlags.Acknowledge) != 0)
                 {
                     _txAcknowledged = frame.AcknowledgeNumber;
@@ -97,8 +101,30 @@ namespace Matter.Core.BTP
                     _rxCounter = frame.Sequence;
                 }
 
-                if ((frame.ControlFlags & BTPFlags.Beginning) != 0 || (frame.ControlFlags & BTPFlags.Continuing) != 0)
+                // if this is part of a multi-frame message, we store it until we have the full message
+                if ((frame.ControlFlags & BTPFlags.Ending) == 0)
                 {
+                    segments.Add(frame);
+                    return;
+                }
+
+                if (((frame.ControlFlags & BTPFlags.Beginning) != 0) || ((frame.ControlFlags & BTPFlags.Continuing) != 0) || ((frame.ControlFlags & BTPFlags.Ending) != 0))
+                {
+                    // concat all existing segments to this message, if any
+                    if (segments.Count > 0)
+                    {
+                        List<byte> fullPayload = new();
+                        foreach (var segment in segments)
+                        {
+                            fullPayload.AddRange(segment.Payload);
+                        }
+
+                        fullPayload.AddRange(frame.Payload);
+                        frame.Payload = fullPayload.ToArray();
+                        frame.ControlFlags = BTPFlags.Beginning | BTPFlags.Ending;
+                        segments.Clear();
+                    }
+
                     _instream.Writer.WriteAsync(frame).GetAwaiter().GetResult();
                 }
             }

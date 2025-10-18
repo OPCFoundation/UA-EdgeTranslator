@@ -33,8 +33,6 @@ namespace Matter.Core
         {
             _cancellationTokenSource.Cancel();
             _readingThread.Wait();
-
-            Console.WriteLine("Closed MessageExchange [E: {0}]", _exchangeId);
         }
 
         public async Task SendAsync(MessageFrame message)
