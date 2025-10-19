@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Matter.Core.Sessions
 {
-    public class PaseSecureSession : ISession
+    public class SecureSession : ISession
     {
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
@@ -17,7 +17,7 @@ namespace Matter.Core.Sessions
         private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
         private uint _messageCounter = 0;
 
-        public PaseSecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
+        public SecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
             _encryptionKey = encryptionKey;

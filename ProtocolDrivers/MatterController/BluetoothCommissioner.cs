@@ -205,7 +205,7 @@ namespace Matter.Core.Commissioning
                     var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
                     var attestationKey = keys.AsSpan().Slice(32, 16).ToArray();
 
-                    var paseSession = new PaseSecureSession(btpConnection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
+                    var paseSession = new SecureSession(btpConnection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
                     var paseExchange = paseSession.CreateExchange();
 
                     var armFailsafeRequest = new MatterTLV();
@@ -420,16 +420,6 @@ namespace Matter.Core.Commissioning
                     MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addNocRequest, 1, 0x08).GetAwaiter().GetResult();
 
                     paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
-                    paseExchange.Close();
-
-                    var caseSession = new CaseSecureSession(
-                        btpConnection,
-                        initiatorSessionId,
-                        peerSessionId,
-                        encryptKey,
-                        decryptKey
-                    );
-                    MessageExchange caseExchange = caseSession.CreateExchange();
 
                     var commissioningCompletePayload = new MatterTLV();
                     commissioningCompletePayload.AddStructure();
@@ -452,8 +442,9 @@ namespace Matter.Core.Commissioning
                     //commissioningCompleteMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
                     //commissioningCompleteMessageFrame.DestinationNodeId = matterNodeId);
 
-                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(caseExchange, commissioningCompletePayload, 1, 0x08).GetAwaiter().GetResult();
-                    caseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, commissioningCompletePayload, 1, 0x08).GetAwaiter().GetResult();
+                    paseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+                    paseExchange.Close();
 
                     Console.WriteLine("Commissioning of Matter Device {0} is complete.", matterNodeId);
                 }

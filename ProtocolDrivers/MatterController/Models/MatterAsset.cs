@@ -6,7 +6,7 @@
 
         public ushort Port { get; set; }
 
-        public Matter.Core.Node Node { get; set; }
+        public Node Node { get; set; }
 
         public uint Passcode { get; set; }
     }
