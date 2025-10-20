@@ -89,7 +89,6 @@ namespace Matter.Core.BTP
                 _acknowledgementTimer.Change(5000, 5000);
 
                 BTPFrame frame = new(e.Value);
-                Console.WriteLine("Received response from device with Control flags: " + frame.ControlFlags.ToString());
 
                 if ((frame.ControlFlags & BTPFlags.Acknowledge) != 0)
                 {

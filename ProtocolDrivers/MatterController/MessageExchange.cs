@@ -123,7 +123,6 @@ namespace Matter.Core
                     //
                     if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
                     {
-                        Console.WriteLine("Received Message is a standalone ack for {0}", messageFrame.MessagePayload.AcknowledgedMessageCounter);
                         continue;
                     }
 
@@ -185,7 +184,7 @@ namespace Matter.Core
             await SendAsync(messageFrame).ConfigureAwait(false);
         }
 
-        public async Task SendCommand(byte endpoint, byte cluster, byte command, object[] parameters = null)
+        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)
         {
             var payload = new MatterTLV();
             payload.AddStructure();
@@ -249,8 +248,10 @@ namespace Matter.Core
             payload.AddUInt8(255, 12); // interactionModelRevision
             payload.EndContainer(); // Close the structure
 
-            MessageFrame response = await SendAndReceiveMessageAsync(payload, 1, 8).ConfigureAwait(false);
+            MessageFrame response = await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
             await AcknowledgeMessageAsync(response.MessageCounter).ConfigureAwait(false);
+
+            return response;
         }
     }
 }
