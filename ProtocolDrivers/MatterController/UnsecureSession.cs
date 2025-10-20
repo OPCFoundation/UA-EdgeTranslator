@@ -16,9 +16,6 @@ namespace Matter.Core.Sessions
         {
             _connection = connection;
             _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
-
-            SessionId = 0x00;
-            PeerSessionId = 0x00;
         }
 
         public IConnection Connection => _connection;
@@ -28,13 +25,13 @@ namespace Matter.Core.Sessions
             return _connection.OpenConnection();
         }
 
-        public ulong SourceNodeId { get; } = 0x00;
+        public ulong SourceNodeId { get; } = 0;
 
-        public ulong DestinationNodeId { get; } = 0x00;
+        public ulong DestinationNodeId { get; } = 0;
 
-        public ushort SessionId { get; set; }
+        public ushort SessionId { get; set; } = 0;
 
-        public ushort PeerSessionId { get; }
+        public ushort PeerSessionId { get; } = 0;
 
         public bool UseMRP => false;
 
@@ -47,23 +44,7 @@ namespace Matter.Core.Sessions
 
         public MessageExchange CreateExchange()
         {
-            // We're going to Exchange messages in this session, so we need a MessageExchange
-            // to track it (4.10).
-            //
-            // TODO Ensure the ExchangeId is unique!
-            //
-            var randomBytes = new byte[2];
-
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-
-                ushort trueRandom = BitConverter.ToUInt16(randomBytes, 0);
-
-                var exchangeId = trueRandom;
-
-                return new MessageExchange(exchangeId, this);
-            }
+            return new MessageExchange(BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2)), this);
         }
 
         public async Task SendAsync(byte[] message)
@@ -78,13 +59,13 @@ namespace Matter.Core.Sessions
 
         public byte[] Encode(MessageFrame messageFrame)
         {
-            var parts = new MessageFrameParts(messageFrame);
+            MessageFrameParts parts = new(messageFrame);
             return parts.Header.Concat(parts.MessagePayload).ToArray();
         }
 
         public MessageFrame Decode(MessageFrameParts parts)
         {
-            var messageFrame = parts.MessageFrameWithHeaders();
+            MessageFrame messageFrame = parts.MessageFrameWithHeaders();
             messageFrame.MessagePayload = new MessagePayload(parts.MessagePayload);
             return messageFrame;
         }

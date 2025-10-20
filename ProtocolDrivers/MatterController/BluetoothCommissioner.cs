@@ -139,7 +139,7 @@ namespace Matter.Core.Commissioning
                     PBKDFParamRequest.AddUInt16(3, 0);
                     PBKDFParamRequest.AddBool(4, false);
                     PBKDFParamRequest.EndContainer();
-                    MessageFrame responseMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, PBKDFParamRequest, 0, 0x20).GetAwaiter().GetResult();
+                    MessageFrame responseMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(PBKDFParamRequest, 0, 0x20).GetAwaiter().GetResult();
                     if (MessageFrame.IsStatusReport(responseMessageFrame))
                     {
                         Console.WriteLine("Received status report in response to PBKDF param request message, abandoning commissioning!");
@@ -171,7 +171,7 @@ namespace Matter.Core.Commissioning
                     var byteString = X.GetEncoded(false).ToArray();
                     pake1.AddOctetString(1, byteString);
                     pake1.EndContainer();
-                    MessageFrame pake2MessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake1, 0, 0x22).GetAwaiter().GetResult();
+                    MessageFrame pake2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake1, 0, 0x22).GetAwaiter().GetResult();
 
                     var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
                     pake2.OpenStructure();
@@ -189,8 +189,7 @@ namespace Matter.Core.Commissioning
                     pake3.AddStructure();
                     pake3.AddOctetString(1, hAY);
                     pake3.EndContainer();
-                    MessageFrame pakeFinishedMessageFrame = SendAndReceiveMessageAsync(unsecureExchange, pake3, 0, 0x24).GetAwaiter().GetResult();
-
+                    MessageFrame pakeFinishedMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake3, 0, 0x24).GetAwaiter().GetResult();
                     unsecureExchange.AcknowledgeMessageAsync(pakeFinishedMessageFrame.MessageCounter).GetAwaiter().GetResult();
                     unsecureExchange.Close();
 
@@ -218,7 +217,7 @@ namespace Matter.Core.Commissioning
                     armFailsafeRequest.EndContainer(); // Close the list
                     armFailsafeRequest.EndContainer(); // Close the array
                     armFailsafeRequest.EndContainer(); // Close the structure
-                    SendAndReceiveMessageAsync(paseExchange, armFailsafeRequest, 1, 0x09).GetAwaiter().GetResult();
+                    paseExchange.SendAndReceiveMessageAsync(armFailsafeRequest, 1, 0x09).GetAwaiter().GetResult();
 
                     var csrRequest = new MatterTLV();
                     csrRequest.AddStructure();
@@ -238,7 +237,7 @@ namespace Matter.Core.Commissioning
                     csrRequest.EndContainer(); // Close the array
                     csrRequest.AddUInt8(255, 12); // interactionModelRevision
                     csrRequest.EndContainer(); // Close the structure
-                    MessageFrame csrResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, csrRequest, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame csrResponseMessageFrame = paseExchange.SendAndReceiveMessageAsync(csrRequest, 1, 0x08).GetAwaiter().GetResult();
 
                     var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
                     csrResponsePayload.OpenStructure();
@@ -354,7 +353,7 @@ namespace Matter.Core.Commissioning
                     addTrustedRootCertificateRequest.EndContainer(); // Close the array
                     addTrustedRootCertificateRequest.AddUInt8(255, 12); // interactionModelRevision
                     addTrustedRootCertificateRequest.EndContainer(); // Close the structure
-                    MessageFrame addTrustedRootCertificateResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addTrustedRootCertificateRequest, 1, 0x08).GetAwaiter().GetResult();
+                    MessageFrame addTrustedRootCertificateResponseMessageFrame = paseExchange.SendAndReceiveMessageAsync(addTrustedRootCertificateRequest, 1, 0x08).GetAwaiter().GetResult();
                     paseExchange.AcknowledgeMessageAsync(addTrustedRootCertificateResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
 
                     var encodedPeerNocCertificate = new MatterTLV();
@@ -396,54 +395,18 @@ namespace Matter.Core.Commissioning
                     encodedPeerNocCertificate.AddOctetString(11, encodedPeerNocCertificateSignature);
                     encodedPeerNocCertificate.EndContainer(); // Close Structure
 
-                    var addNocRequest = new MatterTLV();
-                    addNocRequest.AddStructure();
-                    addNocRequest.AddBool(0, false);
-                    addNocRequest.AddBool(1, false);
-                    addNocRequest.AddArray(tagNumber: 2); // InvokeRequests
-                    addNocRequest.AddStructure();
-                    addNocRequest.AddList(tagNumber: 0); // CommandPath
-                    addNocRequest.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
-                    addNocRequest.AddUInt32(tagNumber: 1, 0x3E); // ClusterId 0x3E - Node Operational Credentials
-                    addNocRequest.AddUInt16(tagNumber: 2, 0x06); // 11.18.6. Command AddNoc
-                    addNocRequest.EndContainer();
-                    addNocRequest.AddStructure(1); // CommandFields
-                    addNocRequest.AddOctetString(0, encodedPeerNocCertificate.GetBytes()); // NOCValue
-                    addNocRequest.AddOctetString(2, _fabric.IPK); // IPKValue
-                    addNocRequest.AddUInt64(3, _fabric.RootNodeId.ToByteArrayUnsigned()); // CaseAdminSubject - In this case the RootNodeId.
-                    addNocRequest.AddUInt16(4, _fabric.AdminVendorId); // AdminVendorId
-                    addNocRequest.EndContainer(); // Close the CommandFields
-                    addNocRequest.EndContainer(); // Close the structure
-                    addNocRequest.EndContainer(); // Close the array
-                    addNocRequest.AddUInt8(255, 12); // interactionModelRevision
-                    addNocRequest.EndContainer(); // Close the structure
-                    MessageFrame addNocResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, addNocRequest, 1, 0x08).GetAwaiter().GetResult();
+                    object[] paramters = [
+                        encodedPeerNocCertificate.GetBytes(),
+                        null,
+                        _fabric.IPK,
+                        _fabric.RootNodeId,
+                        _fabric.AdminVendorId
+                    ];
+                    paseExchange.SendCommand(0, 0x3E, 6, paramters).GetAwaiter().GetResult(); // AddNoc
 
-                    paseExchange.AcknowledgeMessageAsync(addNocResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+                    // TODO: scan Thread networks
 
-                    var commissioningCompletePayload = new MatterTLV();
-                    commissioningCompletePayload.AddStructure();
-                    commissioningCompletePayload.AddBool(0, false);
-                    commissioningCompletePayload.AddBool(1, false);
-                    commissioningCompletePayload.AddArray(tagNumber: 2); // InvokeRequests
-                    commissioningCompletePayload.AddStructure();
-                    commissioningCompletePayload.AddList(tagNumber: 0); // CommandPath
-                    commissioningCompletePayload.AddUInt16(tagNumber: 0, 0x00); // Endpoint 0x00
-                    commissioningCompletePayload.AddUInt32(tagNumber: 1, 0x30); // ClusterId 0x30 - General Commissioning
-                    commissioningCompletePayload.AddUInt16(tagNumber: 2, 0x04); // 11.18.6. Command CompleteCommissioning
-                    commissioningCompletePayload.EndContainer();
-                    commissioningCompletePayload.AddStructure(1); // CommandFields
-                    commissioningCompletePayload.EndContainer(); // Close the CommandFields
-                    commissioningCompletePayload.EndContainer(); // Close the structure
-                    commissioningCompletePayload.EndContainer(); // Close the array
-                    commissioningCompletePayload.AddUInt8(255, 12); // interactionModelRevision
-                    commissioningCompletePayload.EndContainer(); // Close the structure
-
-                    //commissioningCompleteMessageFrame.SourceNodeID = BitConverter.ToUInt64(_fabric.RootNodeId.ToByteArrayUnsigned());
-                    //commissioningCompleteMessageFrame.DestinationNodeId = matterNodeId);
-
-                    MessageFrame commissioningCompleteResponseMessageFrame = SendAndReceiveMessageAsync(paseExchange, commissioningCompletePayload, 1, 0x08).GetAwaiter().GetResult();
-                    paseExchange.AcknowledgeMessageAsync(commissioningCompleteResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+                    paseExchange.SendCommand(0, 0x30, 4).GetAwaiter().GetResult(); // CompleteCommissioning
                     paseExchange.Close();
 
                     Console.WriteLine("Commissioning of Matter Device {0} is complete.", matterNodeId);
@@ -454,23 +417,6 @@ namespace Matter.Core.Commissioning
                     Console.WriteLine("Error: {0}", exp.Message);
                 }
             }
-        }
-
-        private async Task<MessageFrame> SendAndReceiveMessageAsync(MessageExchange exchange, MatterTLV payload, byte protocolId, byte opCode)
-        {
-            MessagePayload messagePayload = new(payload);
-            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
-            messagePayload.ProtocolId = protocolId;
-            messagePayload.ProtocolOpCode = opCode;
-
-            MessageFrame messageFrame = new(messagePayload);
-            messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SessionID = 0;
-            messageFrame.SecurityFlags = 0;
-            messageFrame.SourceNodeID = 0;
-
-            await exchange.SendAsync(messageFrame).ConfigureAwait(false);
-            return await exchange.WaitForNextMessageAsync().ConfigureAwait(false);
         }
     }
 }

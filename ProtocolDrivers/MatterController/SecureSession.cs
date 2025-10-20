@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -13,20 +12,18 @@ namespace Matter.Core.Sessions
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        private readonly IList<MessageExchange> _exchanges = new List<MessageExchange>();
         private uint _messageCounter = 0;
 
         public SecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
+            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
+
             _encryptionKey = encryptionKey;
             _decryptionKey = decryptionKey;
 
             SessionId = sessionId;
             PeerSessionId = peerSessionId;
-
-            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
         }
 
         public IConnection CreateNewConnection()
@@ -50,24 +47,12 @@ namespace Matter.Core.Sessions
 
         public void Close()
         {
-            _cancellationTokenSource.Cancel();
             _connection.Close();
         }
 
         public MessageExchange CreateExchange()
         {
-            // We're going to Exchange messages in this session, so we need an MessageExchange
-            // to track it (4.10).
-            //
-            ushort trueRandom = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2));
-
-            var exchangeId = trueRandom;
-
-            var exchange = new MessageExchange(exchangeId, this);
-
-            _exchanges.Add(exchange);
-
-            return exchange;
+            return new MessageExchange(BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2)), this);
         }
 
         public async Task SendAsync(byte[] message)
@@ -115,8 +100,7 @@ namespace Matter.Core.Sessions
 
         public MessageFrame Decode(MessageFrameParts parts)
         {
-            // Run this through the decoder. We need to start reading the bytes until we
-            // get to the payload. We then need to decrypt the payload.
+            // We need to start reading the bytes until we get to the payload. We then need to decrypt the payload.
 
             var messageFrame = parts.MessageFrameWithHeaders();
             var memoryStream = new MemoryStream();

@@ -19,8 +19,6 @@ namespace Matter.Core
 
         public event EventHandler ConnectionClosed;
 
-        public SemaphoreSlim AcknowledgementReceived { get; init; } = new SemaphoreSlim(0);
-
         public UdpConnection(IPAddress address, ushort port)
         {
             _ipAddress = address;
@@ -89,15 +87,11 @@ namespace Matter.Core
             {
                 return null;
             }
-}
+        }
 
         public async Task SendAsync(byte[] bytes)
         {
-            await _udpClient!.SendAsync(bytes, _cancellationTokenSource.Token).ConfigureAwait(false);
-
-            // TODO Ensure we get an acknowledgement of the frame we just sent!
-            //
-            //await AcknowledgementReceived.WaitAsync();
+            await _udpClient.SendAsync(bytes, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
     }
 }

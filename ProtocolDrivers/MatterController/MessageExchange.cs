@@ -1,4 +1,5 @@
 ﻿using Matter.Core.Sessions;
+using Matter.Core.TLV;
 using System;
 using System.Threading;
 using System.Threading.Channels;
@@ -143,24 +144,113 @@ namespace Matter.Core
             Console.WriteLine("Exiting ReceiveAsync loop...");
         }
 
-        public async Task AcknowledgeMessageAsync(uint messageCounter)
+        public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
         {
-            MessagePayload payload = new MessagePayload();
-            payload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
-            payload.ExchangeFlags |= ExchangeFlags.Initiator;
-            payload.ExchangeID = _exchangeId;
-            payload.AcknowledgedMessageCounter = messageCounter;
-            payload.ProtocolId = 0x00; // Secure Channel
-            payload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement
+            MessagePayload messagePayload = new(payload);
+            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+            messagePayload.ExchangeID = _exchangeId;
+            messagePayload.ProtocolId = protocolId;
+            messagePayload.ProtocolOpCode = opCode;
 
-            MessageFrame messageFrame = new MessageFrame(payload);
+            MessageFrame messageFrame = new(messagePayload);
             messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SecurityFlags = 0x00;
+            messageFrame.SecurityFlags = 0;
             messageFrame.SessionID = _session.SessionId;
             messageFrame.SourceNodeID = _session.SourceNodeId;
+            messageFrame.DestinationNodeId = _session.DestinationNodeId;
             messageFrame.MessageCounter = _session.MessageCounter;
 
             await SendAsync(messageFrame).ConfigureAwait(false);
+            return await WaitForNextMessageAsync().ConfigureAwait(false);
+        }
+
+        public async Task AcknowledgeMessageAsync(uint messageCounter)
+        {
+            MessagePayload messagePayload = new MessagePayload();
+            messagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
+            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+            messagePayload.ExchangeID = _exchangeId;
+            messagePayload.AcknowledgedMessageCounter = messageCounter;
+            messagePayload.ProtocolId = 0; // Secure Channel
+            messagePayload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement
+
+            MessageFrame messageFrame = new MessageFrame(messagePayload);
+            messageFrame.MessageFlags |= MessageFlags.S;
+            messageFrame.SecurityFlags = 0;
+            messageFrame.SessionID = _session.SessionId;
+            messageFrame.SourceNodeID = _session.SourceNodeId;
+            messageFrame.DestinationNodeId = _session.DestinationNodeId;
+            messageFrame.MessageCounter = _session.MessageCounter;
+
+            await SendAsync(messageFrame).ConfigureAwait(false);
+        }
+
+        public async Task SendCommand(byte endpoint, byte cluster, byte command, object[] parameters = null)
+        {
+            var payload = new MatterTLV();
+            payload.AddStructure();
+            payload.AddBool(0, false);
+            payload.AddBool(1, false);
+            payload.AddArray(2); // InvokeRequests
+            payload.AddStructure();
+            payload.AddList(0); // CommandPath
+            payload.AddUInt16(0, endpoint);
+            payload.AddUInt32(1, cluster);
+            payload.AddUInt16(2, command);
+            payload.EndContainer();
+            payload.AddStructure(1); // CommandFields
+
+            if (parameters != null)
+            {
+                for (byte i = 0; i < parameters.Length; i++)
+                {
+                    if (parameters[i] == null)
+                    {
+                        // skip null paramters
+                        continue;
+                    }
+
+                    object param = parameters[i];
+                    switch (param)
+                    {
+                        case byte b:
+                            payload.AddUInt8(i, b);
+                            break;
+                        case ushort us:
+                            payload.AddUInt16(i, us);
+                            break;
+                        case uint ui:
+                            payload.AddUInt32(i, ui);
+                            break;
+                        case ulong ul:
+                            payload.AddUInt64(i, ul);
+                            break;
+                        case Org.BouncyCastle.Math.BigInteger bi:
+                            payload.AddUInt64(i, bi.ToByteArrayUnsigned());
+                            break;
+                        case string s:
+                            payload.AddUTF8String(i, s);
+                            break;
+                        case byte[] ba:
+                            payload.AddOctetString(i, ba);
+                            break;
+                        case bool bo:
+                            payload.AddBool(i, bo);
+                            break;
+                        default:
+                            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
+                    }
+                }
+            }
+
+            payload.EndContainer(); // Close the CommandFields
+            payload.EndContainer(); // Close the structure
+            payload.EndContainer(); // Close the array
+            payload.AddUInt8(255, 12); // interactionModelRevision
+            payload.EndContainer(); // Close the structure
+
+            MessageFrame response = await SendAndReceiveMessageAsync(payload, 1, 8).ConfigureAwait(false);
+            await AcknowledgeMessageAsync(response.MessageCounter).ConfigureAwait(false);
         }
     }
 }

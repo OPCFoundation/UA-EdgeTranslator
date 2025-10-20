@@ -164,10 +164,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt8(long tagNumber, byte value)
+        public MatterTLV AddUInt8(byte tagNumber, byte value)
         {
             _values.Add(0x01 << 5 | 0x4);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
 
             // No length required
             //
@@ -184,10 +184,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt16(long tagNumber, ushort value)
+        public MatterTLV AddUInt16(byte tagNumber, ushort value)
         {
             _values.Add(0x01 << 5 | 0x5);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
 
             // No length required.
             //
@@ -196,10 +196,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt32(long tagNumber, uint value)
+        public MatterTLV AddUInt32(byte tagNumber, uint value)
         {
             _values.Add(0x01 << 5 | 0x6);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
 
             // No length required.
             //
@@ -208,10 +208,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt64(long tagNumber, ulong value)
+        public MatterTLV AddUInt64(byte tagNumber, ulong value)
         {
             _values.Add(0x01 << 5 | 0x7);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
 
             // No length required.
             //
@@ -220,20 +220,20 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt64(long tagNumber, byte[] value)
+        public MatterTLV AddUInt64(byte tagNumber, byte[] value)
         {
             if (value.Length != 8)
             {
                 throw new Exception("Value must be 8 bytes long");
             }
             _values.Add(0x01 << 5 | 0x7);
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
             _values.AddRange(value);
 
             return this;
         }
 
-        public MatterTLV AddBool(int tagNumber, bool value)
+        public MatterTLV AddBool(byte tagNumber, bool value)
         {
             if (value)
             {
@@ -244,7 +244,7 @@ namespace Matter.Core.TLV
                 _values.Add(0x01 << 5 | 0x08); // Boolean FALSE
             }
 
-            _values.Add((byte)tagNumber);
+            _values.Add(tagNumber);
 
             return this;
         }
