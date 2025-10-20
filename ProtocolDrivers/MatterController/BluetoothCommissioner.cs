@@ -22,6 +22,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Linq;
+using System.Net.NetworkInformation;
+using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -164,7 +166,42 @@ namespace Matter.Core.Commissioning
                     ];
                     paseExchange.SendCommand(0, 0x3E, 6, 8, paramters).GetAwaiter().GetResult(); // AddNoc
 
-                    // TODO: scan Thread networks
+                    paramters = [
+                        null,
+                        42 // Breadcrumb
+                    ];
+                    MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, 8, paramters).GetAwaiter().GetResult(); // ScanNetworks
+                    MatterTLV scanResultPayload = scanResult.MessagePayload.ApplicationPayload;
+
+                    //PanId = reader.GetUShort(0)!.Value;
+                    //ExtendedPanId = reader.GetULong(1)!.Value;
+                    //NetworkName = reader.GetString(2, false, 16)!;
+                    //Channel = reader.GetUShort(3)!.Value;
+                    //Version = reader.GetByte(4)!.Value;
+                    //ExtendedAddress = new PhysicalAddress(reader.GetBytes(5, false, 8, 6)!);
+                    //RSSI = reader.GetSByte(6)!.Value;
+                    //LQI = reader.GetByte(7)!.Value;
+
+                    //public required ushort PanId { get; set; }
+                    //public required ulong ExtendedPanId { get; set; }
+                    //public required string NetworkName { get; set; }
+                    //public required ushort Channel { get; set; }
+                    //public required byte Version { get; set; }
+                    //public required PhysicalAddress ExtendedAddress { get; set; }
+                    //public required sbyte RSSI { get; set; }
+                    //public required byte LQI { get; set; }
+
+                    paramters = [
+                        new byte[] { 0x00 }, // OperationalDataset
+                        42 // Breadcrumb
+                    ];
+                    paseExchange.SendCommand(0, 0x31, 2, 8, paramters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
+
+                    paramters = [
+                        new byte[] { 0x00 }, // Network ID
+                        42 // Breadcrumb
+                    ];
+                    paseExchange.SendCommand(0, 0x31, 6, 8).GetAwaiter().GetResult(); // ConnectNetwork
 
                     paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
 
