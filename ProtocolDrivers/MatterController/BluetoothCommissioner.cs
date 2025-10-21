@@ -166,38 +166,37 @@ namespace Matter.Core.Commissioning
 
                     paramters = [
                         null,
-                        42 // Breadcrumb
+                        (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, 8, paramters).GetAwaiter().GetResult(); // ScanNetworks
-                    MatterTLV scanResultPayload = scanResult.MessagePayload.ApplicationPayload;
 
-                    //PanId = reader.GetUShort(0)!.Value;
-                    //ExtendedPanId = reader.GetULong(1)!.Value;
-                    //NetworkName = reader.GetString(2, false, 16)!;
-                    //Channel = reader.GetUShort(3)!.Value;
-                    //Version = reader.GetByte(4)!.Value;
-                    //ExtendedAddress = new PhysicalAddress(reader.GetBytes(5, false, 8, 6)!);
-                    //RSSI = reader.GetSByte(6)!.Value;
-                    //LQI = reader.GetByte(7)!.Value;
+                    MatterTLV scanResultPayload = SkipHeader(scanResult.MessagePayload.ApplicationPayload);
+                    scanResultPayload.OpenStructure(1);
+                    byte status = scanResultPayload.GetUnsignedInt8(0);
+                    scanResultPayload.OpenArray(3);
+                    scanResultPayload.OpenStructure();
+                    ushort panId = scanResultPayload.GetUnsignedInt16(0);
+                    ulong extendedPanId = scanResultPayload.GetUnsignedInt64(1);
+                    string networkName = scanResultPayload.GetUTF8String(2);
+                    byte channel = scanResultPayload.GetUnsignedInt8(3);
+                    byte version = scanResultPayload.GetUnsignedInt8(4);
+                    byte[] extendedAddress = scanResultPayload.GetOctetString(5);
+                    sbyte rssi = scanResultPayload.GetSignedInt8(6);
+                    byte lqi = scanResultPayload.GetUnsignedInt8(7);
 
-                    //public required ushort PanId { get; set; }
-                    //public required ulong ExtendedPanId { get; set; }
-                    //public required string NetworkName { get; set; }
-                    //public required ushort Channel { get; set; }
-                    //public required byte Version { get; set; }
-                    //public required PhysicalAddress ExtendedAddress { get; set; }
-                    //public required sbyte RSSI { get; set; }
-                    //public required byte LQI { get; set; }
+                    Console.WriteLine("Thread Network Scan Result from Device: ExtendedPANID={0:X16}, NetworkName={1}, ExtendedAddress={2}", extendedPanId, networkName, BitConverter.ToString(extendedAddress).Replace("-", ":"));
 
                     paramters = [
-                        new byte[] { 0x00 }, // OperationalDataset
-                        42 // Breadcrumb
+                        _payload.ThreadDataset,
+                        (ulong)2222 // Breadcrumb
                     ];
                     paseExchange.SendCommand(0, 0x31, 2, 8, paramters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
 
+                    byte[] exPanId = BitConverter.GetBytes(extendedPanId);
+                    Array.Reverse(exPanId);
                     paramters = [
-                        new byte[] { 0x00 }, // Network ID
-                        42 // Breadcrumb
+                        exPanId,
+                        (ulong)2222 // Breadcrumb
                     ];
                     paseExchange.SendCommand(0, 0x31, 6, 8).GetAwaiter().GetResult(); // ConnectNetwork
 
@@ -335,21 +334,9 @@ namespace Matter.Core.Commissioning
 
         private void ValidateCSRResponse(string matterPart, MessageFrame csrResponseMessageFrame, out byte[] peerNocPublicKeyBytes, out byte[] peerNocKeyIdentifier, out X509Certificate peerNoc)
         {
-            var csrResponsePayload = csrResponseMessageFrame.MessagePayload.ApplicationPayload;
-            csrResponsePayload.OpenStructure();
-            csrResponsePayload.GetBoolean(0);
-            csrResponsePayload.OpenArray(1);
-            csrResponsePayload.OpenStructure();
-            csrResponsePayload.OpenStructure(0);
-            csrResponsePayload.OpenList(0);
-            csrResponsePayload.GetUnsignedInt8(0);
-            csrResponsePayload.GetUnsignedInt8(1);
-            csrResponsePayload.GetUnsignedInt8(2);
-            csrResponsePayload.CloseContainer(); // Close list.
+            var csrResponsePayload = SkipHeader(csrResponseMessageFrame.MessagePayload.ApplicationPayload);
             csrResponsePayload.OpenStructure(1);
             var nocsrBytes = csrResponsePayload.GetOctetString(0);
-            var nocsrString = Encoding.ASCII.GetString(nocsrBytes.ToArray());
-
             var nocPayload = new MatterTLV(nocsrBytes);
             nocPayload.OpenStructure();
             var derBytes = nocPayload.GetOctetString(1);
@@ -362,12 +349,10 @@ namespace Matter.Core.Commissioning
             peerNocKeyIdentifier = SHA1.HashData(peerNocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 
-            var csrInfo = certificateRequest.GetCertificationRequestInfo();
             var certGenerator = new X509V3CertificateGenerator();
             var randomGenerator = new CryptoApiRandomGenerator();
             var random = new SecureRandom(randomGenerator);
             var serialNumber = BigIntegers.CreateRandomInRange(Org.BouncyCastle.Math.BigInteger.One, Org.BouncyCastle.Math.BigInteger.ValueOf(long.MaxValue), random);
-            var operationalId = BigIntegers.CreateRandomInRange(Org.BouncyCastle.Math.BigInteger.One, Org.BouncyCastle.Math.BigInteger.ValueOf(long.MaxValue), random);
             certGenerator.SetSerialNumber(serialNumber);
             var subjectOids = new List<DerObjectIdentifier>();
             var subjectValues = new List<string>();
@@ -439,6 +424,22 @@ namespace Matter.Core.Commissioning
             encodedPeerNocCertificate.EndContainer(); // Close Structure
 
             return encodedPeerNocCertificate.GetBytes();
+        }
+
+        private MatterTLV SkipHeader(MatterTLV data)
+        {
+            data.OpenStructure();
+            data.GetBoolean(0);
+            data.OpenArray(1);
+            data.OpenStructure();
+            data.OpenStructure(0);
+            data.OpenList(0);
+            data.GetUnsignedInt8(0);
+            data.GetUnsignedInt8(1);
+            data.GetUnsignedInt8(2);
+            data.CloseContainer();
+
+            return data;
         }
     }
 }

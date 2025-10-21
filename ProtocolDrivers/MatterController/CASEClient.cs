@@ -34,6 +34,7 @@ namespace Matter.Core.Sessions
 
         internal async Task<ISession> EstablishSessionAsync()
         {
+            // Certificate - Authenticated Session Establishment (CASE)
             var caseExchange = _unsecureSession.CreateExchange();
 
             var spake1InitiatorRandomBytes = RandomNumberGenerator.GetBytes(32);

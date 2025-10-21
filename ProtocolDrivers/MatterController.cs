@@ -47,16 +47,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 // check if the node is already commissioned into our Fabric
-                if (!_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[2]))
+                if (!_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3]))
                 {
-                    Console.WriteLine($"Matter Node '{ipParts[2]}' is not commissioned. Starting commissioning process.");
+                    Console.WriteLine($"Matter Node '{ipParts[3]}' is not commissioned. Starting commissioning process.");
 
-                    var commissioningPayload = ParseManualSetupCode(ipParts[2]);
+                    var commissioningPayload = ParseManualSetupCode(ipParts[2], ipParts[3]);
                     _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
 
                     // wait 100 seconds or until we have an IP address for the node
                     uint numRetries = 100;
-                    while ((numRetries > 0) && !_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[2] && n.LastKnownIpAddress != null))
+                    while ((numRetries > 0) && !_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3] && n.LastKnownIpAddress != null))
                     {
                         Task.Delay(1000).GetAwaiter().GetResult();
                         numRetries--;
@@ -159,14 +159,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             throw new NotImplementedException();
         }
 
-        private CommissioningPayload ParseManualSetupCode(string manualSetupCode)
+        private CommissioningPayload ParseManualSetupCode(string hexDataset, string manualSetupCode)
         {
             byte[] data = Decode(manualSetupCode);
-            uint version = readBits(data, 0, 3);
-            ushort vendorID = (ushort)readBits(data, 3, 16);
-            ushort productID = (ushort)readBits(data, 19, 16);
-            int flow = (int)readBits(data, 35, 2);
-            int capabilities = (int) readBits(data, 37, 8);
             ushort discriminator = (ushort)readBits(data, 45, 12);
             uint passcode = readBits(data, 57, 27);
             uint padding = readBits(data, 84, 4);
@@ -176,10 +171,30 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new ArgumentException("Invalid QR Code");
             }
 
+            byte[] bytes = Array.Empty<byte>();
+            try
+            {
+                if (hexDataset.Length % 2 != 0)
+                {
+                    throw new ArgumentException("Hex string must have an even length.");
+                }
+
+                bytes = new byte[hexDataset.Length / 2];
+                for (int i = 0; i < hexDataset.Length; i += 2)
+                {
+                    bytes[i / 2] = Convert.ToByte(hexDataset.Substring(i, 2), 16);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error converting hex string to byte array: " + ex.Message);
+            }
+
             return new CommissioningPayload()
             {
                 Discriminator = discriminator,
-                Passcode = passcode
+                Passcode = passcode,
+                ThreadDataset = bytes
             };
         }
 

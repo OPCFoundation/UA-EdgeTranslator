@@ -215,12 +215,21 @@ namespace Matter.Core
                         case byte b:
                             payload.AddUInt8(i, b);
                             break;
+                        case short s:
+                            payload.AddInt16(i, s);
+                            break;
                         case ushort us:
                             payload.AddUInt16(i, us);
+                            break;
+                        case int it:
+                            payload.AddInt32(i, it);
                             break;
                         case uint ui:
                             payload.AddUInt32(i, ui);
                             break;
+                        case long l:
+                                payload.AddInt64(i, l);
+                                break;
                         case ulong ul:
                             payload.AddUInt64(i, ul);
                             break;

@@ -1248,9 +1248,9 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("matter://"))
             {
                 string[] address = td.Base.Split(new char[] { '/' });
-                if ((address.Length != 3) || (address[0] != "matter:"))
+                if ((address.Length != 4) || (address[0] != "matter:"))
                 {
-                    throw new Exception("Expected Matter device address in the format matter://MatterDeviceCommissioningQRCode!");
+                    throw new Exception("Expected Matter device address in the format matter://ThreadNetworkDataset/MatterDeviceCommissioningQRCode!");
                 }
 
                 // check if we can reach the Matter asset

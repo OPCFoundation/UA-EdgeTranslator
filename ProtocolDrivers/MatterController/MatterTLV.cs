@@ -184,6 +184,18 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddInt16(byte tagNumber, short value)
+        {
+            _values.Add(0x01 << 5 | 0x1);
+            _values.Add(tagNumber);
+
+            // No length required.
+            //
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
         public MatterTLV AddUInt16(byte tagNumber, ushort value)
         {
             _values.Add(0x01 << 5 | 0x5);
@@ -196,9 +208,33 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddInt32(byte tagNumber, int value)
+        {
+            _values.Add(0x01 << 5 | 0x2);
+            _values.Add(tagNumber);
+
+            // No length required.
+            //
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
         public MatterTLV AddUInt32(byte tagNumber, uint value)
         {
             _values.Add(0x01 << 5 | 0x6);
+            _values.Add(tagNumber);
+
+            // No length required.
+            //
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddInt64(byte tagNumber, long value)
+        {
+            _values.Add(0x01 << 5 | 0x3);
             _values.Add(tagNumber);
 
             // No length required.
@@ -379,21 +415,22 @@ namespace Matter.Core.TLV
 
             if ((0x1F & _values[_pointer]) == 0x13)
             {
-                //Octet String, 2 - octet length
+                // Octet String, 8 - octet length
                 length = 8;
             }
             else if ((0x1F & _values[_pointer]) == 0x12)
             {
-                //Octet String, 2 - octet length
+                // Octet String, 4 - octet length
                 length = 4;
             }
             else if ((0x1F & _values[_pointer]) == 0x11)
             {
-                //Octet String, 2 - octet length
+                // Octet String, 2 - octet length
                 length = 2;
             }
             else if ((0x1F & _values[_pointer]) == 0x10) // Context Octet String, 1 - octet length
             {
+                // Octet String, 1 - octet length
                 length = 1;
             }
 
@@ -435,7 +472,7 @@ namespace Matter.Core.TLV
             return bytes;
         }
 
-        public byte[] GetUTF8String(int tag)
+        public string GetUTF8String(int tag)
         {
             // Check the Control Octet.
             //
@@ -497,7 +534,7 @@ namespace Matter.Core.TLV
 
             _pointer += (int)valueLength;
 
-            return bytes;
+            return Encoding.UTF8.GetString(bytes);
         }
 
         internal long GetSignedInt(int? tag)
@@ -564,6 +601,23 @@ namespace Matter.Core.TLV
                 default:
                     throw new Exception($"Unexpected element type {elementType}");
             }
+
+            return value;
+        }
+
+        public sbyte GetSignedInt8(int tag)
+        {
+            if ((0x1F & _values[_pointer++]) != 0x00)
+            {
+                throw new Exception("Expected Signed Integer, 1-octet value not found");
+            }
+
+            if (_values[_pointer++] != (byte)tag)
+            {
+                throw new Exception("Expected tag number not found");
+            }
+
+            sbyte value = (sbyte)_values[_pointer++];
 
             return value;
         }
