@@ -2,6 +2,7 @@
 using InTheHand.Bluetooth;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace Matter.Core.BTP
         private IGattCharacteristic _write;
 
         private Channel<BTPFrame> _instream = Channel.CreateBounded<BTPFrame>(10);
-        List<BTPFrame> segments = new();
+        List<BTPFrame> _segments = new();
 
         private Timer _acknowledgementTimer;
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
@@ -103,17 +104,17 @@ namespace Matter.Core.BTP
                 // if this is part of a multi-frame message, we store it until we have the full message
                 if ((frame.ControlFlags & BTPFlags.Ending) == 0)
                 {
-                    segments.Add(frame);
+                    _segments.Add(frame);
                     return;
                 }
 
                 if (((frame.ControlFlags & BTPFlags.Beginning) != 0) || ((frame.ControlFlags & BTPFlags.Continuing) != 0) || ((frame.ControlFlags & BTPFlags.Ending) != 0))
                 {
                     // concat all existing segments to this message, if any
-                    if (segments.Count > 0)
+                    if (_segments.Count > 0)
                     {
                         List<byte> fullPayload = new();
-                        foreach (var segment in segments)
+                        foreach (var segment in _segments)
                         {
                             fullPayload.AddRange(segment.Payload);
                         }
@@ -121,7 +122,7 @@ namespace Matter.Core.BTP
                         fullPayload.AddRange(frame.Payload);
                         frame.Payload = fullPayload.ToArray();
                         frame.ControlFlags = BTPFlags.Beginning | BTPFlags.Ending;
-                        segments.Clear();
+                        _segments.Clear();
                     }
 
                     _instream.Writer.WriteAsync(frame).GetAwaiter().GetResult();
@@ -149,13 +150,11 @@ namespace Matter.Core.BTP
                 {
                     btpFrame.Sequence = _txCounter++;
 
-                    MatterMessageWriter btpWriter = new();
-
-                    btpFrame.Serialize(btpWriter);
-
-                    byte[] payload = btpWriter.GetBytes();
-
-                    await _write.WriteAsync(payload).ConfigureAwait(false);
+                    using (var btpWriter = new MemoryStream())
+                    {
+                        btpFrame.Serialize(btpWriter);
+                        await _write.WriteAsync(btpWriter.ToArray()).ConfigureAwait(false);
+                    }
                 }
             }
             finally
@@ -207,10 +206,11 @@ namespace Matter.Core.BTP
                     acknowledgementFrame.AcknowledgeNumber = _rxAcknowledged;
                 }
 
-                var writer = new MatterMessageWriter();
-                acknowledgementFrame.Serialize(writer);
-
-                await _write.WriteAsync(writer.GetBytes()).ConfigureAwait(false);
+                using (var writer = new MemoryStream())
+                {
+                    acknowledgementFrame.Serialize(writer);
+                    await _write.WriteAsync(writer.ToArray()).ConfigureAwait(false);
+                }
             }
             finally
             {

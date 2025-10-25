@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Matter.Core
+﻿namespace Matter.Core
 {
     public class MessageFrame
     {
@@ -33,12 +31,6 @@ namespace Matter.Core
         {
             return successMessageFrame.MessagePayload.ProtocolId == 0x00 &&
                    successMessageFrame.MessagePayload.ProtocolOpCode == 0x40;
-        }
-
-        public override string ToString()
-        {
-            StringBuilder sb = new StringBuilder();
-            return sb.ToString();
         }
     }
 }

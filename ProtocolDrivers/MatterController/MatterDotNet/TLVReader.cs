@@ -89,24 +89,24 @@ namespace MatterDotNet.Protocol.Parsers
             ReadTag();
         }
 
-        public byte? GetByte(long tagNumber, bool nullable = false)
+        public byte GetByte(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (byte?)GetNull(tagNumber);
+                return (byte)GetNull(tagNumber);
             if (type != ElementType.Byte)
                 throw new InvalidDataException($"Tag {tagNumber}: Expected type byte but received {type}");
             byte val = data.Span[offset++];
             ReadTag();
             return val;
         }
-        public sbyte? GetSByte(long tagNumber, bool nullable = false)
+        public sbyte GetSByte(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (sbyte?)GetNull(tagNumber);
+                return (sbyte)GetNull(tagNumber);
             if (type != ElementType.SByte)
                 throw new InvalidDataException($"Tag {tagNumber}: Expected type sbyte but received {type}");
             sbyte val = (sbyte)data.Span[offset++];
@@ -125,12 +125,12 @@ namespace MatterDotNet.Protocol.Parsers
             ReadTag();
             return val;
         }
-        public short? GetShort(long tagNumber, bool nullable = false)
+        public short GetShort(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (short?)GetNull(tagNumber);
+                return (short)GetNull(tagNumber);
             if (type == ElementType.SByte)
                 return GetSByte(tagNumber, nullable);
             if (type != ElementType.Short)
@@ -141,12 +141,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public ushort? GetUShort(long tagNumber, bool nullable = false)
+        public ushort GetUShort(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (ushort?)GetNull(tagNumber);
+                return (ushort)GetNull(tagNumber);
             if (type == ElementType.Byte)
                 return GetByte(tagNumber, nullable);
             if (type != ElementType.UShort)
@@ -157,36 +157,36 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public decimal? GetUDecimal(long tagNumber, bool nullable = false)
+        public decimal GetUDecimal(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (decimal?)GetNull(tagNumber);
-            ushort val = GetUShort(tagNumber, false)!.Value;
+                return (decimal)GetNull(tagNumber);
+            ushort val = GetUShort(tagNumber, false)!;
             decimal ret = Math.Abs(val / 100);
             ret += (val % 100) / 100M;
             return ret;
         }
 
-        public decimal? GetDecimal(long tagNumber, bool nullable = false)
+        public decimal GetDecimal(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (decimal?)GetNull(tagNumber);
-            short val = GetShort(tagNumber, false)!.Value;
+                return (decimal)GetNull(tagNumber);
+            short val = GetShort(tagNumber, false)!;
             decimal ret = (int)(val / 100);
             ret += (val % 100) / 100M;
             return ret;
         }
 
-        public int? GetInt(long tagNumber, bool nullable = false)
+        public int GetInt(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (int?)GetNull(tagNumber);
+                return (int)GetNull(tagNumber);
             if (type == ElementType.SByte)
                 return GetSByte(tagNumber, nullable);
             if (type == ElementType.Short)
@@ -199,12 +199,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public uint? GetUInt(long tagNumber, bool nullable = false)
+        public uint GetUInt(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (uint?)GetNull(tagNumber);
+                return (uint)GetNull(tagNumber);
             if (type == ElementType.Byte)
                 return GetByte(tagNumber, nullable);
             if (type == ElementType.UShort)
@@ -217,12 +217,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public long? GetLong(long tagNumber, bool nullable = false)
+        public long GetLong(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (long?)GetNull(tagNumber);
+                return (long)GetNull(tagNumber);
             if (type == ElementType.SByte)
                 return GetSByte(tagNumber, nullable);
             if (type == ElementType.Short)
@@ -237,12 +237,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public ulong? GetULong(long tagNumber, bool nullable = false)
+        public ulong GetULong(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (ulong?)GetNull(tagNumber);
+                return (ulong)GetNull(tagNumber);
             if (type == ElementType.Byte)
                 return GetByte(tagNumber, nullable);
             if (type == ElementType.UShort)
@@ -257,12 +257,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public float? GetFloat(long tagNumber, bool nullable = false)
+        public float GetFloat(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (float?)GetNull(tagNumber);
+                return (float)GetNull(tagNumber);
             if (type != ElementType.Float)
                 throw new InvalidDataException($"Tag {tagNumber}: Expected type float but received {type}");
             float val = BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, 4).Span);
@@ -271,12 +271,12 @@ namespace MatterDotNet.Protocol.Parsers
             return val;
         }
 
-        public double? GetDouble(long tagNumber, bool nullable = false)
+        public double GetDouble(long tagNumber, bool nullable = false)
         {
             if (!IsTag(tagNumber))
                 throw new InvalidDataException("Tag " + tagNumber + " not present");
             if (type == ElementType.Null && nullable)
-                return (double?)GetNull(tagNumber);
+                return (double)GetNull(tagNumber);
             if (type != ElementType.Double)
                 throw new InvalidDataException($"Tag {tagNumber}: Expected type double but received {type}");
             double val = BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, 4).Span);

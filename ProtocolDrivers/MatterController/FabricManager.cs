@@ -16,42 +16,28 @@ namespace Matter.Core.Fabrics
 
         private readonly FabricDiskStorage _storageProvider = new();
 
+        private const string _fabricName = "FAB000000000001D"; // must be 16 hex characters
+
         public FabricManager()
         {
-            if (_storageProvider.DoesFabricExist())
-            {
-                Fabric = _storageProvider.LoadFabricAsync().GetAwaiter().GetResult();
-            }
-            else
+            // TODO: Re-enable loading existing fabric
+            //if (_storageProvider.DoesFabricExist())
+            //{
+            //    Fabric = _storageProvider.LoadFabricAsync(_fabricName).GetAwaiter().GetResult();
+            //}
+            //else
             {
                 // create a new fabric
 
-                var fabricIdBytes = "FAB000000000001D".ToByteArray();
-                var fabricId = new BigInteger(fabricIdBytes, false);
-
-                var rootCertificateIdBytes = "CACACACA00000001".ToByteArray();
-                var rootCertificateId = new BigInteger(rootCertificateIdBytes, false);
-                var rootNodeId = new BigInteger(rootCertificateIdBytes, false);
-
-                var keyPair = CertificateAuthority.GenerateKeyPair();
-                var rootCertificate = CertificateAuthority.GenerateRootCertificate(rootCertificateId, keyPair);
-
-                var publicKey = rootCertificate.GetPublicKey() as ECPublicKeyParameters;
-                var publicKeyBytes = publicKey.Q.GetEncoded(false);
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-                var rootKeyIdentifier = SHA1.HashData(publicKeyBytes).AsSpan().Slice(0, 20).ToArray();
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-                // Also called the EpochKey
-                var ipk = RandomNumberGenerator.GetBytes(16);
+                var ipk = RandomNumberGenerator.GetBytes(16); // also called the EpochKey
 
                 byte[] compressedFabricInfo = Encoding.ASCII.GetBytes("CompressedFabric");
 
                 // Generate the CompressedFabricIdentifier using HKDF.
-                var keyBytes = publicKey.Q.GetEncoded().AsSpan().Slice(1).ToArray();
+                var keyBytes = (CertificateAuthority.RootKeyPair.Public as ECPublicKeyParameters).Q.GetEncoded().AsSpan().Slice(1).ToArray();
 
                 var hkdf = new HkdfBytesGenerator(new Sha256Digest());
-                hkdf.Init(new HkdfParameters(keyBytes, fabricIdBytes, compressedFabricInfo));
+                hkdf.Init(new HkdfParameters(keyBytes, _fabricName.ToByteArray(), compressedFabricInfo));
 
                 var compressedFabricIdentifier = new byte[8];
                 hkdf.GenerateBytes(compressedFabricIdentifier, 0, 8);
@@ -63,30 +49,22 @@ namespace Matter.Core.Fabrics
                 var operationalIPK = new byte[16];
                 hkdf.GenerateBytes(operationalIPK, 0, 16);
 
-                Console.WriteLine($"_fabric ID: {fabricId}");
-                Console.WriteLine($"IPK: {BitConverter.ToString(ipk).Replace("-", "")}");
-
-                var compressedFabicIdentifier = BitConverter.ToString(compressedFabricIdentifier).Replace("-", "");
-
-                Console.WriteLine($"CompressedFabricIdentifier: {compressedFabicIdentifier}");
-                Console.WriteLine($"OperationalIPK: {BitConverter.ToString(operationalIPK).Replace("-", "")}");
-
-                var (noc, nocKeyPair) = Fabric.GenerateNOC(keyPair, rootKeyIdentifier);
+                byte[] rootNodeId = CertificateAuthority.RootCertSubjectKeyIdentifier.AsSpan().Slice(0, 8).ToArray();
 
                 Fabric = new Fabric() {
-                    FabricId = fabricId,
-                    FabricName = "fabric",
-                    RootNodeId = rootNodeId,
+                    FabricId = new BigInteger(_fabricName.ToByteArray(), true),
+                    FabricName = _fabricName,
+                    RootNodeId = new BigInteger(rootNodeId, true),
                     AdminVendorId = 0xFFF1, // Default value from Matter specification
-                    RootCAKeyPair = keyPair,
-                    RootCACertificateId = rootCertificateId,
-                    RootCACertificate = rootCertificate,
-                    RootKeyIdentifier = rootKeyIdentifier,
+                    RootCAKeyPair = CertificateAuthority.RootKeyPair,
+                    RootCACertificateId = new BigInteger(CertificateAuthority.RootCertSubjectKeyIdentifier, true),
+                    RootCACertificate = CertificateAuthority.GenerateRootCertificate(_fabricName),
+                    RootKeyIdentifier = CertificateAuthority.RootCertSubjectKeyIdentifier,
                     IPK = ipk,
                     OperationalIPK = operationalIPK,
-                    OperationalCertificate = noc,
-                    OperationalCertificateKeyPair = nocKeyPair,
-                    CompressedFabricId = compressedFabicIdentifier,
+                    OperationalCertificate = CertificateAuthority.GenerateOperationalCertificate(Convert.ToHexString(rootNodeId), _fabricName),
+                    OperationalCertificateKeyPair = CertificateAuthority.OperationalKeyPair,
+                    CompressedFabricId = BitConverter.ToString(compressedFabricIdentifier).Replace("-", "")
                 };
 
                 _storageProvider.SaveFabricAsync(Fabric).GetAwaiter().GetResult();

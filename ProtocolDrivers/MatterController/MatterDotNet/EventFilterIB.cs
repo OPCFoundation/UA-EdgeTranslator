@@ -34,8 +34,8 @@ namespace MatterDotNet.Messages.InteractionModel
         [SetsRequiredMembers]
         internal EventFilterIB(TLVReader reader, long structNumber = -1) {
             reader.StartStructure(structNumber);
-            Node = reader.GetULong(0)!.Value;
-            EventMin = reader.GetULong(1)!.Value;
+            Node = reader.GetULong(0)!;
+            EventMin = reader.GetULong(1)!;
             reader.EndContainer();
         }
 

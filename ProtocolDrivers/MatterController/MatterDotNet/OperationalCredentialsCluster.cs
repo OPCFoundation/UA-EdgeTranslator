@@ -1,4 +1,4 @@
-﻿// MatterDotNet Copyright (C) 2025 
+﻿// MatterDotNet Copyright (C) 2025
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -12,12 +12,16 @@
 //
 // WARNING: This file was auto-generated. Do not edit.
 
+using libplctag;
+using Matter.Core;
 using Matter.Core.Sessions;
+using Matter.Core.TLV;
 using MatterDotNet.Attributes;
 using MatterDotNet.Messages.InteractionModel;
 using MatterDotNet.Protocol.Parsers;
 using MatterDotNet.Protocol.Payloads;
 using MatterDotNet.Protocol.Subprotocols;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
@@ -381,22 +385,62 @@ namespace MatterDotNet.Clusters.General
         /// <summary>
         /// Add NOC
         /// </summary>
-        public async Task<NOCResponse?> AddNOC(SecureSession session, byte[] nOCValue, byte[] iCACValue, byte[] iPKValue, ulong caseAdminSubject, ushort adminVendorId, CancellationToken token = default) {
-            AddNOCPayload requestFields = new AddNOCPayload() {
-                NOCValue = nOCValue,
-                ICACValue = iCACValue,
-                IPKValue = iPKValue,
-                CaseAdminSubject = caseAdminSubject,
-                AdminVendorId = adminVendorId,
-            };
-            InvokeResponseIB resp = await InteractionManager.ExecCommand(session, endPoint, cluster, 0x06, requestFields, token);
-            if (!ValidateResponse(resp))
-                return null;
-            return new NOCResponse() {
-                StatusCode = (NodeOperationalCertStatus)(byte)GetField(resp, 0),
-                FabricIndex = (byte)GetOptionalField(resp, 1),
-                DebugText = (string)GetOptionalField(resp, 2),
-            };
+        //public NOCResponse? AddNOC(MessageExchange exchange, byte[] nOCValue, byte[] iCACValue, byte[] iPKValue, ulong caseAdminSubject, ushort adminVendorId, CancellationToken token = default)
+        //{
+        //    AddNOCPayload requestFields = new AddNOCPayload()
+        //    {
+        //        NOCValue = nOCValue,
+        //        ICACValue = iCACValue,
+        //        IPKValue = iPKValue,
+        //        CaseAdminSubject = caseAdminSubject,
+        //        AdminVendorId = adminVendorId
+        //    };
+
+        //    PayloadWriter payload = new PayloadWriter(600);
+        //    requestFields.Serialize(payload);
+        //    MessageFrame completeCommissioningResult = exchange.SendCommandRaw((byte)endPoint, (byte)cluster, 0x06, 8, payload.GetPayload().ToArray()).GetAwaiter().GetResult(); // AddNoc
+        //    MatterTLV completeCommissioningResultPayload = SkipHeader(completeCommissioningResult.MessagePayload.ApplicationPayload);
+        //    completeCommissioningResultPayload.OpenStructure(1);
+        //    byte status = completeCommissioningResultPayload.GetUnsignedInt8(0);
+        //    if (status != 0)
+        //    {
+        //        Console.WriteLine($"CompleteCommissioning failed with status {status}");
+        //    }
+
+        //    //object[] parameters = [
+        //    //    nOCValue,
+        //    //    iCACValue,
+        //    //    iPKValue,
+        //    //    caseAdminSubject,
+        //    //    adminVendorId
+        //    //        ];
+        //    //MessageFrame addNocResult = exchange.SendCommand((byte)endPoint, (byte)cluster, 0x06, 8, parameters).GetAwaiter().GetResult(); // AddNoc
+
+        //    InvokeResponseIB resp = null;// = await InteractionManager.ExecCommand(exchange.session, endPoint, cluster, 0x06, requestFields, token);
+        //    if (!ValidateResponse(resp))
+        //        return null;
+        //    return new NOCResponse()
+        //    {
+        //        StatusCode = (NodeOperationalCertStatus)(byte)GetField(resp, 0),
+        //        FabricIndex = (byte)GetOptionalField(resp, 1),
+        //        DebugText = (string)GetOptionalField(resp, 2),
+        //    };
+        //}
+
+        private MatterTLV SkipHeader(MatterTLV data)
+        {
+            data.OpenStructure();
+            data.GetBoolean(0);
+            data.OpenArray(1);
+            data.OpenStructure();
+            data.OpenStructure(0);
+            data.OpenList(0);
+            data.GetUnsignedInt8(0);
+            data.GetUnsignedInt8(1);
+            data.GetUnsignedInt8(2);
+            data.CloseContainer();
+
+            return data;
         }
 
         /// <summary>

@@ -34,8 +34,8 @@ namespace MatterDotNet.Messages.InteractionModel
         [SetsRequiredMembers]
         internal StatusResponseMessage(TLVReader reader, long structNumber = -1) {
             reader.StartStructure(structNumber);
-            Status = reader.GetByte(0)!.Value;
-            InteractionModelRevision = reader.GetByte(255)!.Value;
+            Status = reader.GetByte(0)!;
+            InteractionModelRevision = reader.GetByte(255)!;
             reader.EndContainer();
         }
 

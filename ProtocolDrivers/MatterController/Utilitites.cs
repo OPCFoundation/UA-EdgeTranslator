@@ -99,12 +99,5 @@ namespace Matter.Core
 
             return $"Unknown ProtocolId: {protocolId}, OpCode: {opCode}";
         }
-
-        public static MatterTLV ToMatterCertificate(this X509Certificate certificate)
-        {
-            var certificateBytes = certificate.GetEncoded();
-            var tlv = new MatterTLV();
-            return tlv;
-        }
     }
 }

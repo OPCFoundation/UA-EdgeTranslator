@@ -1,21 +1,17 @@
 ﻿using InTheHand.Bluetooth;
 using Matter.Core.BTP;
+using Matter.Core.Certificates;
 using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
-using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Crypto;
+using MatterDotNet.PKI;
+using MatterDotNet.Protocol.Cryptography;
+using MatterDotNet.Protocol.Payloads;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Pkcs;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.X509;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -23,6 +19,7 @@ using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -117,8 +114,8 @@ namespace Matter.Core.Commissioning
                         return;
                     }
 
-                    string matterPart = parts[1].Replace(":", "");
-                    ulong matterNodeId = Convert.ToUInt64(matterPart, 16);
+                    string nodeIdString = parts[1].Replace(":", "");
+                    ulong nodeId = Convert.ToUInt64(nodeIdString, 16);
 
                     BTPConnection btpConnection = new(e.Device);
                     btpConnection.OpenConnection();
@@ -141,38 +138,115 @@ namespace Matter.Core.Commissioning
 
                     var paseExchange = paseSession.CreateExchange();
 
-                    paseExchange.SendCommand(0, 0x3E, 4, 9).GetAwaiter().GetResult(); // Arm Failsafe
+                    object[] parameters = [
+                        (ushort)10, // 10 seconds expiration
+                        (ulong)2222 // Breadcrumb
+                    ];
+                    MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, 9, parameters).GetAwaiter().GetResult(); // Arm Failsafe
+                    if (MessageFrame.IsStatusReport(armFailsafeMessageFrame))
+                    {
+                        Console.WriteLine("Received error status report in response to Arm Failsafe message, abandoning commissioning!");
+                        return;
+                    }
 
-                    object[] paramters = [
+                    parameters = [
                         RandomNumberGenerator.GetBytes(32) // CSRNonce
                     ];
-                    MessageFrame csrResponseMessageFrame = paseExchange.SendCommand(0, 0x3E, 4, 8, paramters).GetAwaiter().GetResult(); // CSRRequest
+                    MessageFrame csrResponseMessageFrame = paseExchange.SendCommand(0, 0x3E, 4, 8, parameters).GetAwaiter().GetResult(); // CSRRequest
+                    if (MessageFrame.IsStatusReport(csrResponseMessageFrame))
+                    {
+                        Console.WriteLine("Received error status report in response to CSRRequest message, abandoning commissioning!");
+                        return;
+                    }
 
-                    ValidateCSRResponse(matterPart, csrResponseMessageFrame, out byte[] peerNocPublicKeyBytes, out byte[] peerNocKeyIdentifier, out X509Certificate peerNoc);
+                    var csrResponsePayload = SkipHeader(csrResponseMessageFrame.MessagePayload.ApplicationPayload);
+                    csrResponsePayload.OpenStructure(1);
+                    var csrBytes = new MatterTLV(csrResponsePayload.GetOctetString(0));
+                    csrBytes.OpenStructure();
+                    byte[] derBytes = csrBytes.GetOctetString(1);
 
-                    paramters = [
-                        EncodeRootCert()
+                    OperationalCertificate rootCert = CreateRootCert();
+                    PayloadWriter payload = new PayloadWriter(600);
+                    rootCert.ToMatterCertificate().Serialize(payload);
+
+                    byte[] encodedRootCert1 = payload.GetPayload().ToArray();
+                    byte[] encodedRootCert2 = CertificateAuthority.GenerateCertMessage(0, 0, null, _fabric.RootCACertificate, true);
+
+                    parameters = [
+                        encodedRootCert1
                     ];
-                    paseExchange.SendCommand(0, 0x3E, 11, 8, paramters).GetAwaiter().GetResult(); // AddTrustedRootCertificate
+                    MessageFrame addRootCertMessageFrame = paseExchange.SendCommand(0, 0x3E, 11, 8, parameters).GetAwaiter().GetResult(); // AddTrustedRootCertificate
+                    if (MessageFrame.IsStatusReport(addRootCertMessageFrame))
+                    {
+                        Console.WriteLine("Received error status report in response to AddTrustedRootCertificate message, abandoning commissioning!");
+                        return;
+                    }
 
-                    paramters = [
-                        GeneratePeerNocCert(matterNodeId, peerNocPublicKeyBytes, peerNocKeyIdentifier, peerNoc),
+                    MatterTLV addRootCertResultPayload = SkipHeader(addRootCertMessageFrame.MessagePayload.ApplicationPayload);
+                    addRootCertResultPayload.OpenStructure(1);
+                    byte status = addRootCertResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"AddRootCert failed with status {status}");
+                        return;
+                    }
+
+                    OperationalCertificate nodeCert = Sign(CertificateRequest.LoadSigningRequest(derBytes, HashAlgorithmName.SHA256), rootCert.GetRaw(), nodeId);
+
+                    var certificateRequest = new Pkcs10CertificationRequest(derBytes);
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+                    byte[] subjectKeyIdentifier = SHA1.HashData((certificateRequest.GetPublicKey() as ECPublicKeyParameters).Q.GetEncoded(false)).AsSpan().Slice(0, 20).ToArray();
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+                    var matterNodeCert = CertificateAuthority.SignCSR(nodeIdString, _fabric.FabricName, certificateRequest, subjectKeyIdentifier);
+
+                    byte[] nocCertBytes2 = CertificateAuthority.GenerateCertMessage(nodeId, (ulong)_fabric.FabricId.LongValueExact, subjectKeyIdentifier, matterNodeCert, false);
+                    byte[] nocCertBytes1 = nodeCert.GetMatterCertBytes();
+
+                    parameters = [
+                        nocCertBytes2,
                         null,
                         _fabric.IPK,
-                        _fabric.RootNodeId,
+                        (ulong)_fabric.FabricId.LongValueExact,
                         _fabric.AdminVendorId
                     ];
-                    paseExchange.SendCommand(0, 0x3E, 6, 8, paramters).GetAwaiter().GetResult(); // AddNoc
+                    MessageFrame addNocResult = paseExchange.SendCommand(0, 0x3E, 6, 8, parameters).GetAwaiter().GetResult(); // AddNoc
+                    if (MessageFrame.IsStatusReport(addNocResult))
+                    {
+                        Console.WriteLine("Received error status report in response to AddNoc message, abandoning commissioning!");
+                        return;
+                    }
 
-                    paramters = [
+                    MatterTLV addNocResultPayload = SkipHeader(addNocResult.MessagePayload.ApplicationPayload);
+                    addNocResultPayload.OpenStructure(1);
+                    status = addNocResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"AddNoc failed with status {status}");
+                        return;
+                    }
+
+                    parameters = [
                         null,
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, 8, paramters).GetAwaiter().GetResult(); // ScanNetworks
+                    MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, 8, parameters).GetAwaiter().GetResult(); // ScanNetworks
+                    if (MessageFrame.IsStatusReport(scanResult))
+                    {
+                        Console.WriteLine("Received error status report in response to ScanNetworks message, abandoning commissioning!");
+                        return;
+                    }
 
                     MatterTLV scanResultPayload = SkipHeader(scanResult.MessagePayload.ApplicationPayload);
                     scanResultPayload.OpenStructure(1);
-                    byte status = scanResultPayload.GetUnsignedInt8(0);
+                    status = scanResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"ScanNetworks failed with status {status}");
+                        return;
+                    }
+
                     scanResultPayload.OpenArray(3);
                     scanResultPayload.OpenStructure();
                     ushort panId = scanResultPayload.GetUnsignedInt16(0);
@@ -186,27 +260,58 @@ namespace Matter.Core.Commissioning
 
                     Console.WriteLine("Thread Network Scan Result from Device: ExtendedPANID={0:X16}, NetworkName={1}, ExtendedAddress={2}", extendedPanId, networkName, BitConverter.ToString(extendedAddress).Replace("-", ":"));
 
-                    paramters = [
+                    parameters = [
                         _payload.ThreadDataset,
                         (ulong)2222 // Breadcrumb
                     ];
-                    paseExchange.SendCommand(0, 0x31, 2, 8, paramters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
+                    MessageFrame addNetworkResult = paseExchange.SendCommand(0, 0x31, 3, 8, parameters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
+                    if (MessageFrame.IsStatusReport(addNetworkResult))
+                    {
+                        Console.WriteLine("Received error status report in response to AddOrUpdateNetwork message, abandoning commissioning!");
+                        return;
+                    }
 
-                    byte[] exPanId = BitConverter.GetBytes(extendedPanId);
-                    Array.Reverse(exPanId);
-                    paramters = [
-                        exPanId,
+                    MatterTLV addNetworkResultPayload = SkipHeader(addNetworkResult.MessagePayload.ApplicationPayload);
+                    addNetworkResultPayload.OpenStructure(1);
+                    status = addNetworkResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"AddOrUpdateNetwork failed with status {status}");
+                        return;
+                    }
+
+                    parameters = [
+                        BitConverter.GetBytes(extendedPanId).Reverse().ToArray(),
                         (ulong)2222 // Breadcrumb
                     ];
-                    paseExchange.SendCommand(0, 0x31, 6, 8).GetAwaiter().GetResult(); // ConnectNetwork
+                    MessageFrame connectNetworkResult = paseExchange.SendCommand(0, 0x31, 6, 8, parameters).GetAwaiter().GetResult(); // ConnectNetwork
+                    if (MessageFrame.IsStatusReport(connectNetworkResult))
+                    {
+                        Console.WriteLine("Received error status report in response to ConnectNetwork message, abandoning commissioning!");
+                        return;
+                    }
 
-                    paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+                    MatterTLV connectNetworkResultPayload = SkipHeader(connectNetworkResult.MessagePayload.ApplicationPayload);
+                    connectNetworkResultPayload.OpenStructure(1);
+                    status = connectNetworkResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"ConnectNetwork failed with status {status}");
+                        return;
+                    }
+
+                    MessageFrame completeCommissioningResult = paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+                    if (MessageFrame.IsStatusReport(completeCommissioningResult))
+                    {
+                        Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
+                        return;
+                    }
 
                     paseExchange.Close();
 
                     _receivedAdvertisments.Remove(e.Device.Id, out e);
 
-                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", matterNodeId);
+                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeIdString);
                 }
                 catch (Exception exp)
                 {
@@ -216,8 +321,45 @@ namespace Matter.Core.Commissioning
             }
         }
 
-        private bool ExecutePAKE(BTPConnection btpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Ke)
+        public OperationalCertificate CreateRootCert()
         {
+            ulong RCAC = Math.Max(1, (ulong)Random.Shared.NextInt64());
+            string CommonName = "UA-EdgeTranslator";
+            string IssuerCommonName = CommonName;
+            X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
+            builder.Add("2.5.4.3", CommonName, UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.4", $"{RCAC:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.5", $"{_fabric.FabricName:X16}", UniversalTagNumber.UTF8String);
+            ECDsa privateKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            CertificateRequest req = new CertificateRequest(builder.Build(), privateKey, HashAlgorithmName.SHA256);
+            req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, true, 0, true));
+            req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            X509SubjectKeyIdentifierExtension subjectKeyIdentifier = new X509SubjectKeyIdentifierExtension(SHA1.HashData(new BigIntegerPoint(privateKey.ExportParameters(false).Q).ToBytes(false)), false);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+            req.CertificateExtensions.Add(subjectKeyIdentifier);
+            req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifier));
+            return new OperationalCertificate(req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(10)));
+        }
+
+        public OperationalCertificate Sign(CertificateRequest nocsr, X509Certificate2 rootCert, ulong nodeId)
+        {
+            X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
+            builder.Add("2.5.4.3", $"{nodeId:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.5", $"{_fabric.FabricName:X16}", UniversalTagNumber.UTF8String);
+            CertificateRequest signingCSR = new CertificateRequest(builder.Build(), nocsr.PublicKey, HashAlgorithmName.SHA256);
+            signingCSR.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            signingCSR.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+            signingCSR.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2")], true));
+            signingCSR.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(nocsr.PublicKey, false));
+            signingCSR.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(rootCert, true, false));
+            byte[] serial = new byte[19];
+            Random.Shared.NextBytes(serial);
+            return new OperationalCertificate(signingCSR.Create(rootCert, DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(1), serial));
+        }
+
+        private bool ExecutePAKE(BTPConnection btpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Ke)
+            {
             peerSessionId = 0;
             Ke = null;
 
@@ -236,7 +378,7 @@ namespace Matter.Core.Commissioning
             MessageFrame responseMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(PBKDFParamRequest, 0, 0x20).GetAwaiter().GetResult();
             if (MessageFrame.IsStatusReport(responseMessageFrame))
             {
-                Console.WriteLine("Received status report in response to PBKDF param request message, abandoning commissioning!");
+                Console.WriteLine("Received error status report in response to PBKDF param request message, abandoning commissioning!");
                 return false;
             }
 
@@ -290,149 +432,13 @@ namespace Matter.Core.Commissioning
             return true;
         }
 
-        private byte[] EncodeRootCert()
-        {
-            MatterTLV encodedRootCertificate = new();
-
-            encodedRootCertificate.AddStructure();
-            encodedRootCertificate.AddOctetString(1, _fabric.RootCACertificate.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
-            encodedRootCertificate.AddUInt8(2, 1); // signature-algorithm
-            encodedRootCertificate.AddList(3); // Issuer
-            encodedRootCertificate.AddUInt64(20, _fabric.RootCACertificateId.ToByteArrayUnsigned());
-            encodedRootCertificate.EndContainer(); // Close List
-            var notBefore = new DateTimeOffset(_fabric.RootCACertificate.NotBefore).ToEpochTime();
-            var notAfter = new DateTimeOffset(_fabric.RootCACertificate.NotAfter).ToEpochTime();
-            encodedRootCertificate.AddUInt32(4, (uint)notBefore); // NotBefore
-            encodedRootCertificate.AddUInt32(5, (uint)notAfter); // NotAfter
-            encodedRootCertificate.AddList(6); // Subject
-            encodedRootCertificate.AddUInt64(20, _fabric.RootCACertificateId.ToByteArrayUnsigned());
-            encodedRootCertificate.EndContainer(); // Close List
-            encodedRootCertificate.AddUInt8(7, 1); // public-key-algorithm
-            encodedRootCertificate.AddUInt8(8, 1); // elliptic-curve-id
-            var rootPublicKey = _fabric.RootCACertificate.GetPublicKey() as ECPublicKeyParameters;
-            var rootPublicKeyBytes = rootPublicKey!.Q.GetEncoded(false);
-            encodedRootCertificate.AddOctetString(9, rootPublicKeyBytes); // PublicKey
-            encodedRootCertificate.AddList(10); // Extensions
-            encodedRootCertificate.AddStructure(1); // Basic Constraints
-            encodedRootCertificate.AddBool(1, true); // is-ca
-            encodedRootCertificate.EndContainer(); // Close Basic Constraints
-            encodedRootCertificate.AddUInt8(2, 0x60);
-            encodedRootCertificate.AddOctetString(4, _fabric.RootKeyIdentifier); // subject-key-id
-            encodedRootCertificate.AddOctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
-            encodedRootCertificate.EndContainer(); // Close Extensions
-            var signature = _fabric.RootCACertificate.GetSignature();
-            AsnDecoder.ReadSequence(signature.AsSpan(), AsnEncodingRules.DER, out var offset, out var length, out _);
-            var source = signature.AsSpan().Slice(offset, length).ToArray();
-            var r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out var bytesConsumed);
-            var s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
-            var encodedRootCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
-            encodedRootCertificate.AddOctetString(11, encodedRootCertificateSignature);
-            encodedRootCertificate.EndContainer(); // Close Structure
-
-            return encodedRootCertificate.GetBytes();
-        }
-
-        private void ValidateCSRResponse(string matterPart, MessageFrame csrResponseMessageFrame, out byte[] peerNocPublicKeyBytes, out byte[] peerNocKeyIdentifier, out X509Certificate peerNoc)
-        {
-            var csrResponsePayload = SkipHeader(csrResponseMessageFrame.MessagePayload.ApplicationPayload);
-            csrResponsePayload.OpenStructure(1);
-            var nocsrBytes = csrResponsePayload.GetOctetString(0);
-            var nocPayload = new MatterTLV(nocsrBytes);
-            nocPayload.OpenStructure();
-            var derBytes = nocPayload.GetOctetString(1);
-            var certificateRequest = new Pkcs10CertificationRequest(derBytes);
-            var peerPublicKey = certificateRequest.GetPublicKey();
-            var peerNocPublicKey = peerPublicKey as ECPublicKeyParameters;
-            peerNocPublicKeyBytes = peerNocPublicKey.Q.GetEncoded(false);
-
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-            peerNocKeyIdentifier = SHA1.HashData(peerNocPublicKeyBytes).AsSpan().Slice(0, 20).ToArray();
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-            var certGenerator = new X509V3CertificateGenerator();
-            var randomGenerator = new CryptoApiRandomGenerator();
-            var random = new SecureRandom(randomGenerator);
-            var serialNumber = BigIntegers.CreateRandomInRange(Org.BouncyCastle.Math.BigInteger.One, Org.BouncyCastle.Math.BigInteger.ValueOf(long.MaxValue), random);
-            certGenerator.SetSerialNumber(serialNumber);
-            var subjectOids = new List<DerObjectIdentifier>();
-            var subjectValues = new List<string>();
-            subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.1")); // NodeId
-            subjectOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.5")); // FabricId
-            subjectValues.Add(matterPart);
-            subjectValues.Add("FAB000000000001D");
-            X509Name subjectDN = new X509Name(subjectOids, subjectValues);
-            certGenerator.SetSubjectDN(subjectDN);
-            var issuerOids = new List<DerObjectIdentifier>();
-            var issuerValues = new List<string>();
-            issuerOids.Add(new DerObjectIdentifier("1.3.6.1.4.1.37244.1.4"));
-            issuerValues.Add($"CACACACA00000001");
-            X509Name issuerDN = new X509Name(issuerOids, issuerValues);
-            certGenerator.SetIssuerDN(issuerDN); // The root certificate is the issuer.
-            certGenerator.SetNotBefore(DateTime.UtcNow.AddYears(-10));
-            certGenerator.SetNotAfter(DateTime.UtcNow.AddYears(10));
-            certGenerator.SetPublicKey(certificateRequest.GetPublicKey() as ECPublicKeyParameters);
-            certGenerator.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
-            certGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature));
-            certGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.id_kp_clientAuth, KeyPurposeID.id_kp_serverAuth));
-            certGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifier(peerNocKeyIdentifier));
-            certGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifier(_fabric.RootKeyIdentifier));
-            ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WITHECDSA", _fabric.RootCAKeyPair.Private as ECPrivateKeyParameters);
-            peerNoc = certGenerator.Generate(signatureFactory);
-            peerNoc.CheckValidity();
-        }
-
-        private byte[] GeneratePeerNocCert(ulong matterNodeId, byte[] peerNocPublicKeyBytes, byte[] peerNocKeyIdentifier, X509Certificate peerNoc)
-        {
-            MatterTLV encodedPeerNocCertificate = new();
-
-            encodedPeerNocCertificate.AddStructure();
-            encodedPeerNocCertificate.AddOctetString(1, peerNoc.SerialNumber.ToByteArrayUnsigned()); // SerialNumber
-            encodedPeerNocCertificate.AddUInt8(2, 1); // signature-algorithm
-            encodedPeerNocCertificate.AddList(3); // Issuer
-            encodedPeerNocCertificate.AddUInt64(20, _fabric.RootCACertificateId.ToByteArrayUnsigned());
-            encodedPeerNocCertificate.EndContainer(); // Close List
-            var notBefore = new DateTimeOffset(peerNoc.NotBefore).ToEpochTime();
-            var notAfter = new DateTimeOffset(peerNoc.NotAfter).ToEpochTime();
-            encodedPeerNocCertificate.AddUInt32(4, notBefore); // NotBefore
-            encodedPeerNocCertificate.AddUInt32(5, notAfter); // NotAfter
-            encodedPeerNocCertificate.AddList(6); // Subject
-            encodedPeerNocCertificate.AddUInt64(17, matterNodeId); // NodeId
-            encodedPeerNocCertificate.AddUInt64(21, _fabric.FabricId.ToByteArrayUnsigned()); // FabricId
-            encodedPeerNocCertificate.EndContainer(); // Close List
-            encodedPeerNocCertificate.AddUInt8(7, 1); // public-key-algorithm
-            encodedPeerNocCertificate.AddUInt8(8, 1); // elliptic-curve-id
-            encodedPeerNocCertificate.AddOctetString(9, peerNocPublicKeyBytes); // PublicKey
-            encodedPeerNocCertificate.AddList(10); // Extensions
-            encodedPeerNocCertificate.AddStructure(1); // Basic Constraints
-            encodedPeerNocCertificate.AddBool(1, false); // is-ca
-            encodedPeerNocCertificate.EndContainer(); // Close Basic Constraints
-            encodedPeerNocCertificate.AddUInt8(2, 0x1);
-            encodedPeerNocCertificate.AddArray(3); // Extended Key Usage
-            encodedPeerNocCertificate.AddUInt8(0x02);
-            encodedPeerNocCertificate.AddUInt8(0x01);
-            encodedPeerNocCertificate.EndContainer();
-            encodedPeerNocCertificate.AddOctetString(4, peerNocKeyIdentifier); // subject-key-id
-            encodedPeerNocCertificate.AddOctetString(5, _fabric.RootKeyIdentifier); // authority-key-id
-            encodedPeerNocCertificate.EndContainer(); // Close Extensions
-            var peerNocSignature = peerNoc.GetSignature();
-            AsnDecoder.ReadSequence(peerNocSignature.AsSpan(), AsnEncodingRules.DER, out int offset, out int length, out _);
-            byte[] source = peerNocSignature.AsSpan().Slice(offset, length).ToArray();
-            System.Numerics.BigInteger r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out int bytesConsumed);
-            System.Numerics.BigInteger s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
-            var encodedPeerNocCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
-            encodedPeerNocCertificate.AddOctetString(11, encodedPeerNocCertificateSignature);
-            encodedPeerNocCertificate.EndContainer(); // Close Structure
-
-            return encodedPeerNocCertificate.GetBytes();
-        }
-
         private MatterTLV SkipHeader(MatterTLV data)
         {
             data.OpenStructure();
             data.GetBoolean(0);
             data.OpenArray(1);
             data.OpenStructure();
-            data.OpenStructure(0);
+            data.OpenStructure(null);
             data.OpenList(0);
             data.GetUnsignedInt8(0);
             data.GetUnsignedInt8(1);

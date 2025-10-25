@@ -34,7 +34,7 @@ namespace MatterDotNet.Messages.InteractionModel
         [SetsRequiredMembers]
         internal StatusIB(TLVReader reader, long structNumber = -1) {
             reader.StartStructure(structNumber);
-            Status = reader.GetByte(0)!.Value;
+            Status = reader.GetByte(0)!;
             if (reader.IsTag(1))
                 ClusterStatus = reader.GetByte(1);
             reader.EndContainer();

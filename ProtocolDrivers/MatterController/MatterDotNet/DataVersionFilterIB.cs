@@ -35,7 +35,7 @@ namespace MatterDotNet.Messages.InteractionModel
         [SetsRequiredMembers]
         internal DataVersionFilterIB(TLVReader reader, long structNumber = -1) {
             reader.StartStructure(structNumber);
-            DataVersion = reader.GetUInt(0)!.Value;
+            DataVersion = reader.GetUInt(0)!;
             Path = new AttributePathIB(reader, 1);
             Data = reader.GetAny(2)!;
             reader.EndContainer();

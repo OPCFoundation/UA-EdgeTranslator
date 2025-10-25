@@ -28,40 +28,23 @@ namespace MatterDotNet.Protocol.Subprotocols
 {
     internal class InteractionManager
     {
-        public static async Task SendCommand(MessageExchange exchange, ushort endpoint, uint cluster, uint command, bool timed, ushort? refNum, TLVPayload payload = null, CancellationToken token = default)
-        {
-            InvokeRequestMessage run = new InvokeRequestMessage()
-            {
-                SuppressResponse = false,
-                TimedRequest = timed,
-                InteractionModelRevision = 12,
-                InvokeRequests = [new CommandDataIB() { CommandFields = payload, CommandRef = refNum, CommandPath = new CommandPathIB() { Endpoint = endpoint, Cluster = cluster, Command = command } }]
-            };
-
-            //MessageFrame invokeFrame = new MessageFrame(run, (byte)IMOpCodes.InvokeRequest);
-            //invokeFrame.Message.Protocol = ProtocolType.InteractionModel;
-            //invokeFrame.SourceNodeID = exchange.Session.InitiatorNodeID;
-            //invokeFrame.DestinationID = exchange.Session.ResponderNodeID;
-            //await exchange.SendFrame(invokeFrame, true, token);
-        }
-
-        public static async Task<InvokeResponseIB> ExecCommand(SecureSession secSession, ushort endpoint, uint cluster, uint command, TLVPayload payload = null, CancellationToken token = default)
+        public static Task<InvokeResponseIB> ExecCommand(SecureSession secSession, ushort endpoint, uint cluster, uint command, TLVPayload payload = null, CancellationToken token = default)
         {
             MessageExchange exchange = secSession.CreateExchange();
             {
-                ushort refNum = (ushort)Random.Shared.Next();
-                await SendCommand(exchange, endpoint, cluster, command, false, refNum, payload, token);
-                while (!token.IsCancellationRequested)
-                {
-                    //MessageFrame response = await exchange.Read(token);
-                    //if (response.Message.Payload is InvokeResponseMessage msg)
-                    //{
-                    //    if (msg.InvokeResponses[0].Status == null || !msg.InvokeResponses[0].Status!.CommandRef.HasValue || msg.InvokeResponses[0].Status!.CommandRef!.Value == refNum)
-                    //        return msg.InvokeResponses[0];
-                    //}
-                    //else if (response.Message.Payload is StatusResponseMessage status)
-                    //    throw new IOException("Error: " + (IMStatusCode)status.Status);
-                }
+                //ushort refNum = (ushort)Random.Shared.Next();
+                //await SendCommand(exchange, endpoint, cluster, command, false, refNum, payload, token);
+                //while (!token.IsCancellationRequested)
+                //{
+                //    MessageFrame response = await exchange.Read(token);
+                //    if (response.Message.Payload is InvokeResponseMessage msg)
+                //    {
+                //        if (msg.InvokeResponses[0].Status == null || !msg.InvokeResponses[0].Status!.CommandRef.HasValue || msg.InvokeResponses[0].Status!.CommandRef!.Value == refNum)
+                //            return msg.InvokeResponses[0];
+                //    }
+                //    else if (response.Message.Payload is StatusResponseMessage status)
+                //        throw new IOException("Error: " + (IMStatusCode)status.Status);
+                //}
                 throw new OperationCanceledException();
             }
         }

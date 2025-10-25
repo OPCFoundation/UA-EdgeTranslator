@@ -41,8 +41,8 @@ namespace MatterDotNet.Messages.InteractionModel
         internal EventDataIB(TLVReader reader, long structNumber = -1) {
             reader.StartStructure(structNumber);
             Path = new EventPathIB(reader, 0);
-            EventNumber = reader.GetULong(1)!.Value;
-            Priority = reader.GetByte(2)!.Value;
+            EventNumber = reader.GetULong(1)!;
+            Priority = reader.GetByte(2)!;
             if (reader.IsTag(3))
                 EpochTimestamp = reader.GetULong(3);
             if (reader.IsTag(4))

@@ -52,7 +52,7 @@ namespace MatterDotNet.Messages.InteractionModel
             }
             if (reader.IsTag(3))
                 MoreChunkedMessages = reader.GetBool(3);
-            InteractionModelRevision = reader.GetByte(255)!.Value;
+            InteractionModelRevision = reader.GetByte(255)!;
             reader.EndContainer();
         }
 

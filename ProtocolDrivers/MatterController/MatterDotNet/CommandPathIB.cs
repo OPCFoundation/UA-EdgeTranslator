@@ -1,4 +1,4 @@
-// MatterDotNet Copyright (C) 2025 
+// MatterDotNet Copyright (C) 2025
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -35,9 +35,9 @@ namespace MatterDotNet.Messages.InteractionModel
         [SetsRequiredMembers]
         internal CommandPathIB(TLVReader reader, long structNumber = -1) {
             reader.StartList(structNumber);
-            Endpoint = reader.GetUShort(0)!.Value;
-            Cluster = reader.GetUInt(1)!.Value;
-            Command = reader.GetUInt(2)!.Value;
+            Endpoint = reader.GetUShort(0)!;
+            Cluster = reader.GetUInt(1)!;
+            Command = reader.GetUInt(2)!;
             reader.EndContainer();
         }
 

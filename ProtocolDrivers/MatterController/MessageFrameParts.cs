@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace Matter.Core
 {
@@ -6,35 +7,37 @@ namespace Matter.Core
     {
         public MessageFrameParts(MessageFrame messageFrame)
         {
-            var headerWriter = new MatterMessageWriter();
-
-            headerWriter.Write((byte)messageFrame.MessageFlags);
-            headerWriter.Write(messageFrame.SessionID);
-            headerWriter.Write((byte)messageFrame.SecurityFlags);
-            headerWriter.Write(messageFrame.MessageCounter);
-
-            if ((messageFrame.MessageFlags & MessageFlags.S) != 0)
+            using (var headerWriter = new MemoryStream())
             {
-                headerWriter.Write(messageFrame.SourceNodeID);
+                headerWriter.WriteByte((byte)messageFrame.MessageFlags);
+                headerWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                headerWriter.WriteByte((byte)messageFrame.SecurityFlags);
+                headerWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+
+                if ((messageFrame.MessageFlags & MessageFlags.S) != 0)
+                {
+                    headerWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                }
+
+                if ((messageFrame.MessageFlags & MessageFlags.DSIZ1) != 0)
+                {
+                    headerWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
+                }
+
+                if ((messageFrame.MessageFlags & MessageFlags.DSIZ2) != 0)
+                {
+                    // TODO Don't know if this is needed?
+                    headerWriter.Write(BitConverter.GetBytes(messageFrame.DestinationNodeId));
+                }
+
+                Header = headerWriter.ToArray();
             }
 
-            if ((messageFrame.MessageFlags & MessageFlags.DSIZ1) != 0)
+            using (var payloadWriter = new MemoryStream())
             {
-                headerWriter.Write(messageFrame.DestinationNodeId);
+                messageFrame.MessagePayload.Serialize(payloadWriter);
+                MessagePayload = payloadWriter.ToArray();
             }
-
-            if ((messageFrame.MessageFlags & MessageFlags.DSIZ2) != 0)
-            {
-                // TODO Don't know if this is needed?
-                headerWriter.Write(messageFrame.DestinationNodeId);
-            }
-
-            Header = headerWriter.GetBytes();
-
-            var payloadWriter = new MatterMessageWriter();
-            messageFrame.MessagePayload.Serialize(payloadWriter);
-
-            MessagePayload = payloadWriter.GetBytes();
         }
 
         public MessageFrameParts(byte[] messageFrameBytes)
@@ -126,7 +129,6 @@ namespace Matter.Core
             }
 
             // Return an instance of the MessageFrame with just the headers populated from the parts.
-            //
             return messageFrame;
         }
     }

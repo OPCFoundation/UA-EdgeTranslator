@@ -65,7 +65,7 @@ namespace MatterDotNet.Messages.InteractionModel
                 MoreChunkedMessages = reader.GetBool(3);
             if (reader.IsTag(4))
                 SuppressResponse = reader.GetBool(4);
-            InteractionModelRevision = reader.GetByte(255)!.Value;
+            InteractionModelRevision = reader.GetByte(255)!;
             reader.EndContainer();
         }
 

@@ -1,5 +1,6 @@
 ﻿using Matter.Core.TLV;
 using System;
+using System.IO;
 
 namespace Matter.Core
 {
@@ -72,16 +73,16 @@ namespace Matter.Core
 
         public MatterTLV ApplicationPayload { get; set; }
 
-        internal void Serialize(MatterMessageWriter writer)
+        internal void Serialize(MemoryStream writer)
         {
-            writer.Write((byte)ExchangeFlags);
-            writer.Write(ProtocolOpCode);
-            writer.Write(ExchangeID);
-            writer.Write(ProtocolId);
+            writer.WriteByte((byte)ExchangeFlags);
+            writer.WriteByte(ProtocolOpCode);
+            writer.Write(BitConverter.GetBytes(ExchangeID));
+            writer.Write(BitConverter.GetBytes(ProtocolId));
 
             if ((ExchangeFlags & ExchangeFlags.Acknowledgement) != 0)
             {
-                writer.Write(AcknowledgedMessageCounter);
+                writer.Write(BitConverter.GetBytes(AcknowledgedMessageCounter));
             }
 
             if (ApplicationPayload is not null)

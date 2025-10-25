@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.IO;
 
 namespace Matter.Core
 {
@@ -62,26 +63,26 @@ namespace Matter.Core
 
         public ushort WindowSize { get; }
 
-        internal void Serialize(MatterMessageWriter writer)
+        internal void Serialize(MemoryStream writer)
         {
-            writer.Write((byte)ControlFlags);
+            writer.WriteByte((byte)ControlFlags);
 
             // If this is an acknowledge message, send the number we're acknowldgeing.
             if ((ControlFlags & BTPFlags.Acknowledge) != 0)
             {
-                writer.Write(AcknowledgeNumber);
+                writer.WriteByte(AcknowledgeNumber);
             }
 
             // If this isn't a handshake, include the sequence.
             if ((ControlFlags & BTPFlags.Handshake) == 0)
             {
-                writer.Write(Sequence);
+                writer.WriteByte(Sequence);
             }
 
             // If this is a Beginning message, we need to include the MessageLength.
             if ((ControlFlags & BTPFlags.Beginning) != 0)
             {
-                writer.Write(MessageLength);
+                writer.Write(BitConverter.GetBytes(MessageLength));
             }
 
             writer.Write(Payload);

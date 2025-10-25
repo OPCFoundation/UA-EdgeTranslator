@@ -11,13 +11,6 @@ namespace Matter.Core.Fabrics
 {
     public class FabricDiskStorage
     {
-        private readonly string _rootDirectory;
-
-        public FabricDiskStorage()
-        {
-            _rootDirectory = Directory.GetCurrentDirectory();
-        }
-
         private class FabricDetails
         {
             public byte[] FabricId { get; set; }
@@ -48,16 +41,16 @@ namespace Matter.Core.Fabrics
 
         public bool DoesFabricExist()
         {
-            return Directory.Exists(GetFullPath("pki/fabric"));
+            return Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric"));
         }
 
-        public async Task<Fabric> LoadFabricAsync()
+        public async Task<Fabric> LoadFabricAsync(string name)
         {
-            var allFiles = Directory.GetFiles(GetFullPath("pki/fabric"));
+            var allFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric"));
 
             var fabric = new Fabric()
             {
-                FabricName = "fabric",
+                FabricName = name
             };
 
             foreach (var file in allFiles)
@@ -98,7 +91,7 @@ namespace Matter.Core.Fabrics
                 }
             }
 
-            var allDirectories = Directory.GetDirectories(GetFullPath("pki/fabric"));
+            var allDirectories = Directory.GetDirectories(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric"));
 
             foreach (var directory in allDirectories)
             {
@@ -128,14 +121,11 @@ namespace Matter.Core.Fabrics
 
         public async Task SaveFabricAsync(Fabric fabric)
         {
-            // If we have no directory, save everything.
-            //
-            if (!Directory.Exists(GetFullPath(fabric.FabricName)))
+            if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric")))
             {
-                Directory.CreateDirectory(GetFullPath(fabric.FabricName));
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric"));
 
                 // Create a JSON file with some of the basic information.
-                //
                 var details = new FabricDetails();
 
                 details.FabricId = fabric.FabricId.ToByteArray();
@@ -149,24 +139,24 @@ namespace Matter.Core.Fabrics
 
                 var json = JsonSerializer.Serialize(details, new JsonSerializerOptions { WriteIndented = true });
 
-                await File.WriteAllTextAsync(Path.Combine(_rootDirectory, fabric.FabricName, "fabric.json"), json);
+                await File.WriteAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", "fabric.json"), json);
 
-                PemWriter pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "rootCertificate.pem")));
+                PemWriter pemWriter = new PemWriter(new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", "rootCertificate.pem")));
                 pemWriter.WriteObject(fabric.RootCACertificate);
                 pemWriter.Writer.Flush();
                 pemWriter.Writer.Close();
 
-                pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "rootKeyPair.pem")));
+                pemWriter = new PemWriter(new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", "rootKeyPair.pem")));
                 pemWriter.WriteObject(fabric.RootCAKeyPair);
                 pemWriter.Writer.Flush();
                 pemWriter.Writer.Close();
 
-                pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "operationalCertificate.pem")));
+                pemWriter = new PemWriter(new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", "operationalCertificate.pem")));
                 pemWriter.WriteObject(fabric.OperationalCertificate);
                 pemWriter.Writer.Flush();
                 pemWriter.Writer.Close();
 
-                pemWriter = new PemWriter(new StreamWriter(Path.Combine(_rootDirectory, fabric.FabricName, "operationalKeyPair.pem")));
+                pemWriter = new PemWriter(new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", "operationalKeyPair.pem")));
                 pemWriter.WriteObject(fabric.OperationalCertificateKeyPair);
                 pemWriter.Writer.Flush();
                 pemWriter.Writer.Close();
@@ -175,8 +165,7 @@ namespace Matter.Core.Fabrics
             foreach (var node in fabric.Nodes)
             {
                 // Create a directory for the node if necessary.
-                //
-                var nodeDirectoryPath = GetFullPath(fabric.FabricName, node.NodeId);
+                var nodeDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric", node.NodeId.ToString());
 
                 if (!Directory.Exists(nodeDirectoryPath))
                 {
@@ -193,18 +182,6 @@ namespace Matter.Core.Fabrics
 
                 await File.WriteAllTextAsync(Path.Combine(nodeDirectoryPath, "node.json"), nodeJson);
             }
-        }
-
-        private string GetFullPath(string fabricName)
-        {
-            var path = Path.Combine(_rootDirectory, fabricName);
-            return path;
-        }
-
-        private string GetFullPath(string fabricName, BigInteger nodeId)
-        {
-            var path = Path.Combine(_rootDirectory, fabricName, nodeId.ToString());
-            return path;
         }
     }
 }
