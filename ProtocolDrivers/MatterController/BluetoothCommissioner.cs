@@ -142,10 +142,19 @@ namespace Matter.Core.Commissioning
                         (ushort)10, // 10 seconds expiration
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, 9, parameters).GetAwaiter().GetResult(); // Arm Failsafe
+                    MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, 8, parameters).GetAwaiter().GetResult(); // Arm Failsafe
                     if (MessageFrame.IsStatusReport(armFailsafeMessageFrame))
                     {
                         Console.WriteLine("Received error status report in response to Arm Failsafe message, abandoning commissioning!");
+                        return;
+                    }
+
+                    MatterTLV armFailsafeResultPayload = SkipHeader(armFailsafeMessageFrame.MessagePayload.ApplicationPayload);
+                    armFailsafeResultPayload.OpenStructure(1);
+                    byte status = armFailsafeResultPayload.GetUnsignedInt8(0);
+                    if (status != 0)
+                    {
+                        Console.WriteLine($"ArmFailsafe failed with status {status}");
                         return;
                     }
 
@@ -184,7 +193,7 @@ namespace Matter.Core.Commissioning
 
                     MatterTLV addRootCertResultPayload = SkipHeader(addRootCertMessageFrame.MessagePayload.ApplicationPayload);
                     addRootCertResultPayload.OpenStructure(1);
-                    byte status = addRootCertResultPayload.GetUnsignedInt8(0);
+                    status = addRootCertResultPayload.GetUnsignedInt8(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"AddRootCert failed with status {status}");
