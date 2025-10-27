@@ -115,26 +115,26 @@ namespace Matter.Core
 
             Console.WriteLine(tlv);
 
-            var reportData = new ReportDataAction(tlv);
+            //var reportData = new ReportDataAction(tlv);
 
-            foreach (var attributeReport in reportData.AttributeReports)
-            {
-                Endpoint endpoint = new Endpoint(attributeReport.AttributeData.Path.EndpointId);
+            //foreach (var attributeReport in reportData.AttributeReports)
+            //{
+            //    Endpoint endpoint = new Endpoint(attributeReport.AttributeData.Path.EndpointId);
 
-                var data = attributeReport.AttributeData.Data as List<object>;
+            //    var data = attributeReport.AttributeData.Data as List<object>;
 
-                if (data is not null)
-                {
-                    var deviceTypeList = data[0] as List<object>;
+            //    if (data is not null)
+            //    {
+            //        var deviceTypeList = data[0] as List<object>;
 
-                    if (deviceTypeList is not null)
-                    {
-                        endpoint.DeviceType = (ulong)deviceTypeList[0];
-                    }
-                }
+            //        if (deviceTypeList is not null)
+            //        {
+            //            endpoint.DeviceType = (ulong)deviceTypeList[0];
+            //        }
+            //    }
 
-                Endpoints.Add(endpoint);
-            }
+            //    Endpoints.Add(endpoint);
+            //}
 
             exchange.Close();
         }

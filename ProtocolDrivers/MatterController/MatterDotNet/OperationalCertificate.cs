@@ -438,9 +438,9 @@ namespace MatterDotNet.PKI
             return cert.GetECDsaPublicKey()?.VerifyData(message, signature, HashAlgorithmName.SHA256) ?? false;
         }
 
-        public string IssuerCommonName { get; protected set; } = string.Empty;
+        public string IssuerCommonName { get; set; } = string.Empty;
 
-        public string CommonName { get; protected set; } = string.Empty;
+        public string CommonName { get; set; } = string.Empty;
 
         public string Surname { get; private set; }
 
@@ -456,17 +456,17 @@ namespace MatterDotNet.PKI
 
         public string StateOrProvinceName { get; private set; }
 
-        public string SerialNum { get; private set; }
+        public string SerialNum { get; set; }
 
-        public ulong? NodeID { get; private set; }
+        public ulong? NodeID { get; set; }
 
         public ulong? FirmwareSigningID { get; private set; }
 
         public ulong? ICAC { get; private set; }
 
-        public ulong? RCAC { get; protected set; }
+        public ulong? RCAC { get; set; }
 
-        public ulong? FabricID { get; protected set; }
+        public ulong? FabricID { get; set; }
 
         public List<CASEAuthenticatedTag> Cats { get; private set; } = [];
 

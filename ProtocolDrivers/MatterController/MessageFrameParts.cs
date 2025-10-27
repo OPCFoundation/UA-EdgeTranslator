@@ -124,7 +124,7 @@ namespace Matter.Core
             {
                 // Process the DestinationId as a GroupId
                 // TODO Handle Groups!
-                //messageFrame.SourceNodeID = BitConverter.ToUInt16(Header, headerIndex);
+                //messageFrame.DestinationNodeId = BitConverter.ToUInt16(Header, headerIndex);
                 headerIndex += 2;
             }
 

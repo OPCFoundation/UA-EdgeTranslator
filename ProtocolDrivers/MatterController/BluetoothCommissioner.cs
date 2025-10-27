@@ -7,7 +7,6 @@ using Matter.Core.Sessions;
 using Matter.Core.TLV;
 using MatterDotNet.PKI;
 using MatterDotNet.Protocol.Cryptography;
-using MatterDotNet.Protocol.Payloads;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -175,10 +174,8 @@ namespace Matter.Core.Commissioning
                     byte[] derBytes = csrBytes.GetOctetString(1);
 
                     OperationalCertificate rootCert = CreateRootCert();
-                    PayloadWriter payload = new PayloadWriter(600);
-                    rootCert.ToMatterCertificate().Serialize(payload);
+                    byte[] encodedRootCert1 = rootCert.GetMatterCertBytes();
 
-                    byte[] encodedRootCert1 = payload.GetPayload().ToArray();
                     byte[] encodedRootCert2 = CertificateAuthority.GenerateCertMessage(0, 0, null, _fabric.RootCACertificate, true);
 
                     parameters = [
@@ -200,7 +197,7 @@ namespace Matter.Core.Commissioning
                         return;
                     }
 
-                    OperationalCertificate nodeCert = Sign(CertificateRequest.LoadSigningRequest(derBytes, HashAlgorithmName.SHA256), rootCert.GetRaw(), nodeId);
+                    OperationalCertificate nodeCert = Sign(CertificateRequest.LoadSigningRequest(derBytes, HashAlgorithmName.SHA256), rootCert, nodeId);
 
                     var certificateRequest = new Pkcs10CertificationRequest(derBytes);
 
@@ -209,12 +206,12 @@ namespace Matter.Core.Commissioning
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 
                     var matterNodeCert = CertificateAuthority.SignCSR(nodeIdString, _fabric.FabricName, certificateRequest, subjectKeyIdentifier);
-
                     byte[] nocCertBytes2 = CertificateAuthority.GenerateCertMessage(nodeId, (ulong)_fabric.FabricId.LongValueExact, subjectKeyIdentifier, matterNodeCert, false);
+
                     byte[] nocCertBytes1 = nodeCert.GetMatterCertBytes();
 
                     parameters = [
-                        nocCertBytes2,
+                        nocCertBytes1,
                         null,
                         _fabric.IPK,
                         (ulong)_fabric.FabricId.LongValueExact,
@@ -316,6 +313,7 @@ namespace Matter.Core.Commissioning
                         return;
                     }
 
+                    paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
 
                     _receivedAdvertisments.Remove(e.Device.Id, out e);
@@ -338,7 +336,7 @@ namespace Matter.Core.Commissioning
             X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
             builder.Add("2.5.4.3", CommonName, UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.4", $"{RCAC:X16}", UniversalTagNumber.UTF8String);
-            builder.Add("1.3.6.1.4.1.37244.1.5", $"{_fabric.FabricName:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.5", $"{(ulong)_fabric.FabricId.LongValueExact:X16}", UniversalTagNumber.UTF8String);
             ECDsa privateKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             CertificateRequest req = new CertificateRequest(builder.Build(), privateKey, HashAlgorithmName.SHA256);
             req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, true, 0, true));
@@ -348,23 +346,36 @@ namespace Matter.Core.Commissioning
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
             req.CertificateExtensions.Add(subjectKeyIdentifier);
             req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifier));
-            return new OperationalCertificate(req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(10)));
+            OperationalCertificate cert = new OperationalCertificate(req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(10)));
+
+            cert.RCAC = RCAC;
+            cert.FabricID = (ulong)_fabric.FabricId.LongValueExact;
+            cert.CommonName = CommonName;
+            cert.IssuerCommonName = IssuerCommonName;
+
+            return cert;
         }
 
-        public OperationalCertificate Sign(CertificateRequest nocsr, X509Certificate2 rootCert, ulong nodeId)
+        public OperationalCertificate Sign(CertificateRequest nocsr, OperationalCertificate rootCert, ulong nodeId)
         {
             X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
-            builder.Add("2.5.4.3", $"{nodeId:X16}", UniversalTagNumber.UTF8String);
-            builder.Add("1.3.6.1.4.1.37244.1.5", $"{_fabric.FabricName:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.1", $"{nodeId:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.5", $"{(ulong)_fabric.FabricId.LongValueExact:X16}", UniversalTagNumber.UTF8String);
             CertificateRequest signingCSR = new CertificateRequest(builder.Build(), nocsr.PublicKey, HashAlgorithmName.SHA256);
             signingCSR.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
             signingCSR.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
             signingCSR.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2")], true));
             signingCSR.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(nocsr.PublicKey, false));
-            signingCSR.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(rootCert, true, false));
+            signingCSR.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(rootCert.GetRaw(), true, false));
             byte[] serial = new byte[19];
             Random.Shared.NextBytes(serial);
-            return new OperationalCertificate(signingCSR.Create(rootCert, DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(1), serial));
+            OperationalCertificate cert = new OperationalCertificate(signingCSR.Create(rootCert.GetRaw(), DateTime.Now.Subtract(TimeSpan.FromSeconds(30)), DateTime.Now.AddYears(1), serial));
+
+            cert.RCAC = rootCert.RCAC;
+            cert.FabricID = (ulong)_fabric.FabricId.LongValueExact;
+            cert.NodeID = nodeId;
+
+            return cert;
         }
 
         private bool ExecutePAKE(BTPConnection btpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Ke)
@@ -416,6 +427,11 @@ namespace Matter.Core.Commissioning
             pake1.AddOctetString(1, byteString);
             pake1.EndContainer();
             MessageFrame pake2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake1, 0, 0x22).GetAwaiter().GetResult();
+            if (MessageFrame.IsStatusReport(pake2MessageFrame))
+            {
+                Console.WriteLine("Received error status report in response to PAKE1 message, abandoning commissioning!");
+                return false;
+            }
 
             var pake2 = pake2MessageFrame.MessagePayload.ApplicationPayload;
             pake2.OpenStructure();
@@ -435,6 +451,12 @@ namespace Matter.Core.Commissioning
             pake3.AddOctetString(1, hAY);
             pake3.EndContainer();
             MessageFrame pakeFinishedMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake3, 0, 0x24).GetAwaiter().GetResult();
+            if (!MessageFrame.IsStatusReport(pakeFinishedMessageFrame))
+            {
+                Console.WriteLine("Didn't receive status report in response to PAKE3 message, abandoning commissioning!");
+                return false;
+            }
+
             unsecureExchange.AcknowledgeMessageAsync(pakeFinishedMessageFrame.MessageCounter).GetAwaiter().GetResult();
             unsecureExchange.Close();
 

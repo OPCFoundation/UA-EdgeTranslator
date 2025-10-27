@@ -177,15 +177,15 @@ namespace MatterDotNet.Messages.Certificates
                 writer.WriteString(15, Pseudonym);
             else if (DomainComponent != null)
                 writer.WriteString(16, DomainComponent);
-            else if (MatterNodeId != null)
+            else if (MatterNodeId != 0)
                 writer.WriteULong(17, MatterNodeId);
-            else if (MatterFirmwareSigningId != null)
+            else if (MatterFirmwareSigningId != 0)
                 writer.WriteULong(18, MatterFirmwareSigningId);
-            else if (MatterIcacId != null)
+            else if (MatterIcacId != 0)
                 writer.WriteULong(19, MatterIcacId);
-            else if (MatterRcacId != null)
+            else if (MatterRcacId != 0)
                 writer.WriteULong(20, MatterRcacId);
-            else if (MatterFabricId != null)
+            else if (MatterFabricId != 0)
                 writer.WriteULong(21, MatterFabricId);
             else if (MatterNocCat != null)
                 writer.WriteULong(22, MatterNocCat);

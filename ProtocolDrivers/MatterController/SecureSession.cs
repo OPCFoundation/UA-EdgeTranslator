@@ -41,7 +41,7 @@ namespace Matter.Core.Sessions
 
         public ushort PeerSessionId { get; }
 
-        public bool UseMRP => true;
+        public bool UseMRP => false;
 
         public uint MessageCounter => _messageCounter++;
 
@@ -67,35 +67,41 @@ namespace Matter.Core.Sessions
 
         public byte[] Encode(MessageFrame messageFrame)
         {
+            byte[] nonce;
+            byte[] additionalData;
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var nonceWriter = new BinaryWriter(memoryStream))
+                {
+                    nonceWriter.Write((byte)messageFrame.SecurityFlags);
+                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    nonce = memoryStream.ToArray();
+                }
+            }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var additionalDataWriter = new BinaryWriter(memoryStream))
+                {
+                    additionalDataWriter.Write((byte)messageFrame.MessageFlags);
+                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                    additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
+                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    additionalData = memoryStream.ToArray();
+                }
+            }
+
             var parts = new MessageFrameParts(messageFrame);
 
-            var memoryStream = new MemoryStream();
-            var nonceWriter = new BinaryWriter(memoryStream);
-
-            nonceWriter.Write((byte)messageFrame.SecurityFlags);
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
-
-            var nonce = memoryStream.ToArray();
-            memoryStream = new MemoryStream();
-            var additionalDataWriter = new BinaryWriter(memoryStream);
-
-            additionalDataWriter.Write((byte)messageFrame.MessageFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-            additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
-
-            var additionalData = memoryStream.ToArray();
             byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
             byte[] tag = new byte[16];
-
             var encryptor = new AesCcm(_encryptionKey);
             encryptor.Encrypt(nonce, parts.MessagePayload, encryptedPayload, tag, additionalData);
 
-            var totalPayload = encryptedPayload.Concat(tag);
-
-            return parts.Header.Concat(totalPayload).ToArray();
+            return parts.Header.Concat(encryptedPayload.Concat(tag)).ToArray();
         }
 
         public MessageFrame Decode(MessageFrameParts parts)
@@ -103,23 +109,33 @@ namespace Matter.Core.Sessions
             // We need to start reading the bytes until we get to the payload. We then need to decrypt the payload.
 
             var messageFrame = parts.MessageFrameWithHeaders();
-            var memoryStream = new MemoryStream();
-            var nonceWriter = new BinaryWriter(memoryStream);
+            byte[] nonce;
+            byte[] additionalData;
 
-            nonceWriter.Write((byte)messageFrame.SecurityFlags);
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-            nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var nonceWriter = new BinaryWriter(memoryStream))
+                {
+                    nonceWriter.Write((byte)messageFrame.SecurityFlags);
+                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    nonce = memoryStream.ToArray();
+                }
+            }
 
-            var nonce = memoryStream.ToArray();
-            memoryStream = new MemoryStream();
-            var additionalDataWriter = new BinaryWriter(memoryStream);
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var additionalDataWriter = new BinaryWriter(memoryStream))
+                {
 
-            additionalDataWriter.Write((byte)messageFrame.MessageFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-            additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
-            additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    additionalDataWriter.Write((byte)messageFrame.MessageFlags);
+                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                    additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
+                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    additionalData = memoryStream.ToArray();
+                }
+            }
 
-            var additionalData = memoryStream.ToArray();
             byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
             var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
             var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);

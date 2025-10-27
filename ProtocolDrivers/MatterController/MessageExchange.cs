@@ -39,6 +39,8 @@ namespace Matter.Core
         public async Task SendAsync(MessageFrame message)
         {
             // Set the common data on the MessageFrame.
+            message.MessageFlags |= MessageFlags.S;
+            message.SecurityFlags = 0;
             message.SessionID = _session.PeerSessionId;
             message.SourceNodeID = _session.SourceNodeId;
             message.DestinationNodeId = _session.DestinationNodeId;
@@ -59,8 +61,6 @@ namespace Matter.Core
             {
                 message.MessagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
             }
-
-            Console.WriteLine("Sending Message {0}", message.DebugInfo());
 
             var bytes = _session.Encode(message);
 
@@ -139,8 +139,6 @@ namespace Matter.Core
                 }
 
             } while (!_cancellationTokenSource.Token.IsCancellationRequested);
-
-            Console.WriteLine("Exiting ReceiveAsync loop...");
         }
 
         public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
@@ -151,21 +149,13 @@ namespace Matter.Core
             messagePayload.ProtocolId = protocolId;
             messagePayload.ProtocolOpCode = opCode;
 
-            MessageFrame messageFrame = new(messagePayload);
-            messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SecurityFlags = 0;
-            messageFrame.SessionID = _session.SessionId;
-            messageFrame.SourceNodeID = _session.SourceNodeId;
-            messageFrame.DestinationNodeId = _session.DestinationNodeId;
-            messageFrame.MessageCounter = _session.MessageCounter;
-
-            await SendAsync(messageFrame).ConfigureAwait(false);
+            await SendAsync(new MessageFrame(messagePayload)).ConfigureAwait(false);
             return await WaitForNextMessageAsync().ConfigureAwait(false);
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter)
         {
-            MessagePayload messagePayload = new MessagePayload();
+            MessagePayload messagePayload = new();
             messagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
             messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
             messagePayload.ExchangeID = _exchangeId;
@@ -173,15 +163,7 @@ namespace Matter.Core
             messagePayload.ProtocolId = 0; // Secure Channel
             messagePayload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement
 
-            MessageFrame messageFrame = new MessageFrame(messagePayload);
-            messageFrame.MessageFlags |= MessageFlags.S;
-            messageFrame.SecurityFlags = 0;
-            messageFrame.SessionID = _session.SessionId;
-            messageFrame.SourceNodeID = _session.SourceNodeId;
-            messageFrame.DestinationNodeId = _session.DestinationNodeId;
-            messageFrame.MessageCounter = _session.MessageCounter;
-
-            await SendAsync(messageFrame).ConfigureAwait(false);
+            await SendAsync(new MessageFrame(messagePayload)).ConfigureAwait(false);
         }
 
         public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)
@@ -257,10 +239,7 @@ namespace Matter.Core
             payload.AddUInt8(255, 12); // interactionModelRevision
             payload.EndContainer(); // Close the structure
 
-            MessageFrame response = await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
-            await AcknowledgeMessageAsync(response.MessageCounter).ConfigureAwait(false);
-
-            return response;
+            return await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
         }
     }
 }

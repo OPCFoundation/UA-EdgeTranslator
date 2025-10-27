@@ -66,7 +66,7 @@ namespace MatterDotNet.Messages.Certificates
         internal override void Serialize(TLVWriter writer, long structNumber = -1) {
             if (BasicCnstr != null)
                 BasicCnstr.Serialize(writer, 1);
-            else if (KeyUsage != null)
+            else if (KeyUsage != 0)
                 writer.WriteUShort(2, KeyUsage);
             else if (ExtendedKeyUsage != null)
             {
