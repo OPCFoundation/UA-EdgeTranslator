@@ -10,7 +10,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-using MatterDotNet.DCL;
 using MatterDotNet.Messages.Certificates;
 using MatterDotNet.Protocol.Payloads;
 using MatterDotNet.Util;
@@ -165,64 +164,7 @@ namespace MatterDotNet.PKI
                 }
             }
         }
-
-        /// <summary>
-        /// Verify the certificate chains to the provided intermediate certificate and root PAA
-        /// </summary>
-        /// <param name="intermediateCert"></param>
-        /// <param name="dcl"></param>
-        /// <param name="level"></param>
-        /// <returns></returns>
-        public bool VerifyChain(byte[] intermediateCert, DCLClient dcl, VerificationLevel level)
-        {
-            ArgumentNullException.ThrowIfNull(intermediateCert, nameof(intermediateCert));
-            ArgumentNullException.ThrowIfNull(dcl, nameof(dcl));
-            if (level == VerificationLevel.AnyDevice)
-                return true;
-            #if NET9_0_OR_GREATER
-                return VerifyChain(X509CertificateLoader.LoadCertificate(intermediateCert), dcl, level);
-            #else
-                return VerifyChain(new X509Certificate2(intermediateCert), dcl, level);
-            #endif
-        }
-
-        /// <summary>
-        /// Verify the certificate chains to the provided intermediate certificate and root PAA
-        /// </summary>
-        /// <param name="intermediateCert"></param>
-        /// <param name="dcl"></param>
-        /// <param name="level"></param>
-        /// <returns></returns>
-        public bool VerifyChain(X509Certificate2 intermediateCert, DCLClient dcl, VerificationLevel level)
-        {
-            if (level == VerificationLevel.AnyDevice)
-                return true;
-            X509Chain chain = new X509Chain();
-            chain.ChainPolicy.ExtraStore.Add(intermediateCert);
-            chain.ChainPolicy.CustomTrustStore.AddRange(dcl.TrustStore);
-            if (level == VerificationLevel.CertifiedDevicesOrCHIPTest)
-                chain.ChainPolicy.CustomTrustStore.Add(dcl.CHIPTestPAA);
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            bool valid = chain.Build(cert);
-
-            return valid;
-        }
-
-        /// <summary>
-        /// Verify the certificate chains to the provided root certificate
-        /// </summary>
-        /// <param name="rootCert"></param>
-        /// <returns></returns>
-        public bool VerifyChain(OperationalCertificate rootCert)
-        {
-            X509Chain chain = new X509Chain();
-            chain.ChainPolicy.CustomTrustStore.Add(rootCert.cert);
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            return chain.Build(cert);
-        }
-
+               
         public void Export(string path)
         {
             File.WriteAllBytes(path, cert.Export(X509ContentType.Cert));
