@@ -1,8 +1,4 @@
-﻿using Matter.Core.Fabrics;
-using Matter.Core.Sessions;
-using Matter.Core.TLV;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -14,15 +10,13 @@ namespace Matter.Core
 
         public ulong NodeId { get; set; }
 
+        public string SetupCode { get; set; }
+
         public IPAddress LastKnownIpAddress { get; set; }
 
         public ushort LastKnownPort { get; set; }
 
-        public Fabric Fabric { get; set; }
-
         public bool IsConnected { get; set; }
-
-        public List<Endpoint> Endpoints { get; set; } = [];
 
         public void Connect()
         {
@@ -35,7 +29,7 @@ namespace Matter.Core
 
                 var unsecureSession = new UnsecureSession(connection);
 
-                CASEClient client = new CASEClient(this, Fabric, unsecureSession);
+                CASEClient client = new CASEClient(this, unsecureSession);
 
                 //_secureSession = await client.EstablishSessionAsync();
 
@@ -56,8 +50,6 @@ namespace Matter.Core
             {
                 return;
             }
-
-            Endpoints = [];
 
             var exchange = _secureSession.CreateExchange();
 

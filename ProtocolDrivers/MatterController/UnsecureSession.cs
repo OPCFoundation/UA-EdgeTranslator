@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Matter.Core.Sessions
+namespace Matter.Core
 {
     public class UnsecureSession : ISession
     {

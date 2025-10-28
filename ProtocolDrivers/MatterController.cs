@@ -1,7 +1,5 @@
 ﻿using Makaretu.Dns;
 using Matter.Core;
-using Matter.Core.Commissioning;
-using Matter.Core.Fabrics;
 using Opc.Ua.Edge.Translator.Interfaces;
 using Opc.Ua.Edge.Translator.Models;
 using System;
@@ -14,15 +12,26 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     public class MatterController : IAsset
     {
-        public readonly Fabric _fabric = new();
         private readonly FabricDiskStorage _storageProvider = new();
         private readonly MulticastService _mDNSService = new();
+        public readonly Fabric _fabric;
         private readonly ServiceDiscovery _serviceDiscovery;
         private readonly BluetoothCommissioner _commissioner;
 
         public MatterController()
         {
-            // TODO: Load Fabric from storage, if it exists
+            // Load Fabric from storage, if it exists
+            if (_storageProvider.FabricExists())
+            {
+                _fabric = _storageProvider.LoadFabric();
+            }
+
+            if (_fabric == null)
+            {
+                // create a new fabric
+                _fabric = new Fabric();
+                _storageProvider.SaveFabric(_fabric);
+            }
 
             _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
             {
@@ -47,7 +56,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 // check if the node is already commissioned into our Fabric
-                if (!_fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3]))
+                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == ipParts[3]))
                 {
                     Console.WriteLine($"Matter Node '{ipParts[3]}' is not commissioned. Starting commissioning process.");
 
@@ -56,17 +65,24 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                     // wait 100 seconds or until we have an IP address for the node
                     uint numRetries = 100;
-                    while ((numRetries > 0) && !_fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3] && n.LastKnownIpAddress != null))
+                    while ((numRetries > 0) && !_fabric.Nodes.Values.Any(n => n.SetupCode == ipParts[3] && n.LastKnownIpAddress != null))
                     {
                         Task.Delay(1000).GetAwaiter().GetResult();
                         numRetries--;
                     }
 
-                    // persist the node
-                    // TODO: _storageProvider.SaveFabricAsync(_fabric).GetAwaiter().GetResult();
+                    // persist the entire fabric
+                    if (numRetries > 0)
+                    {
+                        _storageProvider.SaveFabric(_fabric);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Commissioning process timed out waiting for IP address.");
+                    }
                 }
 
-                Matter.Core.Node node = _fabric.Nodes.FirstOrDefault(n => n.NodeId.ToString() == ipParts[2]);
+                Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == ipParts[3]);
                 if ((node != null) && !node.IsConnected)
                 {
                     node.Connect();
@@ -82,7 +98,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public List<string> Discover()
         {
-            return _fabric.Nodes.Select(n => n.NodeId.ToString()).ToList();
+            return _fabric.Nodes.Select(n => n.Key.ToString()).ToList();
         }
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
@@ -276,7 +292,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 var instanceName = server.Name.ToString();
 
-                if (instanceName.Contains("_matter._tcp.local"))
+                if (instanceName.EndsWith("_matter._tcp.local"))
                 {
                     Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
 
@@ -284,10 +300,28 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                     if (!addresses.Any())
                     {
+                        Console.WriteLine("No IP address received from Matter device: " + instanceName);
                         continue;
                     }
 
-                    _fabric.AddNodeAsync(instanceName.Replace("_matter._tcp.local", ""), addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    string[] parts = instanceName.Replace("._matter._tcp.local", "").Split('-');
+
+                    if (parts.Length < 2)
+                    {
+                        Console.WriteLine("Invalid Matter ID format: " + instanceName);
+                        continue;
+                    }
+
+                    string compressedFabricId = parts[0];
+                    string nodeIdString = parts[1];
+
+                    if (!_fabric.CompressedFabricId.Equals(compressedFabricId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"Ignoring node from different fabric: {compressedFabricId}");
+                        continue;
+                    }
+
+                    _fabric.AddNode(nodeIdString, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }

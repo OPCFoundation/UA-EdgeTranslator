@@ -1,14 +1,12 @@
-﻿
-using Matter.Core.Certificates;
-using System;
+﻿using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Matter.Core.Fabrics
+namespace Matter.Core
 {
     public class Fabric
     {
@@ -16,7 +14,7 @@ namespace Matter.Core.Fabrics
 
         public ushort VendorId { get; private set; } = 0xFFF1; // Default value from Matter specification
 
-        public List<Node> Nodes { get; } = new List<Node>();
+        public ConcurrentDictionary<ulong, Node> Nodes { get; private set; } = new();
 
         // Also called the EpochKey
         public byte[] IPK { get; private set; }
@@ -37,44 +35,65 @@ namespace Matter.Core.Fabrics
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
             CA = new CertificateAuthority(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
-
-            byte[] fabricIdBytes = BitConverter.GetBytes(FabricId).Reverse().ToArray();
-
-            // HKDF with SHA-256
-            using var hkdf = new HMACSHA256(CA.RootCertSubjectKeyIdentifier);
-            byte[] info = Encoding.ASCII.GetBytes("CompressedFabric");
-
-            // Step 1: Extract (salted)
-            byte[] prk = hkdf.ComputeHash(fabricIdBytes);
-
-            // Step 2: Expand
-            byte[] t = new byte[prk.Length + info.Length + 1];
-            Buffer.BlockCopy(info, 0, t, 0, info.Length);
-            t[info.Length] = 0x01;
-            byte[] okm = new HMACSHA256(prk).ComputeHash(t);
-
-            // Take first 8 bytes
-            byte[] compressedFabricId = new byte[8];
-            Buffer.BlockCopy(okm, 0, compressedFabricId, 0, 8);
-
-
-            CompressedFabricId = BitConverter.ToString(compressedFabricId).Replace("-", "");
+            CompressedFabricId = ComputeCompressedFabricId(FabricId, CA.RootCertificate.GetPublicKey());
         }
 
-        public void AddNodeAsync(string id, string address, ushort port)
+        private string ComputeCompressedFabricId(ulong fabricId, byte[] rootPublicKey)
         {
-            Nodes.Add(new Node()
-            {
-                NodeId = ulong.Parse(id),
+            // Convert Fabric ID to big-endian bytes
+            byte[] fabricIdBytes = BitConverter.GetBytes(fabricId);
+            Array.Reverse(fabricIdBytes);
+
+            // Salt = SHA1(rootPublicKey)
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            byte[] salt = SHA1.HashData(rootPublicKey);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+            // Info = "CompressedFabric"
+            byte[] info = Encoding.UTF8.GetBytes("CompressedFabric");
+
+            // HKDF Extract
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            using var hmac = new HMACSHA1(salt);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+            byte[] prk = hmac.ComputeHash(fabricIdBytes);
+
+            // HKDF Expand
+            byte[] okm = new byte[8]; // We only need 8 bytes
+            byte[] t = Array.Empty<byte>();
+            byte counter = 1;
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            using var expandHmac = new HMACSHA1(prk);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+            expandHmac.TransformBlock(info, 0, info.Length, null, 0);
+            expandHmac.TransformBlock(new byte[] { counter }, 0, 1, null, 0);
+            expandHmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            t = expandHmac.Hash;
+
+            Array.Copy(t, okm, okm.Length);
+            string compressedFabricId = BitConverter.ToString(okm).Replace("-", "");
+
+            Console.WriteLine($"CompressedFabricId: {compressedFabricId}");
+
+            return compressedFabricId;
+        }
+
+        public void AddNode(string id, string address, ushort port)
+        {
+            ulong nodeId = ulong.Parse(id, NumberStyles.HexNumber);
+            bool success = Nodes.TryAdd(nodeId, new Node() {
+                NodeId = nodeId,
                 LastKnownIpAddress = IPAddress.Parse(address),
                 LastKnownPort = port,
             });
-        }
 
-        public void AddNode(Node node)
-        {
-            node.Fabric = this;
-            Nodes.Add(node);
+            if (!success)
+            {
+                Console.WriteLine($"Node {id} already exists in fabric {FabricName}");
+            }
         }
     }
 }

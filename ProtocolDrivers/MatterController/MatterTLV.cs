@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Matter.Core.TLV
+namespace Matter.Core
 {
     /// <summary>
     /// See Appendix A of the Matter Specification for the TLV encoding.

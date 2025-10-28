@@ -1,17 +1,13 @@
-﻿using Matter.Core.Fabrics;
-
-namespace Matter.Core.Sessions
+﻿namespace Matter.Core
 {
     internal class CASEClient
     {
         private readonly Node _node;
-        private readonly Fabric _fabric;
         private readonly UnsecureSession _unsecureSession;
 
-        public CASEClient(Node node, Fabric fabric, UnsecureSession unsecureSession)
+        public CASEClient(Node node, UnsecureSession unsecureSession)
         {
             _node = node;
-            _fabric = fabric;
             _unsecureSession = unsecureSession;
         }
 

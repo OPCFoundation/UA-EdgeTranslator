@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Matter.Core.BTP
+namespace Matter.Core
 {
     internal class BTPConnection : IConnection
     {

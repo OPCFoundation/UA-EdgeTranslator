@@ -1,4 +1,4 @@
-﻿namespace Matter.Core.Sessions
+﻿namespace Matter.Core
 {
     using System.Threading;
     using System.Threading.Tasks;

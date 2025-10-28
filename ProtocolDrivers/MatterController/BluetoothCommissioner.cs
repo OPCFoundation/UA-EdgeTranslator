@@ -1,9 +1,4 @@
 ﻿using InTheHand.Bluetooth;
-using Matter.Core.BTP;
-using Matter.Core.Cryptography;
-using Matter.Core.Fabrics;
-using Matter.Core.Sessions;
-using Matter.Core.TLV;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -14,12 +9,12 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Matter.Core.Commissioning
+namespace Matter.Core
 {
     public class BluetoothCommissioner
     {
         private readonly ConcurrentDictionary<string, IBluetoothAdvertisingEvent> _receivedAdvertisments = new();
-        private Fabric _fabric;
+        private readonly Fabric _fabric;
         private IBluetooth _bluetooth;
         private CommissioningPayload _payload;
 

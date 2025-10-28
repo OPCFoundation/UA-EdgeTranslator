@@ -1,5 +1,4 @@
-﻿using Matter.Core.TLV;
-using System;
+﻿using System;
 using System.IO;
 
 namespace Matter.Core

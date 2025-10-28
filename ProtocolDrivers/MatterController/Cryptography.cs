@@ -9,7 +9,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Matter.Core.Cryptography
+namespace Matter.Core
 {
     public class CryptographyMethods
     {
