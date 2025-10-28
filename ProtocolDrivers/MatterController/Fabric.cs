@@ -1,12 +1,9 @@
 ﻿
 using Matter.Core.Certificates;
-using MatterDotNet.Protocol.Cryptography;
-using Org.BouncyCastle.Crypto.Digests;
-using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -41,24 +38,27 @@ namespace Matter.Core.Fabrics
             CA = new CertificateAuthority(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
 
-            // Generate the CompressedFabricIdentifier using HKDF.
-            byte[] compressedFabricInfo = Encoding.ASCII.GetBytes("CompressedFabric");
-            var keyBytes = new BigIntegerPoint(CertificateAuthority.RootKeyPair.ExportParameters(false).Q).ToBytes(false).AsSpan().Slice(1).ToArray();
+            byte[] fabricIdBytes = BitConverter.GetBytes(FabricId).Reverse().ToArray();
 
-            var hkdf = new HkdfBytesGenerator(new Sha256Digest());
-            hkdf.Init(new HkdfParameters(keyBytes, FabricName.ToByteArray(), compressedFabricInfo));
+            // HKDF with SHA-256
+            using var hkdf = new HMACSHA256(CA.RootCertSubjectKeyIdentifier);
+            byte[] info = Encoding.ASCII.GetBytes("CompressedFabric");
 
-            var compressedFabricIdentifier = new byte[8];
-            hkdf.GenerateBytes(compressedFabricIdentifier, 0, 8);
+            // Step 1: Extract (salted)
+            byte[] prk = hkdf.ComputeHash(fabricIdBytes);
 
-            // Generate the OperationalGroupKey(OperationalIPK) using HKDF.
-            byte[] groupKey = Encoding.ASCII.GetBytes("GroupKey v1.0");
-            hkdf.Init(new HkdfParameters(IPK, compressedFabricIdentifier, groupKey));
+            // Step 2: Expand
+            byte[] t = new byte[prk.Length + info.Length + 1];
+            Buffer.BlockCopy(info, 0, t, 0, info.Length);
+            t[info.Length] = 0x01;
+            byte[] okm = new HMACSHA256(prk).ComputeHash(t);
 
-            OperationalIPK = new byte[16];
-            hkdf.GenerateBytes(OperationalIPK, 0, 16);
+            // Take first 8 bytes
+            byte[] compressedFabricId = new byte[8];
+            Buffer.BlockCopy(okm, 0, compressedFabricId, 0, 8);
 
-            CompressedFabricId = BitConverter.ToString(compressedFabricIdentifier).Replace("-", "");
+
+            CompressedFabricId = BitConverter.ToString(compressedFabricId).Replace("-", "");
         }
 
         public void AddNodeAsync(string id, string address, ushort port)

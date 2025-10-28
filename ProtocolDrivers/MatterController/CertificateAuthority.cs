@@ -1,5 +1,4 @@
 ﻿using Matter.Core.TLV;
-using MatterDotNet.Protocol.Cryptography;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
@@ -15,6 +14,20 @@ namespace Matter.Core.Certificates
     {
         public CertificateAuthority(ulong fabricId)
         {
+            // Extract the public key (EC P-256)
+            ECParameters pubParams = RootKeyPair.ExportParameters(false);
+
+            // Convert EC point to uncompressed format: 0x04 || X || Y
+            byte[] publicKeyBytes = new byte[1 + pubParams.Q.X.Length + pubParams.Q.Y.Length];
+            publicKeyBytes[0] = 0x04;
+            Buffer.BlockCopy(pubParams.Q.X, 0, publicKeyBytes, 1, pubParams.Q.X.Length);
+            Buffer.BlockCopy(pubParams.Q.Y, 0, publicKeyBytes, 1 + pubParams.Q.X.Length, pubParams.Q.Y.Length);
+
+            // Compute SHA-1 hash
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            RootCertSubjectKeyIdentifier = SHA1.HashData(publicKeyBytes);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
             RootCertificate = CreateRootCert(fabricId);
         }
 
@@ -24,9 +37,7 @@ namespace Matter.Core.Certificates
 
         public X509Certificate2 RootCertificate { get; private set; }
 
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-        public byte[] RootCertSubjectKeyIdentifier { get; private set; } = SHA1.HashData(new BigIntegerPoint(RootKeyPair.ExportParameters(false).Q).ToBytes(false));
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+        public byte[] RootCertSubjectKeyIdentifier { get; private set; }
 
         public ulong RCACIdentifier { get; private set; } = Math.Max(1, (ulong)Random.Shared.NextInt64());
 

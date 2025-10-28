@@ -4,9 +4,6 @@ using Matter.Core.Cryptography;
 using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
-using Org.BouncyCastle.Crypto.Digests;
-using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -115,19 +112,24 @@ namespace Matter.Core.Commissioning
                     btpConnection.OpenConnection();
 
                     Console.WriteLine("BTP connection established. Starting PAKE/PASE exchange...");
-                    if (!ExecutePAKE(btpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Ke))
+                    if (!ExecutePAKE(btpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Z))
                     {
                         return;
                     }
 
+                    // HKDF with SHA-256
+                    using var hmac = new HMACSHA256(Array.Empty<byte>());
+                    byte[] prk = hmac.ComputeHash(Z);
+
+                    // Expand to get session key (32 bytes)
                     byte[] info = Encoding.ASCII.GetBytes("SessionKeys");
-                    var emptySalt = Array.Empty<byte>();
-                    var hkdf = new HkdfBytesGenerator(new Sha256Digest());
-                    hkdf.Init(new HkdfParameters(Ke, emptySalt, info));
-                    var keys = new byte[48];
-                    hkdf.GenerateBytes(keys, 0, 48);
+                    byte[] t = new byte[info.Length + 1];
+                    Buffer.BlockCopy(info, 0, t, 0, info.Length);
+                    t[info.Length] = 0x01;
+                    byte[] keys = new HMACSHA256(prk).ComputeHash(t);
                     var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
                     var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
+
                     var paseSession = new SecureSession(btpConnection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
 
                     var paseExchange = paseSession.CreateExchange();
