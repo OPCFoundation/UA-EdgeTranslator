@@ -1,74 +1,77 @@
-﻿using Org.BouncyCastle.Crypto;
+﻿
+using Matter.Core.Certificates;
+using MatterDotNet.Protocol.Cryptography;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Math;
-using Org.BouncyCastle.X509;
+using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Matter.Core.Fabrics
 {
     public class Fabric
     {
-        public AsymmetricCipherKeyPair RootCAKeyPair { get; set; }
+        public string FabricName { get; private set; } = "FAB000000000001D";
 
-        public BigInteger RootCACertificateId { get; set; }
-
-        public X509Certificate RootCACertificate { get; set; }
-
-        public byte[] IPK { get; set; }
-
-        public byte[] OperationalIPK { get; set; }
-
-        public BigInteger RootNodeId { get; set; }
-
-        public ushort AdminVendorId { get; set; }
-
-        public byte[] RootKeyIdentifier { get; set; }
-
-        public BigInteger FabricId { get; set; }
-
-        public string FabricName { get; set; }
-
-        public X509Certificate OperationalCertificate { get; set; }
-
-        public AsymmetricCipherKeyPair OperationalCertificateKeyPair { get; set; }
+        public ushort VendorId { get; private set; } = 0xFFF1; // Default value from Matter specification
 
         public List<Node> Nodes { get; } = new List<Node>();
 
+        // Also called the EpochKey
+        public byte[] IPK { get; private set; }
+
+        public ulong FabricId { get; private set; }
+
+        public CertificateAuthority CA { get; private set; }
+
+        public ulong RootNodeId { get; private set; }
+
+        public byte[] OperationalIPK { get; set; }
+
         public string CompressedFabricId { get; set; }
 
-        public byte[] RootPublicKeyBytes
+        public Fabric()
         {
-            get
-            {
-                var publicKey = RootCAKeyPair.Public as ECPublicKeyParameters;
-                return publicKey!.Q.GetEncoded(false);
-            }
+            IPK = RandomNumberGenerator.GetBytes(16);
+            FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
+            CA = new CertificateAuthority(FabricId);
+            RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
+
+            // Generate the CompressedFabricIdentifier using HKDF.
+            byte[] compressedFabricInfo = Encoding.ASCII.GetBytes("CompressedFabric");
+            var keyBytes = new BigIntegerPoint(CertificateAuthority.RootKeyPair.ExportParameters(false).Q).ToBytes(false).AsSpan().Slice(1).ToArray();
+
+            var hkdf = new HkdfBytesGenerator(new Sha256Digest());
+            hkdf.Init(new HkdfParameters(keyBytes, FabricName.ToByteArray(), compressedFabricInfo));
+
+            var compressedFabricIdentifier = new byte[8];
+            hkdf.GenerateBytes(compressedFabricIdentifier, 0, 8);
+
+            // Generate the OperationalGroupKey(OperationalIPK) using HKDF.
+            byte[] groupKey = Encoding.ASCII.GetBytes("GroupKey v1.0");
+            hkdf.Init(new HkdfParameters(IPK, compressedFabricIdentifier, groupKey));
+
+            OperationalIPK = new byte[16];
+            hkdf.GenerateBytes(OperationalIPK, 0, 16);
+
+            CompressedFabricId = BitConverter.ToString(compressedFabricIdentifier).Replace("-", "");
         }
 
-        internal void AddNodeAsync(string id, string address, ushort port)
+        public void AddNodeAsync(string id, string address, ushort port)
         {
             Nodes.Add(new Node()
             {
-                NodeId = BigInteger.ValueOf(int.Parse(id)),
+                NodeId = ulong.Parse(id),
                 LastKnownIpAddress = IPAddress.Parse(address),
                 LastKnownPort = port,
             });
         }
 
-        internal Node CreateNode()
-        {
-            var nodeIdBytes = RandomNumberGenerator.GetBytes(8);
-            var nodeId = new BigInteger(nodeIdBytes, true);
-
-            return new Node()
-            {
-                NodeId = nodeId
-            };
-        }
-
-        internal void AddNode(Node node)
+        public void AddNode(Node node)
         {
             node.Fabric = this;
             Nodes.Add(node);

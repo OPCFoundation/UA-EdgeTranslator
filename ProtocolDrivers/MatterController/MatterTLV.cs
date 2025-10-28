@@ -158,10 +158,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddUInt8(sbyte value)
+        public MatterTLV AddUInt8(byte value)
         {
             _values.Add(0x4);
-            _values.Add((byte)value);
+            _values.Add(value);
 
             return this;
         }
@@ -177,10 +177,10 @@ namespace Matter.Core.TLV
             return this;
         }
 
-        public MatterTLV AddInt8(byte value)
+        public MatterTLV AddInt8(sbyte value)
         {
             _values.Add(0x0);
-            _values.Add(value);
+            _values.Add((byte)value);
 
             return this;
         }
@@ -196,6 +196,19 @@ namespace Matter.Core.TLV
             _values.Add(tagNumber);
 
             // No length required.
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddInt16(short value)
+        {
+            if (value < sbyte.MaxValue && value > sbyte.MinValue)
+            {
+                return AddInt8((sbyte)value);
+            }
+
+            _values.Add(0x1);
             _values.AddRange(BitConverter.GetBytes(value));
 
             return this;
@@ -217,6 +230,19 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddUInt16(ushort value)
+        {
+            if (value < byte.MaxValue)
+            {
+                return AddUInt8((byte)value);
+            }
+
+            _values.Add(0x5);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
         public MatterTLV AddInt32(byte tagNumber, int value)
         {
             if (value < short.MaxValue && value > short.MinValue)
@@ -228,6 +254,19 @@ namespace Matter.Core.TLV
             _values.Add(tagNumber);
 
             // No length required.
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddInt32(int value)
+        {
+            if (value < short.MaxValue && value > short.MinValue)
+            {
+                return AddInt16((short)value);
+            }
+
+            _values.Add(0x2);
             _values.AddRange(BitConverter.GetBytes(value));
 
             return this;
@@ -249,6 +288,19 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddUInt32(uint value)
+        {
+            if (value < ushort.MaxValue)
+            {
+                return AddUInt16((ushort)value);
+            }
+
+            _values.Add(0x6);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
         public MatterTLV AddInt64(byte tagNumber, long value)
         {
             if (value < int.MaxValue && value > int.MinValue)
@@ -265,6 +317,19 @@ namespace Matter.Core.TLV
             return this;
         }
 
+        public MatterTLV AddInt64(long value)
+        {
+            if (value < int.MaxValue && value > int.MinValue)
+            {
+                return AddInt32((int)value);
+            }
+
+            _values.Add(0x3);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
         public MatterTLV AddUInt64(byte tagNumber, ulong value)
         {
             if (value < uint.MaxValue)
@@ -276,6 +341,19 @@ namespace Matter.Core.TLV
             _values.Add(tagNumber);
 
             // No length required.
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddUInt64(ulong value)
+        {
+            if (value < uint.MaxValue)
+            {
+                return AddUInt32((uint)value);
+            }
+
+            _values.Add(0x7);
             _values.AddRange(BitConverter.GetBytes(value));
 
             return this;

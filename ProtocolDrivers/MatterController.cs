@@ -14,15 +14,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     public class MatterController : IAsset
     {
-        private readonly FabricManager _fabricManager;
-        private readonly MulticastService _mDNSService;
+        public readonly Fabric _fabric = new();
+        private readonly FabricDiskStorage _storageProvider = new();
+        private readonly MulticastService _mDNSService = new();
         private readonly ServiceDiscovery _serviceDiscovery;
         private readonly BluetoothCommissioner _commissioner;
 
         public MatterController()
         {
-            _fabricManager = new FabricManager();
-            _mDNSService = new MulticastService();
+            // TODO: Load Fabric from storage, if it exists
 
             _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
             {
@@ -35,7 +35,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _serviceDiscovery.ServiceDiscovered += _serviceDiscovery_ServiceDiscovered;
             _serviceDiscovery.ServiceInstanceDiscovered += _serviceDiscovery_ServiceInstanceDiscovered;
 
-            _commissioner = new BluetoothCommissioner(_fabricManager.Fabric);
+            _commissioner = new BluetoothCommissioner(_fabric);
 
             _mDNSService.Start();
         }
@@ -47,7 +47,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 // check if the node is already commissioned into our Fabric
-                if (!_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3]))
+                if (!_fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3]))
                 {
                     Console.WriteLine($"Matter Node '{ipParts[3]}' is not commissioned. Starting commissioning process.");
 
@@ -56,20 +56,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                     // wait 100 seconds or until we have an IP address for the node
                     uint numRetries = 100;
-                    while ((numRetries > 0) && !_fabricManager.Fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3] && n.LastKnownIpAddress != null))
+                    while ((numRetries > 0) && !_fabric.Nodes.Any(n => n.NodeId.ToString() == ipParts[3] && n.LastKnownIpAddress != null))
                     {
                         Task.Delay(1000).GetAwaiter().GetResult();
                         numRetries--;
                     }
 
                     // persist the node
-                    _fabricManager.Save();
+                    // TODO: _storageProvider.SaveFabricAsync(_fabric).GetAwaiter().GetResult();
                 }
 
-                Matter.Core.Node node = _fabricManager.Fabric.Nodes.FirstOrDefault(n => n.NodeId.ToString() == ipParts[2]);
+                Matter.Core.Node node = _fabric.Nodes.FirstOrDefault(n => n.NodeId.ToString() == ipParts[2]);
                 if ((node != null) && !node.IsConnected)
                 {
-                    node.Connect().GetAwaiter().GetResult();
+                    node.Connect();
                     node.FetchDescriptionsAsync().GetAwaiter().GetResult();
                 }
 
@@ -82,7 +82,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public List<string> Discover()
         {
-            return _fabricManager.Fabric.Nodes.Select(n => n.NodeId.ToString()).ToList();
+            return _fabric.Nodes.Select(n => n.NodeId.ToString()).ToList();
         }
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
@@ -287,7 +287,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    _fabricManager.Fabric.AddNodeAsync(instanceName.Replace("_matter._tcp.local", ""), addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.AddNodeAsync(instanceName.Replace("_matter._tcp.local", ""), addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }

@@ -38,8 +38,6 @@ namespace Matter.Core.Cryptography
 
             var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BYTES);
 
-            //Console.WriteLine("PBKDF2: {0}", Convert.ToBase64String(pbkdf));
-
             var w0s = new BigInteger(1, pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray(), true);
             var w1s = new BigInteger(1, pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray(), true);
 
@@ -75,9 +73,6 @@ namespace Matter.Core.Cryptography
             var Zs = BitConverter.ToString(Z.GetEncoded(false)).Replace("-", "");
             var Vs = BitConverter.ToString(V.GetEncoded(false)).Replace("-", "");
 
-            //Console.WriteLine("Z: {0}", Zs);
-            //Console.WriteLine("V: {0}", Vs);
-
             return ComputeSecretAndVerifiers(contextHash, w0, X, Y, Z, V);
         }
 
@@ -97,8 +92,6 @@ namespace Matter.Core.Cryptography
             var KcAB = new byte[32];
             hkdf.GenerateBytes(KcAB, 0, 32);
 
-            //Console.WriteLine("KcAB: {0}", BitConverter.ToString(KcAB));
-
             var KcA = KcAB.AsSpan().Slice(0, 16).ToArray();
             var KcB = KcAB.AsSpan().Slice(16, 16).ToArray();
 
@@ -107,9 +100,6 @@ namespace Matter.Core.Cryptography
 
             hmac = new HMACSHA256(KcB);
             byte[] hBX = hmac.ComputeHash(X.GetEncoded(false));
-
-            //Console.WriteLine("hAY: {0}", BitConverter.ToString(hAY));
-            //Console.WriteLine("hBX: {0}", BitConverter.ToString(hBX));
 
             return (Ke, hAY, hBX);
         }
@@ -132,8 +122,6 @@ namespace Matter.Core.Cryptography
             TTwriter.Flush();
 
             var bytes = memoryStream.ToArray();
-
-            //Console.WriteLine("Transcript: {0}", BitConverter.ToString(bytes));
 
             return SHA256.HashData(bytes);
         }

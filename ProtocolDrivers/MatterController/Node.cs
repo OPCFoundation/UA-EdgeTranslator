@@ -1,10 +1,8 @@
 ﻿using Matter.Core.Fabrics;
 using Matter.Core.Sessions;
 using Matter.Core.TLV;
-using Org.BouncyCastle.Math;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -14,9 +12,7 @@ namespace Matter.Core
     {
         public ISession _secureSession;
 
-        public BigInteger NodeId { get; set; }
-
-        public string NodeName => BitConverter.ToString(NodeId.ToByteArray().Reverse().ToArray()).Replace("-", "");
+        public ulong NodeId { get; set; }
 
         public IPAddress LastKnownIpAddress { get; set; }
 
@@ -28,7 +24,7 @@ namespace Matter.Core
 
         public List<Endpoint> Endpoints { get; set; } = [];
 
-        public async Task Connect()
+        public void Connect()
         {
             try
             {
@@ -41,7 +37,7 @@ namespace Matter.Core
 
                 CASEClient client = new CASEClient(this, Fabric, unsecureSession);
 
-                _secureSession = await client.EstablishSessionAsync();
+                //_secureSession = await client.EstablishSessionAsync();
 
                 IsConnected = true;
 
