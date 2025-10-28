@@ -55,17 +55,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             try
             {
-                // check if the node is already commissioned into our Fabric
-                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == ipParts[3]))
-                {
-                    Console.WriteLine($"Matter Node '{ipParts[3]}' is not commissioned. Starting commissioning process.");
+                CommissioningPayload commissioningPayload = ParseManualSetupCode(ipParts[2], ipParts[3]);
 
-                    var commissioningPayload = ParseManualSetupCode(ipParts[2], ipParts[3]);
+                // check if the node is already commissioned into our Fabric
+                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString()))
+                {
+                    Console.WriteLine($"Matter Node '{commissioningPayload.Passcode}' is not commissioned. Starting commissioning process.");
+
                     _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
 
-                    // wait 100 seconds or until we have an IP address for the node
-                    uint numRetries = 100;
-                    while ((numRetries > 0) && !_fabric.Nodes.Values.Any(n => n.SetupCode == ipParts[3] && n.LastKnownIpAddress != null))
+                    // wait 60 seconds or until we have an IP address for the node
+                    uint numRetries = 60;
+                    while ((numRetries > 0) && !_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null))
                     {
                         Task.Delay(1000).GetAwaiter().GetResult();
                         numRetries--;
@@ -82,7 +83,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     }
                 }
 
-                Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == ipParts[3]);
+                Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null);
                 if ((node != null) && !node.IsConnected)
                 {
                     node.Connect();
@@ -312,16 +313,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    string compressedFabricId = parts[0];
-                    string nodeIdString = parts[1];
-
-                    if (!_fabric.CompressedFabricId.Equals(compressedFabricId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine($"Ignoring node from different fabric: {compressedFabricId}");
-                        continue;
-                    }
-
-                    _fabric.AddNode(nodeIdString, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.AddOrUpdateNode(parts[1], null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }

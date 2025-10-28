@@ -57,7 +57,18 @@ namespace InTheHand.Bluetooth
                 throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be larger than 512 bytes.");
             }
 
-            await _characteristicWindows.WriteValueAsync(value.AsBuffer(), GattWriteOption.WriteWithResponse);
+            try
+            {
+                await _characteristicWindows.WriteValueAsync(value.AsBuffer(), GattWriteOption.WriteWithResponse);
+            }
+            catch (OperationCanceledException)
+            {
+                // do nothing - operation was cancelled
+            }
+            catch (ObjectDisposedException)
+            {
+                // do nothing - object was already disposed
+            }
         }
 
         public async Task StartNotificationsAsync()

@@ -12,6 +12,8 @@ namespace Matter.Core
 
         public string SetupCode { get; set; }
 
+        public string Discriminator { get; set; }
+
         public IPAddress LastKnownIpAddress { get; set; }
 
         public ushort LastKnownPort { get; set; }
@@ -33,7 +35,7 @@ namespace Matter.Core
 
                 //_secureSession = await client.EstablishSessionAsync();
 
-                IsConnected = true;
+                //IsConnected = true;
 
                 Console.WriteLine($"Established secure session to node {NodeId}");
             }

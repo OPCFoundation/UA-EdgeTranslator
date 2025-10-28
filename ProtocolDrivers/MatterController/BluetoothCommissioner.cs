@@ -294,6 +294,8 @@ namespace Matter.Core
 
                     _receivedAdvertisments.Remove(e.Device.Id, out e);
 
+                    _fabric.AddOrUpdateNode(nodeIdString, _payload.Passcode.ToString(), _payload.Discriminator.ToString(), null, 0);
+
                     Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeIdString);
                 }
                 catch (Exception exp)

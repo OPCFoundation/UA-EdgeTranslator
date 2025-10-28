@@ -27,72 +27,59 @@ namespace Matter.Core
 
         public byte[] OperationalIPK { get; set; }
 
-        public string CompressedFabricId { get; set; }
-
         public Fabric()
         {
             IPK = RandomNumberGenerator.GetBytes(16);
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
             CA = new CertificateAuthority(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
-            CompressedFabricId = ComputeCompressedFabricId(FabricId, CA.RootCertificate.GetPublicKey());
         }
 
-        private string ComputeCompressedFabricId(ulong fabricId, byte[] rootPublicKey)
+        public void AddOrUpdateNode(string id, string setupCode, string discriminator, string address, ushort port)
         {
-            // Convert Fabric ID to big-endian bytes
-            byte[] fabricIdBytes = BitConverter.GetBytes(fabricId);
-            Array.Reverse(fabricIdBytes);
-
-            // Salt = SHA1(rootPublicKey)
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-            byte[] salt = SHA1.HashData(rootPublicKey);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-            // Info = "CompressedFabric"
-            byte[] info = Encoding.UTF8.GetBytes("CompressedFabric");
-
-            // HKDF Extract
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-            using var hmac = new HMACSHA1(salt);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-            byte[] prk = hmac.ComputeHash(fabricIdBytes);
-
-            // HKDF Expand
-            byte[] okm = new byte[8]; // We only need 8 bytes
-            byte[] t = Array.Empty<byte>();
-            byte counter = 1;
-
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-            using var expandHmac = new HMACSHA1(prk);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-            expandHmac.TransformBlock(info, 0, info.Length, null, 0);
-            expandHmac.TransformBlock(new byte[] { counter }, 0, 1, null, 0);
-            expandHmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-            t = expandHmac.Hash;
-
-            Array.Copy(t, okm, okm.Length);
-            string compressedFabricId = BitConverter.ToString(okm).Replace("-", "");
-
-            Console.WriteLine($"CompressedFabricId: {compressedFabricId}");
-
-            return compressedFabricId;
-        }
-
-        public void AddNode(string id, string address, ushort port)
-        {
-            ulong nodeId = ulong.Parse(id, NumberStyles.HexNumber);
-            bool success = Nodes.TryAdd(nodeId, new Node() {
-                NodeId = nodeId,
-                LastKnownIpAddress = IPAddress.Parse(address),
-                LastKnownPort = port,
-            });
-
-            if (!success)
+            if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
             {
-                Console.WriteLine($"Node {id} already exists in fabric {FabricName}");
+                Console.WriteLine($"Invalid node ID: {id}");
+                return;
+            }
+
+            if (Nodes.ContainsKey(nodeId))
+            {
+                Nodes[nodeId].NodeId = nodeId;
+
+                if (!string.IsNullOrEmpty(setupCode))
+                {
+                    Nodes[nodeId].SetupCode = setupCode;
+                }
+
+                if (!string.IsNullOrEmpty(discriminator)) {
+                    Nodes[nodeId].Discriminator = discriminator;
+                }
+
+                if (!string.IsNullOrEmpty(address))
+                {
+                    Nodes[nodeId].LastKnownIpAddress = address != null ? IPAddress.Parse(address) : null;
+                }
+
+                if (port != 0)
+                {
+                    Nodes[nodeId].LastKnownPort = port;
+                }
+
+                Console.WriteLine($"Updated existing node with ID: {id}");
+            }
+            else
+            {
+                Nodes.TryAdd(nodeId, new Node()
+                {
+                    NodeId = nodeId,
+                    SetupCode = setupCode,
+                    Discriminator = discriminator,
+                    LastKnownIpAddress = address != null ? IPAddress.Parse(address) : null,
+                    LastKnownPort = port
+                });
+
+                Console.WriteLine($"Added new node with ID: {id}");
             }
         }
     }
