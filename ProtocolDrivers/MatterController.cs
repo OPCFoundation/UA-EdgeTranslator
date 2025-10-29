@@ -86,7 +86,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null);
                 if ((node != null) && !node.IsConnected)
                 {
-                    node.Connect();
+                    node.Connect(_fabric);
                     node.FetchDescriptionsAsync().GetAwaiter().GetResult();
                 }
 

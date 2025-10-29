@@ -34,15 +34,15 @@ namespace Matter.Core
             {
                 _udpClient = new UdpClient(AddressFamily.InterNetworkV6);
             }
-
-            _udpClient.Connect(address, port);
-
-            Task.Factory.StartNew(ProcessIncomingData);
         }
 
         public IConnection OpenConnection()
         {
-            return new UdpConnection(_ipAddress, _port);
+            _udpClient.Connect(_ipAddress, _port);
+
+            Task.Factory.StartNew(ProcessIncomingData);
+
+            return this;
         }
 
         public void Close()
@@ -70,7 +70,7 @@ namespace Matter.Core
                     await _receivedDataChannel.Writer.WriteAsync(bytes);
                 }
             }
-            catch
+            catch (Exception)
             {
                 Console.WriteLine("UdpConnection: Error receiving data, closing connection.");
                 ConnectionClosed?.Invoke(this, EventArgs.Empty);

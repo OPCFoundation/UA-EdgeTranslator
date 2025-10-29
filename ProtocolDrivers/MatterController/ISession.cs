@@ -28,9 +28,5 @@
         Task<byte[]> ReadAsync(CancellationToken token);
 
         Task SendAsync(byte[] payload);
-
-        void Close();
-
-        IConnection CreateNewConnection();
     }
 }

@@ -20,7 +20,7 @@ namespace Matter.Core
 
         public bool IsConnected { get; set; }
 
-        public void Connect()
+        public void Connect(Fabric fabric)
         {
             try
             {
@@ -28,14 +28,15 @@ namespace Matter.Core
                 ushort port = LastKnownPort;
 
                 var connection = new UdpConnection(ipAddress, port);
+                connection.OpenConnection();
 
                 var unsecureSession = new UnsecureSession(connection);
 
-                CASEClient client = new CASEClient(this, unsecureSession);
+                CASEClient client = new CASEClient(this, unsecureSession, fabric, connection);
 
-                //_secureSession = await client.EstablishSessionAsync();
+                _secureSession = client.EstablishSession();
 
-                //IsConnected = true;
+                IsConnected = true;
 
                 Console.WriteLine($"Established secure session to node {NodeId}");
             }
@@ -101,7 +102,7 @@ namespace Matter.Core
 
             // Parse this into a set of endpoints.
             //
-            var tlv = resultPayload.ApplicationPayload!;
+            var tlv = resultPayload.ApplicationPayload;
 
             Console.WriteLine(tlv);
 

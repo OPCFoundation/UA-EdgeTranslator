@@ -20,11 +20,6 @@ namespace Matter.Core
 
         public IConnection Connection => _connection;
 
-        public IConnection CreateNewConnection()
-        {
-            return _connection.OpenConnection();
-        }
-
         public ulong SourceNodeId { get; } = 0;
 
         public ulong DestinationNodeId { get; } = 0;
@@ -36,11 +31,6 @@ namespace Matter.Core
         public bool UseMRP => false;
 
         public uint MessageCounter => _messageCounter++;
-
-        public void Close()
-        {
-            _connection.Close();
-        }
 
         public MessageExchange CreateExchange()
         {

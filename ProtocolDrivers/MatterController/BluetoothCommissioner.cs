@@ -292,6 +292,8 @@ namespace Matter.Core
                     paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
 
+                    btpConnection.Close();
+
                     _receivedAdvertisments.Remove(e.Device.Id, out e);
 
                     _fabric.AddOrUpdateNode(nodeIdString, _payload.Passcode.ToString(), _payload.Discriminator.ToString(), null, 0);

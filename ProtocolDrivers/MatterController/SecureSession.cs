@@ -26,11 +26,6 @@ namespace Matter.Core
             PeerSessionId = peerSessionId;
         }
 
-        public IConnection CreateNewConnection()
-        {
-            return _connection.OpenConnection();
-        }
-
         public IConnection Connection => _connection;
 
         public ulong SourceNodeId { get; } = 0x00;
@@ -41,14 +36,9 @@ namespace Matter.Core
 
         public ushort PeerSessionId { get; }
 
-        public bool UseMRP => false;
+        public bool UseMRP { get; set; } = false;
 
         public uint MessageCounter => _messageCounter++;
-
-        public void Close()
-        {
-            _connection.Close();
-        }
 
         public MessageExchange CreateExchange()
         {
