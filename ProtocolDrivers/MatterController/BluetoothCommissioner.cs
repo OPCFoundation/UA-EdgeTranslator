@@ -81,7 +81,24 @@ namespace Matter.Core
 
                 try
                 {
-                    IBluetoothAdvertisingEvent e = _receivedAdvertisments.First().Value;
+                    // find the first non-commissioned device
+                    IBluetoothAdvertisingEvent e = null;
+                    foreach (var adv in _receivedAdvertisments)
+                    {
+                        if (adv.Value != null)
+                        {
+                            e = adv.Value;
+                            break;
+                        }
+                    }
+
+                    if (e == null)
+                    {
+                        // all have been processed
+                        Task.Delay(1000).GetAwaiter().GetResult();
+                        continue;
+                    }
+
                     var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)e.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
 
                     Console.WriteLine("Matter device advertisment received from {0} with a discriminator of {1}", e.Device.Id, discriminator);
@@ -291,12 +308,12 @@ namespace Matter.Core
 
                     paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
-
                     btpConnection.Close();
 
-                    _receivedAdvertisments.Remove(e.Device.Id, out e);
-
                     _fabric.AddOrUpdateNode(nodeIdString, _payload.Passcode.ToString(), _payload.Discriminator.ToString(), null, 0);
+
+                    // mark this advertisment as processed
+                    _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
 
                     Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeIdString);
                 }

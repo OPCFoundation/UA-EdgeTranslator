@@ -1,16 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Globalization;
-using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 
 namespace Matter.Core
 {
     public class CertificateAuthority
     {
+        public string CommonName { get; private set; } = "UA-EdgeTranslator";
+
+        public ECDsa RootKeyPair { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        public ECDsa OperationalKeyPair { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        public X509Certificate2 RootCertificate { get; private set; }
+
+        public byte[] RootCertSubjectKeyIdentifier { get; private set; }
+
+        public ulong RCACIdentifier { get; private set; } = Math.Max(1, (ulong)Random.Shared.NextInt64());
+
         public CertificateAuthority(ulong fabricId)
         {
             // Extract the public key (EC P-256)
@@ -29,16 +40,6 @@ namespace Matter.Core
 
             RootCertificate = CreateRootCert(fabricId);
         }
-
-        public string CommonName { get; private set; } = "UA-EdgeTranslator";
-
-        public static ECDsa RootKeyPair { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-
-        public X509Certificate2 RootCertificate { get; private set; }
-
-        public byte[] RootCertSubjectKeyIdentifier { get; private set; }
-
-        public ulong RCACIdentifier { get; private set; } = Math.Max(1, (ulong)Random.Shared.NextInt64());
 
         public X509Certificate2 CreateRootCert(ulong fabricId)
         {
@@ -77,114 +78,6 @@ namespace Matter.Core
             Random.Shared.NextBytes(serial);
 
             return signingCSR.Create(RootCertificate, DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(1), serial);
-        }
-
-        private ushort GetKeyUsage(X509KeyUsageFlags keyUsage)
-        {
-            ushort ret = 0x0;
-
-            if ((keyUsage & X509KeyUsageFlags.CrlSign) != 0)
-            {
-                ret |= 0x40;
-            }
-
-            if ((keyUsage & X509KeyUsageFlags.KeyCertSign) != 0)
-            {
-                ret |= 0x20;
-            }
-
-            if ((keyUsage & X509KeyUsageFlags.DigitalSignature) != 0)
-            {
-                ret |= 0x1;
-            }
-
-            return ret;
-        }
-
-        private uint[] GetExtendedKeyUsage(X509EnhancedKeyUsageExtension extended)
-        {
-            List<uint> extUsage = new List<uint>();
-            foreach (Oid oid in extended.EnhancedKeyUsages)
-            {
-                if (uint.TryParse(oid.Value.Split('.').Last(), out uint val))
-                {
-                    if (val < 5)
-                    {
-                        extUsage.Add(val);
-                    }
-                    else if (val == 8)
-                    {
-                        extUsage.Add(5);
-                    }
-                    else if (val == 9)
-                    {
-                        extUsage.Add(6);
-                    }
-                }
-            }
-
-            return extUsage.ToArray();
-        }
-
-        private byte[] CalculateCertSignature(X509Certificate2 cert)
-        {
-            var signedData = cert.RawDataMemory;
-            AsnDecoder.ReadSequence(signedData.Span, AsnEncodingRules.DER, out var offset, out var length, out _);
-
-            var certificateSpan = signedData.Span.Slice(offset, length);
-            AsnDecoder.ReadSequence(certificateSpan, AsnEncodingRules.DER, out var tbsOffset, out var tbsLength, out _);
-
-            var algorithmSpan = certificateSpan.Slice(tbsOffset + tbsLength);
-            AsnDecoder.ReadSequence(algorithmSpan, AsnEncodingRules.DER, out var algOffset, out var algLength, out _);
-
-            byte[] signatureSequence = AsnDecoder.ReadBitString(algorithmSpan.Slice(algOffset + algLength), AsnEncodingRules.DER, out _, out _);
-            AsnDecoder.ReadSequence(signatureSequence, AsnEncodingRules.DER, out var sigOffset, out int sigLength, out _);
-            BigInteger r = AsnDecoder.ReadInteger(signatureSequence.AsSpan(sigOffset, sigLength), AsnEncodingRules.DER, out var intLen);
-            BigInteger s = AsnDecoder.ReadInteger(signatureSequence.AsSpan(sigOffset + intLen), AsnEncodingRules.DER, out _);
-
-            byte[] signature = new byte[64];
-            byte[] part1bytes = r.ToByteArray(true, true);
-            Array.Copy(part1bytes, 0, signature, 32 - part1bytes.Length, part1bytes.Length);
-
-            byte[] part2bytes = s.ToByteArray(true, true);
-            Array.Copy(part2bytes, 0, signature, 64 - part2bytes.Length, part2bytes.Length);
-
-            return signature;
-        }
-
-        private void WriteDN(MatterTLV encodedCert, X500RelativeDistinguishedName dn)
-        {
-            switch (dn.GetSingleElementType().Value)
-            {
-                case "2.5.4.3":
-                    //writer.WriteString(1, dn.GetSingleElementValue());
-                    encodedCert.AddUTF8String(1, dn.GetSingleElementValue()); // Common Name
-                    break;
-
-                case "1.3.6.1.4.1.37244.1.1":
-                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong id))
-                    {
-                        //writer.WriteULong(17, id);
-                        encodedCert.AddUInt64(17, id);
-                    }
-                    break;
-
-                case "1.3.6.1.4.1.37244.1.4":
-                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong rcac))
-                    {
-                        //writer.WriteULong(20, rcac);
-                        encodedCert.AddUInt64(20, rcac);
-                    }
-                    break;
-
-                case "1.3.6.1.4.1.37244.1.5":
-                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong fabricId))
-                    {
-                        //writer.WriteULong(21, fabricId);
-                        encodedCert.AddUInt64(21, fabricId);
-                    }
-                    break;
-            }
         }
 
         public byte[] GenerateCertMessage(X509Certificate2 cert)
@@ -241,9 +134,17 @@ namespace Matter.Core
                 else if (ext is X509EnhancedKeyUsageExtension extended)
                 {
                     encodedCert.AddArray(3); // Extended Key Usage
-                    foreach (var item in GetExtendedKeyUsage(extended))
+                    foreach (Oid oid in extended.EnhancedKeyUsages)
                     {
-                        encodedCert.AddUInt32(item);
+                        switch (oid.Value)
+                        {
+                            case "1.3.6.1.5.5.7.3.1": // server auth
+                                encodedCert.AddUInt8(1);
+                                break;
+                            case "1.3.6.1.5.5.7.3.2": // client auth
+                                encodedCert.AddUInt8(2);
+                                break;
+                        }
                     }
                     encodedCert.EndContainer();
                 }
@@ -263,6 +164,119 @@ namespace Matter.Core
             encodedCert.EndContainer();
 
             return encodedCert.GetBytes();
+        }
+
+        private ushort GetKeyUsage(X509KeyUsageFlags keyUsage)
+        {
+            ushort ret = 0x0;
+
+            if ((keyUsage & X509KeyUsageFlags.DigitalSignature) != 0)
+            {
+                ret |= 0x1;
+            }
+
+            if ((keyUsage & X509KeyUsageFlags.KeyCertSign) != 0)
+            {
+                ret |= 0x20;
+            }
+
+            if ((keyUsage & X509KeyUsageFlags.CrlSign) != 0)
+            {
+                ret |= 0x40;
+            }
+
+            return ret;
+        }
+
+        private byte[] CalculateCertSignature(X509Certificate2 cert)
+        {
+            var signedData = cert.RawDataMemory;
+            AsnDecoder.ReadSequence(signedData.Span, AsnEncodingRules.DER, out var offset, out var length, out _);
+
+            var certificateSpan = signedData.Span.Slice(offset, length);
+            AsnDecoder.ReadSequence(certificateSpan, AsnEncodingRules.DER, out var tbsOffset, out var tbsLength, out _);
+
+            var algorithmSpan = certificateSpan.Slice(tbsOffset + tbsLength);
+            AsnDecoder.ReadSequence(algorithmSpan, AsnEncodingRules.DER, out var algOffset, out var algLength, out _);
+
+            byte[] signatureSequence = AsnDecoder.ReadBitString(algorithmSpan.Slice(algOffset + algLength), AsnEncodingRules.DER, out _, out _);
+            AsnDecoder.ReadSequence(signatureSequence, AsnEncodingRules.DER, out var sigOffset, out int sigLength, out _);
+            BigInteger r = AsnDecoder.ReadInteger(signatureSequence.AsSpan(sigOffset, sigLength), AsnEncodingRules.DER, out var intLen);
+            BigInteger s = AsnDecoder.ReadInteger(signatureSequence.AsSpan(sigOffset + intLen), AsnEncodingRules.DER, out _);
+
+            byte[] signature = new byte[64];
+            byte[] part1bytes = r.ToByteArray(true, true);
+            Array.Copy(part1bytes, 0, signature, 32 - part1bytes.Length, part1bytes.Length);
+
+            byte[] part2bytes = s.ToByteArray(true, true);
+            Array.Copy(part2bytes, 0, signature, 64 - part2bytes.Length, part2bytes.Length);
+
+            return signature;
+        }
+
+        private void WriteDN(MatterTLV encodedCert, X500RelativeDistinguishedName dn)
+        {
+            switch (dn.GetSingleElementType().Value)
+            {
+                case "2.5.4.3": // CommonName
+                    encodedCert.AddUTF8String(1, dn.GetSingleElementValue());
+                    break;
+
+                case "1.3.6.1.4.1.37244.1.1": // NodeId
+                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong id))
+                    {
+                        encodedCert.AddUInt64(17, id);
+                    }
+                    break;
+
+                case "1.3.6.1.4.1.37244.1.4": // RCAC Identifier
+                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong rcac))
+                    {
+                        encodedCert.AddUInt64(20, rcac);
+                    }
+                    break;
+
+                case "1.3.6.1.4.1.37244.1.5": // FabricId
+                    if (ulong.TryParse(dn.GetSingleElementValue(), NumberStyles.HexNumber, null, out ulong fabricId))
+                    {
+                        encodedCert.AddUInt64(21, fabricId);
+                    }
+                    break;
+            }
+        }
+
+        public byte[] GenerateOperationalIPK(byte[] sharedSecret, byte[] salt)
+        {
+            string info = "OperationalIdentityProtectionKey";
+            int keyLen = 32;
+
+            // Extract step
+            using var hmac = new HMACSHA256(salt);
+            byte[] prk = hmac.ComputeHash(sharedSecret);
+
+            // Expand step
+            byte[] okm = new byte[keyLen];
+            byte[] previousBlock = Array.Empty<byte>();
+            int generated = 0;
+            int counter = 1;
+
+            while (generated < keyLen)
+            {
+                using var hmacExpand = new HMACSHA256(prk);
+                hmacExpand.TransformBlock(previousBlock, 0, previousBlock.Length, null, 0);
+                hmacExpand.TransformBlock(Encoding.UTF8.GetBytes(info), 0, info.Length, null, 0);
+                hmacExpand.TransformFinalBlock([(byte)counter], 0, 1);
+
+                byte[] block = hmacExpand.Hash;
+                int toCopy = Math.Min(block.Length, keyLen - generated);
+                Array.Copy(block, 0, okm, generated, toCopy);
+
+                generated += toCopy;
+                previousBlock = block;
+                counter++;
+            }
+
+            return okm;
         }
     }
 }

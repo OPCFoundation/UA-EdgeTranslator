@@ -10,13 +10,10 @@ namespace Matter.Core
     internal class UdpConnection : IConnection
     {
         private UdpClient _udpClient;
-        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(5);
+        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(500);
         private IPAddress _ipAddress;
         private ushort _port;
-        private IPEndPoint _Endpoint = new IPEndPoint(IPAddress.IPv6Any, 0);
-
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-
         public event EventHandler ConnectionClosed;
 
         public UdpConnection(IPAddress address, ushort port)
@@ -61,11 +58,11 @@ namespace Matter.Core
             {
                 while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    UdpReceiveResult result = await _udpClient!.ReceiveAsync();
+                    UdpReceiveResult result = await _udpClient.ReceiveAsync();
 
                     var bytes = result.Buffer;
 
-                    Console.WriteLine("UdpConnection: Received {0} bytes from {1}:{2}", bytes.Length, _Endpoint!.Address, _Endpoint!.Port);
+                    Console.WriteLine("UdpConnection: Received {0} bytes from {1}:{2}", bytes.Length, _ipAddress, _port);
 
                     await _receivedDataChannel.Writer.WriteAsync(bytes);
                 }

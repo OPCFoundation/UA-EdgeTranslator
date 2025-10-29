@@ -2,8 +2,10 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace Matter.Core
@@ -25,7 +27,9 @@ namespace Matter.Core
 
         public ulong RootNodeId { get; private set; }
 
-        public byte[] OperationalIPK { get; set; }
+        public byte[] OperationalIPK { get; private set; }
+
+        public X509Certificate2 OperationalCertificate { get; private set; }
 
         public Fabric()
         {
@@ -33,6 +37,8 @@ namespace Matter.Core
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
             CA = new CertificateAuthority(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
+            OperationalIPK = CA.GenerateOperationalIPK(IPK, BitConverter.GetBytes(FabricId).Reverse().ToArray());
+            OperationalCertificate = CA.SignCertRequest(new CertificateRequest($"CN={RootNodeId:X16}", CA.OperationalKeyPair, HashAlgorithmName.SHA256), RootNodeId, FabricId);
         }
 
         public void AddOrUpdateNode(string id, string setupCode, string discriminator, string address, ushort port)
