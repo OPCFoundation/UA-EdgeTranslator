@@ -49,6 +49,20 @@
             var caseSession = new SecureSession(_connection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
             caseSession.UseMRP = true;
 
+            MessageExchange secureExchange = caseSession.CreateExchange();
+
+            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+            if (MessageFrame.IsStatusReport(completeCommissioningResult))
+            {
+                Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
+                return null;
+            }
+
+            secureExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
+            secureExchange.Close();
+
+            Console.WriteLine("Commissioning of Matter Device {0} is complete.", _node.NodeId);
+
             return caseSession;
         }
 
@@ -76,8 +90,8 @@
             using BinaryWriter writer = new BinaryWriter(ms);
             writer.Write(initiatorSessionId);
             writer.Write(_fabric.CA.RootCertificate.GetPublicKey());
-            writer.Write(BitConverter.GetBytes(_fabric.FabricId).Reverse().ToArray());
-            writer.Write(BitConverter.GetBytes(_node.NodeId).Reverse().ToArray());
+            writer.Write(BitConverter.GetBytes(_fabric.FabricId));
+            writer.Write(BitConverter.GetBytes(_node.NodeId));
             var destinationId = ms.ToArray();
             var hmac = new HMACSHA256(_fabric.OperationalIPK);
             byte[] hashedDestinationId = hmac.ComputeHash(destinationId);

@@ -299,14 +299,7 @@ namespace Matter.Core
                         return;
                     }
 
-                    MessageFrame completeCommissioningResult = paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
-                    if (MessageFrame.IsStatusReport(completeCommissioningResult))
-                    {
-                        Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
-                        return;
-                    }
-
-                    paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
+                    paseExchange.AcknowledgeMessageAsync(connectNetworkResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
                     btpConnection.Close();
 
@@ -314,8 +307,6 @@ namespace Matter.Core
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
-
-                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeIdString);
                 }
                 catch (Exception exp)
                 {
