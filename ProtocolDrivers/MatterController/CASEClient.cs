@@ -1,10 +1,8 @@
 ﻿namespace Matter.Core
 {
     using System;
-    using System.Formats.Asn1;
-    using System.IO;
-    using System.Linq;
     using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
     using System.Text;
 
     internal class CASEClient
@@ -46,24 +44,7 @@
             var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
             var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
 
-            var caseSession = new SecureSession(_connection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
-            caseSession.UseMRP = true;
-
-            MessageExchange secureExchange = caseSession.CreateExchange();
-
-            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
-            if (MessageFrame.IsStatusReport(completeCommissioningResult))
-            {
-                Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
-                return null;
-            }
-
-            secureExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
-            secureExchange.Close();
-
-            Console.WriteLine("Commissioning of Matter Device {0} is complete.", _node.NodeId);
-
-            return caseSession;
+            return new SecureSession(_connection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
         }
 
         private bool ExecuteSIGMA(UdpConnection udpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Z)
@@ -75,38 +56,24 @@
             UnsecureSession unsecureSession = new(udpConnection);
             MessageExchange unsecureExchange = unsecureSession.CreateExchange();
 
-            // Extract the public key (EC P-256)
-            ECParameters pubParams = _fabric.CA.OperationalKeyPair.ExportParameters(false);
+            ECDsa operationalKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
-            // Convert EC point to uncompressed format: 0x04 || X || Y
-            byte[] initiatorPubKey = new byte[1 + pubParams.Q.X.Length + pubParams.Q.Y.Length];
-            initiatorPubKey[0] = 0x04;
-            Buffer.BlockCopy(pubParams.Q.X, 0, initiatorPubKey, 1, pubParams.Q.X.Length);
-            Buffer.BlockCopy(pubParams.Q.Y, 0, initiatorPubKey, 1 + pubParams.Q.X.Length, pubParams.Q.Y.Length);
-
-            byte[] nonce = RandomNumberGenerator.GetBytes(32);
-
-            using MemoryStream ms = new MemoryStream();
-            using BinaryWriter writer = new BinaryWriter(ms);
-            writer.Write(initiatorSessionId);
-            writer.Write(_fabric.CA.RootCertificate.GetPublicKey());
-            writer.Write(BitConverter.GetBytes(_fabric.FabricId));
-            writer.Write(BitConverter.GetBytes(_node.NodeId));
-            var destinationId = ms.ToArray();
-            var hmac = new HMACSHA256(_fabric.OperationalIPK);
-            byte[] hashedDestinationId = hmac.ComputeHash(destinationId);
+            byte[] initiatorRandom = RandomNumberGenerator.GetBytes(32);
+            byte[] rcacPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(_fabric.CA.RootKeyPair);
+            byte[] destinationId = _fabric.CA.GenerateDestinationId(_fabric.OperationalIPK, initiatorRandom, rcacPubKey65, _fabric.FabricId, _node.NodeId);
+            byte[] opsPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(operationalKeyPair);
 
             MatterTLV sigma1 = new();
             sigma1.AddStructure();
-            sigma1.AddOctetString(1, nonce);
+            sigma1.AddOctetString(1, initiatorRandom);
             sigma1.AddUInt16(2, initiatorSessionId);
-            sigma1.AddOctetString(3, hashedDestinationId);
-            sigma1.AddOctetString(4, initiatorPubKey);
+            sigma1.AddOctetString(3, destinationId);
+            sigma1.AddOctetString(4, opsPubKey65);
             sigma1.EndContainer();
             MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, 0x30).GetAwaiter().GetResult();
             if (MessageFrame.IsStatusReport(sigma2MessageFrame))
             {
-                Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning commissioning!");
+                Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning operational commissioning!");
                 return false;
             }
 
@@ -116,6 +83,8 @@
             var sigma2ResponderSessionId = sigma2Payload.GetUnsignedInt16(2);
             var sigma2ResponderEphPublicKey = sigma2Payload.GetOctetString(3);
             var sigma2EncryptedPayload = sigma2Payload.GetOctetString(4);
+
+            X509Certificate2 operationalCertificate = _fabric.CA.SignCertRequest(new CertificateRequest($"CN={_fabric.RootNodeId:X16}", operationalKeyPair, HashAlgorithmName.SHA256), _fabric.RootNodeId, _fabric.FabricId);
 
             //var sigmaKeyAgreement = AgreementUtilities.GetBasicAgreement("ECDH");
             //sigmaKeyAgreement.Init(ephermeralPrivateKey);

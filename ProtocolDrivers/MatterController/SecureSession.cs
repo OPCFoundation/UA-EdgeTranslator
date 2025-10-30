@@ -36,7 +36,7 @@ namespace Matter.Core
 
         public ushort PeerSessionId { get; }
 
-        public bool UseMRP { get; set; } = false;
+        public bool UseMRP => false;
 
         public uint MessageCounter => _messageCounter++;
 

@@ -147,7 +147,7 @@ namespace Matter.Core
                     var paseExchange = paseSession.CreateExchange();
 
                     object[] parameters = [
-                        (ushort)10, // 10 seconds expiration
+                        (ushort)60, // 60 seconds expiration
                         (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, 8, parameters).GetAwaiter().GetResult(); // Arm Failsafe
@@ -207,7 +207,7 @@ namespace Matter.Core
                         _fabric.CA.GenerateCertMessage(nodeCert),
                         null,
                         _fabric.IPK,
-                        _fabric.FabricId,
+                        _fabric.RootNodeId,
                         _fabric.VendorId
                     ];
                     MessageFrame addNocResult = paseExchange.SendCommand(0, 0x3E, 6, 8, parameters).GetAwaiter().GetResult(); // AddNoc
@@ -299,7 +299,14 @@ namespace Matter.Core
                         return;
                     }
 
-                    paseExchange.AcknowledgeMessageAsync(connectNetworkResult.MessageCounter).GetAwaiter().GetResult();
+                    MessageFrame completeCommissioningResult = paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+                    if (MessageFrame.IsStatusReport(completeCommissioningResult))
+                    {
+                        Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
+                        return;
+                    }
+
+                    paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
                     btpConnection.Close();
 
@@ -307,6 +314,8 @@ namespace Matter.Core
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
+
+                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeId);
                 }
                 catch (Exception exp)
                 {

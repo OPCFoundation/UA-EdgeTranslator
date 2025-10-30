@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Formats.Asn1;
 using System.Globalization;
 using System.Numerics;
@@ -12,32 +13,19 @@ namespace Matter.Core
     {
         public string CommonName { get; private set; } = "UA-EdgeTranslator";
 
-        public ECDsa RootKeyPair { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-
-        public ECDsa OperationalKeyPair { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        public ECDsa RootKeyPair { get; }
 
         public X509Certificate2 RootCertificate { get; private set; }
 
         public byte[] RootCertSubjectKeyIdentifier { get; private set; }
 
-        public ulong RCACIdentifier { get; private set; } = Math.Max(1, (ulong)Random.Shared.NextInt64());
+        public ulong RCACIdentifier { get; private set; }
 
         public CertificateAuthority(ulong fabricId)
         {
-            // Extract the public key (EC P-256)
-            ECParameters pubParams = RootKeyPair.ExportParameters(false);
-
-            // Convert EC point to uncompressed format: 0x04 || X || Y
-            byte[] publicKeyBytes = new byte[1 + pubParams.Q.X.Length + pubParams.Q.Y.Length];
-            publicKeyBytes[0] = 0x04;
-            Buffer.BlockCopy(pubParams.Q.X, 0, publicKeyBytes, 1, pubParams.Q.X.Length);
-            Buffer.BlockCopy(pubParams.Q.Y, 0, publicKeyBytes, 1 + pubParams.Q.X.Length, pubParams.Q.Y.Length);
-
-            // Compute SHA-1 hash
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-            RootCertSubjectKeyIdentifier = SHA1.HashData(publicKeyBytes);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
+            RootKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            RCACIdentifier = Math.Max(1, (ulong)Random.Shared.NextInt64());
+            RootCertSubjectKeyIdentifier = GenerateUncompressedSHA1Hash(RootKeyPair);
             RootCertificate = CreateRootCert(fabricId);
         }
 
@@ -245,38 +233,143 @@ namespace Matter.Core
             }
         }
 
-        public byte[] GenerateOperationalIPK(byte[] sharedSecret, byte[] salt)
+        /// <summary>
+        /// Generate the Compressed Fabric Identifier (CFI) per Matter:
+        /// CFI = HKDF-Expand(PRK, info="CompressedFabric", L=8)
+        /// where PRK = HMAC-SHA256(salt=fabricId_be8, IKM=rootPubXY64).
+        /// rootPubKey65 must be 0x04 || X(32) || Y(32).
+        /// Returns the 64-bit CFI as an unsigned integer.
+        /// </summary>
+        public ulong GenerateCompressedFabricId(ulong fabricId)
         {
-            string info = "OperationalIdentityProtectionKey";
-            int keyLen = 32;
-
-            // Extract step
-            using var hmac = new HMACSHA256(salt);
-            byte[] prk = hmac.ComputeHash(sharedSecret);
-
-            // Expand step
-            byte[] okm = new byte[keyLen];
-            byte[] previousBlock = Array.Empty<byte>();
-            int generated = 0;
-            int counter = 1;
-
-            while (generated < keyLen)
+            byte[] rootPubKey65 = GenerateUncompressed65ByteKey(RootKeyPair);
+            if (rootPubKey65 is null || rootPubKey65.Length != 65 || rootPubKey65[0] != 0x04)
             {
-                using var hmacExpand = new HMACSHA256(prk);
-                hmacExpand.TransformBlock(previousBlock, 0, previousBlock.Length, null, 0);
-                hmacExpand.TransformBlock(Encoding.UTF8.GetBytes(info), 0, info.Length, null, 0);
-                hmacExpand.TransformFinalBlock([(byte)counter], 0, 1);
-
-                byte[] block = hmacExpand.Hash;
-                int toCopy = Math.Min(block.Length, keyLen - generated);
-                Array.Copy(block, 0, okm, generated, toCopy);
-
-                generated += toCopy;
-                previousBlock = block;
-                counter++;
+                throw new ArgumentException("Root public key must be 65 bytes uncompressed (0x04||X||Y).", nameof(rootPubKey65));
             }
 
-            return okm;
+            // IKM = X||Y (64 bytes), i.e., drop the 0x04 prefix.
+            var ikm = new ReadOnlySpan<byte>(rootPubKey65, 1, 64);
+
+            // salt = fabricId as 8-byte big-endian
+            Span<byte> salt = stackalloc byte[8];
+            BinaryPrimitives.WriteUInt64BigEndian(salt, fabricId);
+
+            // HKDF-Extract: PRK = HMAC_SHA256(salt, IKM)
+            byte[] prk;
+            using (var hmac = new HMACSHA256(salt.ToArray()))
+            {
+                prk = hmac.ComputeHash(ikm.ToArray());
+            }
+
+            // HKDF-Expand to 8 bytes with info="CompressedFabric"
+            byte[] info = Encoding.ASCII.GetBytes("CompressedFabric");
+            Span<byte> t = stackalloc byte[32];  // T(1) buffer (HMAC-SHA256 output)
+            using (var hmacExpand = new HMACSHA256(prk))
+            {
+                // T(1) = HMAC(PRK, T(0)||info||0x01)  (T(0) is empty)
+                hmacExpand.TransformBlock(info, 0, info.Length, null, 0);
+                hmacExpand.TransformFinalBlock([0x01], 0, 1);
+                hmacExpand.Hash.CopyTo(t);
+            }
+
+            // CFI = first 8 bytes of T(1), treated as big-endian number
+            return BinaryPrimitives.ReadUInt64BigEndian(t[..8]);
+        }
+
+        // DestinationID = HMAC-SHA256(IPK, rand32 || rcac65 || fabricLE8 || nodeLE8)
+        public byte[] GenerateDestinationId(byte[] ipk16, byte[] rand32, byte[] rcac65, ulong fabricId, ulong nodeId)
+        {
+            if (ipk16.Length != 16)
+            {
+                throw new ArgumentException("IPK must be 16 bytes");
+            }
+
+            if (rand32.Length != 32)
+            {
+                throw new ArgumentException("InitiatorRandom must be 32 bytes");
+            }
+
+            if (rcac65.Length != 65 || rcac65[0] != 0x04)
+            {
+                throw new ArgumentException("RCAC must be 65B uncompressed");
+            }
+
+            Span<byte> msg = stackalloc byte[32 + 65 + 8 + 8]; // random || root || fabricId || nodeId
+            int o = 0;
+            rand32.CopyTo(msg[o..]); o += 32;
+            rcac65.CopyTo(msg[o..]); o += 65;
+            BinaryPrimitives.WriteUInt64LittleEndian(msg[o..], fabricId); o += 8;
+            BinaryPrimitives.WriteUInt64LittleEndian(msg[o..], nodeId);
+
+            using var h = new HMACSHA256(ipk16);
+            return h.ComputeHash(msg.ToArray()); // 32 bytes
+        }
+
+        public byte[] GenerateUncompressedSHA1Hash(ECDsa key)
+        {
+            // Extract the public key (EC P-256)
+            ECParameters pubParams = key.ExportParameters(false);
+
+            // Convert EC point to uncompressed format: 0x04 || X || Y
+            byte[] publicKeyBytes = new byte[1 + pubParams.Q.X.Length + pubParams.Q.Y.Length];
+            publicKeyBytes[0] = 0x04;
+            Buffer.BlockCopy(pubParams.Q.X, 0, publicKeyBytes, 1, pubParams.Q.X.Length);
+            Buffer.BlockCopy(pubParams.Q.Y, 0, publicKeyBytes, 1 + pubParams.Q.X.Length, pubParams.Q.Y.Length);
+
+            // Compute SHA-1 hash
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            return SHA1.HashData(publicKeyBytes);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+        }
+
+        public byte[] GenerateUncompressed65ByteKey(ECDsa key)
+        {
+            if (key is null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            // Export public parameters (no private material)
+            ECParameters p = key.ExportParameters(false);
+
+            // Validate we are on NIST P-256 (secp256r1)
+            // .NET identifies named curves via Oid
+            // secp256r1 is 1.2.840.10045.3.1.7
+            if (p.Curve.Oid?.Value != "1.2.840.10045.3.1.7")
+            {
+                throw new NotSupportedException("Expected a P-256 public key (secp256r1).");
+            }
+
+            if (p.Q.X is null || p.Q.Y is null || p.Q.X.Length != 32 || p.Q.Y.Length != 32)
+            {
+                throw new InvalidOperationException("Unexpected P-256 public key coordinate lengths.");
+            }
+
+            // Assemble SEC1 uncompressed: 0x04 || X || Y
+            byte[] uncompressed = new byte[65];
+            uncompressed[0] = 0x04;
+            Buffer.BlockCopy(p.Q.X, 0, uncompressed, 1, 32);
+            Buffer.BlockCopy(p.Q.Y, 0, uncompressed, 33, 32);
+
+            return uncompressed;
+        }
+
+        public ECDiffieHellman ImportUncompressed65(ECDiffieHellman ecdh, byte[] uncompressed65)
+        {
+            if (uncompressed65 is null || uncompressed65.Length != 65 || uncompressed65[0] != 0x04)
+            {
+                throw new ArgumentException("Expect 65B SEC1 with 0x04 prefix", nameof(uncompressed65));
+            }
+
+            var p = new ECParameters { Curve = ECCurve.NamedCurves.nistP256 };
+            p.Q.X = new byte[32]; p.Q.Y = new byte[32];
+            Buffer.BlockCopy(uncompressed65, 1, p.Q.X, 0, 32);
+            Buffer.BlockCopy(uncompressed65, 33, p.Q.Y, 0, 32);
+
+            ecdh.ImportParameters(p);
+
+            return ecdh;
         }
     }
 }

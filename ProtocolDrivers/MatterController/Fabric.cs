@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace Matter.Core
@@ -21,31 +20,35 @@ namespace Matter.Core
         // Also called the EpochKey
         public byte[] IPK { get; private set; }
 
+        public byte[] OperationalIPK { get; private set; }
+
         public ulong FabricId { get; private set; }
+
+        public byte[] CompressedFabricId { get; private set; }
 
         public CertificateAuthority CA { get; private set; }
 
         public ulong RootNodeId { get; private set; }
-
-        public byte[] OperationalIPK { get; private set; }
-
-        public X509Certificate2 OperationalCertificate { get; private set; }
 
         public Fabric()
         {
             IPK = RandomNumberGenerator.GetBytes(16);
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
             CA = new CertificateAuthority(FabricId);
+            CompressedFabricId = BitConverter.GetBytes(CA.GenerateCompressedFabricId(FabricId)).Reverse().ToArray();
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
-            OperationalIPK = CA.GenerateOperationalIPK(IPK, BitConverter.GetBytes(FabricId).Reverse().ToArray());
-            OperationalCertificate = CA.SignCertRequest(new CertificateRequest($"CN={RootNodeId:X16}", CA.OperationalKeyPair, HashAlgorithmName.SHA256), RootNodeId, FabricId);
+
+            Span<byte> prk = stackalloc byte[HMACSHA256.HashSizeInBytes];
+            HKDF.Extract(HashAlgorithmName.SHA256, IPK, CompressedFabricId, prk);
+            OperationalIPK = new byte[16];
+            HKDF.Expand(HashAlgorithmName.SHA256, prk, OperationalIPK, Encoding.ASCII.GetBytes("GroupKey v1.0"));
         }
 
         public void AddOrUpdateNode(string id, string setupCode, string discriminator, string address, ushort port)
         {
             if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
             {
-                Console.WriteLine($"Invalid node ID: {id}");
+                Console.WriteLine($"Invalid node ID: {id.ToUpper()}");
                 return;
             }
 
@@ -72,7 +75,7 @@ namespace Matter.Core
                     Nodes[nodeId].LastKnownPort = port;
                 }
 
-                Console.WriteLine($"Updated existing node with ID: {id}");
+                Console.WriteLine($"Updated existing node with ID: {id.ToUpper()}");
             }
             else
             {
@@ -85,7 +88,7 @@ namespace Matter.Core
                     LastKnownPort = port
                 });
 
-                Console.WriteLine($"Added new node with ID: {id}");
+                Console.WriteLine($"Added new node with ID: {id.ToUpper()}");
             }
         }
     }

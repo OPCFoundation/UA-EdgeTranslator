@@ -3,6 +3,7 @@ using Matter.Core;
 using Opc.Ua.Edge.Translator.Interfaces;
 using Opc.Ua.Edge.Translator.Models;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -313,7 +314,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    _fabric.AddOrUpdateNode(parts[1], null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    string compressedFabricId = parts[0];
+                    string nodeId = parts[1];
+
+                    if (BinaryPrimitives.ReadUInt64BigEndian(_fabric.CompressedFabricId).ToString("X4") != compressedFabricId)
+                    {
+                        Console.WriteLine($"Ignoring node from different fabric: {instanceName}");
+                        continue;
+                    }
+
+                    _fabric.AddOrUpdateNode(nodeId, null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }

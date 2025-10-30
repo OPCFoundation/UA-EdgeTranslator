@@ -62,8 +62,6 @@ namespace Matter.Core
 
                     var bytes = result.Buffer;
 
-                    Console.WriteLine("UdpConnection: Received {0} bytes from {1}:{2}", bytes.Length, _ipAddress, _port);
-
                     await _receivedDataChannel.Writer.WriteAsync(bytes);
                 }
             }
