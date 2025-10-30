@@ -355,21 +355,36 @@ namespace Matter.Core
             return uncompressed;
         }
 
-        public ECDiffieHellman ImportUncompressed65(ECDiffieHellman ecdh, byte[] uncompressed65)
+        public byte[] GenerateUncompressed65ByteKey(ECDiffieHellman key)
         {
-            if (uncompressed65 is null || uncompressed65.Length != 65 || uncompressed65[0] != 0x04)
+            if (key is null)
             {
-                throw new ArgumentException("Expect 65B SEC1 with 0x04 prefix", nameof(uncompressed65));
+                throw new ArgumentNullException(nameof(key));
             }
 
-            var p = new ECParameters { Curve = ECCurve.NamedCurves.nistP256 };
-            p.Q.X = new byte[32]; p.Q.Y = new byte[32];
-            Buffer.BlockCopy(uncompressed65, 1, p.Q.X, 0, 32);
-            Buffer.BlockCopy(uncompressed65, 33, p.Q.Y, 0, 32);
+            // Export public parameters (no private material)
+            ECParameters p = key.ExportParameters(false);
 
-            ecdh.ImportParameters(p);
+            // Validate we are on NIST P-256 (secp256r1)
+            // .NET identifies named curves via Oid
+            // secp256r1 is 1.2.840.10045.3.1.7
+            if (p.Curve.Oid?.Value != "1.2.840.10045.3.1.7")
+            {
+                throw new NotSupportedException("Expected a P-256 public key (secp256r1).");
+            }
 
-            return ecdh;
+            if (p.Q.X is null || p.Q.Y is null || p.Q.X.Length != 32 || p.Q.Y.Length != 32)
+            {
+                throw new InvalidOperationException("Unexpected P-256 public key coordinate lengths.");
+            }
+
+            // Assemble SEC1 uncompressed: 0x04 || X || Y
+            byte[] uncompressed = new byte[65];
+            uncompressed[0] = 0x04;
+            Buffer.BlockCopy(p.Q.X, 0, uncompressed, 1, 32);
+            Buffer.BlockCopy(p.Q.Y, 0, uncompressed, 33, 32);
+
+            return uncompressed;
         }
     }
 }
