@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Matter.Core
@@ -9,6 +10,10 @@ namespace Matter.Core
         public ISession _secureSession;
 
         public ulong NodeId { get; set; }
+
+        public byte[] OperationalNOCAsTLV { get; set; }
+
+        public ECDsa SubjectPublicKey { get; set; }
 
         public string SetupCode { get; set; }
 
@@ -30,9 +35,7 @@ namespace Matter.Core
                 var connection = new UdpConnection(ipAddress, port);
                 connection.OpenConnection();
 
-                var unsecureSession = new UnsecureSession(connection);
-
-                CASEClient client = new CASEClient(this, unsecureSession, fabric, connection);
+                CASEClient client = new CASEClient(this, fabric, connection);
 
                 _secureSession = client.EstablishSession();
 

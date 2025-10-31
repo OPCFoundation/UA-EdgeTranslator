@@ -296,11 +296,11 @@ namespace Matter.Core
             }
 
             Span<byte> msg = stackalloc byte[32 + 65 + 8 + 8]; // random || root || fabricId || nodeId
-            int o = 0;
-            rand32.CopyTo(msg[o..]); o += 32;
-            rcac65.CopyTo(msg[o..]); o += 65;
-            BinaryPrimitives.WriteUInt64LittleEndian(msg[o..], fabricId); o += 8;
-            BinaryPrimitives.WriteUInt64LittleEndian(msg[o..], nodeId);
+            int i = 0;
+            rand32.CopyTo(msg[i..]); i += 32;
+            rcac65.CopyTo(msg[i..]); i += 65;
+            BinaryPrimitives.WriteUInt64LittleEndian(msg[i..], fabricId); i += 8;
+            BinaryPrimitives.WriteUInt64LittleEndian(msg[i..], nodeId);
 
             using var h = new HMACSHA256(ipk16);
             return h.ComputeHash(msg.ToArray()); // 32 bytes
@@ -355,36 +355,337 @@ namespace Matter.Core
             return uncompressed;
         }
 
-        public byte[] GenerateUncompressed65ByteKey(ECDiffieHellman key)
+        public ECDiffieHellman ImportEcdhPublic(byte[] pub65)
         {
-            if (key is null)
+            var x = new byte[32]; var y = new byte[32];
+            Buffer.BlockCopy(pub65, 1, x, 0, 32);
+            Buffer.BlockCopy(pub65, 33, y, 0, 32);
+
+            var p = new ECParameters { Curve = ECCurve.NamedCurves.nistP256, Q = new ECPoint { X = x, Y = y } };
+            var ecdh = ECDiffieHellman.Create();
+            ecdh.ImportParameters(p);
+
+            return ecdh;
+        }
+
+        public sealed record TrafficKeys(byte[] I2R, byte[] R2I, byte[] NoncePrefix);
+
+        /// <summary>
+        /// Derive the two unidirectional AES-CCM(128) traffic keys and the 8-byte nonce prefix
+        /// for a CASE secure session.
+        ///
+        /// Inputs:
+        ///   - Z:            ECDH shared secret (from initiator eph priv × responder eph pub)
+        ///   - initRand32:   Sigma1 InitiatorRandom (32 bytes)
+        ///   - respRand32:   Sigma2 ResponderRandom (32 bytes)
+        ///   - initSID:      InitiatorSessionId (u16)
+        ///   - respSID:      ResponderSessionId (u16)
+        ///
+        /// Output:
+        ///   - (I2R 16B, R2I 16B, NoncePrefix 8B)
+        /// </summary>
+        public TrafficKeys DeriveCaseTrafficKeys(
+            ReadOnlySpan<byte> Z,
+            ReadOnlySpan<byte> initiatorRandom,
+            ReadOnlySpan<byte> responderRandom,
+            ushort initiatorSessionId,
+            ushort responderSessionId)
+        {
+            if (Z.Length == 0)
             {
-                throw new ArgumentNullException(nameof(key));
+                throw new ArgumentException("ECDH shared secret (Z) is empty");
             }
 
-            // Export public parameters (no private material)
-            ECParameters p = key.ExportParameters(false);
-
-            // Validate we are on NIST P-256 (secp256r1)
-            // .NET identifies named curves via Oid
-            // secp256r1 is 1.2.840.10045.3.1.7
-            if (p.Curve.Oid?.Value != "1.2.840.10045.3.1.7")
+            if ((initiatorRandom.Length != 32) || (responderRandom.Length != 32))
             {
-                throw new NotSupportedException("Expected a P-256 public key (secp256r1).");
+                throw new ArgumentException("Handshake randoms must be 32 bytes each");
             }
 
-            if (p.Q.X is null || p.Q.Y is null || p.Q.X.Length != 32 || p.Q.Y.Length != 32)
+            // HKDF-Extract: prk = HMAC_SHA256(salt, Z)
+            // Salt ties the transcript's two 32B nonces together.
+            // Many stacks use init||resp; some use resp||init; we compute both and prefer A.
+            byte[] prkA = HkdfExtract(initiatorRandom, responderRandom, Z); // salt = init||resp
+            byte[] prkB = HkdfExtract(responderRandom, initiatorRandom, Z); // salt = resp||init (fallback)
+
+            // HKDF-Expand to get the three outputs (labels keep directions disjoint).
+            // Labels are ASCII and include the two session IDs (LE) to namespace by session.
+            Span<byte> sid4 = stackalloc byte[4];
+            BinaryPrimitives.WriteUInt16LittleEndian(sid4, initiatorSessionId);
+            BinaryPrimitives.WriteUInt16LittleEndian(sid4[2..], responderSessionId);
+
+            byte[] iInfo = BuildInfo("SessionKeys v1 | I2R", sid4);
+            byte[] rInfo = BuildInfo("SessionKeys v1 | R2I", sid4);
+            byte[] nInfo = BuildInfo("SessionKeys v1 | NONCE", sid4);
+
+            // First try with PRK-A; if you later see the peer dropping your first encrypted message,
+            // flip to PRK-B via the toggle below.
+            bool useAltSaltOrder = false; // set true if your device expects resp||init as salt
+            ReadOnlySpan<byte> prk = useAltSaltOrder ? prkB : prkA;
+
+            byte[] i2r = HkdfExpand(prk, iInfo, 16);
+            byte[] r2i = HkdfExpand(prk, rInfo, 16);
+            byte[] noncePrefix = HkdfExpand(prk, nInfo, 8);
+
+            // Wipe temporary buffers that held PRKs
+            CryptographicOperations.ZeroMemory(prkA);
+            CryptographicOperations.ZeroMemory(prkB);
+
+            return new TrafficKeys(i2r, r2i, noncePrefix);
+        }
+
+        public enum SigmaSaltVariant
+        {
+            // Salt = InitiatorRandom || ResponderRandom
+            RandomsConcat_InitThenResp,
+
+            // Salt = ResponderRandom || InitiatorRandom (some vendor forks)
+            RandomsConcat_RespThenInit,
+
+            // Salt = IPK || ResponderRandom || ResponderEphPub || SHA256(Sigma1)
+            IpkConcat_TranscriptHash_S1,
+
+            // Salt = IPK || SHA256(Sigma1 || Sigma2) → often used for Sigma3 key
+            IpkConcat_TranscriptHash_S1S2,
+
+            // Salt = IPK || SHA256(Sigma1 || Sigma2 || Sigma3) → often used for final session keys
+            IpkConcat_TranscriptHash_S1S2S3
+        }
+
+        /// <summary>
+        /// Builds the HKDF salt for CASE Sigma derivations.
+        ///
+        /// For RandomsConcat_* variants:
+        ///   - initiatorRandom32 (Sigma1 tag-1) and responderRandom32 (Sigma2 tag-1) must be 32 bytes each.
+        /// For IpkConcat_* variants:
+        ///   - ipk16 must be 16 bytes; transcript segments MUST be the exact message bytes you (and peer) used.
+        /// </summary>
+        public byte[] SigmaSalt(
+            SigmaSaltVariant variant,
+            ReadOnlySpan<byte> initiatorRandom = default,
+            ReadOnlySpan<byte> responderRandom = default,
+            ReadOnlySpan<byte> responderEphPub65 = default,
+            ReadOnlySpan<byte> ipk16 = default,
+            ReadOnlySpan<byte> sigma1Payload = default,
+            ReadOnlySpan<byte> sigma2Payload = default,
+            ReadOnlySpan<byte> sigma3OuterTlv = default)
+        {
+            switch (variant)
             {
-                throw new InvalidOperationException("Unexpected P-256 public key coordinate lengths.");
+                case SigmaSaltVariant.RandomsConcat_InitThenResp:
+                    {
+                        if (initiatorRandom.Length != 32 || responderRandom.Length != 32)
+                        {
+                            throw new ArgumentException("Handshake randoms must be 32 bytes each.");
+                        }
+
+                        byte[] salt = new byte[64];
+                        initiatorRandom.CopyTo(salt.AsSpan(0));
+                        responderRandom.CopyTo(salt.AsSpan(32));
+
+                        return salt;
+                    }
+
+                case SigmaSaltVariant.RandomsConcat_RespThenInit:
+                    {
+                        if (initiatorRandom.Length != 32 || responderRandom.Length != 32)
+                        {
+                            throw new ArgumentException("Handshake randoms must be 32 bytes each.");
+                        }
+
+                        byte[] salt = new byte[64];
+                        responderRandom.CopyTo(salt.AsSpan(0));
+                        initiatorRandom.CopyTo(salt.AsSpan(32));
+
+                        return salt;
+                    }
+
+                case SigmaSaltVariant.IpkConcat_TranscriptHash_S1:
+                    {
+                        if (ipk16.Length != 16)
+                        {
+                            throw new ArgumentException("IPK must be 16 bytes.");
+                        }
+
+                        byte[] s1Hash = Sha256(sigma1Payload);
+                        byte[] salt = new byte[ipk16.Length + responderRandom.Length + responderEphPub65.Length + s1Hash.Length];
+
+                        int i = 0;
+                        ipk16.CopyTo(salt.AsSpan(i)); i += ipk16.Length;
+                        responderRandom.CopyTo(salt.AsSpan(i)); i += responderRandom.Length;
+                        responderEphPub65.CopyTo(salt.AsSpan(i)); i += responderEphPub65.Length;
+                        s1Hash.AsSpan().CopyTo(salt.AsSpan(i));
+
+                        CryptographicOperations.ZeroMemory(s1Hash);
+
+                        return salt;
+                    }
+
+                case SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2:
+                    {
+                        if (ipk16.Length != 16)
+                        {
+                            throw new ArgumentException("IPK must be 16 bytes.");
+                        }
+
+                        byte[] th = Sha256Concat(sigma1Payload, sigma2Payload);
+
+                        return Concat(ipk16, th);
+                    }
+
+                case SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2S3:
+                    {
+                        if (ipk16.Length != 16)
+                        {
+                            throw new ArgumentException("IPK must be 16 bytes.");
+                        }
+
+                        byte[] th = Sha256Concat(sigma1Payload, sigma2Payload, sigma3OuterTlv);
+
+                        return Concat(ipk16, th);
+                    }
+
+                default:
+                    throw new NotSupportedException($"Unknown salt variant: {variant}");
+            }
+        }
+
+        public byte[] Concat(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
+        {
+            byte[] r = new byte[a.Length + b.Length];
+
+            a.CopyTo(r.AsSpan(0, a.Length));
+            b.CopyTo(r.AsSpan(a.Length));
+
+            return r;
+        }
+
+        private byte[] Sha256(ReadOnlySpan<byte> a)
+        {
+            using var sha = SHA256.Create();
+
+            sha.TransformFinalBlock(a.ToArray(), 0, a.Length);
+
+            return sha.Hash;
+        }
+
+        private byte[] Sha256Concat(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
+        {
+            using var sha = SHA256.Create();
+
+            sha.TransformBlock(a.ToArray(), 0, a.Length, null, 0);
+            sha.TransformFinalBlock(b.ToArray(), 0, b.Length);
+
+            return sha.Hash;
+        }
+
+        private byte[] Sha256Concat(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, ReadOnlySpan<byte> c)
+        {
+            using var sha = SHA256.Create();
+
+            sha.TransformBlock(a.ToArray(), 0, a.Length, null, 0);
+            sha.TransformBlock(b.ToArray(), 0, b.Length, null, 0);
+            sha.TransformFinalBlock(c.ToArray(), 0, c.Length);
+
+            return sha.Hash;
+        }
+
+        /// <summary>
+        /// Derive the 13-byte AES-CCM nonce for Sigma3's Encrypted3 (TBEData).
+        /// Output: 13-byte nonce for AES-CCM (L = 2 → 15-L = 13).
+        /// </summary>
+        public byte[] BuildSigmaNonce(
+            byte[] salt,
+            ushort initiatorSessionId,
+            ushort responderSessionId,
+            string label,
+            ReadOnlySpan<byte> Z)
+        {
+            if (salt.Length == 0)
+            {
+                throw new ArgumentException("Salt is empty.");
             }
 
-            // Assemble SEC1 uncompressed: 0x04 || X || Y
-            byte[] uncompressed = new byte[65];
-            uncompressed[0] = 0x04;
-            Buffer.BlockCopy(p.Q.X, 0, uncompressed, 1, 32);
-            Buffer.BlockCopy(p.Q.Y, 0, uncompressed, 33, 32);
+            if (Z.Length == 0)
+            {
+                throw new ArgumentException("ECDH shared secret (Z) is empty.");
+            }
 
-            return uncompressed;
+            // HKDF-Extract: prk = HMAC_SHA256(salt, Z)
+            byte[] prk;
+            using (var h = new HMACSHA256(salt))
+            {
+                prk = h.ComputeHash(Z.ToArray());
+            }
+
+            // HKDF-Expand to 13 bytes with a Sigma2/3-specific label + both SIDs.
+            byte[] info = BuildInfoLabel(label, initiatorSessionId, responderSessionId);
+            byte[] nonce13 = HkdfExpand(prk, info, 13);
+
+            CryptographicOperations.ZeroMemory(salt);
+            CryptographicOperations.ZeroMemory(prk);
+
+            return nonce13;
+        }
+
+        public byte[] BuildInfoLabel(string asciiLabel, ushort initSID, ushort respSID)
+        {
+            byte[] label = Encoding.ASCII.GetBytes(asciiLabel);
+            byte[] sid4 = new byte[4];
+
+            BinaryPrimitives.WriteUInt16LittleEndian(sid4.AsSpan(0, 2), initSID);
+            BinaryPrimitives.WriteUInt16LittleEndian(sid4.AsSpan(2, 2), respSID);
+
+            byte[] info = new byte[label.Length + sid4.Length];
+            Buffer.BlockCopy(label, 0, info, 0, label.Length);
+            Buffer.BlockCopy(sid4, 0, info, label.Length, sid4.Length);
+
+            return info;
+        }
+
+        public byte[] HkdfExtract(byte[] salt, byte[] ikm)
+        {
+            using var h = new HMACSHA256(salt);
+            return h.ComputeHash(ikm);
+        }
+
+        public byte[] HkdfExtract(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y, ReadOnlySpan<byte> ikm)
+        {
+            byte[] salt = new byte[x.Length + y.Length];
+
+            x.CopyTo(salt);
+            y.CopyTo(salt.AsSpan(x.Length));
+
+            using var hmac = new HMACSHA256(salt);
+            return hmac.ComputeHash(ikm.ToArray());
+        }
+
+        public byte[] HkdfExpand(ReadOnlySpan<byte> prk32, ReadOnlySpan<byte> info, int len)
+        {
+            using var hmac = new HMACSHA256(prk32.ToArray());
+
+            // single-block expand (len <= 32) is enough here
+            hmac.TransformBlock(info.ToArray(), 0, info.Length, null, 0);
+            hmac.TransformFinalBlock([0x01], 0, 1);
+
+            byte[] T = hmac.Hash;
+
+            var result = new byte[len];
+            Buffer.BlockCopy(T, 0, result, 0, len);
+
+            CryptographicOperations.ZeroMemory(T);
+
+            return result;
+        }
+
+        public byte[] BuildInfo(string label, ReadOnlySpan<byte> sid4)
+        {
+            byte[] a = Encoding.ASCII.GetBytes(label);
+            byte[] info = new byte[a.Length + sid4.Length];
+
+            Buffer.BlockCopy(a, 0, info, 0, a.Length);
+            sid4.CopyTo(info.AsSpan(a.Length));
+
+            return info;
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿namespace Matter.Core
 {
+    using System;
+
     public class MessageFrame
     {
         public MessageFrame()
@@ -27,10 +29,16 @@
 
         public byte[] EncryptedMessagePayload { get; set; }
 
-        internal static bool IsStatusReport(MessageFrame successMessageFrame)
+        internal static bool IsStandaloneAck(MessageFrame messageFrame)
         {
-            return successMessageFrame.MessagePayload.ProtocolId == 0x00 &&
-                   successMessageFrame.MessagePayload.ProtocolOpCode == 0x40;
+            return messageFrame.MessagePayload.ProtocolId == 0x00 &&
+                   messageFrame.MessagePayload.ProtocolOpCode == 0x10;
+        }
+
+        internal static bool IsStatusReport(MessageFrame messageFrame)
+        {
+            return messageFrame.MessagePayload.ProtocolId == 0x00 &&
+                   messageFrame.MessagePayload.ProtocolOpCode == 0x40;
         }
     }
 }

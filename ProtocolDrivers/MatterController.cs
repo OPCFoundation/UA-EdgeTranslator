@@ -323,7 +323,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    _fabric.AddOrUpdateNode(nodeId, null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.AddOrUpdateNode(nodeId, null, null, null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }

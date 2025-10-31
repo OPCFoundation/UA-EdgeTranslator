@@ -310,7 +310,14 @@ namespace Matter.Core
                     paseExchange.Close();
                     btpConnection.Close();
 
-                    _fabric.AddOrUpdateNode(nodeIdString, _payload.Passcode.ToString(), _payload.Discriminator.ToString(), null, 0);
+                    _fabric.AddOrUpdateNode(
+                        nodeIdString,
+                        _payload.Passcode.ToString(),
+                        _payload.Discriminator.ToString(),
+                        _fabric.CA.GenerateCertMessage(nodeCert),
+                        certRequest.PublicKey.GetECDsaPublicKey(),
+                        null,
+                        0);
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);

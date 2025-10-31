@@ -1,21 +1,23 @@
 ﻿namespace Matter.Core
 {
     using System;
+    using System.Formats.Asn1;
+    using System.IO;
+    using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
+    using static Matter.Core.CertificateAuthority;
 
     internal class CASEClient
     {
         private readonly Node _node;
-        private readonly UnsecureSession _unsecureSession;
         private readonly Fabric _fabric;
         private readonly UdpConnection _connection;
 
-        public CASEClient(Node node, UnsecureSession unsecureSession, Fabric fabric, UdpConnection connection)
+        public CASEClient(Node node, Fabric fabric, UdpConnection connection)
         {
             _node = node;
-            _unsecureSession = unsecureSession;
             _fabric = fabric;
             _connection = connection;
         }
@@ -23,193 +25,235 @@
         internal ISession EstablishSession()
         {
             // Certificate - Authenticated Session Establishment (CASE)
-            var caseExchange = _unsecureSession.CreateExchange();
-
             Console.WriteLine("UDP connection established. Starting SPAKE/CASE exchange...");
-            if (!ExecuteSIGMA(_connection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Z))
+            if (!ExecuteSIGMA(_connection, out ushort initiatorSessionId, out ushort peerSessionId, out CertificateAuthority.TrafficKeys keys))
             {
                 return null;
             }
 
-            // HKDF with SHA-256
-            using var hmac = new HMACSHA256(Array.Empty<byte>());
-            byte[] prk = hmac.ComputeHash(Z);
-
-            // Expand to get session key (32 bytes)
-            byte[] info = Encoding.ASCII.GetBytes("SessionKeys");
-            byte[] t = new byte[info.Length + 1];
-            Buffer.BlockCopy(info, 0, t, 0, info.Length);
-            t[info.Length] = 0x01;
-            byte[] keys = new HMACSHA256(prk).ComputeHash(t);
-            var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
-            var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
-
-            return new SecureSession(_connection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
+            var (i2rKey, r2iKey, noncePrefix) = keys;
+            return new SecureSession(_connection, initiatorSessionId, peerSessionId, i2rKey, r2iKey);
         }
 
-        private bool ExecuteSIGMA(UdpConnection udpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out byte[] Z)
+        private bool ExecuteSIGMA(UdpConnection udpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out CertificateAuthority.TrafficKeys keys)
         {
             initiatorSessionId = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2));
             peerSessionId = 0;
-            Z = Array.Empty<byte>();
+            keys = null;
 
             UnsecureSession unsecureSession = new(udpConnection);
             MessageExchange unsecureExchange = unsecureSession.CreateExchange();
 
-            ECDsa operationalKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-
-            byte[] initiatorRandom = RandomNumberGenerator.GetBytes(32);
-            byte[] rcacPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(_fabric.CA.RootKeyPair);
-            byte[] destinationId = _fabric.CA.GenerateDestinationId(_fabric.OperationalIPK, initiatorRandom, rcacPubKey65, _fabric.FabricId, _node.NodeId);
-            byte[] opsPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(operationalKeyPair);
-
-            MatterTLV sigma1 = new();
-            sigma1.AddStructure();
-            sigma1.AddOctetString(1, initiatorRandom);
-            sigma1.AddUInt16(2, initiatorSessionId);
-            sigma1.AddOctetString(3, destinationId);
-            sigma1.AddOctetString(4, opsPubKey65);
-            sigma1.EndContainer();
-            MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, 0x30).GetAwaiter().GetResult();
-            if (MessageFrame.IsStatusReport(sigma2MessageFrame))
+            try
             {
-                Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning operational commissioning!");
+                ECDsa operationalKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+                byte[] initiatorRandom = RandomNumberGenerator.GetBytes(32);
+                byte[] rcacPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(_fabric.CA.RootKeyPair);
+                byte[] destinationId = _fabric.CA.GenerateDestinationId(_fabric.OperationalIPK, initiatorRandom, rcacPubKey65, _fabric.FabricId, _node.NodeId);
+                byte[] opsPubKey65 = _fabric.CA.GenerateUncompressed65ByteKey(operationalKeyPair);
+
+                MatterTLV sigma1 = new();
+                sigma1.AddStructure();
+                sigma1.AddOctetString(1, initiatorRandom);
+                sigma1.AddUInt16(2, initiatorSessionId);
+                sigma1.AddOctetString(3, destinationId);
+                sigma1.AddOctetString(4, opsPubKey65);
+                sigma1.EndContainer();
+                MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, 0x30).GetAwaiter().GetResult();
+                if (MessageFrame.IsStatusReport(sigma2MessageFrame))
+                {
+                    Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning operational commissioning!");
+                    return false;
+                }
+
+                var sigma2 = sigma2MessageFrame.MessagePayload.ApplicationPayload;
+                sigma2.OpenStructure();
+                byte[] responderRandom = sigma2.GetOctetString(1);
+                peerSessionId = sigma2.GetUnsignedInt16(2);
+                byte[] responderEphPub65 = sigma2.GetOctetString(3);
+                byte[] encryptedSigma2 = sigma2.GetOctetString(4);
+
+                if (responderRandom.Length != 32)
+                {
+                    throw new Exception("ResponderRandom must be 32B");
+                }
+
+                if (responderEphPub65.Length != 65 || responderEphPub65[0] != 0x04)
+                {
+                    throw new Exception("ResponderEphPubKey must be 65B uncompressed");
+                }
+
+                // Compute shared secret Z = ECDH(initiator eph priv, responder eph pub)
+                using var responderEph = _fabric.CA.ImportEcdhPublic(responderEphPub65);
+                byte[] Z;
+                using (ECDiffieHellman ecdh = ECDiffieHellman.Create(operationalKeyPair.ExportParameters(true)))
+                {
+                    Z = ecdh.DeriveKeyFromHash(responderEph.PublicKey, HashAlgorithmName.SHA256);
+                }
+
+                // Decrypt and parse inner To Be Encrypted Data (SenderNOC, optional ICAC, Signature, optional ResumptionID)
+                byte[] decryptedSigma2 = DecryptSigma2(Z, sigma2, initiatorRandom, responderRandom, responderEphPub65, initiatorSessionId, peerSessionId, encryptedSigma2);
+                var sigma2tbe = new MatterTLV(decryptedSigma2);
+                byte[] responderNoc = sigma2tbe.GetOctetString(1) ?? throw new Exception("Responder NOC missing");
+                byte[] responderICAC = sigma2tbe.GetOctetString(2);
+                byte[] signature = sigma2tbe.GetOctetString(3) ?? throw new Exception("Signature missing");
+                byte[] resumptionId = sigma2tbe.GetOctetString(4);
+
+                // Re-Build Responder To Be Signed Data = { ResponderNOC, ResponderICAC?, ResponderPubKey, SenderPubKey }
+                var sigma2tbs = new MatterTLV();
+                sigma2tbs.AddStructure();
+                sigma2tbs.AddOctetString(1, responderNoc);
+                sigma2tbs.AddOctetString(3, responderEphPub65);
+                sigma2tbs.AddOctetString(4, opsPubKey65);
+                sigma2tbs.EndContainer();
+
+                // Verify ECDSA(signature) over Responder TBS with public key from the Responder NOC
+                if (!_node.OperationalNOCAsTLV.AsSpan().SequenceEqual(responderNoc))
+                {
+                    Console.WriteLine("Responder Sigma2 certificate invalid!");
+                    return false;
+                }
+
+                using var ecdsa = _node.SubjectPublicKey;
+                if (!ecdsa.VerifyData(sigma2tbs.GetBytes(), signature, HashAlgorithmName.SHA256))
+                {
+                    throw new CryptographicException("Responder Sigma2 signature invalid");
+                }
+
+                // Build Initiator (i.e. us!) To Be Signed Data = { SenderNOC, SenderICAC?, SenderPubKey, ReceiverPubKey }
+                X509Certificate2 operationalCertificate = _fabric.CA.SignCertRequest(new CertificateRequest($"CN={_fabric.RootNodeId:X16}", operationalKeyPair, HashAlgorithmName.SHA256), _fabric.RootNodeId, _fabric.FabricId);
+                var sigma3tbs = new MatterTLV();
+                sigma3tbs.AddStructure();
+                sigma3tbs.AddOctetString(1, _fabric.CA.GenerateCertMessage(operationalCertificate));
+                sigma3tbs.AddOctetString(3, opsPubKey65);
+                sigma3tbs.AddOctetString(4, responderEphPub65);
+                sigma3tbs.EndContainer();
+
+                // Sign TBS with your operational ECDSA private key
+                byte[] tbsSignature = operationalKeyPair.SignData(sigma3tbs.GetBytes(), HashAlgorithmName.SHA256);
+
+                AsnDecoder.ReadSequence(tbsSignature.AsSpan(), AsnEncodingRules.DER, out int offset, out int length, out _);
+                var source = tbsSignature.AsSpan().Slice(offset, length).ToArray();
+                var r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out int bytesConsumed);
+                var s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
+                var encodedSigma3TbsSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
+
+                // TBEData = { SenderNOC, SenderICAC?, Signature, ResumptionID? }
+                var sigma3tbe = new MatterTLV();
+                sigma3tbe.AddStructure();
+                sigma3tbe.AddOctetString(1, _fabric.CA.GenerateCertMessage(operationalCertificate));
+                sigma3tbe.AddOctetString(3, tbsSignature);
+                sigma3tbe.EndContainer();
+
+                // Reuse the same salt strategy we used for S2K (e.g., concat nonces)
+                // We try (IPK || SHA256(Sigma1 || Sigma2)) first, then (init||resp), then (resp||init)
+                byte[] saltA = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2, ipk16: _fabric.IPK, sigma1Payload: sigma1.GetBytes(), sigma2Payload: sigma2.GetBytes());
+                byte[] saltB = _fabric.CA.SigmaSalt(SigmaSaltVariant.RandomsConcat_InitThenResp, initiatorRandom, responderRandom);
+                byte[] saltC = _fabric.CA.SigmaSalt(SigmaSaltVariant.RandomsConcat_RespThenInit, initiatorRandom, responderRandom);
+                foreach (var salt in new[] { saltA, saltB, saltC })
+                {
+                    // Derive S3K (HKDF-SHA256, info="Sigma3") and AES-CCM encrypt TBEData
+                    byte[] s3k = _fabric.CA.HkdfExpand(_fabric.CA.HkdfExtract(salt, Z), Encoding.ASCII.GetBytes("NCASE_Sigma3N"), 16);
+                    byte[] sigma3Nonce = _fabric.CA.BuildSigmaNonce(salt, initiatorSessionId, peerSessionId, "NCASE_Sigma3N", Z);
+
+                    try
+                    {
+                        byte[] encryptedSigma3TBE = new byte[sigma3tbe.GetBytes().Length];
+                        byte[] mic = new byte[16];
+                        using (var aead = new AesCcm(s3k))
+                        {
+                            aead.Encrypt(sigma3Nonce, sigma3tbe.GetBytes(), encryptedSigma3TBE, mic);
+                        }
+
+                        var sigma3 = new MatterTLV();
+                        sigma3.AddStructure();
+                        sigma3.AddOctetString(1, _fabric.CA.Concat(encryptedSigma3TBE, mic));
+                        sigma3.EndContainer();
+                        var sigma3Resp = unsecureExchange.SendAndReceiveMessageAsync(sigma3, 0, 0x32).GetAwaiter().GetResult();
+                        if (!MessageFrame.IsStandaloneAck(sigma3Resp))
+                        {
+                            throw new Exception("Expected Standalone ACK to Sigma3");
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // try next salt candidate
+                        continue;
+                    }
+                }
+
+                unsecureExchange.Close();
+
+                // Derive final application session keys and install a CASE SecureSession
+                // (two directions + nonce prefix), then switch to secure transport.
+                var (i2rKey, r2iKey, noncePrefix) = _fabric.CA.DeriveCaseTrafficKeys(Z, initiatorRandom, responderRandom, initiatorSessionId, peerSessionId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SIGMA/CASE exchange failed: {ex.Message}");
+                unsecureExchange.Close();
                 return false;
             }
 
-            var sigma2Payload = sigma2MessageFrame.MessagePayload.ApplicationPayload;
-            sigma2Payload.OpenStructure();
-            var sigma2ResponderRandom = sigma2Payload.GetOctetString(1);
-            var sigma2ResponderSessionId = sigma2Payload.GetUnsignedInt16(2);
-            var sigma2ResponderEphPublicKey = sigma2Payload.GetOctetString(3);
-            var sigma2EncryptedPayload = sigma2Payload.GetOctetString(4);
-
-            X509Certificate2 operationalCertificate = _fabric.CA.SignCertRequest(new CertificateRequest($"CN={_fabric.RootNodeId:X16}", operationalKeyPair, HashAlgorithmName.SHA256), _fabric.RootNodeId, _fabric.FabricId);
-
-            //var sigmaKeyAgreement = AgreementUtilities.GetBasicAgreement("ECDH");
-            //sigmaKeyAgreement.Init(ephermeralPrivateKey);
-            //var curve = ECNamedCurveTable.GetByName("P-256");
-            //var ecPoint = curve.Curve.DecodePoint(sigma2ResponderEphPublicKey);
-            //var ephPublicKey = new ECPublicKeyParameters(ecPoint, new ECDomainParameters(curve));
-            //var sharedSecretResult = sigmaKeyAgreement.CalculateAgreement(ephPublicKey);
-            //var sharedSecret = sharedSecretResult.ToByteArrayUnsigned();
-            //var transcriptHash = SHA256.HashData(sigma1Payload.GetBytes());
-
-            //ms = new MemoryStream();
-            //BinaryWriter saltWriter = new BinaryWriter(ms);
-            //saltWriter.Write(_fabric.OperationalIPK);
-            //saltWriter.Write(sigma2ResponderRandom);
-            //saltWriter.Write(sigma2ResponderEphPublicKey);
-            //saltWriter.Write(transcriptHash);
-            //var salt = ms.ToArray();
-
-            //var info = Encoding.ASCII.GetBytes("Sigma2");
-            //var hkdf = new HkdfBytesGenerator(new Sha256Digest());
-            //hkdf.Init(new HkdfParameters(sharedSecret, salt, info));
-            //var sigma2Key = new byte[16];
-            //hkdf.GenerateBytes(sigma2Key, 0, 16);
-            //var nonce = Encoding.ASCII.GetBytes("NCASE_Sigma2N");
-            //IBlockCipher cipher = new AesEngine();
-            //int macSize = 8 * cipher.GetBlockSize();
-            //AeadParameters keyParamAead = new AeadParameters(new KeyParameter(sigma2Key), macSize, nonce);
-            //CcmBlockCipher cipherMode = new CcmBlockCipher(cipher);
-            //cipherMode.Init(false, keyParamAead);
-            //var outputSize = cipherMode.GetOutputSize(sigma2EncryptedPayload.Length);
-            //var plainTextData = new byte[outputSize];
-            //var result = cipherMode.ProcessBytes(sigma2EncryptedPayload, 0, sigma2EncryptedPayload.Length, plainTextData, 0);
-            //cipherMode.DoFinal(plainTextData, result);
-            //var TBEData2 = new MatterTLV(plainTextData);
-            //var nocSignature = _fabric.OperationalCertificate.GetSignature();
-
-            //AsnDecoder.ReadSequence(nocSignature.AsSpan(), AsnEncodingRules.DER, out var offset, out var length, out _);
-            //var source = nocSignature.AsSpan().Slice(offset, length).ToArray();
-            //var r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out var bytesConsumed);
-            //var s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
-            //var encodedNocCertificateSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
-
-            //var sigma3tbs = new MatterTLV();
-            //sigma3tbs.AddStructure();
-            //sigma3tbs.AddOctetString(1, _fabric.CA.GenerateCertMessage(_fabric.OperationalCertificate)); // initiatorNOC
-            //sigma3tbs.AddOctetString(3, initiatorPubKey); // initiatorEphPubKey
-            //sigma3tbs.AddOctetString(4, sigma2ResponderEphPublicKey); // responderEphPubKey
-            //sigma3tbs.EndContainer();
-
-            //var sigma3tbsBytes = sigma3tbs.GetBytes();
-            //var signer = SignerUtilities.GetSigner("SHA256WITHECDSA");
-            //signer.Init(true, _fabric.OperationalCertificateKeyPair.Private as ECPrivateKeyParameters);
-            //signer.BlockUpdate(sigma3tbsBytes, 0, sigma3tbsBytes.Length);
-            //byte[] sigma3tbsSignature = signer.GenerateSignature();
-            //AsnDecoder.ReadSequence(sigma3tbsSignature.AsSpan(), AsnEncodingRules.DER, out offset, out length, out _);
-            //source = sigma3tbsSignature.AsSpan().Slice(offset, length).ToArray();
-            //r = AsnDecoder.ReadInteger(source, AsnEncodingRules.DER, out bytesConsumed);
-            //s = AsnDecoder.ReadInteger(source.AsSpan().Slice(bytesConsumed), AsnEncodingRules.DER, out bytesConsumed);
-            //var encodedSigma3TbsSignature = r.ToByteArray(isUnsigned: true, isBigEndian: true).Concat(s.ToByteArray(isUnsigned: true, isBigEndian: true)).ToArray();
-
-            //var sigma3tbe = new MatterTLV();
-            //sigma3tbe.AddStructure();
-            //sigma3tbe.AddOctetString(1, encodedNocCertificate.GetBytes());
-            //sigma3tbe.AddOctetString(3, encodedSigma3TbsSignature);
-            //sigma3tbe.EndContainer();
-            //var sigma3tbeTranscriptHash = SHA256.HashData(sigma1Payload.GetBytes().Concat(sigma2Payload.GetBytes()).ToArray());
-            //ms = new MemoryStream();
-            //saltWriter = new BinaryWriter(ms);
-            //saltWriter.Write(_fabric.OperationalIPK);
-            //saltWriter.Write(sigma3tbeTranscriptHash);
-            //salt = ms.ToArray();
-
-            //info = Encoding.ASCII.GetBytes("Sigma3");
-            //hkdf = new HkdfBytesGenerator(new Sha256Digest());
-            //hkdf.Init(new HkdfParameters(sharedSecret, salt, info));
-            //var sigma3Key = new byte[16];
-            //hkdf.GenerateBytes(sigma3Key, 0, 16);
-            //nonce = Encoding.ASCII.GetBytes("NCASE_Sigma3N");
-            //keyParamAead = new AeadParameters(new KeyParameter(sigma3Key), macSize, nonce);
-            //cipherMode = new CcmBlockCipher(cipher);
-            //cipherMode.Init(true, keyParamAead);
-            //var sigma3tbeBytes = sigma3tbe.GetBytes();
-            //outputSize = cipherMode.GetOutputSize(sigma3tbeBytes.Length);
-            //var encryptedData = new byte[outputSize];
-            //result = cipherMode.ProcessBytes(sigma3tbeBytes, 0, sigma3tbeBytes.Length, encryptedData, 0);
-            //cipherMode.DoFinal(encryptedData, result);
-            //var sigma3Payload = new MatterTLV();
-            //sigma3Payload.AddStructure();
-            //sigma3Payload.AddOctetString(1, encryptedData); // sigma3EncryptedPayload
-            //sigma3Payload.EndContainer();
-
-            //var sigma3MessagePayload = new MessagePayload(sigma3Payload);
-            //sigma3MessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
-            //sigma3MessagePayload.ProtocolId = 0x00;
-            //sigma3MessagePayload.ProtocolOpCode = 0x32; // Sigma3
-            //var sigma3MessageFrame = new MessageFrame(sigma3MessagePayload);
-            //sigma3MessageFrame.MessageFlags |= MessageFlags.S;
-            //sigma3MessageFrame.SecurityFlags = 0x00;
-            //sigma3MessageFrame.SourceNodeID = 0x00;
-
-            //await caseExchange.SendAsync(sigma3MessageFrame);
-            //var successMessageFrame = await caseExchange.WaitForNextMessageAsync();
-            //await caseExchange.AcknowledgeMessageAsync(successMessageFrame.MessageCounter);
-
-            //byte[] caseInfo = Encoding.ASCII.GetBytes("SessionKeys");
-            //ms = new MemoryStream();
-            //var transcriptWriter = new BinaryWriter(ms);
-            //transcriptWriter.Write(sigma1Payload.GetBytes());
-            //transcriptWriter.Write(sigma2Payload.GetBytes());
-            //transcriptWriter.Write(sigma3Payload.GetBytes());
-            //transcriptHash = SHA256.HashData(ms.ToArray());
-            //ms = new MemoryStream();
-            //saltWriter = new BinaryWriter(ms);
-            //saltWriter.Write(_fabric.OperationalIPK);
-            //saltWriter.Write(transcriptHash);
-            //var secureSessionSalt = ms.ToArray();
-            //hkdf = new HkdfBytesGenerator(new Sha256Digest());
-            //hkdf.Init(new HkdfParameters(sharedSecret, secureSessionSalt, caseInfo));
-            //var caseKeys = new byte[48];
-            //hkdf.GenerateBytes(caseKeys, 0, 48);
-            //var encryptKey = caseKeys.AsSpan().Slice(0, 16).ToArray();
-            //var decryptKey = caseKeys.AsSpan().Slice(16, 16).ToArray();
-            //var attestationKey = caseKeys.AsSpan().Slice(32, 16).ToArray();
-
             return true;
+        }
+
+        private byte[] DecryptSigma2(
+            byte[] Z,
+            MatterTLV sigma1,
+            byte[] initiatorRandom,
+            byte[] responderRandom,
+            byte[] responderEphPub65,
+            ushort initiatorSessionId,
+            ushort responderSessionId,
+            byte[] encrypted2)
+        {
+            // HKDF-Extract with salt = concat of the two 32B nonces; order is implementation-defined.
+            // We try (IPK || respRand || respPub || SHA256(Sigma1)) first, then (initRand||respRand), then (respRand||initRand)
+            byte[] saltA = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1, responderRandom: responderRandom, responderEphPub65: responderEphPub65, ipk16: _fabric.IPK, sigma1Payload: sigma1.GetBytes());
+            byte[] saltB = _fabric.CA.SigmaSalt(SigmaSaltVariant.RandomsConcat_InitThenResp, initiatorRandom, responderRandom);
+            byte[] saltC = _fabric.CA.SigmaSalt(SigmaSaltVariant.RandomsConcat_RespThenInit, initiatorRandom, responderRandom);
+
+            foreach (var salt in new[] { saltA, saltB, saltC })
+            {
+                byte[] s2k = _fabric.CA.HkdfExpand(_fabric.CA.HkdfExtract(salt, Z), Encoding.ASCII.GetBytes("NCASE_Sigma2N"), 16);
+                byte[] sigma2Nonce = _fabric.CA.BuildSigmaNonce(salt, initiatorSessionId, responderSessionId, "NCASE_Sigma2N", Z);
+
+                // The Sigma2 payload is an AEAD (AES-CCM) over the TBEData TLV.
+                try
+                {
+                    // Assume the last 16 bytes is the CCM tag (classic 16‑byte MIC), and the rest is ciphertext.
+                    const int tagLen = 16;
+                    if (encrypted2.Length < tagLen)
+                    {
+                        break;
+                    }
+
+                    int ctLen = encrypted2.Length - tagLen;
+                    var ct = new byte[ctLen];
+                    var tag = new byte[tagLen];
+                    byte[] decrypted = new byte[ctLen];
+
+                    Buffer.BlockCopy(encrypted2, 0, ct, 0, ctLen);
+                    Buffer.BlockCopy(encrypted2, ctLen, tag, 0, tagLen);
+
+                    using (var aead = new AesCcm(s2k))
+                    {
+                        aead.Decrypt(sigma2Nonce, ct, tag, decrypted);
+                    }
+
+                    return decrypted;
+                }
+                catch (Exception)
+                {
+                    // try next salt candidate
+                    continue;
+                }
+
+            }
+
+            throw new CryptographicException("Sigma2 AES-CCM decrypt failed with both salt orders");
         }
     }
 }

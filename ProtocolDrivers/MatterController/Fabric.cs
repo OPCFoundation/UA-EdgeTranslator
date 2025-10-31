@@ -44,7 +44,7 @@ namespace Matter.Core
             HKDF.Expand(HashAlgorithmName.SHA256, prk, OperationalIPK, Encoding.ASCII.GetBytes("GroupKey v1.0"));
         }
 
-        public void AddOrUpdateNode(string id, string setupCode, string discriminator, string address, ushort port)
+        public void AddOrUpdateNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey, string address, ushort port)
         {
             if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
             {
@@ -63,6 +63,16 @@ namespace Matter.Core
 
                 if (!string.IsNullOrEmpty(discriminator)) {
                     Nodes[nodeId].Discriminator = discriminator;
+                }
+
+                if ((operationalNOCAsTLV == null) || (operationalNOCAsTLV.Length > 0))
+                {
+                    Nodes[nodeId].OperationalNOCAsTLV = operationalNOCAsTLV;
+                }
+
+                if (subjectPublicKey == null)
+                {
+                    Nodes[nodeId].SubjectPublicKey = subjectPublicKey;
                 }
 
                 if (!string.IsNullOrEmpty(address))
@@ -84,6 +94,8 @@ namespace Matter.Core
                     NodeId = nodeId,
                     SetupCode = setupCode,
                     Discriminator = discriminator,
+                    OperationalNOCAsTLV = operationalNOCAsTLV,
+                    SubjectPublicKey = subjectPublicKey,
                     LastKnownIpAddress = address != null ? IPAddress.Parse(address) : null,
                     LastKnownPort = port
                 });
