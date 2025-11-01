@@ -563,7 +563,7 @@ namespace Matter.Core
         {
             using var sha = SHA256.Create();
 
-            sha.TransformFinalBlock(a.ToArray(), 0, a.Length);
+            sha.ComputeHash(a.ToArray());
 
             return sha.Hash;
         }
