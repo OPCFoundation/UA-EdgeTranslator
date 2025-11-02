@@ -23,7 +23,7 @@
 
         byte[] Encode(MessageFrame message);
 
-        MessageFrame Decode(MessageFrameParts messageFrameParts);
+        MessageFrame Decode(byte[] messageFrameBytes);
 
         Task<byte[]> ReadAsync(CancellationToken token);
 

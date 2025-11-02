@@ -5,10 +5,9 @@
     [Flags]
     public enum MessageFlags : byte
     {
-        DSIZ0 = 0x00,
-        DSIZ1 = 0x01,
-        DSIZ2 = 0x02,
-        DSIZ3 = 0x03,
-        S = 0x04,
+        Version1 = 0x00,
+        DestinationNodeID = 0x01,
+        DestinationGroupID = 0x02,
+        SourceNodeID = 0x04
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,15 +48,12 @@ namespace Matter.Core
 
         public byte[] Encode(MessageFrame messageFrame)
         {
-            MessageFrameParts parts = new(messageFrame);
-            return parts.Header.Concat(parts.MessagePayload).ToArray();
+            return messageFrame.Serialize();
         }
 
-        public MessageFrame Decode(MessageFrameParts parts)
+        public MessageFrame Decode(byte[] messageFrameBytes)
         {
-            MessageFrame messageFrame = parts.MessageFrameWithHeaders();
-            messageFrame.MessagePayload = new MessagePayload(parts.MessagePayload);
-            return messageFrame;
+            return MessageFrame.Deserialize(messageFrameBytes, true);
         }
     }
 }

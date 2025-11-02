@@ -388,9 +388,9 @@ namespace Matter.Core
             return this;
         }
 
-        internal void Serialize(MemoryStream writer)
+        internal byte[] Serialize()
         {
-            writer.Write(_values.ToArray());
+            return _values.ToArray();
         }
 
         public bool IsNextTag(int tagNumber)

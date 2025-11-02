@@ -34,38 +34,38 @@ namespace Matter.Core
             _readingThread.Wait();
         }
 
-        public async Task SendAsync(MessageFrame message)
+        private async Task SendAsync(MessagePayload message)
         {
-            // Set the common data on the MessageFrame.
-            message.MessageFlags |= MessageFlags.S;
-            message.SecurityFlags = 0;
-            message.SessionID = _session.PeerSessionId;
-            message.SourceNodeID = _session.SourceNodeId;
-            message.DestinationNodeId = _session.DestinationNodeId;
-            message.MessagePayload.ExchangeID = _exchangeId;
-            message.MessageCounter = _session.MessageCounter;
-
-            // Do we have any unacknowledged messages?
-            // If yes, add the acknowledgement to this outgoing message.
+            // add any unacknowledged acknowledgements to this outgoing message
             if (_acknowledgedMessageCounter != _receivedMessageCounter)
             {
                 _acknowledgedMessageCounter = _receivedMessageCounter;
 
-                message.MessagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
-                message.MessagePayload.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
+                message.ExchangeFlags |= ExchangeFlags.Acknowledgement;
+                message.AcknowledgedMessageCounter = _acknowledgedMessageCounter;
             }
 
             if (_session.UseMRP)
             {
-                message.MessagePayload.ExchangeFlags |= ExchangeFlags.Reliability;
+                message.ExchangeFlags |= ExchangeFlags.Reliability;
             }
 
-            var bytes = _session.Encode(message);
+            MessageFrame frame = new(
+                MessageFlags.SourceNodeID,
+                _session.PeerSessionId,
+                SecurityFlags.UnicastSession,
+                _session.MessageCounter,
+                _session.SourceNodeId,
+                _session.DestinationNodeId,
+                0,
+                message);
+
+            var bytes = _session.Encode(frame);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
-        public async Task<MessageFrame> WaitForNextMessageAsync()
+        private async Task<MessageFrame> WaitForNextMessageAsync()
         {
             try
             {
@@ -96,17 +96,13 @@ namespace Matter.Core
                         continue;
                     }
 
-                    var messageFrameParts = new MessageFrameParts(bytes);
+                    MessageFrame messageFrame = _session.Decode(bytes);
 
-                    var messageFrameWithHeader = messageFrameParts.MessageFrameWithHeaders();
-
-                    if (messageFrameWithHeader.SessionID != _session.SessionId)
+                    if ((messageFrame.SessionID != 0) && (messageFrame.SessionID != _session.SessionId))
                     {
-                        Console.WriteLine("[E: {0}] Message {1} [S: {2}] is not for this session {3}. Ignoring...", _exchangeId, messageFrameWithHeader.MessageCounter, messageFrameWithHeader.SessionID, _session.SessionId);
+                        Console.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, messageFrame.MessageCounter, messageFrame.SourceNodeID, _session.SessionId);
                         continue;
                     }
-
-                    var messageFrame = _session.Decode(messageFrameParts);
 
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= messageFrame.MessageCounter)
@@ -141,27 +137,17 @@ namespace Matter.Core
 
         public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
         {
-            MessagePayload messagePayload = new(payload);
-            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
-            messagePayload.ExchangeID = _exchangeId;
-            messagePayload.ProtocolId = protocolId;
-            messagePayload.ProtocolOpCode = opCode;
+            MessagePayload messagePayload = new(ExchangeFlags.Initiator, opCode, _exchangeId, protocolId, 0, 0, payload);
 
-            await SendAsync(new MessageFrame(messagePayload)).ConfigureAwait(false);
+            await SendAsync(messagePayload).ConfigureAwait(false);
             return await WaitForNextMessageAsync().ConfigureAwait(false);
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter)
         {
-            MessagePayload messagePayload = new();
-            messagePayload.ExchangeFlags |= ExchangeFlags.Acknowledgement;
-            messagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
-            messagePayload.ExchangeID = _exchangeId;
-            messagePayload.AcknowledgedMessageCounter = messageCounter;
-            messagePayload.ProtocolId = 0; // Secure Channel
-            messagePayload.ProtocolOpCode = 0x10; // MRP Standalone Acknowledgement
+            MessagePayload messagePayload = new(ExchangeFlags.Acknowledgement, 0x10, _exchangeId, 0, messageCounter, 0, null);
 
-            await SendAsync(new MessageFrame(messagePayload)).ConfigureAwait(false);
+            await SendAsync(messagePayload).ConfigureAwait(false);
         }
 
         public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)

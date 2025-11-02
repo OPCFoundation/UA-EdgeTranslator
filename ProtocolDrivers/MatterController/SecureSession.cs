@@ -57,9 +57,9 @@ namespace Matter.Core
 
         public byte[] Encode(MessageFrame messageFrame)
         {
-            byte[] nonce;
-            byte[] additionalData;
+            byte[] messageFrameUnencrypted = messageFrame.Serialize();
 
+            byte[] nonce;
             using (var memoryStream = new MemoryStream())
             {
                 using (var nonceWriter = new BinaryWriter(memoryStream))
@@ -71,6 +71,7 @@ namespace Matter.Core
                 }
             }
 
+            byte[] additionalData;
             using (var memoryStream = new MemoryStream())
             {
                 using (var additionalDataWriter = new BinaryWriter(memoryStream))
@@ -84,21 +85,20 @@ namespace Matter.Core
                 }
             }
 
-            var parts = new MessageFrameParts(messageFrame);
-
-            byte[] encryptedPayload = new byte[parts.MessagePayload.Length];
+            byte[] unencryptedPayload = messageFrame.MessagePayload.Serialize();
+            byte[] encryptedPayload = new byte[unencryptedPayload.Length];
             byte[] tag = new byte[16];
             var encryptor = new AesCcm(_encryptionKey);
-            encryptor.Encrypt(nonce, parts.MessagePayload, encryptedPayload, tag, additionalData);
+            encryptor.Encrypt(nonce, unencryptedPayload, encryptedPayload, tag, additionalData);
 
-            return parts.Header.Concat(encryptedPayload.Concat(tag)).ToArray();
+            // concat the header and the encrypted payload with tag and return
+            return messageFrameUnencrypted.Take(messageFrame.HeaderLength).Concat(encryptedPayload.Concat(tag).ToArray()).ToArray();
         }
 
-        public MessageFrame Decode(MessageFrameParts parts)
+        public MessageFrame Decode(byte[] messageFrameBytes)
         {
-            // We need to start reading the bytes until we get to the payload. We then need to decrypt the payload.
+            MessageFrame messageFrame = MessageFrame.Deserialize(messageFrameBytes, false);
 
-            var messageFrame = parts.MessageFrameWithHeaders();
             byte[] nonce;
             byte[] additionalData;
 
@@ -117,7 +117,6 @@ namespace Matter.Core
             {
                 using (var additionalDataWriter = new BinaryWriter(memoryStream))
                 {
-
                     additionalDataWriter.Write((byte)messageFrame.MessageFlags);
                     additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
                     additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
@@ -126,16 +125,23 @@ namespace Matter.Core
                 }
             }
 
-            byte[] decryptedPayload = new byte[parts.MessagePayload.Length - 16];
-            var encryptedPayload = parts.MessagePayload.AsSpan().Slice(0, parts.MessagePayload.Length - 16);
-            var tag = parts.MessagePayload.AsSpan().Slice(parts.MessagePayload.Length - 16, 16);
+            // check if we have something to decode
+            if (messageFrameBytes.Length <= messageFrame.HeaderLength + 16)
+            {
+                // return the message with the payload as is
+                return MessageFrame.Deserialize(messageFrameBytes, true);
+            }
+
+            var encryptedPayload = messageFrameBytes.AsSpan().Slice(messageFrame.HeaderLength, messageFrameBytes.Length - messageFrame.HeaderLength - 16);
+            var tag = messageFrameBytes.AsSpan().Slice(messageFrame.HeaderLength + encryptedPayload.Length, 16);
 
             try
             {
+                byte[] decryptedPayload = new byte[encryptedPayload.Length];
                 var encryptor = new AesCcm(_decryptionKey);
                 encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
 
-                messageFrame.MessagePayload = new MessagePayload(decryptedPayload);
+                messageFrame.MessagePayload = MessagePayload.Deserialize(decryptedPayload);
 
                 return messageFrame;
             }
