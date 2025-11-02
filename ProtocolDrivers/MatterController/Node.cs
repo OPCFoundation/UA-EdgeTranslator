@@ -41,11 +41,11 @@ namespace Matter.Core
 
                 IsConnected = true;
 
-                Console.WriteLine($"Established secure session to node {NodeId}");
+                Console.WriteLine($"Established secure session to node {NodeId:X16}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to establish connection to node {NodeId}: {ex.Message}");
+                Console.WriteLine($"Failed to establish connection to node {NodeId:X16}: {ex.Message}");
                 IsConnected = false;
             }
         }
@@ -57,80 +57,33 @@ namespace Matter.Core
                 return;
             }
 
-            var exchange = _secureSession.CreateExchange();
-
-            var readCluster = new MatterTLV();
-            readCluster.AddStructure();
-
-            readCluster.AddArray(tagNumber: 0);
+            MessageExchange secureExchange = _secureSession.CreateExchange();
 
             // Request the DeviceTypeList Attribute from the Description Cluster.
-            //
+            var readCluster = new MatterTLV();
+            readCluster.AddStructure();
+            readCluster.AddArray(tagNumber: 0);
             readCluster.AddList();
             readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
             readCluster.AddUInt32(tagNumber: 4, 0x00); // Attribute 0x00 - DeviceTypeList
-            readCluster.EndContainer(); // Close the list
-
-            readCluster.EndContainer(); // Close the array
-
-            readCluster.AddBool(tagNumber: 3, false);
-
-            // Add the InteractionModelRevision number.
-            //
-            readCluster.AddUInt8(255, 12);
-
             readCluster.EndContainer();
+            readCluster.EndContainer();
+            readCluster.AddBool(tagNumber: 3, false);
+            readCluster.AddUInt8(255, 12); // interactionModelRevision
+            readCluster.EndContainer();
+            MessageFrame readClusterMessageFrame = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, 2).GetAwaiter().GetResult();
+            if (MessageFrame.IsStatusReport(readClusterMessageFrame))
+            {
+                Console.WriteLine("Received error status report in response to ReadCluster message, abandoning FetchDescriptions!");
+                return;
+            }
 
-            var readClusterMessagePayload = new MessagePayload(readCluster);
+            await secureExchange.AcknowledgeMessageAsync(readClusterMessageFrame.MessageCounter).ConfigureAwait(false);
 
-            readClusterMessagePayload.ExchangeFlags |= ExchangeFlags.Initiator;
+            MatterTLV tlv = readClusterMessageFrame.MessagePayload.ApplicationPayload;
+            Console.WriteLine($"Fetched DeviceTypeList attribute from node {NodeId:X16}: {BitConverter.ToString(tlv.GetBytes())}");
 
-            // Table 14. Protocol IDs for the Matter Standard Vendor ID
-            readClusterMessagePayload.ProtocolId = 0x01; // IM Protocol Messages
-            // From Table 18. Secure Channel Protocol Opcodes
-            readClusterMessagePayload.ProtocolOpCode = 0x2; // ReadRequest
-
-            var readClusterMessageFrame = new MessageFrame(readClusterMessagePayload);
-
-            readClusterMessageFrame.MessageFlags |= MessageFlags.S;
-            readClusterMessageFrame.SecurityFlags = 0x00;
-
-            await exchange.SendAsync(readClusterMessageFrame);
-
-            var readClusterResponseMessageFrame = await exchange.WaitForNextMessageAsync();
-
-            await exchange.AcknowledgeMessageAsync(readClusterMessageFrame.MessageCounter);
-
-            var resultPayload = readClusterResponseMessageFrame.MessagePayload;
-
-            // Parse this into a set of endpoints.
-            //
-            var tlv = resultPayload.ApplicationPayload;
-
-            Console.WriteLine(tlv);
-
-            //var reportData = new ReportDataAction(tlv);
-
-            //foreach (var attributeReport in reportData.AttributeReports)
-            //{
-            //    Endpoint endpoint = new Endpoint(attributeReport.AttributeData.Path.EndpointId);
-
-            //    var data = attributeReport.AttributeData.Data as List<object>;
-
-            //    if (data is not null)
-            //    {
-            //        var deviceTypeList = data[0] as List<object>;
-
-            //        if (deviceTypeList is not null)
-            //        {
-            //            endpoint.DeviceType = (ulong)deviceTypeList[0];
-            //        }
-            //    }
-
-            //    Endpoints.Add(endpoint);
-            //}
-
-            exchange.Close();
+            secureExchange.Close();
         }
     }
 }

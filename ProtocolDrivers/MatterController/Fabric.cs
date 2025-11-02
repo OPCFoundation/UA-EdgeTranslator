@@ -35,13 +35,9 @@ namespace Matter.Core
             IPK = RandomNumberGenerator.GetBytes(16);
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
             CA = new CertificateAuthority(FabricId);
-            CompressedFabricId = BitConverter.GetBytes(CA.GenerateCompressedFabricId(FabricId)).Reverse().ToArray();
+            CompressedFabricId = CA.GenerateCompressedFabricId(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
-
-            Span<byte> prk = stackalloc byte[HMACSHA256.HashSizeInBytes];
-            HKDF.Extract(HashAlgorithmName.SHA256, IPK, CompressedFabricId, prk);
-            OperationalIPK = new byte[16];
-            HKDF.Expand(HashAlgorithmName.SHA256, prk, OperationalIPK, Encoding.ASCII.GetBytes("GroupKey v1.0"));
+            OperationalIPK = CA.KeyDerivationFunctionHMACSHA256(IPK, CompressedFabricId, Encoding.ASCII.GetBytes("GroupKey v1.0"), 16);
         }
 
         public void AddOrUpdateNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey, string address, ushort port)
@@ -65,12 +61,12 @@ namespace Matter.Core
                     Nodes[nodeId].Discriminator = discriminator;
                 }
 
-                if ((operationalNOCAsTLV == null) || (operationalNOCAsTLV.Length > 0))
+                if ((operationalNOCAsTLV != null) && (operationalNOCAsTLV.Length > 0))
                 {
                     Nodes[nodeId].OperationalNOCAsTLV = operationalNOCAsTLV;
                 }
 
-                if (subjectPublicKey == null)
+                if (subjectPublicKey != null)
                 {
                     Nodes[nodeId].SubjectPublicKey = subjectPublicKey;
                 }
