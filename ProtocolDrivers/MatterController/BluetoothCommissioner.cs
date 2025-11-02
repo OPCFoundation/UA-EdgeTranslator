@@ -359,8 +359,8 @@ namespace Matter.Core
             // Simple Password Authenticated Key Exchange (SPAKE)
             MatterTLV PBKDFParamResponse = responseMessageFrame.MessagePayload.ApplicationPayload;
             PBKDFParamResponse.OpenStructure();
-            var initiatorRandomBytes2 = PBKDFParamResponse.GetOctetString(1);
-            var responderRandomBytes = PBKDFParamResponse.GetOctetString(2);
+            PBKDFParamResponse.GetOctetString(1);
+            PBKDFParamResponse.GetOctetString(2);
             peerSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
             PBKDFParamResponse.OpenStructure(4);
             var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
@@ -376,7 +376,7 @@ namespace Matter.Core
 
             var pake1 = new MatterTLV();
             pake1.AddStructure();
-            var (w0, w1, x, X) = CryptographyMethods.Crypto_PAKEValues_Initiator(_payload.Passcode, iterations, salt);
+            var (w0, w1, x, X) = Cryptography.Crypto_PAKEValues_Initiator(_payload.Passcode, iterations, salt);
             var byteString = X.GetEncoded(false).ToArray();
             pake1.AddOctetString(1, byteString);
             pake1.EndContainer();
@@ -393,7 +393,7 @@ namespace Matter.Core
             var Verifier = pake2.GetOctetString(2);
             pake2.CloseContainer();
 
-            var (Kee, hAY, hBX) = CryptographyMethods.Crypto_P2(sessionContextHash, w0, w1, x, X, Y);
+            var (Kee, hAY, hBX) = Cryptography.Crypto_P2(sessionContextHash, w0, w1, x, X, Y);
             if (!hBX.SequenceEqual(Verifier))
             {
                 throw new Exception("Verifier doesn't match!");

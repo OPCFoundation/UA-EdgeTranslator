@@ -11,7 +11,7 @@ using System.Text;
 
 namespace Matter.Core
 {
-    public class CryptographyMethods
+    public class Cryptography
     {
         private static Org.BouncyCastle.Math.EC.ECPoint M;
         private static Org.BouncyCastle.Math.EC.ECPoint N;
@@ -22,7 +22,6 @@ namespace Matter.Core
             //
             var GROUP_SIZE_BYTES = 32;
             var CRYPTO_W_SIZE_BYTES = GROUP_SIZE_BYTES + 8;
-            var CRYPTO_W_SIZE_BITS = CRYPTO_W_SIZE_BYTES * 8;
 
             var passcodeBytes = new byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(passcodeBytes, passcode);
@@ -33,8 +32,6 @@ namespace Matter.Core
             {
                 throw new Exception("Couldn't find a curve");
             }
-
-            var domainParameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
 
             var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BYTES);
 
