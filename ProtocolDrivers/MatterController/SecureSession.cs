@@ -12,25 +12,23 @@ namespace Matter.Core
         private readonly IConnection _connection;
         private readonly byte[] _encryptionKey;
         private readonly byte[] _decryptionKey;
-        private uint _messageCounter = 0;
 
         public SecureSession(IConnection connection, ushort sessionId, ushort peerSessionId, byte[] encryptionKey, byte[] decryptionKey)
         {
             _connection = connection;
-            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
-
-            _encryptionKey = encryptionKey;
-            _decryptionKey = decryptionKey;
 
             SessionId = sessionId;
             PeerSessionId = peerSessionId;
+
+            _encryptionKey = encryptionKey;
+            _decryptionKey = decryptionKey;
         }
 
         public IConnection Connection => _connection;
 
-        public ulong SourceNodeId { get; } = 0x00;
+        public ulong SourceNodeId { get; set; } = 0x00;
 
-        public ulong DestinationNodeId { get; } = 0x00;
+        public ulong DestinationNodeId { get; set; } = 0x00;
 
         public ushort SessionId { get; }
 
@@ -38,10 +36,13 @@ namespace Matter.Core
 
         public bool UseMRP => true;
 
-        public uint MessageCounter => _messageCounter++;
+        public uint MessageCounter { get; set; } = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
 
-        public MessageExchange CreateExchange()
+        public MessageExchange CreateExchange(ulong sourceNodeId, ulong destinationNodeId)
         {
+            SourceNodeId = sourceNodeId;
+            DestinationNodeId = destinationNodeId;
+
             return new MessageExchange(BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2)), this);
         }
 
@@ -148,9 +149,7 @@ namespace Matter.Core
             catch (Exception ex)
             {
                 Console.WriteLine("Decryption failed - {0}", ex.Message);
-
-                // return the message with the payload as is
-                return MessageFrame.Deserialize(messageFrameBytes, true);
+                throw;
             }
         }
     }

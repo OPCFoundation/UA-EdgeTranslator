@@ -1101,7 +1101,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("modbus+tcp://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 6) || (address[0] != "modbus+tcp"))
                 {
                     throw new Exception("Expected Modbus server address in the format modbus+tcp://ipaddress:port/unitID!");
@@ -1117,7 +1117,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 5) || (address[0] != "opc.tcp"))
                 {
                     throw new Exception("Expected OPC UA server address in the format opc.tcp://ipaddress:port!");
@@ -1132,7 +1132,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("s7://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 5) || (address[0] != "s7"))
                 {
                     throw new Exception("Expected S7 PLC address in the format s7://ipaddress:port!");
@@ -1147,7 +1147,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("mcp://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 5) || (address[0] != "mcp"))
                 {
                     throw new Exception("Expected Mitsubishi PLC address in the format mcp://ipaddress:port!");
@@ -1162,7 +1162,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("eip://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 4) || (address[0] != "eip"))
                 {
                     throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress!");
@@ -1177,7 +1177,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("ads://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 6) || (address[0] != "ads"))
                 {
                     throw new Exception("Expected Beckhoff PLC address in the format ads://ipaddress:port!");
@@ -1192,7 +1192,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("bacnet://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 5) || (address[0] != "bacnet"))
                 {
                     throw new Exception("Expected BACNet device address in the format bacnet://ipaddress/deviceId!");
@@ -1207,7 +1207,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("iec61850://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 6) || (address[0] != "iec61850"))
                 {
                     throw new Exception("Expected IEC61850 device address in the format iec61850://ipaddress:port!");
@@ -1222,7 +1222,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("lorawan://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 6) || (address[0] != "lorawan"))
                 {
                     throw new Exception("Expected LoRaWAN address in the format lorawan://deviceeui/appkey/device or lorawan://deviceeui/gatewaymodel/routerconfig!");
@@ -1235,7 +1235,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("ocpp://"))
             {
-                string[] address = td.Base.Split(new char[] { ':', '/' });
+                string[] address = td.Base.Split([':', '/']);
                 if ((address.Length != 4) || (address[0] != "ocpp"))
                 {
                     throw new Exception("Expected OCPP Gateway address in the format ocpp://assetname!");
@@ -1247,7 +1247,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (td.Base.ToLower().StartsWith("matter://"))
             {
-                string[] address = td.Base.Split(new char[] { '/' });
+                string[] address = td.Base.Split(['/']);
                 if ((address.Length != 4) || (address[0] != "matter:"))
                 {
                     throw new Exception("Expected Matter device address in the format matter://ThreadNetworkDataset/MatterDeviceCommissioningQRCode!");

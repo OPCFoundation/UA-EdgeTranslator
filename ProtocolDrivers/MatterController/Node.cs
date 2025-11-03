@@ -46,14 +46,14 @@ namespace Matter.Core
             }
         }
 
-        public async Task FetchDescriptionsAsync()
+        public async Task FetchDescriptionsAsync(Fabric fabric)
         {
-            if (!IsConnected)
+            if (!IsConnected || (_secureSession == null))
             {
                 return;
             }
 
-            MessageExchange secureExchange = _secureSession.CreateExchange();
+            MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
 
             // Request the DeviceTypeList Attribute from the Description Cluster.
             var readCluster = new MatterTLV();

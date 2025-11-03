@@ -88,7 +88,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if ((node != null) && !node.IsConnected)
                 {
                     node.Connect(_fabric);
-                    node.FetchDescriptionsAsync().GetAwaiter().GetResult();
+                    node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
                 }
 
             }

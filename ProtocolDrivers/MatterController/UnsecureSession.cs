@@ -9,19 +9,16 @@ namespace Matter.Core
     {
         private IConnection _connection;
 
-        private static uint _messageCounter = 0;
-
         public UnsecureSession(IConnection connection)
         {
             _connection = connection;
-            _messageCounter = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
         }
 
         public IConnection Connection => _connection;
 
-        public ulong SourceNodeId { get; } = 0;
+        public ulong SourceNodeId { get; set; } = 0;
 
-        public ulong DestinationNodeId { get; } = 0;
+        public ulong DestinationNodeId { get; set; } = 0;
 
         public ushort SessionId { get; set; } = 0;
 
@@ -29,10 +26,13 @@ namespace Matter.Core
 
         public bool UseMRP { get; set; } = false;
 
-        public uint MessageCounter => _messageCounter++;
+        public uint MessageCounter { get; set; } = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
 
-        public MessageExchange CreateExchange()
+        public MessageExchange CreateExchange(ulong sourceNodeId, ulong destinationNodeId)
         {
+            SourceNodeId = sourceNodeId;
+            DestinationNodeId = destinationNodeId;
+
             return new MessageExchange(BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(2)), this);
         }
 

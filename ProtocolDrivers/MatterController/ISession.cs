@@ -7,9 +7,9 @@
     {
         IConnection Connection { get; }
 
-        ulong SourceNodeId { get; }
+        ulong SourceNodeId { get; set; }
 
-        ulong DestinationNodeId { get; }
+        ulong DestinationNodeId { get; set; }
 
         ushort SessionId { get; }
 
@@ -17,9 +17,9 @@
 
         bool UseMRP { get; }
 
-        uint MessageCounter { get; }
+        uint MessageCounter { get; set; }
 
-        MessageExchange CreateExchange();
+        MessageExchange CreateExchange(ulong sourceNodeId, ulong destinationNodeId);
 
         byte[] Encode(MessageFrame message);
 

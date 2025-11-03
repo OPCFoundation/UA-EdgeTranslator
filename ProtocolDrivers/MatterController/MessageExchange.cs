@@ -18,8 +18,6 @@ namespace Matter.Core
 
         private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(10);
 
-        // For this, the role will always be Initiator.
-        //
         public MessageExchange(ushort exchangeId, ISession session)
         {
             _exchangeId = exchangeId;
@@ -50,11 +48,17 @@ namespace Matter.Core
                 message.ExchangeFlags |= ExchangeFlags.Reliability;
             }
 
+            MessageFlags messageFlags = MessageFlags.SourceNodeID;
+            if (_session.DestinationNodeId != 0)
+            {
+                messageFlags |= MessageFlags.DestinationNodeID;
+            }
+
             MessageFrame frame = new(
-                MessageFlags.SourceNodeID,
+                messageFlags,
                 _session.PeerSessionId,
                 SecurityFlags.UnicastSession,
-                _session.MessageCounter,
+                _session.MessageCounter++,
                 _session.SourceNodeId,
                 _session.DestinationNodeId,
                 0,
@@ -98,11 +102,9 @@ namespace Matter.Core
                         continue;
                     }
 
-                    MessageFrame frame = _session.Decode(bytes);
+                    MessageFrame frame = MessageFrame.Deserialize(bytes, false);
 
-                    Console.WriteLine("Recv: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
-
-                    if ((frame.SessionID != 0) && (frame.SessionID != _session.SessionId))
+                    if (frame.SessionID != _session.SessionId)
                     {
                         Console.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SourceNodeID, _session.SessionId);
                         continue;
@@ -117,15 +119,24 @@ namespace Matter.Core
 
                     _receivedMessageCounter = frame.MessageCounter;
 
+                    // Decode the full message now.
+                    frame = _session.Decode(bytes);
+
                     // If this is a standalone acknowledgement, don't pass this up a level.
-                    //
                     if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.ProtocolOpCode == 0x10)
                     {
+                        // check if the Ack needs an ack back
+                        if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
+                        {
+                            AcknowledgeMessageAsync(frame.MessageCounter).GetAwaiter().GetResult();
+                        }
+
                         continue;
                     }
 
+                    Console.WriteLine("Recv: opcode {0:X8} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
                     // This message needs processing, so put it onto the queue.
-                    //
                     await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);
 
                 }
@@ -151,7 +162,15 @@ namespace Matter.Core
         {
             MessagePayload messagePayload = new(ExchangeFlags.Acknowledgement, 0x10, _exchangeId, 0, messageCounter, 0, null);
 
-            await SendAsync(messagePayload).ConfigureAwait(false);
+            _acknowledgedMessageCounter = messageCounter;
+
+            MessageFrame frame = new(MessageFlags.Version1, _session.PeerSessionId, SecurityFlags.UnicastSession, _session.MessageCounter, 0, 0, 0, messagePayload);
+
+            var bytes = _session.Encode(frame);
+
+            Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
+            await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
         public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)

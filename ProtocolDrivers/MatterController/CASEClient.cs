@@ -27,19 +27,34 @@
 
         internal ISession EstablishSession()
         {
-            Console.WriteLine("UDP connection established. Starting SIGMA/CASE exchange...");
-
             // Certificate - Authenticated Session Establishment (CASE)
-            var sigmaUdpConnection = new UdpConnection(_ipAddress, _port);
-            sigmaUdpConnection.OpenConnection();
-            if (!ExecuteSIGMA(sigmaUdpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
+            var connection = new UdpConnection(_ipAddress, _port);
+            connection.OpenConnection();
+
+            Console.WriteLine("Starting SIGMA / CASE exchange...");
+            if (!ExecuteSIGMA(connection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
             {
                 return null;
             }
 
-            var secureUdpConnection = new UdpConnection(_ipAddress, _port);
-            secureUdpConnection.OpenConnection();
-            return new SecureSession(secureUdpConnection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
+            Console.WriteLine("Establishing secure session to device {0} at IP address {1}:{2}", _node.NodeId.ToString("X16"), _ipAddress, _port);
+            SecureSession secureSession = new SecureSession(connection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
+
+            MessageExchange secureExchange = secureSession.CreateExchange(_fabric.RootNodeId, _node.NodeId);
+
+            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+            if (MessageFrame.IsStatusReport(completeCommissioningResult))
+            {
+                Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
+                return null;
+            }
+
+            secureExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
+            secureExchange.Close();
+
+            Console.WriteLine("Commissioning of Matter Device {0} is complete.", _node.NodeId);
+
+            return secureSession;
         }
 
         private bool ExecuteSIGMA(UdpConnection udpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys)
@@ -51,7 +66,7 @@
             UnsecureSession unsecureSession = new(udpConnection);
             unsecureSession.UseMRP = true;
 
-            MessageExchange unsecureExchange = unsecureSession.CreateExchange();
+            MessageExchange unsecureExchange = unsecureSession.CreateExchange(0, 0);
 
             try
             {
@@ -169,8 +184,13 @@
                     return false;
                 }
 
+                if (sigma3Resp.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
+                {
+                    // send ACK for sigma3 response
+                    unsecureExchange.AcknowledgeMessageAsync(sigma3Resp.MessageCounter).GetAwaiter().GetResult();
+                }
+
                 unsecureExchange.Close();
-                udpConnection.Close();
 
                 // Derive final application session keys
                 keys = DeriveCaseTrafficKeys(Z, sigma1, sigma2, sigma3);

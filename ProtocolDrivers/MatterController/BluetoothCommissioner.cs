@@ -129,22 +129,13 @@ namespace Matter.Core
                         return;
                     }
 
-                    // HKDF with SHA-256
-                    using var hmac = new HMACSHA256(Array.Empty<byte>());
-                    byte[] prk = hmac.ComputeHash(Z);
-
-                    // Expand to get session key (32 bytes)
-                    byte[] info = Encoding.ASCII.GetBytes("SessionKeys");
-                    byte[] t = new byte[info.Length + 1];
-                    Buffer.BlockCopy(info, 0, t, 0, info.Length);
-                    t[info.Length] = 0x01;
-                    byte[] keys = new HMACSHA256(prk).ComputeHash(t);
+                    // Generate session keys and establish secure session
+                    byte[] keys = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, Array.Empty<byte>(), Encoding.ASCII.GetBytes("SessionKeys"), 32);
                     var encryptKey = keys.AsSpan().Slice(0, 16).ToArray();
                     var decryptKey = keys.AsSpan().Slice(16, 16).ToArray();
-
                     var paseSession = new SecureSession(btpConnection, initiatorSessionId, peerSessionId, encryptKey, decryptKey);
 
-                    var paseExchange = paseSession.CreateExchange();
+                    var paseExchange = paseSession.CreateExchange(0, 0);
 
                     object[] parameters = [
                         (ushort)60, // 60 seconds expiration
@@ -299,14 +290,7 @@ namespace Matter.Core
                         return;
                     }
 
-                    MessageFrame completeCommissioningResult = paseExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
-                    if (MessageFrame.IsStatusReport(completeCommissioningResult))
-                    {
-                        Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
-                        return;
-                    }
-
-                    paseExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
+                    paseExchange.AcknowledgeMessageAsync(connectNetworkResult.MessageCounter).GetAwaiter().GetResult();
                     paseExchange.Close();
                     btpConnection.Close();
 
@@ -321,8 +305,6 @@ namespace Matter.Core
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
-
-                    Console.WriteLine("Commissioning of Matter Device {0} is complete.", nodeId);
                 }
                 catch (Exception exp)
                 {
@@ -338,7 +320,7 @@ namespace Matter.Core
             Ke = null;
 
             UnsecureSession unsecureSession = new(btpConnection);
-            MessageExchange unsecureExchange = unsecureSession.CreateExchange();
+            MessageExchange unsecureExchange = unsecureSession.CreateExchange(0, 0);
             initiatorSessionId = BitConverter.ToUInt16(RandomNumberGenerator.GetBytes(16));
 
             // Password-Based Key Derivation Function param request
