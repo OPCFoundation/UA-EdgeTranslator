@@ -310,7 +310,7 @@ namespace LoRaWan.NetworkServer
             {
                 if (loRaDevice.IsConnectionOwner is true)
                 {
-                    await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice && !fcntResetSaved);
+                    await SaveChangesToDeviceAsync(loRaDevice, isFrameCounterFromNewlyStartedDevice && !fcntResetSaved).ConfigureAwait(false);
                 }
             }
         }

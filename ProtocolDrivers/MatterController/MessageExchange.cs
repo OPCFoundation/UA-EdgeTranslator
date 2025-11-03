@@ -16,7 +16,7 @@ namespace Matter.Core
 
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(1);
+        private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(10);
 
         // For this, the role will always be Initiator.
         //
@@ -69,7 +69,7 @@ namespace Matter.Core
         {
             try
             {
-                return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token);
+                return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -90,7 +90,7 @@ namespace Matter.Core
 
                 try
                 {
-                    bytes = await _session.ReadAsync(_cancellationTokenSource.Token);
+                    bytes = await _session.ReadAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
                     if (bytes == null)
                     {
                         continue;

@@ -41,7 +41,7 @@ namespace InTheHand.Bluetooth
         {
             Task.Run(async () =>
             {
-                _eventHandler = await _characteristicLinux.WatchPropertiesAsync(OnCharacteristicValueChangedInternal);
+                _eventHandler = await _characteristicLinux.WatchPropertiesAsync(OnCharacteristicValueChangedInternal).ConfigureAwait(false);
             });
         }
 
@@ -72,12 +72,12 @@ namespace InTheHand.Bluetooth
 
         internal async Task Init()
         {
-            await UpdateCharacteristicProperties();
+            await UpdateCharacteristicProperties().ConfigureAwait(false);
         }
 
         private async Task UpdateCharacteristicProperties()
         {
-            string[] flags = await GattCharacteristic1Extensions.GetFlagsAsync(_characteristicLinux);
+            string[] flags = await GattCharacteristic1Extensions.GetFlagsAsync(_characteristicLinux).ConfigureAwait(false);
 
             _properties = GattCharacteristicProperties.None;
             foreach (var flag in flags)

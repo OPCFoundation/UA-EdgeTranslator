@@ -36,7 +36,7 @@ namespace InTheHand.Bluetooth
         {
             // Ensure that our native objects have not been disposed.
             // If they have, re-create the native device object.
-            if (await ((BluetoothDeviceWindows)Device).CreateNativeInstance())
+            if (await ((BluetoothDeviceWindows)Device).CreateNativeInstance().ConfigureAwait(false))
             {
                 ((BluetoothDeviceWindows)Device).NativeDevice.ConnectionStatusChanged += NativeDevice_ConnectionStatusChanged;
             }
@@ -92,7 +92,7 @@ namespace InTheHand.Bluetooth
         {
             try
             {
-                if (await ((BluetoothDeviceWindows)Device).CreateNativeInstance())
+                if (await ((BluetoothDeviceWindows)Device).CreateNativeInstance().ConfigureAwait(false))
                 {
                     ((BluetoothDeviceWindows)Device).NativeDevice.ConnectionStatusChanged += NativeDevice_ConnectionStatusChanged;
                 }

@@ -10,7 +10,7 @@ namespace Matter.Core
     internal class UdpConnection : IConnection
     {
         private UdpClient _udpClient;
-        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(500);
+        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(10);
         private IPAddress _ipAddress;
         private ushort _port;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -58,11 +58,9 @@ namespace Matter.Core
             {
                 while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    UdpReceiveResult result = await _udpClient.ReceiveAsync();
+                    UdpReceiveResult result = await _udpClient.ReceiveAsync().ConfigureAwait(false);
 
-                    var bytes = result.Buffer;
-
-                    await _receivedDataChannel.Writer.WriteAsync(bytes);
+                    await _receivedDataChannel.Writer.WriteAsync(result.Buffer).ConfigureAwait(false);
                 }
             }
             catch (Exception)

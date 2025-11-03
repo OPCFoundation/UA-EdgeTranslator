@@ -24,7 +24,7 @@ public class BluetoothLinux : IBluetooth
     {
         if (Adapter == null)
         {
-            Adapter = (await BlueZManager.GetAdaptersAsync()).FirstOrDefault();
+            Adapter = (await BlueZManager.GetAdaptersAsync().ConfigureAwait(false)).FirstOrDefault();
 
             if (Adapter == null)
                 throw new PlatformNotSupportedException("No IBluetooth adapter present.");
