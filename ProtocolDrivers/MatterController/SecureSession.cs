@@ -36,7 +36,7 @@ namespace Matter.Core
 
         public ushort PeerSessionId { get; }
 
-        public bool UseMRP => false;
+        public bool UseMRP => true;
 
         public uint MessageCounter => _messageCounter++;
 
@@ -145,10 +145,12 @@ namespace Matter.Core
 
                 return messageFrame;
             }
-            catch (Exception exp)
+            catch (Exception ex)
             {
-                Console.WriteLine("Decryption failed - {0}", exp.Message);
-                throw;
+                Console.WriteLine("Decryption failed - {0}", ex.Message);
+
+                // return the message with the payload as is
+                return MessageFrame.Deserialize(messageFrameBytes, true);
             }
         }
     }

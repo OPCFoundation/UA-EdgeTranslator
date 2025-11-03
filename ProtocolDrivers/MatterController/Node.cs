@@ -32,11 +32,7 @@ namespace Matter.Core
                 IPAddress ipAddress = LastKnownIpAddress;
                 ushort port = LastKnownPort;
 
-                var connection = new UdpConnection(ipAddress, port);
-                connection.OpenConnection();
-
-                CASEClient client = new CASEClient(this, fabric, connection);
-
+                CASEClient client = new CASEClient(this, fabric, ipAddress, port);
                 _secureSession = client.EstablishSession();
 
                 IsConnected = true;

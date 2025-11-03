@@ -2,6 +2,7 @@
 {
     using System;
     using System.Linq;
+    using System.Net;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
@@ -11,27 +12,34 @@
     {
         private readonly Node _node;
         private readonly Fabric _fabric;
-        private readonly UdpConnection _connection;
+        private IPAddress _ipAddress;
+        private ushort _port;
 
         private record TrafficKeys(byte[] I2R, byte[] R2I, byte[] NoncePrefix);
 
-        public CASEClient(Node node, Fabric fabric, UdpConnection connection)
+        public CASEClient(Node node, Fabric fabric, IPAddress ipAddress, ushort port)
         {
             _node = node;
             _fabric = fabric;
-            _connection = connection;
+            _ipAddress = ipAddress;
+            _port = port;
         }
 
         internal ISession EstablishSession()
         {
+            Console.WriteLine("UDP connection established. Starting SIGMA/CASE exchange...");
+
             // Certificate - Authenticated Session Establishment (CASE)
-            Console.WriteLine("UDP connection established. Starting SPAKE/CASE exchange...");
-            if (!ExecuteSIGMA(_connection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
+            var sigmaUdpConnection = new UdpConnection(_ipAddress, _port);
+            sigmaUdpConnection.OpenConnection();
+            if (!ExecuteSIGMA(sigmaUdpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
             {
                 return null;
             }
 
-            return new SecureSession(_connection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
+            var secureUdpConnection = new UdpConnection(_ipAddress, _port);
+            secureUdpConnection.OpenConnection();
+            return new SecureSession(secureUdpConnection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
         }
 
         private bool ExecuteSIGMA(UdpConnection udpConnection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys)
@@ -41,6 +49,8 @@
             keys = null;
 
             UnsecureSession unsecureSession = new(udpConnection);
+            unsecureSession.UseMRP = true;
+
             MessageExchange unsecureExchange = unsecureSession.CreateExchange();
 
             try
@@ -160,9 +170,12 @@
                 }
 
                 unsecureExchange.Close();
+                udpConnection.Close();
 
                 // Derive final application session keys
                 keys = DeriveCaseTrafficKeys(Z, sigma1, sigma2, sigma3);
+
+                Console.WriteLine("SIGMA/CASE exchange completed successfully.");
             }
             catch (Exception ex)
             {

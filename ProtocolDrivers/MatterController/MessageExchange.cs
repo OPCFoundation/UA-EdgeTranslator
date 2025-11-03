@@ -62,6 +62,8 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
+            Console.WriteLine("Send: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
@@ -96,33 +98,35 @@ namespace Matter.Core
                         continue;
                     }
 
-                    MessageFrame messageFrame = _session.Decode(bytes);
+                    MessageFrame frame = _session.Decode(bytes);
 
-                    if ((messageFrame.SessionID != 0) && (messageFrame.SessionID != _session.SessionId))
+                    Console.WriteLine("Recv: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
+                    if ((frame.SessionID != 0) && (frame.SessionID != _session.SessionId))
                     {
-                        Console.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, messageFrame.MessageCounter, messageFrame.SourceNodeID, _session.SessionId);
+                        Console.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SourceNodeID, _session.SessionId);
                         continue;
                     }
 
                     // Check if we have this message already.
-                    if (_receivedMessageCounter >= messageFrame.MessageCounter)
+                    if (_receivedMessageCounter >= frame.MessageCounter)
                     {
-                        Console.WriteLine("Message {0} is a duplicate. Dropping...", messageFrame.MessageCounter);
+                        Console.WriteLine("Message {0} is a duplicate. Dropping...", frame.MessageCounter);
                         continue;
                     }
 
-                    _receivedMessageCounter = messageFrame.MessageCounter;
+                    _receivedMessageCounter = frame.MessageCounter;
 
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     //
-                    if (messageFrame.MessagePayload.ProtocolId == 0x00 && messageFrame.MessagePayload.ProtocolOpCode == 0x10)
+                    if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.ProtocolOpCode == 0x10)
                     {
                         continue;
                     }
 
                     // This message needs processing, so put it onto the queue.
                     //
-                    await _incomingMessageChannel.Writer.WriteAsync(messageFrame).ConfigureAwait(false);
+                    await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);
 
                 }
                 catch (Exception ex)
