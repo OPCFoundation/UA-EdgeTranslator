@@ -2,7 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Matter.Core
@@ -10,11 +9,9 @@ namespace Matter.Core
     internal class UdpConnection : IConnection
     {
         private UdpClient _udpClient;
-        private Channel<byte[]> _receivedDataChannel = Channel.CreateBounded<byte[]>(10);
         private IPAddress _ipAddress;
         private ushort _port;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        public event EventHandler ConnectionClosed;
 
         public UdpConnection(IPAddress address, ushort port)
         {
@@ -37,8 +34,6 @@ namespace Matter.Core
         {
             _udpClient.Connect(_ipAddress, _port);
 
-            Task.Factory.StartNew(ProcessIncomingData);
-
             return this;
         }
 
@@ -46,38 +41,26 @@ namespace Matter.Core
         {
             _cancellationTokenSource.Cancel();
 
-            _udpClient!.Close();
+            _udpClient.Close();
             _udpClient = null;
-        }
-
-        public bool IsConnectionEstablished => _udpClient != null && _udpClient.Client.Connected;
-
-        public async Task ProcessIncomingData()
-        {
-            try
-            {
-                while (!_cancellationTokenSource.IsCancellationRequested)
-                {
-                    UdpReceiveResult result = await _udpClient.ReceiveAsync().ConfigureAwait(false);
-
-                    await _receivedDataChannel.Writer.WriteAsync(result.Buffer).ConfigureAwait(false);
-                }
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("UdpConnection: Error receiving data, closing connection.");
-                ConnectionClosed?.Invoke(this, EventArgs.Empty);
-            }
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken token)
         {
             try
             {
-                return await _receivedDataChannel.Reader.ReadAsync(token).ConfigureAwait(false);
+                UdpReceiveResult result = await _udpClient.ReceiveAsync(token).ConfigureAwait(false);
+                return result.Buffer;
             }
             catch (OperationCanceledException)
             {
+                return null;
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("UdpConnection: Error receiving data, closing connection.");
+                _udpClient.Close();
+                _udpClient = null;
                 return null;
             }
         }
