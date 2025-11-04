@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Pkcs;
+using System;
 using System.Buffers.Binary;
 using System.Formats.Asn1;
 using System.Globalization;
@@ -46,6 +48,35 @@ namespace Matter.Core
             req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifier));
 
             return req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(10));
+        }
+
+        // workaround since .Net's CertificateRequest doesn't support empty extensions in CSRs
+        public CertificateRequest ConvertCSR(Pkcs10CertificationRequest bcCertRequest)
+        {
+            if (!bcCertRequest.Verify())
+            {
+                Console.WriteLine("CSR signature invalid.");
+                return null;
+            }
+
+            var bcPub = bcCertRequest.GetPublicKey();
+            if (bcPub is not ECPublicKeyParameters ecPub)
+            {
+                Console.WriteLine("Expected EC key.");
+                return null;
+            }
+
+            var q = ecPub.Q.Normalize();
+            var ecParams = new ECParameters
+            {
+                Curve = ECCurve.NamedCurves.nistP256,
+                Q = new ECPoint { X = q.XCoord.GetEncoded(), Y = q.YCoord.GetEncoded() }
+            };
+
+            ECDsa ecdsaPub = ECDsa.Create(ecParams);
+            var subjectDn = new X500DistinguishedName(bcCertRequest.GetCertificationRequestInfo().Subject.ToString());
+
+            return new CertificateRequest(subjectDn, ecdsaPub, HashAlgorithmName.SHA256);
         }
 
         public X509Certificate2 SignCertRequest(CertificateRequest nocsr, ulong nodeId, ulong fabricId)

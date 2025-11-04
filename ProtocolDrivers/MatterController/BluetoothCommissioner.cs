@@ -1,4 +1,5 @@
 ﻿using InTheHand.Bluetooth;
+using Org.BouncyCastle.Pkcs;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -169,9 +170,17 @@ namespace Matter.Core
 
                     var csrResponsePayload = SkipHeader(csrResponseMessageFrame.MessagePayload.ApplicationPayload);
                     csrResponsePayload.OpenStructure(1);
-                    var csrBytes = new MatterTLV(csrResponsePayload.GetOctetString(0));
-                    csrBytes.OpenStructure();
-                    CertificateRequest certRequest = CertificateRequest.LoadSigningRequest(csrBytes.GetOctetString(1), HashAlgorithmName.SHA256);
+                    var innerCsrResponsePayload = new MatterTLV(csrResponsePayload.GetOctetString(0));
+                    innerCsrResponsePayload.OpenStructure();
+                    byte[] csrBytes = innerCsrResponsePayload.GetOctetString(1);
+
+                    Pkcs10CertificationRequest bcCertRequest = new(csrBytes);
+                    CertificateRequest certRequest = _fabric.CA.ConvertCSR(bcCertRequest);
+                    if (certRequest == null)
+                    {
+                        Console.WriteLine("Failed to convert CSR from device, abandoning commissioning!");
+                        return;
+                    }
 
                     parameters = [
                         _fabric.CA.GenerateCertMessage(_fabric.CA.RootCertificate)
@@ -191,7 +200,6 @@ namespace Matter.Core
                         Console.WriteLine($"AddRootCert failed with status {status}");
                         return;
                     }
-
 
                     X509Certificate2 nodeCert = _fabric.CA.SignCertRequest(certRequest, nodeId, _fabric.FabricId);
                     parameters = [
