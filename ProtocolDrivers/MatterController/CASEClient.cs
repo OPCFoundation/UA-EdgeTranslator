@@ -184,12 +184,7 @@
                     return false;
                 }
 
-                if (sigma3Resp.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
-                {
-                    // send ACK for sigma3 response
-                    unsecureExchange.AcknowledgeMessageAsync(sigma3Resp.MessageCounter).GetAwaiter().GetResult();
-                }
-
+                unsecureExchange.AcknowledgeMessageAsync(sigma3Resp.MessageCounter).GetAwaiter().GetResult();
                 unsecureExchange.Close();
 
                 // Derive final application session keys

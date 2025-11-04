@@ -32,6 +32,106 @@ namespace Matter.Core
             _readingThread.Wait();
         }
 
+        public async Task AcknowledgeMessageAsync(uint messageCounter)
+        {
+            MessagePayload messagePayload = new(ExchangeFlags.Initiator | ExchangeFlags.Acknowledgement, 0x10, _exchangeId, 0, messageCounter, 0, null);
+
+            _acknowledgedMessageCounter = messageCounter;
+
+            MessageFrame frame = new(MessageFlags.SourceNodeID, _session.PeerSessionId, SecurityFlags.UnicastSession, _session.MessageCounter, 0, 0, 0, messagePayload);
+
+            var bytes = _session.Encode(frame);
+
+            Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
+            await _session.SendAsync(bytes).ConfigureAwait(false);
+        }
+
+        public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
+        {
+            MessagePayload messagePayload = new(ExchangeFlags.Initiator, opCode, _exchangeId, protocolId, 0, 0, payload);
+
+            await SendAsync(messagePayload).ConfigureAwait(false);
+
+            return await WaitForNextMessageAsync().ConfigureAwait(false);
+        }
+
+        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)
+        {
+            var payload = new MatterTLV();
+            payload.AddStructure();
+            payload.AddBool(0, false);
+            payload.AddBool(1, false);
+            payload.AddArray(2); // InvokeRequests
+            payload.AddStructure();
+            payload.AddList(0); // CommandPath
+            payload.AddUInt16(0, endpoint);
+            payload.AddUInt32(1, cluster);
+            payload.AddUInt16(2, command);
+            payload.EndContainer();
+            payload.AddStructure(1); // CommandFields
+
+            if (parameters != null)
+            {
+                for (byte i = 0; i < parameters.Length; i++)
+                {
+                    if (parameters[i] == null)
+                    {
+                        // skip null paramters
+                        continue;
+                    }
+
+                    object param = parameters[i];
+                    switch (param)
+                    {
+                        case byte b:
+                            payload.AddUInt8(i, b);
+                            break;
+                        case short s:
+                            payload.AddInt16(i, s);
+                            break;
+                        case ushort us:
+                            payload.AddUInt16(i, us);
+                            break;
+                        case int it:
+                            payload.AddInt32(i, it);
+                            break;
+                        case uint ui:
+                            payload.AddUInt32(i, ui);
+                            break;
+                        case long l:
+                            payload.AddInt64(i, l);
+                            break;
+                        case ulong ul:
+                            payload.AddUInt64(i, ul);
+                            break;
+                        case Org.BouncyCastle.Math.BigInteger bi:
+                            payload.AddUInt64(i, bi.ToByteArrayUnsigned());
+                            break;
+                        case string s:
+                            payload.AddUTF8String(i, s);
+                            break;
+                        case byte[] ba:
+                            payload.AddOctetString(i, ba);
+                            break;
+                        case bool bo:
+                            payload.AddBool(i, bo);
+                            break;
+                        default:
+                            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
+                    }
+                }
+            }
+
+            payload.EndContainer(); // Close the CommandFields
+            payload.EndContainer(); // Close the structure
+            payload.EndContainer(); // Close the array
+            payload.AddUInt8(255, 12); // interactionModelRevision
+            payload.EndContainer(); // Close the structure
+
+            return await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
+        }
+
         private async Task SendAsync(MessagePayload message)
         {
             // add any unacknowledged acknowledgements to this outgoing message
@@ -84,10 +184,6 @@ namespace Matter.Core
             }
         }
 
-        /// <summary>
-        /// This is a message pump. It waits for data to be available and passes it to
-        /// the _incomingMessageChannel
-        /// </summary>
         private async Task ReceiveAsync()
         {
             do
@@ -148,105 +244,6 @@ namespace Matter.Core
                 }
 
             } while (!_cancellationTokenSource.Token.IsCancellationRequested);
-        }
-
-        public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
-        {
-            MessagePayload messagePayload = new(ExchangeFlags.Initiator, opCode, _exchangeId, protocolId, 0, 0, payload);
-
-            await SendAsync(messagePayload).ConfigureAwait(false);
-            return await WaitForNextMessageAsync().ConfigureAwait(false);
-        }
-
-        public async Task AcknowledgeMessageAsync(uint messageCounter)
-        {
-            MessagePayload messagePayload = new(ExchangeFlags.Acknowledgement, 0x10, _exchangeId, 0, messageCounter, 0, null);
-
-            _acknowledgedMessageCounter = messageCounter;
-
-            MessageFrame frame = new(MessageFlags.Version1, _session.PeerSessionId, SecurityFlags.UnicastSession, _session.MessageCounter, 0, 0, 0, messagePayload);
-
-            var bytes = _session.Encode(frame);
-
-            Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
-
-            await _session.SendAsync(bytes).ConfigureAwait(false);
-        }
-
-        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)
-        {
-            var payload = new MatterTLV();
-            payload.AddStructure();
-            payload.AddBool(0, false);
-            payload.AddBool(1, false);
-            payload.AddArray(2); // InvokeRequests
-            payload.AddStructure();
-            payload.AddList(0); // CommandPath
-            payload.AddUInt16(0, endpoint);
-            payload.AddUInt32(1, cluster);
-            payload.AddUInt16(2, command);
-            payload.EndContainer();
-            payload.AddStructure(1); // CommandFields
-
-            if (parameters != null)
-            {
-                for (byte i = 0; i < parameters.Length; i++)
-                {
-                    if (parameters[i] == null)
-                    {
-                        // skip null paramters
-                        continue;
-                    }
-
-                    object param = parameters[i];
-                    switch (param)
-                    {
-                        case byte b:
-                            payload.AddUInt8(i, b);
-                            break;
-                        case short s:
-                            payload.AddInt16(i, s);
-                            break;
-                        case ushort us:
-                            payload.AddUInt16(i, us);
-                            break;
-                        case int it:
-                            payload.AddInt32(i, it);
-                            break;
-                        case uint ui:
-                            payload.AddUInt32(i, ui);
-                            break;
-                        case long l:
-                                payload.AddInt64(i, l);
-                                break;
-                        case ulong ul:
-                            payload.AddUInt64(i, ul);
-                            break;
-                        case Org.BouncyCastle.Math.BigInteger bi:
-                            payload.AddUInt64(i, bi.ToByteArrayUnsigned());
-                            break;
-                        case string s:
-                            payload.AddUTF8String(i, s);
-                            break;
-                        case byte[] ba:
-                            payload.AddOctetString(i, ba);
-                            break;
-                        case bool bo:
-                            payload.AddBool(i, bo);
-                            break;
-                        default:
-                            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
-                    }
-                }
-            }
-
-            payload.EndContainer(); // Close the CommandFields
-            payload.EndContainer(); // Close the structure
-            payload.EndContainer(); // Close the array
-            payload.AddUInt8(255, 12); // interactionModelRevision
-            payload.EndContainer(); // Close the structure
-
-            return await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
         }
     }
 }

@@ -313,6 +313,8 @@ namespace Matter.Core
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
+
+                    Console.WriteLine("PAKE/PASE exchange completed successfully.");
                 }
                 catch (Exception exp)
                 {
