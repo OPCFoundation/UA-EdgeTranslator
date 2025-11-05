@@ -15,7 +15,7 @@
         private IPAddress _ipAddress;
         private ushort _port;
 
-        private record TrafficKeys(byte[] I2R, byte[] R2I, byte[] NoncePrefix);
+        private record TrafficKeys(byte[] I2R, byte[] R2I);
 
         public CASEClient(Node node, Fabric fabric, IPAddress ipAddress, ushort port)
         {
@@ -254,16 +254,14 @@
         {
             // Derive session keys (HKDF-SHA256, info="SessionKeys")
             byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2S3, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.GetBytes(), sigma2Payload: sigma2.GetBytes(), sigma3Payload: sigma3.GetBytes());
-            byte[] s2k = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, salt, Encoding.ASCII.GetBytes("SessionKeys"), 40);
+            byte[] s2k = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, salt, Encoding.ASCII.GetBytes("SessionKeys"), 32);
 
             byte[] i2r = new byte[16];
             byte[] r2i = new byte[16];
-            byte[] noncePrefix = new byte[8];
             Buffer.BlockCopy(s2k, 0, i2r, 0, 16);
             Buffer.BlockCopy(s2k, 16, r2i, 0, 16);
-            Buffer.BlockCopy(s2k, 32, noncePrefix, 0, 8);
 
-            return new TrafficKeys(i2r, r2i, noncePrefix);
+            return new TrafficKeys(i2r, r2i);
         }
     }
 }

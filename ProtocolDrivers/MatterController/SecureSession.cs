@@ -72,17 +72,17 @@ namespace Matter.Core
                 }
             }
 
-            byte[] additionalData;
+            byte[] associatedData;
             using (var memoryStream = new MemoryStream())
             {
-                using (var additionalDataWriter = new BinaryWriter(memoryStream))
+                using (var associatedDataWriter = new BinaryWriter(memoryStream))
                 {
-                    additionalDataWriter.Write((byte)messageFrame.MessageFlags);
-                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-                    additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
-                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
-                    additionalData = memoryStream.ToArray();
+                    associatedDataWriter.Write((byte)messageFrame.MessageFlags);
+                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                    associatedDataWriter.Write((byte)messageFrame.SecurityFlags);
+                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    associatedData = memoryStream.ToArray();
                 }
             }
 
@@ -90,7 +90,7 @@ namespace Matter.Core
             byte[] encryptedPayload = new byte[unencryptedPayload.Length];
             byte[] tag = new byte[16];
             var encryptor = new AesCcm(_encryptionKey);
-            encryptor.Encrypt(nonce, unencryptedPayload, encryptedPayload, tag, additionalData);
+            encryptor.Encrypt(nonce, unencryptedPayload, encryptedPayload, tag, associatedData);
 
             // concat the header and the encrypted payload with tag and return
             return messageFrameUnencrypted.Take(messageFrame.HeaderLength).Concat(encryptedPayload.Concat(tag).ToArray()).ToArray();
@@ -101,8 +101,6 @@ namespace Matter.Core
             MessageFrame messageFrame = MessageFrame.Deserialize(messageFrameBytes, false);
 
             byte[] nonce;
-            byte[] additionalData;
-
             using (var memoryStream = new MemoryStream())
             {
                 using (var nonceWriter = new BinaryWriter(memoryStream))
@@ -114,15 +112,16 @@ namespace Matter.Core
                 }
             }
 
+            byte[] associatedData;
             using (var memoryStream = new MemoryStream())
             {
-                using (var additionalDataWriter = new BinaryWriter(memoryStream))
+                using (var associatedDataWriter = new BinaryWriter(memoryStream))
                 {
-                    additionalDataWriter.Write((byte)messageFrame.MessageFlags);
-                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-                    additionalDataWriter.Write((byte)messageFrame.SecurityFlags);
-                    additionalDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    additionalData = memoryStream.ToArray();
+                    associatedDataWriter.Write((byte)messageFrame.MessageFlags);
+                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
+                    associatedDataWriter.Write((byte)messageFrame.SecurityFlags);
+                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
+                    associatedData = memoryStream.ToArray();
                 }
             }
 
@@ -140,7 +139,7 @@ namespace Matter.Core
             {
                 byte[] decryptedPayload = new byte[encryptedPayload.Length];
                 var encryptor = new AesCcm(_decryptionKey);
-                encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, additionalData);
+                encryptor.Decrypt(nonce, encryptedPayload, tag, decryptedPayload, associatedData);
 
                 messageFrame.MessagePayload = MessagePayload.Deserialize(decryptedPayload);
 
