@@ -67,7 +67,7 @@ namespace Matter.Core
                 {
                     nonceWriter.Write((byte)messageFrame.SecurityFlags);
                     nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    nonceWriter.Write(BitConverter.GetBytes(SourceNodeId));
                     nonce = memoryStream.ToArray();
                 }
             }
@@ -81,7 +81,7 @@ namespace Matter.Core
                     associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
                     associatedDataWriter.Write((byte)messageFrame.SecurityFlags);
                     associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    associatedDataWriter.Write(BitConverter.GetBytes(SourceNodeId));
                     associatedData = memoryStream.ToArray();
                 }
             }
@@ -107,7 +107,7 @@ namespace Matter.Core
                 {
                     nonceWriter.Write((byte)messageFrame.SecurityFlags);
                     nonceWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    nonceWriter.Write(BitConverter.GetBytes(messageFrame.SourceNodeID));
+                    nonceWriter.Write(BitConverter.GetBytes(DestinationNodeId));
                     nonce = memoryStream.ToArray();
                 }
             }

@@ -28,13 +28,12 @@ namespace Matter.Core
             RootKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             RCACIdentifier = Math.Max(1, (ulong)Random.Shared.NextInt64());
             RootCertSubjectKeyIdentifier = GenerateUncompressedSHA1Hash(RootKeyPair);
-            RootCertificate = CreateRootCert(fabricId);
+            RootCertificate = GenerateRootCert(fabricId);
         }
 
-        public X509Certificate2 CreateRootCert(ulong fabricId)
+        public X509Certificate2 GenerateRootCert(ulong fabricId)
         {
             X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
-
             builder.Add("2.5.4.3", CommonName, UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.4", $"{RCACIdentifier:X16}", UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.5", $"{fabricId:X16}", UniversalTagNumber.UTF8String);
@@ -43,9 +42,9 @@ namespace Matter.Core
             req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, true, 0, true));
             req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
 
-            X509SubjectKeyIdentifierExtension subjectKeyIdentifier = new X509SubjectKeyIdentifierExtension(RootCertSubjectKeyIdentifier, false);
-            req.CertificateExtensions.Add(subjectKeyIdentifier);
-            req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifier));
+            X509SubjectKeyIdentifierExtension subjectKeyIdentifierExtension = new X509SubjectKeyIdentifierExtension(RootCertSubjectKeyIdentifier, false);
+            req.CertificateExtensions.Add(subjectKeyIdentifierExtension);
+            req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifierExtension));
 
             return req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(10));
         }
@@ -82,7 +81,6 @@ namespace Matter.Core
         public X509Certificate2 SignCertRequest(CertificateRequest nocsr, ulong nodeId, ulong fabricId)
         {
             X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
-
             builder.Add("1.3.6.1.4.1.37244.1.1", $"{nodeId:X16}", UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.5", $"{fabricId:X16}", UniversalTagNumber.UTF8String);
 
@@ -91,6 +89,29 @@ namespace Matter.Core
             signingCSR.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
             signingCSR.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2")], true));
             signingCSR.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(nocsr.PublicKey, false));
+            signingCSR.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(RootCertificate, true, false));
+
+            byte[] serial = new byte[19];
+            Random.Shared.NextBytes(serial);
+
+            return signingCSR.Create(RootCertificate, DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(1), serial);
+        }
+
+        public X509Certificate2 GenerateOperationalCert(ECDsa operationalKeyPair, ulong nodeId, ulong fabricId)
+        {
+            X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
+            builder.Add("1.3.6.1.4.1.37244.1.1", $"{nodeId:X16}", UniversalTagNumber.UTF8String);
+            builder.Add("1.3.6.1.4.1.37244.1.5", $"{fabricId:X16}", UniversalTagNumber.UTF8String);
+
+            CertificateRequest signingCSR = new CertificateRequest(builder.Build(), operationalKeyPair, HashAlgorithmName.SHA256);
+            signingCSR.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            signingCSR.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+            signingCSR.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2")], true));
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+            signingCSR.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(SHA1.HashData(GenerateUncompressed65ByteKey(operationalKeyPair)), false));
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
             signingCSR.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(RootCertificate, true, false));
 
             byte[] serial = new byte[19];
@@ -416,7 +437,7 @@ namespace Matter.Core
                             throw new ArgumentException("IPK must be 16 bytes.");
                         }
 
-                        byte[] s1Hash = Sha256(sigma1Payload);
+                        byte[] s1Hash = SHA256.HashData(sigma1Payload);
                         byte[] salt = new byte[ipk16.Length + responderRandom.Length + responderEphPub65.Length + s1Hash.Length];
 
                         int i = 0;
@@ -467,15 +488,6 @@ namespace Matter.Core
             b.CopyTo(r.AsSpan(a.Length));
 
             return r;
-        }
-
-        private byte[] Sha256(ReadOnlySpan<byte> a)
-        {
-            using var sha = SHA256.Create();
-
-            sha.ComputeHash(a.ToArray());
-
-            return sha.Hash;
         }
 
         private byte[] Sha256Concat(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)

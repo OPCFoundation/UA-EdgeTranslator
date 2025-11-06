@@ -42,7 +42,7 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
-            Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+            //Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
@@ -148,14 +148,8 @@ namespace Matter.Core
                 message.ExchangeFlags |= ExchangeFlags.Reliability;
             }
 
-            MessageFlags messageFlags = MessageFlags.SourceNodeID;
-            if (_session.DestinationNodeId != 0)
-            {
-                messageFlags |= MessageFlags.DestinationNodeID;
-            }
-
             MessageFrame frame = new(
-                messageFlags,
+                MessageFlags.SourceNodeID,
                 _session.PeerSessionId,
                 SecurityFlags.UnicastSession,
                 _session.MessageCounter++,
@@ -166,7 +160,7 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
-            Console.WriteLine("Send: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+            //Console.WriteLine("Send: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
@@ -221,6 +215,8 @@ namespace Matter.Core
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.ProtocolOpCode == 0x10)
                     {
+                        //Console.WriteLine("RecvAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+
                         // check if the Ack needs an ack back
                         if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
                         {
@@ -230,7 +226,7 @@ namespace Matter.Core
                         continue;
                     }
 
-                    Console.WriteLine("Recv: opcode {0:X8} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                    //Console.WriteLine("Recv: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
                     // This message needs processing, so put it onto the queue.
                     await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);

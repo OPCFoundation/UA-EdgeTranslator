@@ -37,7 +37,7 @@
                 return null;
             }
 
-            Console.WriteLine("Establishing secure session to device {0} at IP address {1}:{2}", _node.NodeId.ToString("X16"), _ipAddress, _port);
+            Console.WriteLine("Establishing secure session to device {0:X16} at IP address {1}:{2}", _node.NodeId, _ipAddress, _port);
             SecureSession secureSession = new SecureSession(connection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
 
             MessageExchange secureExchange = secureSession.CreateExchange(_fabric.RootNodeId, _node.NodeId);
@@ -52,7 +52,7 @@
             secureExchange.AcknowledgeMessageAsync(completeCommissioningResult.MessageCounter).GetAwaiter().GetResult();
             secureExchange.Close();
 
-            Console.WriteLine("Commissioning of Matter Device {0} is complete.", _node.NodeId);
+            Console.WriteLine("Commissioning of Matter Device {0:X16} is complete.", _node.NodeId);
 
             return secureSession;
         }
@@ -149,7 +149,7 @@
                 }
 
                 // Build Initiator (i.e. us!) To Be Signed Data = { SenderNOC, SenderICAC?, SenderPubKey, ResponderPubKey }
-                X509Certificate2 operationalCertificate = _fabric.CA.SignCertRequest(new CertificateRequest($"CN={_fabric.RootNodeId:X16}", operationalKeyPair, HashAlgorithmName.SHA256), _fabric.RootNodeId, _fabric.FabricId);
+                X509Certificate2 operationalCertificate = _fabric.CA.GenerateOperationalCert(operationalKeyPair, _fabric.RootNodeId, _fabric.FabricId);
                 var sigma3tbs = new MatterTLV();
                 sigma3tbs.AddStructure();
                 sigma3tbs.AddOctetString(1, _fabric.CA.GenerateCertMessage(operationalCertificate));

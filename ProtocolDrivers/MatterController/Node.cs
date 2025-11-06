@@ -37,7 +37,7 @@ namespace Matter.Core
 
                 IsConnected = true;
 
-                Console.WriteLine($"Established secure session to node {NodeId:X16}");
+                Console.WriteLine($"Established secure session to node {NodeId:X16}.");
             }
             catch (Exception ex)
             {
