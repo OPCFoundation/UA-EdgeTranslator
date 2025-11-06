@@ -395,13 +395,30 @@ namespace Matter.Core
         public bool IsNextTag(int tagNumber)
         {
             // Skip the Control octet by adding 1.
-            //
             return _values[_pointer + 1] == (byte)tagNumber; // Check if the next tag matches the expected tag number
         }
 
         public bool IsEndContainerNext()
         {
             return _values[_pointer] == 0x18; // Check if the next tag is an End Container
+        }
+
+        public byte PeekElementType()
+        {
+            // Low 5 bits of the control octet encode the element type.
+            return (byte)(_values[_pointer] & 0x1F);
+        }
+
+        public int PeekTagNumber()
+        {
+            // High 3 bits encode tag control. 0x01 => context-specific tag follows.
+            int tagControl = _values[_pointer] >> 5;
+            if (tagControl == 0x01)
+            {
+                return _values[_pointer + 1];
+            }
+
+            return -1; // anonymous / implicit
         }
 
         public void OpenStructure()
@@ -652,7 +669,7 @@ namespace Matter.Core
                 }
             }
 
-            long value = 0;
+            long value;
 
             switch (elementType)
             {
@@ -686,16 +703,23 @@ namespace Matter.Core
                 }
             }
 
-            ulong value = 0;
-
+            ulong value;
             switch (elementType)
             {
-                case 0x04: // 1 Byte Unsigned Integer
+                case 0x04: // 1 byte
                     value = Convert.ToUInt64(_values[_pointer++]);
                     break;
-                case 0x05: // 2 Byte Unsigned Integer
-                    value = (ulong)BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                case 0x05: // 2 bytes
+                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
                     _pointer += 2;
+                    break;
+                case 0x06: // 4 bytes
+                    value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+                    _pointer += 4;
+                    break;
+                case 0x07: // 8 bytes
+                    value = BitConverter.ToUInt64(_values.ToArray(), _pointer);
+                    _pointer += 8;
                     break;
                 default:
                     throw new Exception($"Unexpected element type {elementType}");
@@ -740,57 +764,90 @@ namespace Matter.Core
 
         public ushort GetUnsignedInt16(int tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x05)
-            {
-                throw new Exception("Expected Unsigned Integer, 2-octet value");
-            }
+            int elementType = (0x1F & _values[_pointer++]);
 
             if (_values[_pointer++] != (byte)tag)
             {
                 throw new Exception("Expected tag number not found");
             }
 
-            var value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
-
-            _pointer += 2;
+            ushort value;
+            switch (elementType)
+            {
+                case 0x04: // 1 byte
+                    value = _values[_pointer++];
+                    break;
+                case 0x05: // 2 bytes
+                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                    _pointer += 2;
+                    break;
+                default:
+                    throw new Exception("Expected Unsigned Integer (1, 2 octets)");
+            }
 
             return value;
         }
 
         public uint GetUnsignedInt32(int tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x06)
-            {
-                throw new Exception("Expected Unsigned Integer, 4-octet value");
-            }
+            int elementType = (0x1F & _values[_pointer++]);
 
             if (_values[_pointer++] != (byte)tag)
             {
                 throw new Exception("Expected tag number not found");
             }
 
-            var value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
-
-            _pointer += 4;
+            uint value;
+            switch (elementType)
+            {
+                case 0x04: // 1 byte
+                    value = _values[_pointer++];
+                    break;
+                case 0x05: // 2 bytes
+                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                    _pointer += 2;
+                    break;
+                case 0x06: // 4 bytes
+                    value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+                    _pointer += 4;
+                    break;
+                default:
+                    throw new Exception("Expected Unsigned Integer (1, 2, 4 octets)");
+            }
 
             return value;
         }
 
         public ulong GetUnsignedInt64(int tag)
         {
-            if ((0x1F & _values[_pointer++]) != 0x07)
-            {
-                throw new Exception("Expected Unsigned Integer, 8-octet value");
-            }
+            int elementType = (0x1F & _values[_pointer++]);
 
             if (_values[_pointer++] != (byte)tag)
             {
                 throw new Exception("Expected tag number not found");
             }
 
-            var value = BitConverter.ToUInt64(_values.ToArray(), _pointer);
-
-            _pointer += 8;
+            ulong value;
+            switch (elementType)
+            {
+                case 0x04: // 1 byte
+                    value = _values[_pointer++];
+                    break;
+                case 0x05: // 2 bytes
+                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
+                    _pointer += 2;
+                    break;
+                case 0x06: // 4 bytes
+                    value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
+                    _pointer += 4;
+                    break;
+                case 0x07: // 8 bytes
+                    value = BitConverter.ToUInt64(_values.ToArray(), _pointer);
+                    _pointer += 8;
+                    break;
+                default:
+                    throw new Exception("Expected Unsigned Integer (1, 2, 4, 8 octets)");
+            }
 
             return value;
         }

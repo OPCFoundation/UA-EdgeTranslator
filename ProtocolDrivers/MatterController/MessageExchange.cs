@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -42,7 +43,7 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
-            //Console.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+            Debug.WriteLine("SendAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
@@ -160,7 +161,7 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
-            //Console.WriteLine("Send: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+            Debug.WriteLine("Send: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
@@ -173,7 +174,7 @@ namespace Matter.Core
             }
             catch (TaskCanceledException)
             {
-                Console.WriteLine("MessageExchange has been closed.");
+                Debug.WriteLine("MessageExchange has been closed.");
                 return null;
             }
         }
@@ -196,14 +197,14 @@ namespace Matter.Core
 
                     if (frame.SessionID != _session.SessionId)
                     {
-                        Console.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SourceNodeID, _session.SessionId);
+                        Debug.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SourceNodeID, _session.SessionId);
                         continue;
                     }
 
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= frame.MessageCounter)
                     {
-                        Console.WriteLine("Message {0} is a duplicate. Dropping...", frame.MessageCounter);
+                        Debug.WriteLine("Message {0} is a duplicate. Dropping...", frame.MessageCounter);
                         continue;
                     }
 
@@ -215,7 +216,7 @@ namespace Matter.Core
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.ProtocolOpCode == 0x10)
                     {
-                        //Console.WriteLine("RecvAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                        Debug.WriteLine("RecvAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
                         // check if the Ack needs an ack back
                         if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
@@ -226,7 +227,7 @@ namespace Matter.Core
                         continue;
                     }
 
-                    //Console.WriteLine("Recv: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                    Debug.WriteLine("Recv: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
                     // This message needs processing, so put it onto the queue.
                     await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);

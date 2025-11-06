@@ -74,16 +74,60 @@ namespace Matter.Core
                 return;
             }
 
-            await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
-
             Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
-
             MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
             deviceTypeList.OpenStructure();
+            ParseDescriptions(deviceTypeList);
 
+            // Request the ServerList Attribute from the Description Cluster.
+            readCluster = new MatterTLV();
+            readCluster.AddStructure();
+            readCluster.AddArray(tagNumber: 0);
+            readCluster.AddList();
+            readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
+            readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - ServerList
+            readCluster.EndContainer();
+            readCluster.EndContainer();
+            readCluster.AddBool(tagNumber: 3, false);
+            readCluster.AddUInt8(255, 12); // interactionModelRevision
+            readCluster.EndContainer();
+            MessageFrame serverListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, 2).GetAwaiter().GetResult();
+            if (MessageFrame.IsStatusReport(serverListResponse))
+            {
+                Console.WriteLine("Received error status report in response to ServerList message, abandoning FetchDescriptions!");
+                return;
+            }
+
+            Console.WriteLine("Received ServerList response from node. Supported Clusters:");
+            MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
+            serverList.OpenStructure();
+            ParseDescriptions(serverList);
+
+            await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
+            secureExchange.Close();
+        }
+
+        private void ParseDescriptions(MatterTLV deviceTypeList)
+        {
             if (deviceTypeList.IsNextTag(0))
             {
-                uint SubscriptionId = deviceTypeList.GetUnsignedInt32(0);
+                byte elementType = deviceTypeList.PeekElementType();
+                switch (elementType)
+                {
+                    case 0x08: // Boolean false
+                    case 0x09: // Boolean true
+                        bool flag = deviceTypeList.GetBoolean(0);
+                        // No active subscription; flag can be ignored or logged.
+                        break;
+                    case 0x04: // Unsigned int 1 byte
+                    case 0x05: // Unsigned int 2 bytes
+                    case 0x06: // Unsigned int 4 bytes
+                    case 0x07: // Unsigned int 8 bytes
+                        ulong subscriptionId64 = deviceTypeList.GetUnsignedInt64(0);
+                        break;
+                    default:
+                        throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in DeviceTypeList response.");
+                }
             }
 
             if (deviceTypeList.IsNextTag(1))
@@ -102,43 +146,7 @@ namespace Matter.Core
                         {
                             deviceTypeList.OpenList(0); // attribute path list
 
-                            while (!deviceTypeList.IsEndContainerNext())
-                            {
-                                if (deviceTypeList.IsNextTag(0))
-                                {
-                                    bool EnableTagCompression = deviceTypeList.GetBoolean(0);
-                                }
-
-                                if (deviceTypeList.IsNextTag(1))
-                                {
-                                    ulong NodeId = deviceTypeList.GetUnsignedInt(1);
-                                }
-
-                                if (deviceTypeList.IsNextTag(2))
-                                {
-                                    uint EndpointId = (uint)deviceTypeList.GetUnsignedInt(2);
-                                }
-
-                                if (deviceTypeList.IsNextTag(3))
-                                {
-                                    uint ClusterId = (uint)deviceTypeList.GetUnsignedInt(3);
-                                }
-
-                                if (deviceTypeList.IsNextTag(4))
-                                {
-                                    uint AttributeId = (uint)deviceTypeList.GetUnsignedInt(4);
-                                }
-
-                                if (deviceTypeList.IsNextTag(5))
-                                {
-                                    ushort ListIndex = (ushort)deviceTypeList.GetUnsignedInt(5);
-                                }
-
-                                if (deviceTypeList.IsNextTag(6))
-                                {
-                                    uint WildcardPathFlags = (uint)deviceTypeList.GetUnsignedInt(6);
-                                }
-                            }
+                            PrintEndpointClusterAttributes(deviceTypeList);
 
                             deviceTypeList.CloseContainer();
                         }
@@ -147,8 +155,8 @@ namespace Matter.Core
                         {
                             deviceTypeList.OpenStructure(1); // attribute status
 
-                            byte Status = deviceTypeList.GetUnsignedInt8(0);
-                            byte ClusterStatus = deviceTypeList.GetUnsignedInt8(1);
+                            byte status = deviceTypeList.GetUnsignedInt8(0);
+                            byte clusterStatus = deviceTypeList.GetUnsignedInt8(1);
 
                             deviceTypeList.CloseContainer();
                         }
@@ -158,54 +166,15 @@ namespace Matter.Core
                     {
                         deviceTypeList.OpenStructure(1); // attribute data
 
-                        uint DataVersion = deviceTypeList.GetUnsignedInt32(0);
+                        uint dataVersion = deviceTypeList.GetUnsignedInt32(0);
 
                         deviceTypeList.OpenList(1); // attribute data list
 
-                        while (!deviceTypeList.IsEndContainerNext())
-                        {
-                            if (deviceTypeList.IsNextTag(0))
-                            {
-                                bool EnableTagCompression = deviceTypeList.GetBoolean(0);
-                            }
-
-                            if (deviceTypeList.IsNextTag(1))
-                            {
-                                ulong NodeId = deviceTypeList.GetUnsignedInt(1);
-                            }
-
-                            if (deviceTypeList.IsNextTag(2))
-                            {
-                                uint EndpointId = (uint)deviceTypeList.GetUnsignedInt(2);
-                                Console.WriteLine($"- Endpoint ID: 0x{EndpointId:X4}");
-                            }
-
-                            if (deviceTypeList.IsNextTag(3))
-                            {
-                                uint ClusterId = (uint)deviceTypeList.GetUnsignedInt(3);
-                                Console.WriteLine($" - Cluster ID: 0x{ClusterId:X4}");
-                            }
-
-                            if (deviceTypeList.IsNextTag(4))
-                            {
-                                uint AttributeId = (uint)deviceTypeList.GetUnsignedInt(4);
-                                Console.WriteLine($" - Attribute ID: 0x{AttributeId:X4}");
-                            }
-
-                            if (deviceTypeList.IsNextTag(5))
-                            {
-                                ushort ListIndex = (ushort)deviceTypeList.GetUnsignedInt(5);
-                            }
-
-                            if (deviceTypeList.IsNextTag(6))
-                            {
-                                uint WildcardPathFlags = (uint)deviceTypeList.GetUnsignedInt(6);
-                            }
-                        }
+                        PrintEndpointClusterAttributes(deviceTypeList);
 
                         deviceTypeList.CloseContainer();
 
-                        object Data = deviceTypeList.GetData(2);
+                        object data = deviceTypeList.GetData(2);
 
                         deviceTypeList.CloseContainer();
                     }
@@ -213,8 +182,50 @@ namespace Matter.Core
                     deviceTypeList.CloseContainer();
                 }
             }
+        }
 
-            secureExchange.Close();
+        private void PrintEndpointClusterAttributes(MatterTLV deviceTypeList)
+        {
+            while (!deviceTypeList.IsEndContainerNext())
+            {
+                if (deviceTypeList.IsNextTag(0))
+                {
+                    bool enableTagCompression = deviceTypeList.GetBoolean(0);
+                }
+
+                if (deviceTypeList.IsNextTag(1))
+                {
+                    ulong nodeId = deviceTypeList.GetUnsignedInt(1);
+                }
+
+                if (deviceTypeList.IsNextTag(2))
+                {
+                    uint endpointId = (uint)deviceTypeList.GetUnsignedInt(2);
+                    Console.WriteLine($"- Endpoint ID: 0x{endpointId:X4}");
+                }
+
+                if (deviceTypeList.IsNextTag(3))
+                {
+                    uint clusterId = (uint)deviceTypeList.GetUnsignedInt(3);
+                    Console.WriteLine($" - Cluster ID: 0x{clusterId:X4}");
+                }
+
+                if (deviceTypeList.IsNextTag(4))
+                {
+                    uint attributeId = (uint)deviceTypeList.GetUnsignedInt(4);
+                    Console.WriteLine($" - Attribute ID: 0x{attributeId:X4}");
+                }
+
+                if (deviceTypeList.IsNextTag(5))
+                {
+                    ushort listIndex = (ushort)deviceTypeList.GetUnsignedInt(5);
+                }
+
+                if (deviceTypeList.IsNextTag(6))
+                {
+                    uint wildcardPathFlags = (uint)deviceTypeList.GetUnsignedInt(6);
+                }
+            }
         }
     }
 }
