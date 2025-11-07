@@ -132,14 +132,12 @@
 
         public static bool IsStandaloneAck(MessageFrame messageFrame)
         {
-            return messageFrame.MessagePayload.ProtocolId == 0x00 &&
-                   messageFrame.MessagePayload.ProtocolOpCode == 0x10;
+            return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.Acknowledgement);
         }
 
         public static bool IsStatusReport(MessageFrame messageFrame)
         {
-            return messageFrame.MessagePayload.ProtocolId == 0x00 &&
-                   messageFrame.MessagePayload.ProtocolOpCode == 0x40;
+            return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusReport);
         }
     }
 }

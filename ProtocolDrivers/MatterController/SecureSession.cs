@@ -72,20 +72,7 @@ namespace Matter.Core
                 }
             }
 
-            byte[] associatedData;
-            using (var memoryStream = new MemoryStream())
-            {
-                using (var associatedDataWriter = new BinaryWriter(memoryStream))
-                {
-                    associatedDataWriter.Write((byte)messageFrame.MessageFlags);
-                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-                    associatedDataWriter.Write((byte)messageFrame.SecurityFlags);
-                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    associatedDataWriter.Write(BitConverter.GetBytes(SourceNodeId));
-                    associatedData = memoryStream.ToArray();
-                }
-            }
-
+            byte[] associatedData = messageFrameUnencrypted.AsSpan(0, messageFrame.HeaderLength).ToArray();
             byte[] unencryptedPayload = messageFrame.MessagePayload.Serialize();
             byte[] encryptedPayload = new byte[unencryptedPayload.Length];
             byte[] tag = new byte[16];
@@ -112,19 +99,6 @@ namespace Matter.Core
                 }
             }
 
-            byte[] associatedData;
-            using (var memoryStream = new MemoryStream())
-            {
-                using (var associatedDataWriter = new BinaryWriter(memoryStream))
-                {
-                    associatedDataWriter.Write((byte)messageFrame.MessageFlags);
-                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.SessionID));
-                    associatedDataWriter.Write((byte)messageFrame.SecurityFlags);
-                    associatedDataWriter.Write(BitConverter.GetBytes(messageFrame.MessageCounter));
-                    associatedData = memoryStream.ToArray();
-                }
-            }
-
             // check if we have something to decode
             if (messageFrameBytes.Length <= messageFrame.HeaderLength + 16)
             {
@@ -132,6 +106,7 @@ namespace Matter.Core
                 return MessageFrame.Deserialize(messageFrameBytes, true);
             }
 
+            byte[] associatedData = messageFrameBytes.AsSpan(0, messageFrame.HeaderLength).ToArray();
             var encryptedPayload = messageFrameBytes.AsSpan().Slice(messageFrame.HeaderLength, messageFrameBytes.Length - messageFrame.HeaderLength - 16);
             var tag = messageFrameBytes.AsSpan().Slice(messageFrame.HeaderLength + encryptedPayload.Length, 16);
 

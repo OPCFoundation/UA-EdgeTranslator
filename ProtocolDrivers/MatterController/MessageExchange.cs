@@ -33,13 +33,18 @@ namespace Matter.Core
             _readingThread.Wait();
         }
 
-        public async Task AcknowledgeMessageAsync(uint messageCounter)
+        public async Task AcknowledgeMessageAsync(uint messageCounter, ushort exchangeId = 0)
         {
-            MessagePayload messagePayload = new(ExchangeFlags.Initiator | ExchangeFlags.Acknowledgement, 0x10, _exchangeId, 0, messageCounter, 0, null);
+            if (exchangeId == 0)
+            {
+                exchangeId = _exchangeId;
+            }
+
+            MessagePayload messagePayload = new(ExchangeFlags.Initiator | ExchangeFlags.Acknowledgement, ProtocolOpCode.Acknowledgement, exchangeId, 0, messageCounter, 0, null);
 
             _acknowledgedMessageCounter = messageCounter;
 
-            MessageFrame frame = new(MessageFlags.SourceNodeID, _session.PeerSessionId, SecurityFlags.UnicastSession, _session.MessageCounter, 0, 0, 0, messagePayload);
+            MessageFrame frame = new(MessageFlags.Version1, _session.PeerSessionId, SecurityFlags.UnicastSession, _session.MessageCounter++, 0, 0, 0, messagePayload);
 
             var bytes = _session.Encode(frame);
 
@@ -48,7 +53,7 @@ namespace Matter.Core
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
-        public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, byte opCode)
+        public async Task<MessageFrame> SendAndReceiveMessageAsync(MatterTLV payload, byte protocolId, ProtocolOpCode opCode)
         {
             MessagePayload messagePayload = new(ExchangeFlags.Initiator, opCode, _exchangeId, protocolId, 0, 0, payload);
 
@@ -57,7 +62,7 @@ namespace Matter.Core
             return await WaitForNextMessageAsync().ConfigureAwait(false);
         }
 
-        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, byte opCode, object[] parameters = null)
+        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, ProtocolOpCode opCode, object[] parameters = null)
         {
             var payload = new MatterTLV();
             payload.AddStructure();
@@ -161,7 +166,7 @@ namespace Matter.Core
 
             var bytes = _session.Encode(frame);
 
-            Debug.WriteLine("Send: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+            Debug.WriteLine("Send: opcode {0} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.OpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
@@ -201,33 +206,41 @@ namespace Matter.Core
                         continue;
                     }
 
+                    // Decode the full message now.
+                    frame = _session.Decode(bytes);
+
                     // Check if we have this message already.
                     if (_receivedMessageCounter >= frame.MessageCounter)
                     {
                         Debug.WriteLine("Message {0} is a duplicate. Dropping...", frame.MessageCounter);
+
+                        // check if we should better ack it
+                        if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
+                        {
+                            Debug.WriteLine("Acking duplicate message {0}.", frame.MessageCounter);
+                            AcknowledgeMessageAsync(frame.MessageCounter, frame.MessagePayload.ExchangeId).GetAwaiter().GetResult();
+                        }
+
                         continue;
                     }
 
                     _receivedMessageCounter = frame.MessageCounter;
 
-                    // Decode the full message now.
-                    frame = _session.Decode(bytes);
-
                     // If this is a standalone acknowledgement, don't pass this up a level.
-                    if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.ProtocolOpCode == 0x10)
+                    if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.OpCode == ProtocolOpCode.Acknowledgement)
                     {
                         Debug.WriteLine("RecvAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
                         // check if the Ack needs an ack back
                         if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
                         {
-                            AcknowledgeMessageAsync(frame.MessageCounter).GetAwaiter().GetResult();
+                            AcknowledgeMessageAsync(frame.MessageCounter, frame.MessagePayload.ExchangeId).GetAwaiter().GetResult();
                         }
 
                         continue;
                     }
 
-                    Debug.WriteLine("Recv: opcode 0x{0:X2} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.ProtocolOpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                    Debug.WriteLine("Recv: opcode {0} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.OpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
 
                     // This message needs processing, so put it onto the queue.
                     await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);

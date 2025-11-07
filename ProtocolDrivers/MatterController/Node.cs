@@ -67,7 +67,7 @@ namespace Matter.Core
             readCluster.AddBool(tagNumber: 3, false);
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
-            MessageFrame deviceTypeListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, 2).GetAwaiter().GetResult();
+            MessageFrame deviceTypeListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
             if (MessageFrame.IsStatusReport(deviceTypeListResponse))
             {
                 Console.WriteLine("Received error status report in response to DeviceTypeList message, abandoning FetchDescriptions!");
@@ -77,7 +77,9 @@ namespace Matter.Core
             Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
             MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
             deviceTypeList.OpenStructure();
-            ParseDescriptions(deviceTypeList);
+            //ParseDescriptions(deviceTypeList);
+
+            await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
 
             // Request the ServerList Attribute from the Description Cluster.
             readCluster = new MatterTLV();
@@ -91,7 +93,7 @@ namespace Matter.Core
             readCluster.AddBool(tagNumber: 3, false);
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
-            MessageFrame serverListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, 2).GetAwaiter().GetResult();
+            MessageFrame serverListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
             if (MessageFrame.IsStatusReport(serverListResponse))
             {
                 Console.WriteLine("Received error status report in response to ServerList message, abandoning FetchDescriptions!");
@@ -101,7 +103,7 @@ namespace Matter.Core
             Console.WriteLine("Received ServerList response from node. Supported Clusters:");
             MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
             serverList.OpenStructure();
-            ParseDescriptions(serverList);
+            //ParseDescriptions(serverList);
 
             await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
             secureExchange.Close();
@@ -117,13 +119,13 @@ namespace Matter.Core
                     case 0x08: // Boolean false
                     case 0x09: // Boolean true
                         bool flag = deviceTypeList.GetBoolean(0);
-                        // No active subscription; flag can be ignored or logged.
+                        // No active subscription; flag can be ignored.
                         break;
                     case 0x04: // Unsigned int 1 byte
                     case 0x05: // Unsigned int 2 bytes
                     case 0x06: // Unsigned int 4 bytes
                     case 0x07: // Unsigned int 8 bytes
-                        ulong subscriptionId64 = deviceTypeList.GetUnsignedInt64(0);
+                        ulong subscriptionId = deviceTypeList.GetUnsignedInt(0);
                         break;
                     default:
                         throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in DeviceTypeList response.");
@@ -174,7 +176,7 @@ namespace Matter.Core
 
                         deviceTypeList.CloseContainer();
 
-                        object data = deviceTypeList.GetData(2);
+                        object data = deviceTypeList.GetOctetString(2);
 
                         deviceTypeList.CloseContainer();
                     }
@@ -190,7 +192,23 @@ namespace Matter.Core
             {
                 if (deviceTypeList.IsNextTag(0))
                 {
-                    bool enableTagCompression = deviceTypeList.GetBoolean(0);
+                    byte elementType = deviceTypeList.PeekElementType();
+                    switch (elementType)
+                    {
+                        case 0x08: // Boolean false
+                        case 0x09: // Boolean true
+                            bool enableTagCompression = deviceTypeList.GetBoolean(0);
+                            // No tag compression; flag can be ignored.
+                            break;
+                        case 0x04: // Unsigned int 1 byte
+                        case 0x05: // Unsigned int 2 bytes
+                        case 0x06: // Unsigned int 4 bytes
+                        case 0x07: // Unsigned int 8 bytes
+                            ulong something = deviceTypeList.GetUnsignedInt(0);
+                            break;
+                        default:
+                            throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in EndpointClusterAttributes response.");
+                    }
                 }
 
                 if (deviceTypeList.IsNextTag(1))

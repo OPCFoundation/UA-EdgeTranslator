@@ -7,7 +7,7 @@ namespace Matter.Core
     {
         public ExchangeFlags ExchangeFlags { get; set; }
 
-        public byte ProtocolOpCode { get; set; }
+        public ProtocolOpCode OpCode { get; set; }
 
         public ushort ExchangeId { get; set; }
 
@@ -19,13 +19,13 @@ namespace Matter.Core
 
         public int HeaderLength { get; set; }
 
-        public MessagePayload(ExchangeFlags exchangeFlags, byte opCode, ushort exchangeId, ushort protocolId, uint ackCounter, ushort securedExtensionsLength, MatterTLV payload)
+        public MessagePayload(ExchangeFlags exchangeFlags, ProtocolOpCode opCode, ushort exchangeId, ushort protocolId, uint ackCounter, ushort securedExtensionsLength, MatterTLV payload)
         {
             ExchangeFlags = exchangeFlags;
-            ProtocolOpCode = opCode;
+            OpCode = opCode;
             ExchangeId = exchangeId;
 
-            HeaderLength = 1 + 1 + 2; // ExchangeFlags + ProtocolOpCode + ExchangeId
+            HeaderLength = 1 + 1 + 2; // ExchangeFlags + OpCode + ExchangeId
 
             if ((ExchangeFlags & ExchangeFlags.VendorPresent) != 0)
             {
@@ -57,7 +57,7 @@ namespace Matter.Core
             var exchangeFlags = (ExchangeFlags)messagePayload[index];
             index++;
 
-            var protocolOpCode = messagePayload[index];
+            ProtocolOpCode opCode = (ProtocolOpCode)messagePayload[index];
             index++;
 
             var exchangeId = BitConverter.ToUInt16(messagePayload, index);
@@ -88,7 +88,7 @@ namespace Matter.Core
 
             var applicationPayload = new MatterTLV(messagePayload.AsSpan().Slice(index).ToArray());
 
-            return new MessagePayload(exchangeFlags, protocolOpCode, exchangeId, protocolId, acknowledgedMessageCounter, securedExtensionsLength, applicationPayload);
+            return new MessagePayload(exchangeFlags, opCode, exchangeId, protocolId, acknowledgedMessageCounter, securedExtensionsLength, applicationPayload);
         }
 
         public byte[] Serialize()
@@ -96,7 +96,7 @@ namespace Matter.Core
             using MemoryStream writer = new();
 
             writer.WriteByte((byte)ExchangeFlags);
-            writer.WriteByte(ProtocolOpCode);
+            writer.WriteByte((byte)OpCode);
             writer.Write(BitConverter.GetBytes(ExchangeId));
             writer.Write(BitConverter.GetBytes(ProtocolId));
 

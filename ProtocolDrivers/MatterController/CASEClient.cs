@@ -42,7 +42,7 @@
 
             MessageExchange secureExchange = secureSession.CreateExchange(_fabric.RootNodeId, _node.NodeId);
 
-            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, 8).GetAwaiter().GetResult(); // CompleteCommissioning
+            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, ProtocolOpCode.InvokeRequest).GetAwaiter().GetResult(); // CompleteCommissioning
             if (MessageFrame.IsStatusReport(completeCommissioningResult))
             {
                 Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
@@ -84,7 +84,7 @@
                 sigma1.AddOctetString(3, destinationId);
                 sigma1.AddOctetString(4, opsPubKey65);
                 sigma1.EndContainer();
-                MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, 0x30).GetAwaiter().GetResult();
+                MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, ProtocolOpCode.CASESigma1).GetAwaiter().GetResult();
                 if (MessageFrame.IsStatusReport(sigma2MessageFrame))
                 {
                     Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning operational commissioning!");
@@ -170,7 +170,7 @@
                 sigma3.AddStructure();
                 sigma3.AddOctetString(1, _fabric.CA.Concat(encryptedSigma3, mic));
                 sigma3.EndContainer();
-                var sigma3Resp = unsecureExchange.SendAndReceiveMessageAsync(sigma3, 0, 0x32).GetAwaiter().GetResult();
+                var sigma3Resp = unsecureExchange.SendAndReceiveMessageAsync(sigma3, 0, ProtocolOpCode.CASESigma3).GetAwaiter().GetResult();
                 if (!MessageFrame.IsStandaloneAck(sigma3Resp) && !MessageFrame.IsStatusReport(sigma3Resp))
                 {
                     Console.WriteLine("Expected Standalone ACK or Status Report to Sigma3, abandoning operational commissioning!");
