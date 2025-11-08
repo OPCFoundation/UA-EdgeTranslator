@@ -8,8 +8,9 @@
       "publishAllPorts": true,
       "environmentVariables": {
         "OPCUA_USERNAME": "myUsername",
-        "OPCUA_PASSWORD": "myPassword"
-      }
+        "OPCUA_PASSWORD": "myPassword",
+        "IGNORE_PROVISIONING_MODE": "1"
+     }
     }
   }
 }
