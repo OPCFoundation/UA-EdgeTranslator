@@ -11,7 +11,7 @@ using System.Text;
 
 namespace Matter.Core
 {
-    public class Cryptography
+    public class CryptoPAKE
     {
         private static Org.BouncyCastle.Math.EC.ECPoint M;
         private static Org.BouncyCastle.Math.EC.ECPoint N;
