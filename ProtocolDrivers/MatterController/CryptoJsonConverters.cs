@@ -36,8 +36,8 @@ namespace Matter.Core
         public override void WriteJson(JsonWriter writer, ECDsa value, JsonSerializer serializer)
         {
             var parameters = value.ExportParameters(true);
-            var keyObj = new
-            {
+
+            var keyObj = new {
                 Curve = parameters.Curve.Oid.Value,
                 X = Convert.ToBase64String(parameters.Q.X),
                 Y = Convert.ToBase64String(parameters.Q.Y),
@@ -50,11 +50,10 @@ namespace Matter.Core
         public override ECDsa ReadJson(JsonReader reader, Type objectType, ECDsa existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
             var keyObj = serializer.Deserialize<KeyObj>(reader);
-            var parameters = new ECParameters
-            {
+            
+            var parameters = new ECParameters {
                 Curve = ECCurve.CreateFromOid(new Oid(keyObj.Curve)),
-                Q = new ECPoint
-                {
+                Q = new ECPoint {
                     X = Convert.FromBase64String(keyObj.X),
                     Y = Convert.FromBase64String(keyObj.Y)
                 },
