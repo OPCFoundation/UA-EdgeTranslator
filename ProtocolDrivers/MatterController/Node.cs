@@ -77,7 +77,7 @@ namespace Matter.Core
             Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
             MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
             deviceTypeList.OpenStructure();
-            //ParseDescriptions(deviceTypeList);
+            ParseDescriptions(deviceTypeList);
 
             await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
 
@@ -103,7 +103,7 @@ namespace Matter.Core
             Console.WriteLine("Received ServerList response from node. Supported Clusters:");
             MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
             serverList.OpenStructure();
-            //ParseDescriptions(serverList);
+            ParseDescriptions(serverList);
 
             await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
             secureExchange.Close();

@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
-using System.Linq;
+using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -30,7 +31,15 @@ namespace Matter.Core
 
         public ulong RootNodeId { get; private set; }
 
-        public Fabric()
+        private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
+        {
+            Converters = {
+                new X509Certificate2JsonConverter(),
+                new ECDsaJsonConverter()
+            }
+        };
+
+        private Fabric()
         {
             IPK = RandomNumberGenerator.GetBytes(16);
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
@@ -38,6 +47,39 @@ namespace Matter.Core
             CompressedFabricId = CA.GenerateCompressedFabricId(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
             OperationalIPK = CA.KeyDerivationFunctionHMACSHA256(IPK, CompressedFabricId, Encoding.ASCII.GetBytes("GroupKey v1.0"), 16);
+        }
+
+        public static Fabric Load()
+        {
+            Fabric fabric = null;
+            try
+            {
+                fabric = JsonConvert.DeserializeObject<Fabric>(
+                    File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric/settings.json")),
+                    JsonSettings
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading fabric settings: {ex.Message}");
+            }
+
+            if (fabric == null)
+            {
+                Console.WriteLine("No existing fabric found, creating a new one.");
+                fabric = new Fabric();
+                fabric.Save();
+            }
+
+            return fabric;
+        }
+
+        public void Save()
+        {
+            File.WriteAllTextAsync(
+                Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric/settings.json"),
+                JsonConvert.SerializeObject(this, JsonSettings)
+            );
         }
 
         public void AddOrUpdateNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey, string address, ushort port)

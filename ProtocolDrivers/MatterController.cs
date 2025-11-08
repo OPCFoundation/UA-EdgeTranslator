@@ -13,7 +13,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     public class MatterController : IAsset
     {
-        private readonly FabricDiskStorage _storageProvider = new();
         private readonly MulticastService _mDNSService = new();
         public readonly Fabric _fabric;
         private readonly ServiceDiscovery _serviceDiscovery;
@@ -21,19 +20,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public MatterController()
         {
-            // Load Fabric from storage, if it exists
-            if (_storageProvider.FabricExists())
-            {
-                _fabric = _storageProvider.LoadFabric();
-            }
-
-            if (_fabric == null)
-            {
-                // create a new fabric
-                _fabric = new Fabric();
-                _storageProvider.SaveFabric(_fabric);
-            }
-
+            _fabric = Fabric.Load();
+           
             _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
             {
                 _mDNSService.SendQuery("_matter._tcp.local");
@@ -73,10 +61,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         numRetries--;
                     }
 
-                    // persist the entire fabric
+                    // persist the fabric
                     if (numRetries > 0)
                     {
-                        _storageProvider.SaveFabric(_fabric);
+                        _fabric.Save();
                     }
                     else
                     {
