@@ -21,7 +21,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public MatterController()
         {
             _fabric = Fabric.Load();
-           
+
             _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
             {
                 _mDNSService.SendQuery("_matter._tcp.local");

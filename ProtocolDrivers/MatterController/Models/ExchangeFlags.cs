@@ -9,6 +9,6 @@
         Acknowledgement = 0x2,
         Reliability = 0x4,
         SecuredExtensions = 0x8,
-        VendorPresent = 0x10,
+        VendorPresent = 0x10
     }
 }

@@ -142,7 +142,7 @@
                 sigma2tbs.EndContainer();
 
                 using var ecdsa = _node.SubjectPublicKey;
-                if (!ecdsa.VerifyData(sigma2tbs.GetBytes(), signature, HashAlgorithmName.SHA256))
+                if (!ecdsa.VerifyData(sigma2tbs.Serialize(), signature, HashAlgorithmName.SHA256))
                 {
                     Console.WriteLine("Responder Sigma2 signature invalid, abandoning operational commissioning!");
                     return false;
@@ -161,7 +161,7 @@
                 var sigma3tbe = new MatterTLV();
                 sigma3tbe.AddStructure();
                 sigma3tbe.AddOctetString(1, _fabric.CA.GenerateCertMessage(operationalCertificate));
-                sigma3tbe.AddOctetString(3, operationalKeyPair.SignData(sigma3tbs.GetBytes(), HashAlgorithmName.SHA256));
+                sigma3tbe.AddOctetString(3, operationalKeyPair.SignData(sigma3tbs.Serialize(), HashAlgorithmName.SHA256));
                 sigma3tbe.EndContainer();
 
                 byte[] encryptedSigma3 = EncryptSigma3(Z, sigma1, sigma2, sigma3tbe, out byte[] mic);
@@ -178,9 +178,9 @@
                 }
 
                 // check for empty status report (success)
-                if (MessageFrame.IsStatusReport(sigma3Resp) && (sigma3Resp.MessagePayload.ApplicationPayload.GetBytes()[0] != 0))
+                if (MessageFrame.IsStatusReport(sigma3Resp) && (sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0] != 0))
                 {
-                    Console.WriteLine($"Received failure status report in response to SIGMA3 message, error code: {sigma3Resp.MessagePayload.ApplicationPayload.GetBytes()[0]}, abandoning operational commissioning!");
+                    Console.WriteLine($"Received failure status report in response to SIGMA3 message, error code: {sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0]}, abandoning operational commissioning!");
                     return false;
                 }
 
@@ -205,7 +205,7 @@
        private byte[] DecryptSigma2(byte[] Z, MatterTLV sigma1, byte[] responderRandom, byte[] responderEphPub65, byte[] encryptedSigma2)
         {
             // Derive S2K (HKDF-SHA256, info="Sigma2") and AES-CCM decrypt
-            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1, responderRandom: responderRandom, responderEphPub65: responderEphPub65, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.GetBytes());
+            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1, responderRandom: responderRandom, responderEphPub65: responderEphPub65, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.Serialize());
             byte[] s2k = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, salt, Encoding.ASCII.GetBytes("Sigma2"), 16);
 
             // The Sigma2 payload is an AEAD (AES-CCM) over the TBEData TLV.
@@ -229,16 +229,16 @@
         private byte[] EncryptSigma3(byte[] Z, MatterTLV sigma1, MatterTLV sigma2, MatterTLV sigma3, out byte[] tag)
         {
             // Derive S3K (HKDF-SHA256, info="Sigma3") and AES-CCM encrypt
-            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.GetBytes(), sigma2Payload: sigma2.GetBytes());
+            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.Serialize(), sigma2Payload: sigma2.Serialize());
             byte[] s3k = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, salt, Encoding.ASCII.GetBytes("Sigma3"), 16);
 
             // The Sigma3 payload is an AEAD (AES-CCM) over the TBEData TLV.
             // The last 16 bytes is the CCM tag (classic 16‑byte MIC), and the rest is ciphertext.
-            byte[] encrypted = new byte[sigma3.GetBytes().Length];
+            byte[] encrypted = new byte[sigma3.Serialize().Length];
             tag = new byte[16];
             using (var aead = new AesCcm(s3k))
             {
-                aead.Encrypt(Encoding.ASCII.GetBytes("NCASE_Sigma3N"), sigma3.GetBytes(), encrypted, tag);
+                aead.Encrypt(Encoding.ASCII.GetBytes("NCASE_Sigma3N"), sigma3.Serialize(), encrypted, tag);
             }
 
             return encrypted;
@@ -253,7 +253,7 @@
         private TrafficKeys DeriveCaseTrafficKeys(byte[] Z, MatterTLV sigma1, MatterTLV sigma2, MatterTLV sigma3)
         {
             // Derive session keys (HKDF-SHA256, info="SessionKeys")
-            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2S3, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.GetBytes(), sigma2Payload: sigma2.GetBytes(), sigma3Payload: sigma3.GetBytes());
+            byte[] salt = _fabric.CA.SigmaSalt(SigmaSaltVariant.IpkConcat_TranscriptHash_S1S2S3, ipk16: _fabric.OperationalIPK, sigma1Payload: sigma1.Serialize(), sigma2Payload: sigma2.Serialize(), sigma3Payload: sigma3.Serialize());
             byte[] s2k = _fabric.CA.KeyDerivationFunctionHMACSHA256(Z, salt, Encoding.ASCII.GetBytes("SessionKeys"), 32);
 
             byte[] i2r = new byte[16];

@@ -36,7 +36,8 @@ namespace Matter.Core
             Converters = {
                 new X509Certificate2JsonConverter(),
                 new ECDsaJsonConverter()
-            }
+            },
+            Formatting = Formatting.Indented
         };
 
         private Fabric()
@@ -76,6 +77,11 @@ namespace Matter.Core
 
         public void Save()
         {
+            if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric")))
+            {
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric"));
+            }
+
             File.WriteAllTextAsync(
                 Path.Combine(Directory.GetCurrentDirectory(), "pki/fabric/settings.json"),
                 JsonConvert.SerializeObject(this, JsonSettings)
@@ -115,7 +121,7 @@ namespace Matter.Core
 
                 if (!string.IsNullOrEmpty(address))
                 {
-                    Nodes[nodeId].LastKnownIpAddress = address != null ? IPAddress.Parse(address) : null;
+                    Nodes[nodeId].LastKnownIpAddress = address;
                 }
 
                 if (port != 0)
@@ -134,7 +140,7 @@ namespace Matter.Core
                     Discriminator = discriminator,
                     OperationalNOCAsTLV = operationalNOCAsTLV,
                     SubjectPublicKey = subjectPublicKey,
-                    LastKnownIpAddress = address != null ? IPAddress.Parse(address) : null,
+                    LastKnownIpAddress = address,
                     LastKnownPort = port
                 });
 

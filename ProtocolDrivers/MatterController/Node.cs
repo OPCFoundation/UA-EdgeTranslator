@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace Matter.Core
 
         public string Discriminator { get; set; }
 
-        public IPAddress LastKnownIpAddress { get; set; }
+        public string LastKnownIpAddress { get; set; }
 
         public ushort LastKnownPort { get; set; }
 
@@ -29,7 +30,7 @@ namespace Matter.Core
         {
             try
             {
-                IPAddress ipAddress = LastKnownIpAddress;
+                IPAddress ipAddress = IPAddress.Parse(LastKnownIpAddress);
                 ushort port = LastKnownPort;
 
                 CASEClient client = new CASEClient(this, fabric, ipAddress, port);
@@ -111,28 +112,29 @@ namespace Matter.Core
 
         private void ParseDescriptions(MatterTLV deviceTypeList)
         {
-            if (deviceTypeList.IsNextTag(0))
+            if (deviceTypeList.IsTagNext(0))
             {
                 byte elementType = deviceTypeList.PeekElementType();
                 switch (elementType)
                 {
-                    case 0x08: // Boolean false
-                    case 0x09: // Boolean true
+                    case (byte)ElementType.False:
+                    case (byte)ElementType.True:
                         bool flag = deviceTypeList.GetBoolean(0);
-                        // No active subscription; flag can be ignored.
                         break;
-                    case 0x04: // Unsigned int 1 byte
-                    case 0x05: // Unsigned int 2 bytes
-                    case 0x06: // Unsigned int 4 bytes
-                    case 0x07: // Unsigned int 8 bytes
+
+                    case (byte)ElementType.Byte:
+                    case (byte)ElementType.UShort:
+                    case (byte)ElementType.UInt:
+                    case (byte)ElementType.ULong:
                         ulong subscriptionId = deviceTypeList.GetUnsignedInt(0);
                         break;
+
                     default:
                         throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in DeviceTypeList response.");
                 }
             }
 
-            if (deviceTypeList.IsNextTag(1))
+            if (deviceTypeList.IsTagNext(1))
             {
                 deviceTypeList.OpenArray(1); // attribute reports
 
@@ -140,31 +142,37 @@ namespace Matter.Core
                 {
                     deviceTypeList.OpenStructure(); // attribute report
 
-                    if (deviceTypeList.IsNextTag(0))
+                    if (deviceTypeList.IsTagNext(0))
                     {
                         deviceTypeList.OpenStructure(0); // attribute paths
 
-                        if (deviceTypeList.IsNextTag(0))
+                        if (deviceTypeList.IsTagNext(0))
                         {
                             deviceTypeList.OpenList(0); // attribute path list
 
                             PrintEndpointClusterAttributes(deviceTypeList);
 
-                            deviceTypeList.CloseContainer();
+                            deviceTypeList.CloseContainer(); // attribute path list
                         }
 
-                        if (deviceTypeList.IsNextTag(1))
+                        if (deviceTypeList.IsTagNext(1))
                         {
                             deviceTypeList.OpenStructure(1); // attribute status
 
                             byte status = deviceTypeList.GetUnsignedInt8(0);
-                            byte clusterStatus = deviceTypeList.GetUnsignedInt8(1);
 
-                            deviceTypeList.CloseContainer();
+                            if (!deviceTypeList.IsEndContainerNext())
+                            {
+                                byte clusterStatus = deviceTypeList.GetUnsignedInt8(1);
+                            }
+
+                            deviceTypeList.CloseContainer(); // attribute status
                         }
+
+                        deviceTypeList.CloseContainer(); // attribute paths
                     }
 
-                    if (deviceTypeList.IsNextTag(1))
+                    if (deviceTypeList.IsTagNext(1))
                     {
                         deviceTypeList.OpenStructure(1); // attribute data
 
@@ -174,15 +182,40 @@ namespace Matter.Core
 
                         PrintEndpointClusterAttributes(deviceTypeList);
 
-                        deviceTypeList.CloseContainer();
+                        deviceTypeList.CloseContainer(); // attribute data list
 
-                        object data = deviceTypeList.GetOctetString(2);
+                        object data = deviceTypeList.GetObject(2);
+                        if (data is List<object> dataList)
+                        {
+                            Console.WriteLine(" - Data List:");
+                            foreach (var item in dataList)
+                            {
+                                if (item is List<object> innerDataList)
+                                {
+                                    Console.WriteLine(" - Data List:");
+                                    foreach (var innerItem in innerDataList)
+                                    {
+                                        Console.WriteLine($"   - {innerItem:X2}");
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine($" - Data: {item:X2}");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($" - Data: {data:X2}");
+                        }
 
-                        deviceTypeList.CloseContainer();
+                        deviceTypeList.CloseContainer(); // attribute data
                     }
 
-                    deviceTypeList.CloseContainer();
+                    deviceTypeList.CloseContainer(); // attribute report
                 }
+
+                deviceTypeList.CloseContainer(); // attribute reports
             }
         }
 
@@ -190,56 +223,57 @@ namespace Matter.Core
         {
             while (!deviceTypeList.IsEndContainerNext())
             {
-                if (deviceTypeList.IsNextTag(0))
+                if (deviceTypeList.IsTagNext(0))
                 {
                     byte elementType = deviceTypeList.PeekElementType();
                     switch (elementType)
                     {
-                        case 0x08: // Boolean false
-                        case 0x09: // Boolean true
+                        case (byte)ElementType.False:
+                        case (byte)ElementType.True:
                             bool enableTagCompression = deviceTypeList.GetBoolean(0);
-                            // No tag compression; flag can be ignored.
                             break;
-                        case 0x04: // Unsigned int 1 byte
-                        case 0x05: // Unsigned int 2 bytes
-                        case 0x06: // Unsigned int 4 bytes
-                        case 0x07: // Unsigned int 8 bytes
+
+                        case (byte)ElementType.Byte:
+                        case (byte)ElementType.UShort:
+                        case (byte)ElementType.UInt:
+                        case (byte)ElementType.ULong:
                             ulong something = deviceTypeList.GetUnsignedInt(0);
                             break;
+
                         default:
                             throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in EndpointClusterAttributes response.");
                     }
                 }
 
-                if (deviceTypeList.IsNextTag(1))
+                if (deviceTypeList.IsTagNext(1))
                 {
                     ulong nodeId = deviceTypeList.GetUnsignedInt(1);
                 }
 
-                if (deviceTypeList.IsNextTag(2))
+                if (deviceTypeList.IsTagNext(2))
                 {
                     uint endpointId = (uint)deviceTypeList.GetUnsignedInt(2);
                     Console.WriteLine($"- Endpoint ID: 0x{endpointId:X4}");
                 }
 
-                if (deviceTypeList.IsNextTag(3))
+                if (deviceTypeList.IsTagNext(3))
                 {
                     uint clusterId = (uint)deviceTypeList.GetUnsignedInt(3);
                     Console.WriteLine($" - Cluster ID: 0x{clusterId:X4}");
                 }
 
-                if (deviceTypeList.IsNextTag(4))
+                if (deviceTypeList.IsTagNext(4))
                 {
                     uint attributeId = (uint)deviceTypeList.GetUnsignedInt(4);
                     Console.WriteLine($" - Attribute ID: 0x{attributeId:X4}");
                 }
 
-                if (deviceTypeList.IsNextTag(5))
+                if (deviceTypeList.IsTagNext(5))
                 {
                     ushort listIndex = (ushort)deviceTypeList.GetUnsignedInt(5);
                 }
 
-                if (deviceTypeList.IsNextTag(6))
+                if (deviceTypeList.IsTagNext(6))
                 {
                     uint wildcardPathFlags = (uint)deviceTypeList.GetUnsignedInt(6);
                 }

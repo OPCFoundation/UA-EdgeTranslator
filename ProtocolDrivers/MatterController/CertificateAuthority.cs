@@ -203,7 +203,7 @@ namespace Matter.Core
 
             encodedCert.EndContainer();
 
-            return encodedCert.GetBytes();
+            return encodedCert.Serialize();
         }
 
         private ushort GetKeyUsage(X509KeyUsageFlags keyUsage)

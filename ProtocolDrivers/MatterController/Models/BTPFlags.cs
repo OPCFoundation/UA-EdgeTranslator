@@ -12,6 +12,6 @@ namespace Matter.Core
         Acknowledge = 0x8,
         Reserved = 0x10,
         Management = 0x20,
-        Handshake = 0x40,
+        Handshake = 0x40
     }
 }

@@ -362,8 +362,8 @@ namespace Matter.Core
             var spakeContext = Encoding.ASCII.GetBytes("CHIP PAKE V1 Commissioning");
             var contextToHash = new List<byte>();
             contextToHash.AddRange(spakeContext);
-            contextToHash.AddRange(PBKDFParamRequest.GetBytes());
-            contextToHash.AddRange(PBKDFParamResponse.GetBytes());
+            contextToHash.AddRange(PBKDFParamRequest.Serialize());
+            contextToHash.AddRange(PBKDFParamResponse.Serialize());
             var sessionContextHash = SHA256.HashData(contextToHash.ToArray());
 
             var pake1 = new MatterTLV();
