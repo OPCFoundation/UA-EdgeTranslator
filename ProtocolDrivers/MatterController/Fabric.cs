@@ -4,7 +4,6 @@ using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -12,24 +11,24 @@ namespace Matter.Core
 {
     public class Fabric
     {
-        public string FabricName { get; private set; } = "FAB000000000001D";
+        public string FabricName { get; set; } = "FAB000000000001D";
 
-        public ushort VendorId { get; private set; } = 0xFFF1; // Default value from Matter specification
+        public ushort VendorId { get; set; } = 0xFFF1; // Default value from Matter specification
 
-        public ConcurrentDictionary<ulong, Node> Nodes { get; private set; } = new();
+        public ConcurrentDictionary<ulong, Node> Nodes { get; set; }
 
         // Also called the EpochKey
-        public byte[] IPK { get; private set; }
+        public byte[] IPK { get; set; }
 
-        public byte[] OperationalIPK { get; private set; }
+        public byte[] OperationalIPK { get; set; }
 
-        public ulong FabricId { get; private set; }
+        public ulong FabricId { get; set; }
 
-        public byte[] CompressedFabricId { get; private set; }
+        public byte[] CompressedFabricId { get; set; }
 
-        public CertificateAuthority CA { get; private set; }
+        public CertificateAuthority CA { get; set; }
 
-        public ulong RootNodeId { get; private set; }
+        public ulong RootNodeId { get; set; }
 
         private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
         {
@@ -42,12 +41,19 @@ namespace Matter.Core
 
         private Fabric()
         {
+            // Empty private constructor for JSON serialization and to enforce use of Load method
+        }
+
+        private void Initialize()
+        {
             IPK = RandomNumberGenerator.GetBytes(16);
             FabricId = BinaryPrimitives.ReadUInt64BigEndian(FabricName.ToByteArray());
-            CA = new CertificateAuthority(FabricId);
+            CA = new();
+            CA.Initialize(FabricId);
             CompressedFabricId = CA.GenerateCompressedFabricId(FabricId);
             RootNodeId = BinaryPrimitives.ReadUInt64BigEndian(new ReadOnlySpan<byte>(CA.RootCertSubjectKeyIdentifier, 0, 8));
             OperationalIPK = CA.KeyDerivationFunctionHMACSHA256(IPK, CompressedFabricId, Encoding.ASCII.GetBytes("GroupKey v1.0"), 16);
+            Nodes = new();
         }
 
         public static Fabric Load()
@@ -69,6 +75,7 @@ namespace Matter.Core
             {
                 Console.WriteLine("No existing fabric found, creating a new one.");
                 fabric = new Fabric();
+                fabric.Initialize();
                 fabric.Save();
             }
 

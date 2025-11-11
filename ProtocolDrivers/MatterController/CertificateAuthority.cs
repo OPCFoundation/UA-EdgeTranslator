@@ -13,40 +13,68 @@ namespace Matter.Core
 {
     public class CertificateAuthority
     {
-        public string CommonName { get; private set; } = "UA-EdgeTranslator";
+        public string CommonName { get; set; } = "UA-EdgeTranslator";
 
-        public ECDsa RootKeyPair { get; }
+        public ECDsa RootKeyPair { get; set; }
 
-        public X509Certificate2 RootCertificate { get; private set; }
+        public X509Certificate2 RootCertificate { get; set; }
 
-        public byte[] RootCertSubjectKeyIdentifier { get; private set; }
+        public byte[] RootCertSubjectKeyIdentifier { get; set; }
 
-        public ulong RCACIdentifier { get; private set; }
+        public ulong RCACIdentifier { get; set; }
 
-        public CertificateAuthority(ulong fabricId)
+
+        public CertificateAuthority()
         {
-            RootKeyPair = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            // Empty constructor for JSON serialization
+        }
+
+        public void Initialize(ulong fabricId)
+        {
+            RootKeyPair = CreateExportableP256Key();
             RCACIdentifier = Math.Max(1, (ulong)Random.Shared.NextInt64());
             RootCertSubjectKeyIdentifier = GenerateUncompressedSHA1Hash(RootKeyPair);
             RootCertificate = GenerateRootCert(fabricId);
         }
 
+        private ECDsa CreateExportableP256Key()
+        {
+#if WINDOWS
+            // Explicitly create an exportable CNG key so PKCS#12 export does not fail.
+            var createParams = new CngKeyCreationParameters {
+                ExportPolicy = CngExportPolicies.AllowExport | CngExportPolicies.AllowPlaintextExport,
+                KeyUsage = CngKeyUsages.AllUsages,
+                Provider = CngProvider.MicrosoftSoftwareKeyStorageProvider
+            };
+
+            CngKey key = CngKey.Create(CngAlgorithm.ECDsaP256, null, createParams);
+            return new ECDsaCng(key);
+#else
+            // On Linux/macOS the default managed/OpenSSL implementation already allows exporting.
+            return ECDsa.Create(ECCurve.NamedCurves.nistP256);
+#endif
+        }
+
         public X509Certificate2 GenerateRootCert(ulong fabricId)
         {
-            X500DistinguishedNameBuilder builder = new X500DistinguishedNameBuilder();
+            X500DistinguishedNameBuilder builder = new();
             builder.Add("2.5.4.3", CommonName, UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.4", $"{RCACIdentifier:X16}", UniversalTagNumber.UTF8String);
             builder.Add("1.3.6.1.4.1.37244.1.5", $"{fabricId:X16}", UniversalTagNumber.UTF8String);
 
-            CertificateRequest req = new CertificateRequest(builder.Build(), RootKeyPair, HashAlgorithmName.SHA256);
+            var req = new CertificateRequest(builder.Build(), RootKeyPair, HashAlgorithmName.SHA256);
             req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, true, 0, true));
             req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
 
-            X509SubjectKeyIdentifierExtension subjectKeyIdentifierExtension = new X509SubjectKeyIdentifierExtension(RootCertSubjectKeyIdentifier, false);
+            var subjectKeyIdentifierExtension = new X509SubjectKeyIdentifierExtension(RootCertSubjectKeyIdentifier, false);
             req.CertificateExtensions.Add(subjectKeyIdentifierExtension);
             req.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(subjectKeyIdentifierExtension));
 
-            return req.CreateSelfSigned(DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(10));
+            X509Certificate2 tmp = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10));
+
+            // Force an export/import round-trip marking it explicitly exportable (defensive on Windows).
+            byte[] pfx = tmp.Export(X509ContentType.Pkcs12, string.Empty);
+            return X509CertificateLoader.LoadPkcs12(pfx, string.Empty, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
         }
 
         // workaround since .Net's CertificateRequest doesn't support empty extensions in CSRs
@@ -94,7 +122,7 @@ namespace Matter.Core
             byte[] serial = new byte[19];
             Random.Shared.NextBytes(serial);
 
-            return signingCSR.Create(RootCertificate, DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(1), serial);
+            return signingCSR.Create(RootCertificate, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1), serial);
         }
 
         public X509Certificate2 GenerateOperationalCert(ECDsa operationalKeyPair, ulong nodeId, ulong fabricId)
@@ -117,7 +145,7 @@ namespace Matter.Core
             byte[] serial = new byte[19];
             Random.Shared.NextBytes(serial);
 
-            return signingCSR.Create(RootCertificate, DateTime.Now.Subtract(TimeSpan.FromDays(1)), DateTime.Now.AddYears(1), serial);
+            return signingCSR.Create(RootCertificate, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1), serial);
         }
 
         public byte[] GenerateCertMessage(X509Certificate2 cert)

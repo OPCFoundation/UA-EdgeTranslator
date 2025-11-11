@@ -15,7 +15,7 @@ namespace Matter.Core
 
         public override X509Certificate2 ReadJson(JsonReader reader, Type objectType, X509Certificate2 existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
-            return X509CertificateLoader.LoadPkcs12(Convert.FromBase64String((string)reader.Value), string.Empty);
+            return X509CertificateLoader.LoadPkcs12(Convert.FromBase64String((string)reader.Value), string.Empty, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
         }
     }
 
