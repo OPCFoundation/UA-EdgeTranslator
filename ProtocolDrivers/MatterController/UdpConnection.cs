@@ -19,21 +19,12 @@ namespace Matter.Core
             _port = port;
 
             _cancellationTokenSource = new CancellationTokenSource();
-
-            if (address.AddressFamily == AddressFamily.InterNetwork)
-            {
-                _udpClient = new UdpClient(AddressFamily.InterNetwork);
-            }
-            else if (address.AddressFamily == AddressFamily.InterNetworkV6)
-            {
-                _udpClient = new UdpClient(AddressFamily.InterNetworkV6);
-            }
+            _udpClient = new UdpClient(address.AddressFamily);
         }
 
         public IConnection OpenConnection()
         {
             _udpClient.Connect(_ipAddress, _port);
-
             return this;
         }
 

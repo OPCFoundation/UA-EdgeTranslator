@@ -78,7 +78,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     node.Connect(_fabric);
                     node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
                 }
-
             }
             catch (Exception ex)
             {
