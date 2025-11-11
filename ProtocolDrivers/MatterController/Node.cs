@@ -210,7 +210,7 @@ namespace Matter.Core
 
                                 if (!list.IsEndContainerNext())
                                 {
-                                    ulong clusterStatus = list.GetUnsignedInt(1);
+                                    string clusterStatus = list.GetUTF8String(1);
                                 }
 
                                 list.CloseContainer(); // attribute status
@@ -319,55 +319,67 @@ namespace Matter.Core
             }
         }
 
-        private void PrintEndpointClusterAttributes(MatterTLV deviceTypeList)
+        private void PrintEndpointClusterAttributes(MatterTLV list)
         {
-            while (!deviceTypeList.IsEndContainerNext())
+            while (!list.IsEndContainerNext())
             {
-                if (deviceTypeList.IsTagNext(0))
+                if (list.IsTagNext(0))
                 {
-                    byte elementType = deviceTypeList.PeekElementType();
+                    byte elementType = list.PeekElementType();
                     switch (elementType)
                     {
                         case (byte)ElementType.False:
                         case (byte)ElementType.True:
-                            bool enableTagCompression = deviceTypeList.GetBoolean(0);
+                            bool enableTagCompression = list.GetBoolean(0);
                             break;
+
+                        case (byte)ElementType.Byte:
+                        case (byte)ElementType.UShort:
+                        case (byte)ElementType.UInt:
+                        case (byte)ElementType.ULong:
+                            ulong id = list.GetUnsignedInt(0);
+                            Console.WriteLine($"ID: 0x{id:X}");
+                            break;
+
                         default:
                             throw new Exception($"Unexpected element type {elementType:X} for tag 0 in EndpointClusterAttributes response.");
                     }
                 }
 
-                if (deviceTypeList.IsTagNext(1))
+                if (list.IsTagNext(1))
                 {
-                    ulong nodeId = deviceTypeList.GetUnsignedInt(1);
+                    ulong nodeId = list.GetUnsignedInt(1);
+                    Console.WriteLine($"Node ID: 0x{nodeId:X}");
                 }
 
-                if (deviceTypeList.IsTagNext(2))
+                if (list.IsTagNext(2))
                 {
-                    uint endpointId = (uint)deviceTypeList.GetUnsignedInt(2);
+                    uint endpointId = (uint)list.GetUnsignedInt(2);
                     Console.WriteLine($"Endpoint ID: 0x{endpointId:X}");
                 }
 
-                if (deviceTypeList.IsTagNext(3))
+                if (list.IsTagNext(3))
                 {
-                    uint clusterId = (uint)deviceTypeList.GetUnsignedInt(3);
+                    uint clusterId = (uint)list.GetUnsignedInt(3);
                     Console.WriteLine($" Cluster ID: 0x{clusterId:X}");
                 }
 
-                if (deviceTypeList.IsTagNext(4))
+                if (list.IsTagNext(4))
                 {
-                    uint attributeId = (uint)deviceTypeList.GetUnsignedInt(4);
+                    uint attributeId = (uint)list.GetUnsignedInt(4);
                     Console.WriteLine($" Attribute ID: 0x{attributeId:X}");
                 }
 
-                if (deviceTypeList.IsTagNext(5))
+                if (list.IsTagNext(5))
                 {
-                    ushort listIndex = (ushort)deviceTypeList.GetUnsignedInt(5);
+                    ushort listIndex = (ushort)list.GetUnsignedInt(5);
+                    Console.WriteLine($" List Index: {listIndex}");
                 }
 
-                if (deviceTypeList.IsTagNext(6))
+                if (list.IsTagNext(6))
                 {
-                    uint wildcardPathFlags = (uint)deviceTypeList.GetUnsignedInt(6);
+                    uint wildcardPathFlags = (uint)list.GetUnsignedInt(6);
+                    Console.WriteLine($" Wildcard Path Flags: 0x{wildcardPathFlags:X}");
                 }
             }
         }
