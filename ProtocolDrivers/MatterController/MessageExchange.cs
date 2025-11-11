@@ -171,7 +171,7 @@ namespace Matter.Core
             await _session.SendAsync(bytes).ConfigureAwait(false);
         }
 
-        private async Task<MessageFrame> WaitForNextMessageAsync()
+        public async Task<MessageFrame> WaitForNextMessageAsync()
         {
             try
             {

@@ -22,6 +22,45 @@ namespace Matter.Core
             _values = [.. payload];
         }
 
+        internal byte[] Serialize()
+        {
+            return _values.ToArray();
+        }
+
+        public bool IsTagNext(int? tagNumber)
+        {
+            // Skip the Control octet by adding 1.
+            return _values[_pointer + 1] == (byte)tagNumber; // Check if the next tag matches the expected tag number
+        }
+
+        public bool IsEndContainerNext()
+        {
+            // Check if the next tag is an End Container (either 0x18 or 0x1F. 0x1F is an alias for backward compat)
+            byte elementType = (byte)(_values[_pointer] & (byte)ElementType.ElementTypeMask);
+            return (elementType == (byte)ElementType.EndOfContainer);// || (elementType == 0x1F);
+        }
+
+        public byte PeekElementType()
+        {
+            // Low 5 bits of the control octet encode the element type.
+            return (byte)(_values[_pointer] & (byte)ElementType.ElementTypeMask);
+        }
+
+        public int? PeekTagNumber()
+        {
+            byte control = _values[_pointer];
+            int tagControl = (control >> 5) & 0x03; // top 2 bits for tag control
+
+            return tagControl switch
+            {
+                0 => null, // anonymous
+                1 => _values[_pointer + 1], // context-specific (1 byte)
+                2 => BitConverter.ToUInt16(_values.ToArray(), _pointer + 1), // common profile (2 bytes)
+                3 => (_values[_pointer + 1] << 16) | (_values[_pointer + 2] << 8) | _values[_pointer + 3], // fully qualified (3 bytes)
+                _ => throw new Exception("Invalid tag control")
+            };
+        }
+
         public MatterTLV AddStructure()
         {
             // Anonymous i.e. has no tag number.
@@ -43,12 +82,6 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddArray()
-        {
-            _values.Add((byte)ElementType.Array);
-            return this;
-        }
-
         public MatterTLV AddList(long tagNumber)
         {
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.List));
@@ -59,12 +92,6 @@ namespace Matter.Core
         public MatterTLV AddList()
         {
             _values.Add((byte)ElementType.List);
-            return this;
-        }
-
-        public MatterTLV EndContainer()
-        {
-            _values.Add((byte)ElementType.EndOfContainer);
             return this;
         }
 
@@ -170,18 +197,6 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddInt16(short value)
-        {
-            if (value < sbyte.MaxValue && value > sbyte.MinValue)
-            {
-                return AddInt8((sbyte)value);
-            }
-
-            _values.Add((byte)ElementType.Short);
-            _values.AddRange(BitConverter.GetBytes(value));
-            return this;
-        }
-
         public MatterTLV AddUInt16(byte tagNumber, ushort value)
         {
             if (value < byte.MaxValue)
@@ -192,18 +207,6 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.UShort));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
-            return this;
-        }
-
-        public MatterTLV AddUInt16(ushort value)
-        {
-            if (value < byte.MaxValue)
-            {
-                return AddUInt8((byte)value);
-            }
-
-            _values.Add((byte)(ElementType.UShort));
-            _values.AddRange(BitConverter.GetBytes(value));
             return this;
         }
 
@@ -220,18 +223,6 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddInt32(int value)
-        {
-            if (value < short.MaxValue && value > short.MinValue)
-            {
-                return AddInt16((short)value);
-            }
-
-            _values.Add((byte)ElementType.Int);
-            _values.AddRange(BitConverter.GetBytes(value));
-            return this;
-        }
-
         public MatterTLV AddUInt32(byte tagNumber, uint value)
         {
             if (value < ushort.MaxValue)
@@ -242,18 +233,6 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.UInt));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
-            return this;
-        }
-
-        public MatterTLV AddUInt32(uint value)
-        {
-            if (value < ushort.MaxValue)
-            {
-                return AddUInt16((ushort)value);
-            }
-
-            _values.Add((byte)ElementType.UInt);
-            _values.AddRange(BitConverter.GetBytes(value));
             return this;
         }
 
@@ -270,18 +249,6 @@ namespace Matter.Core
             return this;
         }
 
-        public MatterTLV AddInt64(long value)
-        {
-            if (value < int.MaxValue && value > int.MinValue)
-            {
-                return AddInt32((int)value);
-            }
-
-            _values.Add((byte)ElementType.Long);
-            _values.AddRange(BitConverter.GetBytes(value));
-            return this;
-        }
-
         public MatterTLV AddUInt64(byte tagNumber, ulong value)
         {
             if (value < uint.MaxValue)
@@ -292,18 +259,6 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.ULong));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
-            return this;
-        }
-
-        public MatterTLV AddUInt64(ulong value)
-        {
-            if (value < uint.MaxValue)
-            {
-                return AddUInt32((uint)value);
-            }
-
-            _values.Add((byte)ElementType.ULong);
-            _values.AddRange(BitConverter.GetBytes(value));
             return this;
         }
 
@@ -334,38 +289,10 @@ namespace Matter.Core
             return this;
         }
 
-        internal byte[] Serialize()
+        public MatterTLV EndContainer()
         {
-            return _values.ToArray();
-        }
-
-        public bool IsTagNext(int? tagNumber)
-        {
-            // Skip the Control octet by adding 1.
-            return _values[_pointer + 1] == (byte)tagNumber; // Check if the next tag matches the expected tag number
-        }
-
-        public bool IsEndContainerNext()
-        {
-            return _values[_pointer] == (byte)ElementType.EndOfContainer; // Check if the next tag is an End Container
-        }
-
-        public byte PeekElementType()
-        {
-            // Low 5 bits of the control octet encode the element type.
-            return (byte)(_values[_pointer] & (byte)ElementType.ElementTypeMask);
-        }
-
-        public int? PeekTagNumber()
-        {
-            // High 3 bits encode tag control. 0x01 => context-specific tag follows.
-            int tagControl = _values[_pointer] >> 5;
-            if (tagControl == 0x01)
-            {
-                return _values[_pointer + 1];
-            }
-
-            return null; // anonymous
+            _values.Add((byte)ElementType.EndOfContainer);
+            return this;
         }
 
         public void OpenStructure()
@@ -500,7 +427,8 @@ namespace Matter.Core
             ulong valueLength = 0;
             if (length == 1)
             {
-                valueLength = _values[_pointer++];
+                valueLength = _values[_pointer];
+                _pointer += 1;
             }
             else if (length == 2)
             {
@@ -557,7 +485,8 @@ namespace Matter.Core
             ulong valueLength = 0;
             if (length == 1)
             {
-                valueLength = _values[_pointer++];
+                valueLength = _values[_pointer];
+                _pointer += 1;
             }
             else if (length == 2)
             {
@@ -586,11 +515,15 @@ namespace Matter.Core
 
         internal long GetSignedInt(int? tag)
         {
+            int tagControl = _values[_pointer] >> 5;
             var elementType = ((byte)ElementType.ElementTypeMask & _values[_pointer++]);
 
             if (tag is null)
             {
-                _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                if (tagControl == 0x01)
+                {
+                    _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                }
             }
             else
             {
@@ -604,7 +537,8 @@ namespace Matter.Core
             switch (elementType)
             {
                 case (byte)ElementType.SByte:
-                    value = Convert.ToInt64(_values[_pointer++]);
+                    value = (sbyte)_values[_pointer];
+                    _pointer += 1;
                     break;
                 case (byte)ElementType.Short:
                     value = BitConverter.ToInt16(_values.ToArray(), _pointer);
@@ -627,11 +561,15 @@ namespace Matter.Core
 
         internal ulong GetUnsignedInt(int? tag)
         {
+            int tagControl = _values[_pointer] >> 5;
             var elementType = ((byte)ElementType.ElementTypeMask & _values[_pointer++]);
 
             if (tag is null)
             {
-                _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                if (tagControl == 0x01)
+                {
+                    _pointer++; // Skip the tag byte. We can't compare since we don't know the tag.
+                }
             }
             else
             {
@@ -645,7 +583,8 @@ namespace Matter.Core
             switch (elementType)
             {
                 case (byte)ElementType.Byte:
-                    value = Convert.ToByte(_values[_pointer++]);
+                    value = _values[_pointer];
+                    _pointer += 1;
                     break;
                 case (byte)ElementType.UShort:
                     value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
@@ -666,144 +605,8 @@ namespace Matter.Core
             return value;
         }
 
-        public sbyte GetSignedInt8(int tag)
-        {
-            if (((byte)ElementType.ElementTypeMask & _values[_pointer++]) != (byte)ElementType.SByte)
-            {
-                throw new Exception("Expected Signed Integer, 1-octet value not found");
-            }
-
-            if (_values[_pointer++] != (byte)tag)
-            {
-                throw new Exception("Expected tag number not found");
-            }
-
-            sbyte value = (sbyte)_values[_pointer++];
-
-            return value;
-        }
-
-        public byte GetUnsignedInt8(int tag)
-        {
-            if (((byte)ElementType.ElementTypeMask & _values[_pointer++]) != (byte)ElementType.Byte)
-            {
-                throw new Exception("Expected Unsigned Integer, 1-octet value not found");
-            }
-
-            if (_values[_pointer++] != (byte)tag)
-            {
-                throw new Exception("Expected tag number not found");
-            }
-
-            byte value = _values[_pointer++];
-
-            return value;
-        }
-
-        public ushort GetUnsignedInt16(int tag)
-        {
-            int elementType = ((byte)ElementType.ElementTypeMask & _values[_pointer++]);
-
-            if (_values[_pointer++] != (byte)tag)
-            {
-                throw new Exception("Expected tag number not found");
-            }
-
-            ushort value;
-            switch (elementType)
-            {
-                case (byte)ElementType.Byte:
-                    value = _values[_pointer++];
-                    break;
-                case (byte)ElementType.UShort:
-                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
-                    _pointer += 2;
-                    break;
-                default:
-                    throw new Exception("Expected Unsigned Integer (1, 2 octets)");
-            }
-
-            return value;
-        }
-
-        public uint GetUnsignedInt32(int tag)
-        {
-            int elementType = ((byte)ElementType.ElementTypeMask & _values[_pointer++]);
-
-            if (_values[_pointer++] != (byte)tag)
-            {
-                throw new Exception("Expected tag number not found");
-            }
-
-            uint value;
-            switch (elementType)
-            {
-                case (byte)ElementType.Byte:
-                    value = _values[_pointer++];
-                    break;
-                case (byte)ElementType.UShort:
-                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
-                    _pointer += 2;
-                    break;
-                case (byte)ElementType.UInt:
-                    value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
-                    _pointer += 4;
-                    break;
-                default:
-                    throw new Exception("Expected Unsigned Integer (1, 2, 4 octets)");
-            }
-
-            return value;
-        }
-
-        public ulong GetUnsignedInt64(int tag)
-        {
-            int elementType = ((byte)ElementType.ElementTypeMask & _values[_pointer++]);
-
-            if (_values[_pointer++] != (byte)tag)
-            {
-                throw new Exception("Expected tag number not found");
-            }
-
-            ulong value;
-            switch (elementType)
-            {
-                case (byte)ElementType.Byte:
-                    value = _values[_pointer++];
-                    break;
-                case (byte)ElementType.UShort:
-                    value = BitConverter.ToUInt16(_values.ToArray(), _pointer);
-                    _pointer += 2;
-                    break;
-                case (byte)ElementType.UInt:
-                    value = BitConverter.ToUInt32(_values.ToArray(), _pointer);
-                    _pointer += 4;
-                    break;
-                case (byte)ElementType.ULong:
-                    value = BitConverter.ToUInt64(_values.ToArray(), _pointer);
-                    _pointer += 8;
-                    break;
-                default:
-                    throw new Exception("Expected Unsigned Integer (1, 2, 4, 8 octets)");
-            }
-
-            return value;
-        }
-
         public object GetObject(int? tag)
         {
-            if (tag == null)
-            {
-                // try to get the tag number
-                tag = PeekTagNumber();
-            }
-
-            if (tag == null)
-            {
-                // skip the tag
-                _pointer++;
-            }
-
             int elementType = PeekElementType();
             switch (elementType)
             {
@@ -842,7 +645,8 @@ namespace Matter.Core
                     OpenStructure(tag);
                     while (!IsEndContainerNext())
                     {
-                        structure.Add(GetObject(null));
+                        int? tagNumber = PeekTagNumber();
+                        structure.Add(GetObject(tagNumber));
                     }
                     CloseContainer();
                     return structure;
@@ -854,7 +658,8 @@ namespace Matter.Core
                     OpenArray(tag);
                     while (!IsEndContainerNext())
                     {
-                        array.Add(GetObject(null));
+                        int? tagNumber = PeekTagNumber();
+                        array.Add(GetObject(tagNumber));
                     }
                     CloseContainer();
                     return array;
@@ -866,13 +671,14 @@ namespace Matter.Core
                     OpenList(tag);
                     while (!IsEndContainerNext())
                     {
-                        list.Add(GetObject(null));
+                        int? tagNumber = PeekTagNumber();
+                        list.Add(GetObject(tagNumber));
                     }
                     CloseContainer();
                     return list;
 
                 default:
-                    throw new Exception($"Cannot process elementType {elementType:X2}");
+                    throw new Exception($"Unsupported element type {elementType}");
             }
         }
 

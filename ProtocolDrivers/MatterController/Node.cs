@@ -68,19 +68,41 @@ namespace Matter.Core
             readCluster.AddBool(tagNumber: 3, false);
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
-            MessageFrame deviceTypeListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
+            MessageFrame deviceTypeListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
             if (MessageFrame.IsStatusReport(deviceTypeListResponse))
             {
                 Console.WriteLine("Received error status report in response to DeviceTypeList message, abandoning FetchDescriptions!");
                 return;
             }
 
-            Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
-            MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
-            deviceTypeList.OpenStructure();
-            ParseDescriptions(deviceTypeList);
-
             await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
+
+            bool moreChunkedMessages = false;
+            do
+            {
+                Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
+                MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
+                deviceTypeList.OpenStructure();
+                ParseDescriptions(deviceTypeList);
+
+                if (deviceTypeList.IsTagNext(3))
+                {
+                    moreChunkedMessages = deviceTypeList.GetBoolean(3);
+                }
+
+                if (moreChunkedMessages)
+                {
+                    deviceTypeListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
+                    if (MessageFrame.IsStatusReport(deviceTypeListResponse))
+                    {
+                        Console.WriteLine("Received error status report in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
+                        return;
+                    }
+
+                    await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
+                }
+            }
+            while (moreChunkedMessages);
 
             // Request the ServerList Attribute from the Description Cluster.
             readCluster = new MatterTLV();
@@ -94,128 +116,158 @@ namespace Matter.Core
             readCluster.AddBool(tagNumber: 3, false);
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
-            MessageFrame serverListResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
+            MessageFrame serverListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
             if (MessageFrame.IsStatusReport(serverListResponse))
             {
                 Console.WriteLine("Received error status report in response to ServerList message, abandoning FetchDescriptions!");
                 return;
             }
 
-            Console.WriteLine("Received ServerList response from node. Supported Clusters:");
-            MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
-            serverList.OpenStructure();
-            ParseDescriptions(serverList);
-
             await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
+
+            moreChunkedMessages = false;
+            do
+            {
+                Console.WriteLine("Received ServerList response from node. Supported Clusters:");
+                MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
+                serverList.OpenStructure();
+                ParseDescriptions(serverList);
+
+                if (serverList.IsTagNext(3))
+                {
+                    moreChunkedMessages = serverList.GetBoolean(3);
+                }
+
+                if (moreChunkedMessages)
+                {
+                    serverListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
+                    if (MessageFrame.IsStatusReport(serverListResponse))
+                    {
+                        Console.WriteLine("Received error status report in response to ServerList chunked message, abandoning FetchDescriptions!");
+                        return;
+                    }
+                }
+
+                await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
+            }
+            while (moreChunkedMessages);
+
             secureExchange.Close();
         }
 
         private void ParseDescriptions(MatterTLV deviceTypeList)
         {
-            if (deviceTypeList.IsTagNext(0))
+            try
             {
-                byte elementType = deviceTypeList.PeekElementType();
-                switch (elementType)
+                if (deviceTypeList.IsTagNext(0))
                 {
-                    case (byte)ElementType.False:
-                    case (byte)ElementType.True:
-                        bool flag = deviceTypeList.GetBoolean(0);
-                        break;
-
-                    case (byte)ElementType.Byte:
-                    case (byte)ElementType.UShort:
-                    case (byte)ElementType.UInt:
-                    case (byte)ElementType.ULong:
-                        ulong subscriptionId = deviceTypeList.GetUnsignedInt(0);
-                        break;
-
-                    default:
-                        throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in DeviceTypeList response.");
-                }
-            }
-
-            if (deviceTypeList.IsTagNext(1))
-            {
-                deviceTypeList.OpenArray(1); // attribute reports
-
-                while (!deviceTypeList.IsEndContainerNext())
-                {
-                    deviceTypeList.OpenStructure(); // attribute report
-
-                    if (deviceTypeList.IsTagNext(0))
+                    byte elementType = deviceTypeList.PeekElementType();
+                    switch (elementType)
                     {
-                        deviceTypeList.OpenStructure(0); // attribute paths
+                        case (byte)ElementType.False:
+                        case (byte)ElementType.True:
+                            bool flag = deviceTypeList.GetBoolean(0);
+                            break;
+
+                        case (byte)ElementType.Byte:
+                        case (byte)ElementType.UShort:
+                        case (byte)ElementType.UInt:
+                        case (byte)ElementType.ULong:
+                            ulong subscriptionId = deviceTypeList.GetUnsignedInt(0);
+                            break;
+
+                        default:
+                            throw new Exception($"Unsupported element type {elementType:X} for tag 0 in DeviceTypeList response.");
+                    }
+                }
+
+                if (deviceTypeList.IsTagNext(1))
+                {
+                    deviceTypeList.OpenArray(1); // attribute reports
+
+                    while (!deviceTypeList.IsEndContainerNext())
+                    {
+                        deviceTypeList.OpenStructure(); // attribute report
 
                         if (deviceTypeList.IsTagNext(0))
                         {
-                            deviceTypeList.OpenList(0); // attribute path list
+                            deviceTypeList.OpenStructure(0); // attribute paths
 
-                            PrintEndpointClusterAttributes(deviceTypeList);
+                            if (deviceTypeList.IsTagNext(0))
+                            {
+                                deviceTypeList.OpenList(0); // attribute path list
 
-                            deviceTypeList.CloseContainer(); // attribute path list
+                                PrintEndpointClusterAttributes(deviceTypeList);
+
+                                deviceTypeList.CloseContainer(); // attribute path list
+                            }
+
+                            if (deviceTypeList.IsTagNext(1))
+                            {
+                                deviceTypeList.OpenStructure(1); // attribute status
+
+                                ulong status = deviceTypeList.GetUnsignedInt(0);
+
+                                if (!deviceTypeList.IsEndContainerNext())
+                                {
+                                    ulong clusterStatus = deviceTypeList.GetUnsignedInt(1);
+                                }
+
+                                deviceTypeList.CloseContainer(); // attribute status
+                            }
+
+                            deviceTypeList.CloseContainer(); // attribute paths
                         }
 
                         if (deviceTypeList.IsTagNext(1))
                         {
-                            deviceTypeList.OpenStructure(1); // attribute status
+                            deviceTypeList.OpenStructure(1); // attribute data
 
-                            byte status = deviceTypeList.GetUnsignedInt8(0);
+                            ulong dataVersion = deviceTypeList.GetUnsignedInt(0);
 
-                            if (!deviceTypeList.IsEndContainerNext())
+                            deviceTypeList.OpenList(1); // attribute data list
+
+                            PrintEndpointClusterAttributes(deviceTypeList);
+
+                            deviceTypeList.CloseContainer(); // attribute data list
+
+                            object data = deviceTypeList.GetObject(2);
+                            if (data is List<object> dataList)
                             {
-                                byte clusterStatus = deviceTypeList.GetUnsignedInt8(1);
-                            }
-
-                            deviceTypeList.CloseContainer(); // attribute status
-                        }
-
-                        deviceTypeList.CloseContainer(); // attribute paths
-                    }
-
-                    if (deviceTypeList.IsTagNext(1))
-                    {
-                        deviceTypeList.OpenStructure(1); // attribute data
-
-                        uint dataVersion = deviceTypeList.GetUnsignedInt32(0);
-
-                        deviceTypeList.OpenList(1); // attribute data list
-
-                        PrintEndpointClusterAttributes(deviceTypeList);
-
-                        deviceTypeList.CloseContainer(); // attribute data list
-
-                        object data = deviceTypeList.GetObject(2);
-                        if (data is List<object> dataList)
-                        {
-                            Console.WriteLine(" - Data List:");
-                            foreach (var item in dataList)
-                            {
-                                if (item is List<object> innerDataList)
+                                Console.WriteLine(" - Data List:");
+                                foreach (var item in dataList)
                                 {
-                                    Console.WriteLine(" - Data List:");
-                                    foreach (var innerItem in innerDataList)
+                                    if (item is List<object> innerDataList)
                                     {
-                                        Console.WriteLine($"   - {innerItem:X2}");
+                                        Console.WriteLine(" - Data List:");
+                                        foreach (var innerItem in innerDataList)
+                                        {
+                                            Console.WriteLine($"   - {innerItem:X}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($" - Data: {item:X}");
                                     }
                                 }
-                                else
-                                {
-                                    Console.WriteLine($" - Data: {item:X2}");
-                                }
                             }
-                        }
-                        else
-                        {
-                            Console.WriteLine($" - Data: {data:X2}");
+                            else
+                            {
+                                Console.WriteLine($" - Data: {data:X}");
+                            }
+
+                            deviceTypeList.CloseContainer(); // attribute data
                         }
 
-                        deviceTypeList.CloseContainer(); // attribute data
+                        deviceTypeList.CloseContainer(); // attribute report
                     }
 
-                    deviceTypeList.CloseContainer(); // attribute report
+                    deviceTypeList.CloseContainer(); // attribute reports
                 }
-
-                deviceTypeList.CloseContainer(); // attribute reports
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing descriptions: {ex.Message}");
             }
         }
 
@@ -232,16 +284,8 @@ namespace Matter.Core
                         case (byte)ElementType.True:
                             bool enableTagCompression = deviceTypeList.GetBoolean(0);
                             break;
-
-                        case (byte)ElementType.Byte:
-                        case (byte)ElementType.UShort:
-                        case (byte)ElementType.UInt:
-                        case (byte)ElementType.ULong:
-                            ulong something = deviceTypeList.GetUnsignedInt(0);
-                            break;
-
                         default:
-                            throw new Exception($"Unsupported element type {elementType:X2} for tag 0 in EndpointClusterAttributes response.");
+                            throw new Exception($"Unexpected element type {elementType:X} for tag 0 in EndpointClusterAttributes response.");
                     }
                 }
 
@@ -253,19 +297,19 @@ namespace Matter.Core
                 if (deviceTypeList.IsTagNext(2))
                 {
                     uint endpointId = (uint)deviceTypeList.GetUnsignedInt(2);
-                    Console.WriteLine($"- Endpoint ID: 0x{endpointId:X4}");
+                    Console.WriteLine($"- Endpoint ID: 0x{endpointId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(3))
                 {
                     uint clusterId = (uint)deviceTypeList.GetUnsignedInt(3);
-                    Console.WriteLine($" - Cluster ID: 0x{clusterId:X4}");
+                    Console.WriteLine($" - Cluster ID: 0x{clusterId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(4))
                 {
                     uint attributeId = (uint)deviceTypeList.GetUnsignedInt(4);
-                    Console.WriteLine($" - Attribute ID: 0x{attributeId:X4}");
+                    Console.WriteLine($" - Attribute ID: 0x{attributeId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(5))

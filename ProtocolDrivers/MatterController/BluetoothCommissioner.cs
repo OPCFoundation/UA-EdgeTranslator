@@ -151,7 +151,7 @@ namespace Matter.Core
 
                     MatterTLV armFailsafeResultPayload = SkipHeader(armFailsafeMessageFrame.MessagePayload.ApplicationPayload);
                     armFailsafeResultPayload.OpenStructure(1);
-                    byte status = armFailsafeResultPayload.GetUnsignedInt8(0);
+                    ulong status = armFailsafeResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"ArmFailsafe failed with status {status}");
@@ -194,7 +194,7 @@ namespace Matter.Core
 
                     MatterTLV addRootCertResultPayload = SkipHeader(addRootCertMessageFrame.MessagePayload.ApplicationPayload);
                     addRootCertResultPayload.OpenStructure(1);
-                    status = addRootCertResultPayload.GetUnsignedInt8(0);
+                    status = addRootCertResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"AddRootCert failed with status {status}");
@@ -218,7 +218,7 @@ namespace Matter.Core
 
                     MatterTLV addNocResultPayload = SkipHeader(addNocResult.MessagePayload.ApplicationPayload);
                     addNocResultPayload.OpenStructure(1);
-                    status = addNocResultPayload.GetUnsignedInt8(0);
+                    status = addNocResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"AddNoc failed with status {status}");
@@ -238,7 +238,7 @@ namespace Matter.Core
 
                     MatterTLV scanResultPayload = SkipHeader(scanResult.MessagePayload.ApplicationPayload);
                     scanResultPayload.OpenStructure(1);
-                    status = scanResultPayload.GetUnsignedInt8(0);
+                    status = scanResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"ScanNetworks failed with status {status}");
@@ -247,14 +247,14 @@ namespace Matter.Core
 
                     scanResultPayload.OpenArray(3);
                     scanResultPayload.OpenStructure();
-                    ushort panId = scanResultPayload.GetUnsignedInt16(0);
-                    ulong extendedPanId = scanResultPayload.GetUnsignedInt64(1);
+                    ulong panId = scanResultPayload.GetUnsignedInt(0);
+                    ulong extendedPanId = scanResultPayload.GetUnsignedInt(1);
                     string networkName = scanResultPayload.GetUTF8String(2);
-                    byte channel = scanResultPayload.GetUnsignedInt8(3);
-                    byte version = scanResultPayload.GetUnsignedInt8(4);
+                    ulong channel = scanResultPayload.GetUnsignedInt(3);
+                    ulong version = scanResultPayload.GetUnsignedInt(4);
                     byte[] extendedAddress = scanResultPayload.GetOctetString(5);
-                    sbyte rssi = scanResultPayload.GetSignedInt8(6);
-                    byte lqi = scanResultPayload.GetUnsignedInt8(7);
+                    long rssi = scanResultPayload.GetSignedInt(6);
+                    ulong lqi = scanResultPayload.GetUnsignedInt(7);
 
                     Console.WriteLine("Thread Network Scan Result from Device: ExtendedPANID={0:X16}, NetworkName={1}, ExtendedAddress={2}", extendedPanId, networkName, BitConverter.ToString(extendedAddress).Replace("-", ":"));
 
@@ -271,7 +271,7 @@ namespace Matter.Core
 
                     MatterTLV addNetworkResultPayload = SkipHeader(addNetworkResult.MessagePayload.ApplicationPayload);
                     addNetworkResultPayload.OpenStructure(1);
-                    status = addNetworkResultPayload.GetUnsignedInt8(0);
+                    status = addNetworkResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"AddOrUpdateNetwork failed with status {status}");
@@ -291,7 +291,7 @@ namespace Matter.Core
 
                     MatterTLV connectNetworkResultPayload = SkipHeader(connectNetworkResult.MessagePayload.ApplicationPayload);
                     connectNetworkResultPayload.OpenStructure(1);
-                    status = connectNetworkResultPayload.GetUnsignedInt8(0);
+                    status = connectNetworkResultPayload.GetUnsignedInt(0);
                     if (status != 0)
                     {
                         Console.WriteLine($"ConnectNetwork failed with status {status}");
@@ -353,9 +353,9 @@ namespace Matter.Core
             PBKDFParamResponse.OpenStructure();
             PBKDFParamResponse.GetOctetString(1);
             PBKDFParamResponse.GetOctetString(2);
-            peerSessionId = PBKDFParamResponse.GetUnsignedInt16(3);
+            peerSessionId = (ushort)PBKDFParamResponse.GetUnsignedInt(3);
             PBKDFParamResponse.OpenStructure(4);
-            var iterations = PBKDFParamResponse.GetUnsignedInt16(1);
+            ushort iterations = (ushort)PBKDFParamResponse.GetUnsignedInt(1);
             var salt = PBKDFParamResponse.GetOctetString(2);
             PBKDFParamResponse.CloseContainer();
 
@@ -417,9 +417,9 @@ namespace Matter.Core
             data.OpenStructure();
             data.OpenStructure(null);
             data.OpenList(0);
-            data.GetUnsignedInt8(0);
-            data.GetUnsignedInt8(1);
-            data.GetUnsignedInt8(2);
+            data.GetUnsignedInt(0);
+            data.GetUnsignedInt(1);
+            data.GetUnsignedInt(2);
             data.CloseContainer();
 
             return data;

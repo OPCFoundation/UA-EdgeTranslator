@@ -94,7 +94,7 @@
                 var sigma2 = sigma2MessageFrame.MessagePayload.ApplicationPayload;
                 sigma2.OpenStructure();
                 byte[] responderRandom = sigma2.GetOctetString(1);
-                peerSessionId = sigma2.GetUnsignedInt16(2);
+                peerSessionId = (ushort)sigma2.GetUnsignedInt(2);
                 byte[] responderEphPub65 = sigma2.GetOctetString(3);
                 byte[] encryptedSigma2 = sigma2.GetOctetString(4);
 
