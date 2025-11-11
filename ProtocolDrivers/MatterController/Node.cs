@@ -83,7 +83,7 @@ namespace Matter.Core
                 Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
                 MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
                 deviceTypeList.OpenStructure();
-                ParseDescriptions(deviceTypeList);
+                ParseDescriptions(deviceTypeList, false);
 
                 if (deviceTypeList.IsTagNext(3))
                 {
@@ -131,7 +131,7 @@ namespace Matter.Core
                 Console.WriteLine("Received ServerList response from node. Supported Clusters:");
                 MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
                 serverList.OpenStructure();
-                ParseDescriptions(serverList);
+                ParseDescriptions(serverList, true);
 
                 if (serverList.IsTagNext(3))
                 {
@@ -155,25 +155,25 @@ namespace Matter.Core
             secureExchange.Close();
         }
 
-        private void ParseDescriptions(MatterTLV deviceTypeList)
+        private void ParseDescriptions(MatterTLV list, bool isServerList)
         {
             try
             {
-                if (deviceTypeList.IsTagNext(0))
+                if (list.IsTagNext(0))
                 {
-                    byte elementType = deviceTypeList.PeekElementType();
+                    byte elementType = list.PeekElementType();
                     switch (elementType)
                     {
                         case (byte)ElementType.False:
                         case (byte)ElementType.True:
-                            bool flag = deviceTypeList.GetBoolean(0);
+                            bool flag = list.GetBoolean(0);
                             break;
 
                         case (byte)ElementType.Byte:
                         case (byte)ElementType.UShort:
                         case (byte)ElementType.UInt:
                         case (byte)ElementType.ULong:
-                            ulong subscriptionId = deviceTypeList.GetUnsignedInt(0);
+                            ulong subscriptionId = list.GetUnsignedInt(0);
                             break;
 
                         default:
@@ -181,88 +181,136 @@ namespace Matter.Core
                     }
                 }
 
-                if (deviceTypeList.IsTagNext(1))
+                if (list.IsTagNext(1))
                 {
-                    deviceTypeList.OpenArray(1); // attribute reports
+                    list.OpenArray(1); // attribute reports
 
-                    while (!deviceTypeList.IsEndContainerNext())
+                    while (!list.IsEndContainerNext())
                     {
-                        deviceTypeList.OpenStructure(); // attribute report
+                        list.OpenStructure(); // attribute report
 
-                        if (deviceTypeList.IsTagNext(0))
+                        if (list.IsTagNext(0))
                         {
-                            deviceTypeList.OpenStructure(0); // attribute paths
+                            list.OpenStructure(0); // attribute paths
 
-                            if (deviceTypeList.IsTagNext(0))
+                            if (list.IsTagNext(0))
                             {
-                                deviceTypeList.OpenList(0); // attribute path list
+                                list.OpenList(0); // attribute path list
 
-                                PrintEndpointClusterAttributes(deviceTypeList);
+                                PrintEndpointClusterAttributes(list);
 
-                                deviceTypeList.CloseContainer(); // attribute path list
+                                list.CloseContainer(); // attribute path list
                             }
 
-                            if (deviceTypeList.IsTagNext(1))
+                            if (list.IsTagNext(1))
                             {
-                                deviceTypeList.OpenStructure(1); // attribute status
+                                list.OpenStructure(1); // attribute status
 
-                                ulong status = deviceTypeList.GetUnsignedInt(0);
+                                ulong status = list.GetUnsignedInt(0);
 
-                                if (!deviceTypeList.IsEndContainerNext())
+                                if (!list.IsEndContainerNext())
                                 {
-                                    ulong clusterStatus = deviceTypeList.GetUnsignedInt(1);
+                                    ulong clusterStatus = list.GetUnsignedInt(1);
                                 }
 
-                                deviceTypeList.CloseContainer(); // attribute status
+                                list.CloseContainer(); // attribute status
                             }
 
-                            deviceTypeList.CloseContainer(); // attribute paths
+                            list.CloseContainer(); // attribute paths
                         }
 
-                        if (deviceTypeList.IsTagNext(1))
+                        if (list.IsTagNext(1))
                         {
-                            deviceTypeList.OpenStructure(1); // attribute data
+                            list.OpenStructure(1); // attribute data
 
-                            ulong dataVersion = deviceTypeList.GetUnsignedInt(0);
+                            ulong dataVersion = list.GetUnsignedInt(0);
 
-                            deviceTypeList.OpenList(1); // attribute data list
+                            list.OpenList(1); // attribute data list
 
-                            PrintEndpointClusterAttributes(deviceTypeList);
+                            PrintEndpointClusterAttributes(list);
 
-                            deviceTypeList.CloseContainer(); // attribute data list
+                            list.CloseContainer(); // attribute data list
 
-                            object data = deviceTypeList.GetObject(2);
+                            object data = list.GetObject(2);
                             if (data is List<object> dataList)
                             {
-                                Console.WriteLine(" - Data List:");
+                                Console.WriteLine(" Data List:");
                                 foreach (var item in dataList)
                                 {
                                     if (item is List<object> innerDataList)
                                     {
-                                        Console.WriteLine(" - Data List:");
+                                        Console.WriteLine(" Data List:");
                                         foreach (var innerItem in innerDataList)
                                         {
-                                            Console.WriteLine($"   - {innerItem:X}");
+                                            object dataName = innerItem;
+                                            if (isServerList)
+                                            {
+                                                if (MatterV13Clusters.IdToName.ContainsKey((ulong)innerItem))
+                                                {
+                                                    dataName = MatterV13Clusters.IdToName[(ulong)innerItem];
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)innerItem))
+                                                {
+                                                    dataName = MatterV13DeviceTypes.IdToName[(ulong)innerItem];
+                                                }
+                                            }
+
+                                            Console.WriteLine($"  {dataName}");
                                         }
                                     }
                                     else
                                     {
-                                        Console.WriteLine($" - Data: {item:X}");
+                                        object dataName = item;
+                                        if (isServerList)
+                                        {
+                                            if (MatterV13Clusters.IdToName.ContainsKey((ulong)item))
+                                            {
+                                                dataName = MatterV13Clusters.IdToName[(ulong)item];
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)item))
+                                            {
+                                                dataName = MatterV13DeviceTypes.IdToName[(ulong)item];
+                                            }
+                                        }
+
+                                        Console.WriteLine($"  {dataName}");
                                     }
                                 }
                             }
                             else
                             {
-                                Console.WriteLine($" - Data: {data:X}");
+                                object dataName = data;
+                                if (isServerList)
+                                {
+                                    if (MatterV13Clusters.IdToName.ContainsKey((ulong)data))
+                                    {
+                                        dataName = MatterV13Clusters.IdToName[(ulong)data];
+                                    }
+                                }
+                                else
+                                {
+                                    if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)data))
+                                    {
+                                        dataName = MatterV13DeviceTypes.IdToName[(ulong)data];
+                                    }
+                                }
+
+                                Console.WriteLine($"  {dataName}");
                             }
 
-                            deviceTypeList.CloseContainer(); // attribute data
+                            list.CloseContainer(); // attribute data
                         }
 
-                        deviceTypeList.CloseContainer(); // attribute report
+                        list.CloseContainer(); // attribute report
                     }
 
-                    deviceTypeList.CloseContainer(); // attribute reports
+                    list.CloseContainer(); // attribute reports
                 }
             }
             catch (Exception ex)
@@ -297,19 +345,19 @@ namespace Matter.Core
                 if (deviceTypeList.IsTagNext(2))
                 {
                     uint endpointId = (uint)deviceTypeList.GetUnsignedInt(2);
-                    Console.WriteLine($"- Endpoint ID: 0x{endpointId:X}");
+                    Console.WriteLine($"Endpoint ID: 0x{endpointId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(3))
                 {
                     uint clusterId = (uint)deviceTypeList.GetUnsignedInt(3);
-                    Console.WriteLine($" - Cluster ID: 0x{clusterId:X}");
+                    Console.WriteLine($" Cluster ID: 0x{clusterId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(4))
                 {
                     uint attributeId = (uint)deviceTypeList.GetUnsignedInt(4);
-                    Console.WriteLine($" - Attribute ID: 0x{attributeId:X}");
+                    Console.WriteLine($" Attribute ID: 0x{attributeId:X}");
                 }
 
                 if (deviceTypeList.IsTagNext(5))
