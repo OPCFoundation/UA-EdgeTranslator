@@ -10,12 +10,19 @@ namespace Matter.Core
     {
         private ushort _exchangeId;
         private ISession _session;
-        private Task _readingThread;
 
         private uint _receivedMessageCounter = 255;
         private uint _acknowledgedMessageCounter = 255;
 
+        private Timer _timer;
+        private Task _readingThread;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
+        private void Callback(object state)
+        {
+            _cancellationTokenSource.Cancel();
+            _readingThread.Wait();
+        }
 
         private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(10);
 
@@ -24,6 +31,7 @@ namespace Matter.Core
             _exchangeId = exchangeId;
             _session = session;
 
+            _timer = new Timer(Callback, null, Timeout.Infinite, Timeout.Infinite);
             _readingThread = Task.Run(ReceiveAsync);
         }
 
@@ -175,7 +183,11 @@ namespace Matter.Core
         {
             try
             {
-                return await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
+                _timer.Change(5000, 5000);
+                MessageFrame result = await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+
+                return result;
             }
             catch (TaskCanceledException)
             {

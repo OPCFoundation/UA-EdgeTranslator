@@ -74,42 +74,32 @@
   "actions": {
     "ExecuteCommand": {
       "input": {
-        "Command": {
-          "type": "string",
-          "properties": null,
-          "required": null
-        },
-        "Arg1": {
-          "type": "string",
-          "properties": null,
-          "required": null
-        },
-        "Arg2": {
-          "type": "string",
-          "properties": null,
-          "required": null
-        },
-        "Arg3": {
-          "type": "string",
-          "properties": null,
-          "required": null
-        },
-        "Arg4": {
-          "type": "string",
-          "properties": null,
-          "required": null
-        },
-        "Arg5": {
-          "type": "string",
-          "properties": null,
-          "required": null
+        "type": "object",
+        "properties":{
+          "Arg1": {
+            "type": "string"
+          },
+          "Arg2": {
+            "type": "string"
+          },
+          "Arg3": {
+            "type": "string"
+          },
+          "Arg4": {
+            "type": "string"
+          },
+          "Arg5": {
+            "type": "string"
+          }
         }
       },
       "output": {
-        "Result": {
-          "type": "string",
-          "properties": null,
-          "required": null
+        "title": "result",
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
         }
       },
       "forms": null

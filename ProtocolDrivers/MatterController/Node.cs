@@ -34,11 +34,13 @@ namespace Matter.Core
                 ushort port = LastKnownPort;
 
                 CASEClient client = new CASEClient(this, fabric, ipAddress, port);
+
                 _secureSession = client.EstablishSession();
-
-                IsConnected = true;
-
-                Console.WriteLine($"Established secure session to node {NodeId:X16}.");
+                if (_secureSession != null)
+                {
+                    IsConnected = true;
+                    Console.WriteLine($"Established secure session to node {NodeId:X16}.");
+                }
             }
             catch (Exception ex)
             {

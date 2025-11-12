@@ -67,16 +67,13 @@ namespace Opc.Ua.Edge.Translator.Models
     public class TDAction
     {
         [JsonProperty("input")]
-        public Dictionary<string, TDArgument>? Input { get; set; }
+        public TDArguments? Input { get; set; }
 
         [JsonProperty("output")]
-        public Dictionary<string, TDArgument>? Output { get; set; }
-
-        [JsonProperty("forms")]
-        public object[]? Forms { get; set; }
+        public TDArguments? Output { get; set; }
     }
 
-    public class TDArgument
+    public class TDArguments
     {
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }

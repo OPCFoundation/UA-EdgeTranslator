@@ -161,7 +161,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
-            throw new NotImplementedException();
+            // TODO: Implement action execution logic for Matter device
+            return string.Empty;
         }
 
         private CommissioningPayload ParseManualSetupCode(string hexDataset, string manualSetupCode)

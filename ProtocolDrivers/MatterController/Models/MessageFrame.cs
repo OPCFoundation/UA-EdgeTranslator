@@ -137,7 +137,14 @@
 
         public static bool IsStatusReport(MessageFrame messageFrame)
         {
-            return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusReport);
+            if (messageFrame == null)
+            {
+                return true;
+            }
+            else
+            {
+                return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusReport);
+            }
         }
     }
 }

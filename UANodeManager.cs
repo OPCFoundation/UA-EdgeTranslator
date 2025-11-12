@@ -693,21 +693,25 @@ namespace Opc.Ua.Edge.Translator
                     MethodState method = _nodeFactory.CreateMethod(parent, action.Key);
                     method.OnCallMethod = new GenericMethodCalledEventHandler(OnTDActionCalled);
 
-                    if ((action.Value.Input != null) && (action.Value.Input.Count > 0))
+                    if ((action.Value.Input != null) && (action.Value.Input.Properties != null) && (action.Value.Input.Properties.Count > 0))
                     {
-                        // create expanded node IDs for each input argument type
-                        ExpandedNodeId[] inputArgumentTypes = new ExpandedNodeId[action.Value.Input.Count];
-                        for (int i = 0; i < action.Value.Input.Count; i++)
+                        // create expanded node IDs, names and descriptions for each input argument type
+                        ExpandedNodeId[] inputArgumentTypes = new ExpandedNodeId[action.Value.Input.Properties.Count];
+                        string[] inputArguentNames = new string[action.Value.Input.Properties.Count];
+
+                        for (int i = 0; i < action.Value.Input.Properties.Count; i++)
                         {
-                            if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.String)
+                            inputArguentNames[i] = action.Value.Input.Properties.ElementAt(i).Key;
+
+                            if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.String)
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String);
                             }
-                            else if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.Number)
+                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Number)
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Double);
                             }
-                            else if (action.Value.Input.Values.ElementAt(i).Type == TypeEnum.Boolean)
+                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Boolean)
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
                             }
@@ -717,24 +721,28 @@ namespace Opc.Ua.Edge.Translator
                             }
                         }
 
-                        method.InputArguments = _nodeFactory.CreateMethodArguments(method, action.Value.Input.Keys.ToArray(), action.Value.Input.Keys.ToArray(), inputArgumentTypes, true);
+                        method.InputArguments = _nodeFactory.CreateMethodArguments(method, inputArguentNames, inputArguentNames, inputArgumentTypes, true);
                     }
 
-                    if ((action.Value.Output != null) && (action.Value.Output.Count > 0))
+                    if ((action.Value.Output != null) && (action.Value.Output.Properties != null) && (action.Value.Output.Properties.Count > 0))
                     {
-                        // create expanded node IDs for each output argument type
-                        ExpandedNodeId[] outputArgumentTypes = new ExpandedNodeId[action.Value.Output.Count];
-                        for (int i = 0; i < action.Value.Output.Count; i++)
+                        // create expanded node IDs, names and descriptions for each output argument type
+                        ExpandedNodeId[] outputArgumentTypes = new ExpandedNodeId[action.Value.Output.Properties.Count];
+                        string[] outputArgumentNames = new string[action.Value.Output.Properties.Count];
+
+                        for (int i = 0; i < action.Value.Output.Properties.Count; i++)
                         {
-                            if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.String)
+                            outputArgumentNames[i] = action.Value.Output.Properties.ElementAt(i).Key;
+
+                            if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.String)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String);
                             }
-                            else if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.Number)
+                            else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Number)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Double);
                             }
-                            else if (action.Value.Output.Values.ElementAt(i).Type == TypeEnum.Boolean)
+                            else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Boolean)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
                             }
@@ -744,7 +752,7 @@ namespace Opc.Ua.Edge.Translator
                             }
                         }
 
-                        method.OutputArguments = _nodeFactory.CreateMethodArguments(method, action.Value.Output.Keys.ToArray(), action.Value.Output.Keys.ToArray(), outputArgumentTypes, false, true);
+                        method.OutputArguments = _nodeFactory.CreateMethodArguments(method, outputArgumentNames, outputArgumentNames, outputArgumentTypes, false, true);
                     }
 
                     parent.AddChild(method);

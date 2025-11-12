@@ -60,144 +60,114 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // add actions
             td.Actions.Add("ChangeAvailability", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "Type", new TDArgument { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "ConnectorId", new Property() { Type = TypeEnum.String } },
+                        { "Type", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("ChangeConfiguration", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "Key", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "Value", new TDArgument { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "Key", new Property() { Type = TypeEnum.String } },
+                        { "Value", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("ClearCache", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("GetConfiguration", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "Key", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "Key", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("RemoteStartTransaction", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "IdTag", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "IdTag", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("GetTransactionStatusRequest", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "TransactionId", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "TransactionId", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("RemoteStopTransaction", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "TransactionId", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "TransactionId", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("Reset", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("UnlockConnector", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "ConnectorId", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("SetChargingProfile", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "ConnectorId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "Limit", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "NumberOfPhases", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "ConnectorId", new Property() { Type = TypeEnum.String } },
+                        { "Limit", new Property() { Type = TypeEnum.String } },
+                        { "NumberOfPhases", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("SetVariables", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "AttributeType", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "AttributeValue", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "AttributeType", new Property() { Type = TypeEnum.String } },
+                        { "AttributeValue", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
             td.Actions.Add("GetVariables", new TDAction
             {
-                Input = new Dictionary<string, TDArgument>() {
-                    {
-                        "ChargePointId", new TDArgument() { Type = TypeEnum.String }
-                    },
-                    {
-                        "AttributeType", new TDArgument() { Type = TypeEnum.String }
+                Input = new TDArguments() {
+                    Properties = new Dictionary<string, Property>() {
+                        { "ChargePointId", new Property() { Type = TypeEnum.String } },
+                        { "AttributeType", new Property() { Type = TypeEnum.String } }
                     }
-                 }
+                }
             });
 
             // add properties for the requested charge point
