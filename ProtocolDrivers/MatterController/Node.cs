@@ -28,14 +28,14 @@ namespace Matter.Core
         private ISession _secureSession;
 
 
-        public void Connect(Fabric fabric)
+        public bool Connect(Fabric fabric)
         {
             try
             {
                 if (_secureSession != null)
                 {
                     Console.WriteLine($"Already connected to node {NodeId:X16}.");
-                    return;
+                    return true;
                 }
 
                 IPAddress ipAddress = IPAddress.Parse(LastKnownIpAddress);
@@ -47,11 +47,17 @@ namespace Matter.Core
                 if (_secureSession != null)
                 {
                     Console.WriteLine($"Established secure session to node {NodeId:X16}.");
+                    return true;
+                }
+                else
+                {
+                    return false;
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to establish connection to node {NodeId:X16}: {ex.Message}");
+                return false;
             }
         }
 
@@ -100,110 +106,118 @@ namespace Matter.Core
 
         public async Task<bool> FetchDescriptionsAsync(Fabric fabric)
         {
-            if (_secureSession == null)
+            try
             {
-                return false;
-            }
-
-            MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
-
-            // Request the DeviceTypeList Attribute from the Description Cluster.
-            var readCluster = new MatterTLV();
-            readCluster.AddStructure();
-            readCluster.AddArray(tagNumber: 0);
-            readCluster.AddList();
-            readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
-            readCluster.AddUInt32(tagNumber: 4, 0x00); // Attribute 0x00 - DeviceTypeList
-            readCluster.EndContainer();
-            readCluster.EndContainer();
-            readCluster.AddBool(tagNumber: 3, false);
-            readCluster.AddUInt8(255, 12); // interactionModelRevision
-            readCluster.EndContainer();
-            MessageFrame deviceTypeListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
-            if (MessageFrame.IsError(deviceTypeListResponse))
-            {
-                Console.WriteLine("Received error status in response to DeviceTypeList message, abandoning FetchDescriptions!");
-                return false;
-            }
-
-            await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
-
-            bool moreChunkedMessages = false;
-            do
-            {
-                MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
-                deviceTypeList.OpenStructure();
-                ParseDescriptions(deviceTypeList, false);
-
-                if (deviceTypeList.IsTagNext(3))
+                if (_secureSession == null)
                 {
-                    moreChunkedMessages = deviceTypeList.GetBoolean(3);
+                    return false;
                 }
 
-                if (moreChunkedMessages)
+                MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+
+                // Request the DeviceTypeList Attribute from the Description Cluster.
+                var readCluster = new MatterTLV();
+                readCluster.AddStructure();
+                readCluster.AddArray(tagNumber: 0);
+                readCluster.AddList();
+                readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
+                readCluster.AddUInt32(tagNumber: 4, 0x00); // Attribute 0x00 - DeviceTypeList
+                readCluster.EndContainer();
+                readCluster.EndContainer();
+                readCluster.AddBool(tagNumber: 3, false);
+                readCluster.AddUInt8(255, 12); // interactionModelRevision
+                readCluster.EndContainer();
+                MessageFrame deviceTypeListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
+                if (MessageFrame.IsError(deviceTypeListResponse))
                 {
-                    deviceTypeListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
-                    if (MessageFrame.IsError(deviceTypeListResponse))
+                    Console.WriteLine("Received error status in response to DeviceTypeList message, abandoning FetchDescriptions!");
+                    return false;
+                }
+
+                await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
+
+                bool moreChunkedMessages = false;
+                do
+                {
+                    MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
+                    deviceTypeList.OpenStructure();
+                    ParseDescriptions(deviceTypeList, false);
+
+                    if (deviceTypeList.IsTagNext(3))
                     {
-                        Console.WriteLine("Received error status in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
-                        return false;
+                        moreChunkedMessages = deviceTypeList.GetBoolean(3);
                     }
 
-                    await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
-                }
-            }
-            while (moreChunkedMessages);
-
-            // Request the ServerList Attribute from the Description Cluster.
-            readCluster = new MatterTLV();
-            readCluster.AddStructure();
-            readCluster.AddArray(tagNumber: 0);
-            readCluster.AddList();
-            readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
-            readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - ServerList
-            readCluster.EndContainer();
-            readCluster.EndContainer();
-            readCluster.AddBool(tagNumber: 3, false);
-            readCluster.AddUInt8(255, 12); // interactionModelRevision
-            readCluster.EndContainer();
-            MessageFrame serverListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
-            if (MessageFrame.IsError(serverListResponse))
-            {
-                Console.WriteLine("Received error status in response to ServerList message, abandoning FetchDescriptions!");
-                return false;
-            }
-
-            await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
-
-            moreChunkedMessages = false;
-            do
-            {
-                MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
-                serverList.OpenStructure();
-                ParseDescriptions(serverList, true);
-
-                if (serverList.IsTagNext(3))
-                {
-                    moreChunkedMessages = serverList.GetBoolean(3);
-                }
-
-                if (moreChunkedMessages)
-                {
-                    serverListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
-                    if (MessageFrame.IsError(serverListResponse))
+                    if (moreChunkedMessages)
                     {
-                        Console.WriteLine("Received error status in response to ServerList chunked message, abandoning FetchDescriptions!");
-                        return false;
+                        deviceTypeListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
+                        if (MessageFrame.IsError(deviceTypeListResponse))
+                        {
+                            Console.WriteLine("Received error status in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
+                            return false;
+                        }
+
+                        await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
                     }
+                }
+                while (moreChunkedMessages);
+
+                // Request the ServerList Attribute from the Description Cluster.
+                readCluster = new MatterTLV();
+                readCluster.AddStructure();
+                readCluster.AddArray(tagNumber: 0);
+                readCluster.AddList();
+                readCluster.AddUInt32(tagNumber: 3, 0x1D); // ClusterId 0x1D - Description
+                readCluster.AddUInt32(tagNumber: 4, 0x01); // Attribute 0x01 - ServerList
+                readCluster.EndContainer();
+                readCluster.EndContainer();
+                readCluster.AddBool(tagNumber: 3, false);
+                readCluster.AddUInt8(255, 12); // interactionModelRevision
+                readCluster.EndContainer();
+                MessageFrame serverListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
+                if (MessageFrame.IsError(serverListResponse))
+                {
+                    Console.WriteLine("Received error status in response to ServerList message, abandoning FetchDescriptions!");
+                    return false;
                 }
 
                 await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
+
+                moreChunkedMessages = false;
+                do
+                {
+                    MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
+                    serverList.OpenStructure();
+                    ParseDescriptions(serverList, true);
+
+                    if (serverList.IsTagNext(3))
+                    {
+                        moreChunkedMessages = serverList.GetBoolean(3);
+                    }
+
+                    if (moreChunkedMessages)
+                    {
+                        serverListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
+                        if (MessageFrame.IsError(serverListResponse))
+                        {
+                            Console.WriteLine("Received error status in response to ServerList chunked message, abandoning FetchDescriptions!");
+                            return false;
+                        }
+                    }
+
+                    await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
+                }
+                while (moreChunkedMessages);
+
+                secureExchange.Close();
+
+                return true;
             }
-            while (moreChunkedMessages);
-
-            secureExchange.Close();
-
-            return true;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to fetch descriptions from node {NodeId:X16}: {ex.Message}");
+                return false;
+            }
         }
 
         private void ParseDescriptions(MatterTLV list, bool isServerList)
@@ -387,7 +401,6 @@ namespace Matter.Core
                         case (byte)ElementType.UInt:
                         case (byte)ElementType.ULong:
                             ulong id = list.GetUnsignedInt(0);
-                            Console.WriteLine($"ID: 0x{id:X}");
                             break;
 
                         default:

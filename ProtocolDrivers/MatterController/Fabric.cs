@@ -2,8 +2,10 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -15,7 +17,7 @@ namespace Matter.Core
 
         public ushort VendorId { get; set; } = 0xFFF1; // Default value from Matter specification
 
-        public ConcurrentDictionary<ulong, Node> Nodes { get; set; }
+        public ConcurrentDictionary<string, Node> Nodes { get; set; }
 
         // Also called the EpochKey
         public byte[] IPK { get; set; }
@@ -95,21 +97,17 @@ namespace Matter.Core
             );
         }
 
-        public void AddNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey)
+        public void AddNode(string setupCode, string discriminator, ulong nodeId, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey)
         {
-            if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
-            {
-                Console.WriteLine($"Invalid node ID: {id.ToUpper()}!");
-                return;
-            }
+            string key = setupCode + discriminator;
 
             // remove any existing node
-            if (Nodes.ContainsKey(nodeId))
+            if (Nodes.ContainsKey(key))
             {
-                Nodes.TryRemove(nodeId, out _);
+                Nodes.TryRemove(key, out _);
             }
 
-            Nodes.TryAdd(nodeId, new Node()
+            Nodes.TryAdd(key, new Node()
             {
                 NodeId = nodeId,
                 SetupCode = setupCode,
@@ -127,21 +125,23 @@ namespace Matter.Core
                 return;
             }
 
-            // check if the node exists
-            if (!Nodes.ContainsKey(nodeId))
+            // find our node
+            KeyValuePair<string, Node> nodeEntry = Nodes.FirstOrDefault(n => n.Value.NodeId == nodeId);
+            if (nodeEntry.Equals(default(KeyValuePair<string, Node>)))
             {
                 Console.WriteLine($"Node with ID: {id.ToUpper()} not found in Fabric!");
                 return;
             }
 
+            // find our node index
             if (!string.IsNullOrEmpty(address))
             {
-                Nodes[nodeId].LastKnownIpAddress = address;
+                Nodes[nodeEntry.Key].LastKnownIpAddress = address;
             }
 
             if (port != 0)
             {
-                Nodes[nodeId].LastKnownPort = port;
+                Nodes[nodeEntry.Key].LastKnownPort = port;
             }
 
             Console.WriteLine($"Added IP address {address} to existing Matter node {id.ToUpper()}.");

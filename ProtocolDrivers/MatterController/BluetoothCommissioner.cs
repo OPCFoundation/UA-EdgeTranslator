@@ -82,32 +82,25 @@ namespace Matter.Core
 
                 try
                 {
-                    // find the first non-commissioned device
                     IBluetoothAdvertisingEvent e = null;
                     foreach (var adv in _receivedAdvertisments)
                     {
                         if (adv.Value != null)
                         {
-                            e = adv.Value;
-                            break;
+                            var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)adv.Value.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
+                            if (discriminator == _payload.Discriminator)
+                            {
+                                e = adv.Value;
+                                break;
+                            }
                         }
                     }
 
                     if (e == null)
                     {
-                        // all have been processed
+                        // our Matter device was not found yet
                         Task.Delay(1000).GetAwaiter().GetResult();
                         continue;
-                    }
-
-                    var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)e.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
-
-                    Console.WriteLine("Matter device advertisment received from {0} with a discriminator of {1}", e.Device.Id, discriminator);
-
-                    if (discriminator != _payload.Discriminator)
-                    {
-                        Console.WriteLine("Discriminator {0} doesn't match expected discriminator {1}", discriminator, _payload.Discriminator);
-                        return;
                     }
 
                     // parse Matter node ID from advertisment
@@ -303,9 +296,9 @@ namespace Matter.Core
                     btpConnection.Close();
 
                     _fabric.AddNode(
-                        nodeIdString,
                         _payload.Passcode.ToString(),
                         _payload.Discriminator.ToString(),
+                        nodeId,
                         _fabric.CA.GenerateCertMessage(nodeCert),
                         certRequest.PublicKey.GetECDsaPublicKey());
 

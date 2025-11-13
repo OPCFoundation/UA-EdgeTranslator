@@ -47,9 +47,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 CommissioningPayload commissioningPayload = ParseManualSetupCode(ipParts[3], ipParts[4]);
 
                 // check if the node is already commissioned into our Fabric
-                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null))
+                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.Name != null))
                 {
-                    Console.WriteLine($"Matter Node '{commissioningPayload.Passcode}' is not commissioned. Starting commissioning process.");
+                    Console.WriteLine($"Matter device {ipParts[2]} is not commissioned. Starting commissioning process.");
 
                     _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
 
@@ -70,15 +70,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null);
                 if (node != null)
                 {
-                    node.Connect(_fabric);
-
-                    // check if we can fetch the Matter Descriptions
-                    if (node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult())
+                    if (node.Connect(_fabric))
                     {
-                        // all good - persist the fabric with the new node descriptions
                         node.Name = ipParts[2];
                         _fabric.Save();
                     }
+
+                    node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
                 }
             }
             catch (Exception ex)
@@ -172,8 +170,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (node != null)
             {
                 // call the action on the Matter node
-                node.Connect(_fabric);
-                return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs);
+                if (node.Connect(_fabric))
+                {
+                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs);
+                }
+                else
+                {
+                    return $"Failed to connect to Node {nodeName}";
+                }
             }
             else
             {
@@ -297,10 +301,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             foreach (var server in servers)
             {
                 var instanceName = server.Name.ToString();
-
                 if (instanceName.EndsWith("_matter._tcp.local"))
                 {
-                    Console.WriteLine($"Discovered Commissioned Node '{instanceName}'");
+                    Console.WriteLine($"Discovered Matter Node {instanceName} via mDNS.");
 
                     var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
 
@@ -328,6 +331,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     }
 
                     _fabric.UpdateNodeWithIPAddress(nodeId, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.Save();
                 }
             }
         }
