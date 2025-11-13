@@ -20,6 +20,8 @@ namespace InTheHand.Bluetooth
         public BluetoothAdvertisingEventLinux(Device device, ushort appearance)
         {
             Device.Id = device.GetNameAsync().GetAwaiter().GetResult();
+            Device.GattServer = new RemoteGattServerLinux();
+            Device.GattServer.Device = Device;
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()

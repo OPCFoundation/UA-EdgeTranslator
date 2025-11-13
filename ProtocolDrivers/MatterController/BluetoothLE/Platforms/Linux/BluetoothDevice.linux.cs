@@ -15,18 +15,18 @@ namespace InTheHand.Bluetooth
 {
     public class BluetoothDeviceLinux : IBluetoothDevice
     {
-        public event EventHandler GattServerDisconnected;
+        public Device NativeDevice { get; set; }
 
         public string Id { get; set; }
 
-        public Device NativeDevice { get; set; }
+        public IRemoteGattServer GattServer { get; set; }
+
+        public event EventHandler GattServerDisconnected;
 
         public void OnGattServerDisconnected()
         {
             GattServerDisconnected?.Invoke(this, EventArgs.Empty);
         }
-
-        public IRemoteGattServer GattServer { get; set; }
 
         public BluetoothDeviceLinux()
         {

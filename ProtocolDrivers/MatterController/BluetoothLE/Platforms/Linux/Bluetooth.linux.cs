@@ -25,16 +25,15 @@ public class BluetoothLinux : IBluetooth
         if (Adapter == null)
         {
             Adapter = (await BlueZManager.GetAdaptersAsync().ConfigureAwait(false)).FirstOrDefault();
-
             if (Adapter == null)
+            {
                 throw new PlatformNotSupportedException("No IBluetooth adapter present.");
-
+            }
             Console.WriteLine($"Using BT adapter {Adapter.Name}");
 
             Adapter.DeviceFound += Adapter_DeviceFound;
         }
 
-        Console.WriteLine("Starting BLE Scan...");
         await Adapter.StartDiscoveryAsync().ConfigureAwait(false);
     }
 
