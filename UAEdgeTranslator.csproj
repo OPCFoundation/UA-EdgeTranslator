@@ -29,12 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="nodesets\Opc.Ua.WotCon.NodeSet2.xml" />
-    <None Remove="runtimes\linux-arm64\native\libiec61850.dll" />
-    <None Remove="runtimes\linux-arm64\native\libplctag.so" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="libiec61850.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
