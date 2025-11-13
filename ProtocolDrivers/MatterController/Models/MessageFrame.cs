@@ -135,7 +135,7 @@
             return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.Acknowledgement);
         }
 
-        public static bool IsStatusReport(MessageFrame messageFrame)
+        public static bool IsError(MessageFrame messageFrame)
         {
             if (messageFrame == null)
             {

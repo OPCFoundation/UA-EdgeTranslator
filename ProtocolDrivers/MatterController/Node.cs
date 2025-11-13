@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace Matter.Core
 {
     public class Node
     {
-        public ISession _secureSession;
+        public string Name { get; set; }
 
         public ulong NodeId { get; set; }
 
@@ -24,10 +25,19 @@ namespace Matter.Core
 
         public ushort LastKnownPort { get; set; }
 
+        private ISession _secureSession;
+
+
         public void Connect(Fabric fabric)
         {
             try
             {
+                if (_secureSession != null)
+                {
+                    Console.WriteLine($"Already connected to node {NodeId:X16}.");
+                    return;
+                }
+
                 IPAddress ipAddress = IPAddress.Parse(LastKnownIpAddress);
                 ushort port = LastKnownPort;
 
@@ -43,6 +53,49 @@ namespace Matter.Core
             {
                 Console.WriteLine($"Failed to establish connection to node {NodeId:X16}: {ex.Message}");
             }
+        }
+
+        public string ExecuteCommand(Fabric fabric, string name, string[] inputArgs)
+        {
+            if (inputArgs == null || inputArgs.Length == 0)
+            {
+                return "Matter input arguments cannot be null/empty!";
+            }
+
+            // find our cluster ID
+            ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(name, StringComparison.OrdinalIgnoreCase)).Key;
+            if (clusterId == 0)
+            {
+                return $"Cluster name '{name}' not found.";
+            }
+            else
+            {
+                if (_secureSession == null)
+                {
+                    return "Could not connect to Matter device!";
+                }
+
+                MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+
+                // map booleans
+                if ((inputArgs[0] == "True") || (inputArgs[0] == "False"))
+                {
+                    inputArgs[0] = (inputArgs[0] == "True") ? "1" : "0";
+                }
+
+                MessageFrame commandResponseMessageFrame = secureExchange.SendCommand(1, (byte)clusterId, byte.Parse(inputArgs[0]), ProtocolOpCode.InvokeRequest).GetAwaiter().GetResult();
+                if (MessageFrame.IsError(commandResponseMessageFrame))
+                {
+                    Console.WriteLine($"Received error status in response to command {name}!");
+                    return "Error response from command.";
+                }
+
+                secureExchange.AcknowledgeMessageAsync(commandResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+
+                secureExchange.Close();
+            }
+
+            return "success";
         }
 
         public async Task<bool> FetchDescriptionsAsync(Fabric fabric)
@@ -67,9 +120,9 @@ namespace Matter.Core
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
             MessageFrame deviceTypeListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
-            if (MessageFrame.IsStatusReport(deviceTypeListResponse))
+            if (MessageFrame.IsError(deviceTypeListResponse))
             {
-                Console.WriteLine("Received error status report in response to DeviceTypeList message, abandoning FetchDescriptions!");
+                Console.WriteLine("Received error status in response to DeviceTypeList message, abandoning FetchDescriptions!");
                 return false;
             }
 
@@ -78,7 +131,6 @@ namespace Matter.Core
             bool moreChunkedMessages = false;
             do
             {
-                Console.WriteLine("Received DeviceTypeList response from node. Supported Clusters:");
                 MatterTLV deviceTypeList = deviceTypeListResponse.MessagePayload.ApplicationPayload;
                 deviceTypeList.OpenStructure();
                 ParseDescriptions(deviceTypeList, false);
@@ -91,9 +143,9 @@ namespace Matter.Core
                 if (moreChunkedMessages)
                 {
                     deviceTypeListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
-                    if (MessageFrame.IsStatusReport(deviceTypeListResponse))
+                    if (MessageFrame.IsError(deviceTypeListResponse))
                     {
-                        Console.WriteLine("Received error status report in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
+                        Console.WriteLine("Received error status in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
                         return false;
                     }
 
@@ -115,9 +167,9 @@ namespace Matter.Core
             readCluster.AddUInt8(255, 12); // interactionModelRevision
             readCluster.EndContainer();
             MessageFrame serverListResponse = await secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).ConfigureAwait(false);
-            if (MessageFrame.IsStatusReport(serverListResponse))
+            if (MessageFrame.IsError(serverListResponse))
             {
-                Console.WriteLine("Received error status report in response to ServerList message, abandoning FetchDescriptions!");
+                Console.WriteLine("Received error status in response to ServerList message, abandoning FetchDescriptions!");
                 return false;
             }
 
@@ -126,7 +178,6 @@ namespace Matter.Core
             moreChunkedMessages = false;
             do
             {
-                Console.WriteLine("Received ServerList response from node. Supported Clusters:");
                 MatterTLV serverList = serverListResponse.MessagePayload.ApplicationPayload;
                 serverList.OpenStructure();
                 ParseDescriptions(serverList, true);
@@ -139,9 +190,9 @@ namespace Matter.Core
                 if (moreChunkedMessages)
                 {
                     serverListResponse = await secureExchange.WaitForNextMessageAsync().ConfigureAwait(false);
-                    if (MessageFrame.IsStatusReport(serverListResponse))
+                    if (MessageFrame.IsError(serverListResponse))
                     {
-                        Console.WriteLine("Received error status report in response to ServerList chunked message, abandoning FetchDescriptions!");
+                        Console.WriteLine("Received error status in response to ServerList chunked message, abandoning FetchDescriptions!");
                         return false;
                     }
                 }
@@ -151,7 +202,6 @@ namespace Matter.Core
             while (moreChunkedMessages);
 
             secureExchange.Close();
-            _secureSession = null;
 
             return true;
         }
@@ -198,7 +248,7 @@ namespace Matter.Core
                             {
                                 list.OpenList(0); // attribute path list
 
-                                PrintEndpointClusterAttributes(list);
+                                GetEndpointClusterAttributes(list);
 
                                 list.CloseContainer(); // attribute path list
                             }
@@ -228,77 +278,75 @@ namespace Matter.Core
 
                             list.OpenList(1); // attribute data list
 
-                            PrintEndpointClusterAttributes(list);
+                            GetEndpointClusterAttributes(list);
 
                             list.CloseContainer(); // attribute data list
 
                             object data = list.GetObject(2);
                             if (data is List<object> dataList)
                             {
-                                Console.WriteLine(" Data List:");
                                 foreach (var item in dataList)
                                 {
                                     if (item is List<object> innerDataList)
                                     {
-                                        Console.WriteLine(" Data List:");
                                         foreach (var innerItem in innerDataList)
                                         {
-                                            object dataName = innerItem;
+                                            string dataName = $"{innerItem:X}";
                                             if (isServerList)
                                             {
                                                 if (MatterV13Clusters.IdToName.ContainsKey((ulong)innerItem))
                                                 {
-                                                    dataName = MatterV13Clusters.IdToName[(ulong)innerItem];
+                                                    dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)innerItem]}";
                                                 }
                                             }
                                             else
                                             {
                                                 if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)innerItem))
                                                 {
-                                                    dataName = MatterV13DeviceTypes.IdToName[(ulong)innerItem];
+                                                    dataName = $"Supported Matter Device Type: {MatterV13DeviceTypes.IdToName[(ulong)innerItem]}";
                                                 }
                                             }
 
-                                            Console.WriteLine($"  {dataName}");
+                                            Console.WriteLine(dataName);
                                         }
                                     }
                                     else
                                     {
-                                        object dataName = item;
+                                        string dataName = $"{item:X}";
                                         if (isServerList)
                                         {
                                             if (MatterV13Clusters.IdToName.ContainsKey((ulong)item))
                                             {
-                                                dataName = MatterV13Clusters.IdToName[(ulong)item];
+                                                dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)item]}";
                                             }
                                         }
                                         else
                                         {
                                             if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)item))
                                             {
-                                                dataName = MatterV13DeviceTypes.IdToName[(ulong)item];
+                                                dataName = $"Supported Matter Device Type: {MatterV13DeviceTypes.IdToName[(ulong)item]}";
                                             }
                                         }
 
-                                        Console.WriteLine($"  {dataName}");
+                                        Console.WriteLine(dataName);
                                     }
                                 }
                             }
                             else
                             {
-                                object dataName = data;
+                                string dataName = $"{data:X}";
                                 if (isServerList)
                                 {
                                     if (MatterV13Clusters.IdToName.ContainsKey((ulong)data))
                                     {
-                                        dataName = MatterV13Clusters.IdToName[(ulong)data];
+                                        dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)data]}";
                                     }
                                 }
                                 else
                                 {
                                     if (MatterV13DeviceTypes.IdToName.ContainsKey((ulong)data))
                                     {
-                                        dataName = MatterV13DeviceTypes.IdToName[(ulong)data];
+                                        dataName = $"Supported Matter Device Type: {MatterV13DeviceTypes.IdToName[(ulong)data]}";
                                     }
                                 }
 
@@ -320,7 +368,7 @@ namespace Matter.Core
             }
         }
 
-        private void PrintEndpointClusterAttributes(MatterTLV list)
+        private void GetEndpointClusterAttributes(MatterTLV list)
         {
             while (!list.IsEndContainerNext())
             {
@@ -350,37 +398,31 @@ namespace Matter.Core
                 if (list.IsTagNext(1))
                 {
                     ulong nodeId = list.GetUnsignedInt(1);
-                    Console.WriteLine($"Node ID: 0x{nodeId:X}");
                 }
 
                 if (list.IsTagNext(2))
                 {
                     uint endpointId = (uint)list.GetUnsignedInt(2);
-                    Console.WriteLine($"Endpoint ID: 0x{endpointId:X}");
                 }
 
                 if (list.IsTagNext(3))
                 {
                     uint clusterId = (uint)list.GetUnsignedInt(3);
-                    Console.WriteLine($" Cluster ID: 0x{clusterId:X}");
                 }
 
                 if (list.IsTagNext(4))
                 {
                     uint attributeId = (uint)list.GetUnsignedInt(4);
-                    Console.WriteLine($" Attribute ID: 0x{attributeId:X}");
                 }
 
                 if (list.IsTagNext(5))
                 {
                     ushort listIndex = (ushort)list.GetUnsignedInt(5);
-                    Console.WriteLine($" List Index: {listIndex}");
                 }
 
                 if (list.IsTagNext(6))
                 {
                     uint wildcardPathFlags = (uint)list.GetUnsignedInt(6);
-                    Console.WriteLine($" Wildcard Path Flags: 0x{wildcardPathFlags:X}");
                 }
             }
         }

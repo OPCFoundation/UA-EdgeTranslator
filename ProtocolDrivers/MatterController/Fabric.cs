@@ -95,64 +95,56 @@ namespace Matter.Core
             );
         }
 
-        public void AddOrUpdateNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey, string address, ushort port)
+        public void AddNode(string id, string setupCode, string discriminator, byte[] operationalNOCAsTLV, ECDsa subjectPublicKey)
         {
             if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
             {
-                Console.WriteLine($"Invalid node ID: {id.ToUpper()}");
+                Console.WriteLine($"Invalid node ID: {id.ToUpper()}!");
                 return;
             }
 
+            // remove any existing node
             if (Nodes.ContainsKey(nodeId))
             {
-                Nodes[nodeId].NodeId = nodeId;
-
-                if (!string.IsNullOrEmpty(setupCode))
-                {
-                    Nodes[nodeId].SetupCode = setupCode;
-                }
-
-                if (!string.IsNullOrEmpty(discriminator)) {
-                    Nodes[nodeId].Discriminator = discriminator;
-                }
-
-                if ((operationalNOCAsTLV != null) && (operationalNOCAsTLV.Length > 0))
-                {
-                    Nodes[nodeId].OperationalNOCAsTLV = operationalNOCAsTLV;
-                }
-
-                if (subjectPublicKey != null)
-                {
-                    Nodes[nodeId].SubjectPublicKey = subjectPublicKey;
-                }
-
-                if (!string.IsNullOrEmpty(address))
-                {
-                    Nodes[nodeId].LastKnownIpAddress = address;
-                }
-
-                if (port != 0)
-                {
-                    Nodes[nodeId].LastKnownPort = port;
-                }
-
-                Console.WriteLine($"Updated existing node with ID: {id.ToUpper()}");
+                Nodes.TryRemove(nodeId, out _);
             }
-            else
+
+            Nodes.TryAdd(nodeId, new Node()
             {
-                Nodes.TryAdd(nodeId, new Node()
-                {
-                    NodeId = nodeId,
-                    SetupCode = setupCode,
-                    Discriminator = discriminator,
-                    OperationalNOCAsTLV = operationalNOCAsTLV,
-                    SubjectPublicKey = subjectPublicKey,
-                    LastKnownIpAddress = address,
-                    LastKnownPort = port
-                });
+                NodeId = nodeId,
+                SetupCode = setupCode,
+                Discriminator = discriminator,
+                OperationalNOCAsTLV = operationalNOCAsTLV,
+                SubjectPublicKey = subjectPublicKey
+            });
+        }
 
-                Console.WriteLine($"Added new node with ID: {id.ToUpper()}");
+        public void UpdateNodeWithIPAddress(string id, string address, ushort port)
+        {
+            if (!ulong.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong nodeId))
+            {
+                Console.WriteLine($"Invalid node ID: {id.ToUpper()}!");
+                return;
             }
+
+            // check if the node exists
+            if (!Nodes.ContainsKey(nodeId))
+            {
+                Console.WriteLine($"Node with ID: {id.ToUpper()} not found in Fabric!");
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(address))
+            {
+                Nodes[nodeId].LastKnownIpAddress = address;
+            }
+
+            if (port != 0)
+            {
+                Nodes[nodeId].LastKnownPort = port;
+            }
+
+            Console.WriteLine($"Added IP address {address} to existing Matter node {id.ToUpper()}.");
         }
     }
 }

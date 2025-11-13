@@ -6,6 +6,18 @@
     {
         public static readonly IReadOnlyDictionary<ulong, string> IdToName = new Dictionary<ulong, string>
         {
+            // --- Basic device types (depricated) ---
+            { 0x0000, "Unknown" },
+            { 0x0001, "Administrator" },
+            { 0x0002, "Light" },
+            { 0x0003, "Thermostat" },
+            { 0x0004, "Door" },
+            { 0x0005, "Window" },
+            { 0x0006, "Shade" },
+            { 0x0007, "Lock" },
+            { 0x0008, "Sensor" },
+            { 0x0009, "Switch" },
+
             // --- Access / Closures ---
             { 0x000A, "Door Lock" },
             { 0x000B, "Door Lock Controller" },

@@ -1256,9 +1256,9 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("matter://"))
             {
                 string[] address = td.Base.Split(['/']);
-                if ((address.Length != 4) || (address[0] != "matter:"))
+                if ((address.Length != 5) || (address[0] != "matter:"))
                 {
-                    throw new Exception("Expected Matter device address in the format matter://ThreadNetworkDataset/MatterDeviceCommissioningQRCode!");
+                    throw new Exception("Expected Matter device address in the format matter://DeviceName/ThreadNetworkDataset/MatterDeviceCommissioningQRCode!");
                 }
 
                 // check if we can reach the Matter asset
@@ -1509,7 +1509,18 @@ namespace Opc.Ua.Edge.Translator
 
                 outputArguments = actionOutputArgs;
 
-                return new ServiceResult(StatusCodes.Good, new LocalizedText(result));
+                if (result == null)
+                {
+                    return new ServiceResult(StatusCodes.Uncertain, new LocalizedText("no result"));
+                }
+                else if (result.ToLower() == "ok" || result.ToLower() == "success")
+                {
+                    return new ServiceResult(StatusCodes.Good, new LocalizedText("success"));
+                }
+                else
+                {
+                    return new ServiceResult(StatusCodes.Bad, new LocalizedText(result));
+                }
             }
             catch (Exception ex)
             {

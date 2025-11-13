@@ -32,33 +32,20 @@
             var connection = new UdpConnection(_ipAddress, _port);
             connection.OpenConnection();
 
-            Console.WriteLine("Starting SIGMA / CASE exchange...");
-            int retryCount = 3;
-            ushort initiatorSessionId = 0;
-            ushort peerSessionId = 0;
-            TrafficKeys keys = null;
-            while (!ExecuteSIGMA(connection, out initiatorSessionId, out peerSessionId, out keys))
+            Console.WriteLine("Starting SIGMA/CASE exchange with device {0:X16} at IP address {1}:{2}", _node.NodeId, _ipAddress, _port);
+            if (!ExecuteSIGMA(connection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
             {
-                Task.Delay(1000).GetAwaiter().GetResult();
-                retryCount--;
-                if (retryCount == 0)
-                {
-                    Console.WriteLine("Failed to establish SIGMA session after multiple attempts.");
-                    return null;
-                }
-
-                Console.WriteLine("Retrying SIGMA / CASE exchange...");
+                Console.WriteLine("Failed to establish SIGMA/CASE session.");
+                return null;
             }
 
-            Console.WriteLine("Establishing secure session to device {0:X16} at IP address {1}:{2}", _node.NodeId, _ipAddress, _port);
             SecureSession secureSession = new SecureSession(connection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
-
             MessageExchange secureExchange = secureSession.CreateExchange(_fabric.RootNodeId, _node.NodeId);
 
             MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, ProtocolOpCode.InvokeRequest).GetAwaiter().GetResult(); // CompleteCommissioning
-            if (MessageFrame.IsStatusReport(completeCommissioningResult))
+            if (MessageFrame.IsError(completeCommissioningResult))
             {
-                Console.WriteLine("Received error status report in response to CompleteCommissioning message, abandoning commissioning!");
+                Console.WriteLine("Received error status in response to CompleteCommissioning message, abandoning commissioning!");
                 return null;
             }
 
@@ -98,9 +85,9 @@
                 sigma1.AddOctetString(4, opsPubKey65);
                 sigma1.EndContainer();
                 MessageFrame sigma2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(sigma1, 0, ProtocolOpCode.CASESigma1).GetAwaiter().GetResult();
-                if (MessageFrame.IsStatusReport(sigma2MessageFrame))
+                if (MessageFrame.IsError(sigma2MessageFrame))
                 {
-                    Console.WriteLine("Received error status report in response to SIGMA1 message, abandoning operational commissioning!");
+                    Console.WriteLine("Received error status in response to SIGMA1 message, abandoning operational commissioning!");
                     return false;
                 }
 
@@ -184,16 +171,16 @@
                 sigma3.AddOctetString(1, _fabric.CA.Concat(encryptedSigma3, mic));
                 sigma3.EndContainer();
                 var sigma3Resp = unsecureExchange.SendAndReceiveMessageAsync(sigma3, 0, ProtocolOpCode.CASESigma3).GetAwaiter().GetResult();
-                if (!MessageFrame.IsStandaloneAck(sigma3Resp) && !MessageFrame.IsStatusReport(sigma3Resp))
+                if (!MessageFrame.IsStandaloneAck(sigma3Resp) && !MessageFrame.IsError(sigma3Resp))
                 {
                     Console.WriteLine("Expected Standalone ACK or Status Report to Sigma3, abandoning operational commissioning!");
                     return false;
                 }
 
                 // check for empty status report (success)
-                if (MessageFrame.IsStatusReport(sigma3Resp) && (sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0] != 0))
+                if (MessageFrame.IsError(sigma3Resp) && (sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0] != 0))
                 {
-                    Console.WriteLine($"Received failure status report in response to SIGMA3 message, error code: {sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0]}, abandoning operational commissioning!");
+                    Console.WriteLine($"Received failure status in response to SIGMA3 message, error code: {sigma3Resp.MessagePayload.ApplicationPayload.Serialize()[0]}, abandoning operational commissioning!");
                     return false;
                 }
 

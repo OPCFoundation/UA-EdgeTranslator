@@ -143,9 +143,9 @@ namespace Matter.Core
                         (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // Arm Failsafe
-                    if (MessageFrame.IsStatusReport(armFailsafeMessageFrame))
+                    if (MessageFrame.IsError(armFailsafeMessageFrame))
                     {
-                        Console.WriteLine("Received error status report in response to Arm Failsafe message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to Arm Failsafe message, abandoning commissioning!");
                         return;
                     }
 
@@ -162,9 +162,9 @@ namespace Matter.Core
                         RandomNumberGenerator.GetBytes(32) // CSRNonce
                     ];
                     MessageFrame csrResponseMessageFrame = paseExchange.SendCommand(0, 0x3E, 4, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // CSRRequest
-                    if (MessageFrame.IsStatusReport(csrResponseMessageFrame))
+                    if (MessageFrame.IsError(csrResponseMessageFrame))
                     {
-                        Console.WriteLine("Received error status report in response to CSRRequest message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to CSRRequest message, abandoning commissioning!");
                         return;
                     }
 
@@ -186,9 +186,9 @@ namespace Matter.Core
                         _fabric.CA.GenerateCertMessage(_fabric.CA.RootCertificate)
                     ];
                     MessageFrame addRootCertMessageFrame = paseExchange.SendCommand(0, 0x3E, 11, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddTrustedRootCertificate
-                    if (MessageFrame.IsStatusReport(addRootCertMessageFrame))
+                    if (MessageFrame.IsError(addRootCertMessageFrame))
                     {
-                        Console.WriteLine("Received error status report in response to AddTrustedRootCertificate message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to AddTrustedRootCertificate message, abandoning commissioning!");
                         return;
                     }
 
@@ -210,9 +210,9 @@ namespace Matter.Core
                         _fabric.VendorId
                     ];
                     MessageFrame addNocResult = paseExchange.SendCommand(0, 0x3E, 6, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddNoc
-                    if (MessageFrame.IsStatusReport(addNocResult))
+                    if (MessageFrame.IsError(addNocResult))
                     {
-                        Console.WriteLine("Received error status report in response to AddNoc message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to AddNoc message, abandoning commissioning!");
                         return;
                     }
 
@@ -230,9 +230,9 @@ namespace Matter.Core
                         (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // ScanNetworks
-                    if (MessageFrame.IsStatusReport(scanResult))
+                    if (MessageFrame.IsError(scanResult))
                     {
-                        Console.WriteLine("Received error status report in response to ScanNetworks message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to ScanNetworks message, abandoning commissioning!");
                         return;
                     }
 
@@ -263,9 +263,9 @@ namespace Matter.Core
                         (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame addNetworkResult = paseExchange.SendCommand(0, 0x31, 3, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
-                    if (MessageFrame.IsStatusReport(addNetworkResult))
+                    if (MessageFrame.IsError(addNetworkResult))
                     {
-                        Console.WriteLine("Received error status report in response to AddOrUpdateNetwork message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to AddOrUpdateNetwork message, abandoning commissioning!");
                         return;
                     }
 
@@ -283,9 +283,9 @@ namespace Matter.Core
                         (ulong)2222 // Breadcrumb
                     ];
                     MessageFrame connectNetworkResult = paseExchange.SendCommand(0, 0x31, 6, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // ConnectNetwork
-                    if (MessageFrame.IsStatusReport(connectNetworkResult))
+                    if (MessageFrame.IsError(connectNetworkResult))
                     {
-                        Console.WriteLine("Received error status report in response to ConnectNetwork message, abandoning commissioning!");
+                        Console.WriteLine("Received error status in response to ConnectNetwork message, abandoning commissioning!");
                         return;
                     }
 
@@ -302,14 +302,12 @@ namespace Matter.Core
                     paseExchange.Close();
                     btpConnection.Close();
 
-                    _fabric.AddOrUpdateNode(
+                    _fabric.AddNode(
                         nodeIdString,
                         _payload.Passcode.ToString(),
                         _payload.Discriminator.ToString(),
                         _fabric.CA.GenerateCertMessage(nodeCert),
-                        certRequest.PublicKey.GetECDsaPublicKey(),
-                        null,
-                        0);
+                        certRequest.PublicKey.GetECDsaPublicKey());
 
                     // mark this advertisment as processed
                     _receivedAdvertisments.AddOrUpdate(e.Device.Id, (key) => null, (key, oldValue) => null);
@@ -342,9 +340,9 @@ namespace Matter.Core
             PBKDFParamRequest.AddBool(4, false);
             PBKDFParamRequest.EndContainer();
             MessageFrame responseMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(PBKDFParamRequest, 0, ProtocolOpCode.PBKDFParamRequest).GetAwaiter().GetResult();
-            if (MessageFrame.IsStatusReport(responseMessageFrame))
+            if (MessageFrame.IsError(responseMessageFrame))
             {
-                Console.WriteLine("Received error status report in response to PBKDF param request message, abandoning commissioning!");
+                Console.WriteLine("Received error status in response to PBKDF param request message, abandoning commissioning!");
                 return false;
             }
 
@@ -373,9 +371,9 @@ namespace Matter.Core
             pake1.AddOctetString(1, byteString);
             pake1.EndContainer();
             MessageFrame pake2MessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake1, 0, ProtocolOpCode.PASEPake1).GetAwaiter().GetResult();
-            if (MessageFrame.IsStatusReport(pake2MessageFrame))
+            if (MessageFrame.IsError(pake2MessageFrame))
             {
-                Console.WriteLine("Received error status report in response to PAKE1 message, abandoning commissioning!");
+                Console.WriteLine("Received error status in response to PAKE1 message, abandoning commissioning!");
                 return false;
             }
 
@@ -397,7 +395,7 @@ namespace Matter.Core
             pake3.AddOctetString(1, hAY);
             pake3.EndContainer();
             MessageFrame pakeFinishedMessageFrame = unsecureExchange.SendAndReceiveMessageAsync(pake3, 0, ProtocolOpCode.PASEPake3).GetAwaiter().GetResult();
-            if (!MessageFrame.IsStatusReport(pakeFinishedMessageFrame))
+            if (!MessageFrame.IsError(pakeFinishedMessageFrame))
             {
                 Console.WriteLine("Didn't receive status report in response to PAKE3 message, abandoning commissioning!");
                 return false;

@@ -15,10 +15,10 @@
     "Thing"
   ],
   "name": "OnvisS4",
-  "base": "matter://0e080000000000010000000300000e4a0300001635060004001fffe00208d68309a3c70b7ab50708fd5c5095bdc2792005106109cd80ee93c1dafe7a7bbb701379ee030f4f70656e5468726561642d323035620102205b0410904d32295dce1df5166b2036c16b5d780c0402a0f7f8/UTBA0-2S02LPO91.L10",
+  "base": "matter://OnvisS4/0e080000000000010000000300000e4a0300001635060004001fffe00208d68309a3c70b7ab50708fd5c5095bdc2792005106109cd80ee93c1dafe7a7bbb701379ee030f4f70656e5468726561642d323035620102205b0410904d32295dce1df5166b2036c16b5d780c0402a0f7f8/UTBA0-2S02LPO91.L10",
   "title": "Onvis Smart Plug S4",
   "actions": {
-    "onoff": {
+    "on/off": {
       "input": {
         "type": "object",
         "properties": {
@@ -26,7 +26,7 @@
             "type": "boolean"
           }
         },
-        "required": ["target"]
+        "required": [ "target" ]
       },
       "forms": [
         {

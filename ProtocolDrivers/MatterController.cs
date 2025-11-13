@@ -44,10 +44,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             try
             {
-                CommissioningPayload commissioningPayload = ParseManualSetupCode(ipParts[2], ipParts[3]);
+                CommissioningPayload commissioningPayload = ParseManualSetupCode(ipParts[3], ipParts[4]);
 
                 // check if the node is already commissioned into our Fabric
-                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString()))
+                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null))
                 {
                     Console.WriteLine($"Matter Node '{commissioningPayload.Passcode}' is not commissioned. Starting commissioning process.");
 
@@ -76,6 +76,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     if (node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult())
                     {
                         // all good - persist the fabric with the new node descriptions
+                        node.Name = ipParts[2];
                         _fabric.Save();
                     }
                 }
@@ -162,8 +163,22 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
         {
-            // TODO: Implement action execution logic for Matter device
-            return string.Empty;
+            outputArgs = null; // not used
+
+            string nodeName = method.Parent?.BrowseName?.Name;
+
+            // find the node in the fabric
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nodeName);
+            if (node != null)
+            {
+                // call the action on the Matter node
+                node.Connect(_fabric);
+                return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs);
+            }
+            else
+            {
+                return $"Node {nodeName} not found";
+            }
         }
 
         private CommissioningPayload ParseManualSetupCode(string hexDataset, string manualSetupCode)
@@ -312,7 +327,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    _fabric.AddOrUpdateNode(nodeId, null, null, null, null, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.UpdateNodeWithIPAddress(nodeId, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
                 }
             }
         }
