@@ -183,7 +183,8 @@ namespace Matter.Core
         {
             try
             {
-                _timer.Change(5000, 5000);
+                // wait up to 10 seconds for a message (e.g. Thread network scanning can take this long...)
+                _timer.Change(10000, 10000);
                 MessageFrame result = await _incomingMessageChannel.Reader.ReadAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
                 _timer.Change(Timeout.Infinite, Timeout.Infinite);
 

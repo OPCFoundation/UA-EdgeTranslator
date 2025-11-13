@@ -6,6 +6,7 @@
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
+    using System.Threading.Tasks;
     using static Matter.Core.CertificateAuthority;
 
     internal class CASEClient
@@ -32,9 +33,21 @@
             connection.OpenConnection();
 
             Console.WriteLine("Starting SIGMA / CASE exchange...");
-            if (!ExecuteSIGMA(connection, out ushort initiatorSessionId, out ushort peerSessionId, out TrafficKeys keys))
+            int retryCount = 3;
+            ushort initiatorSessionId = 0;
+            ushort peerSessionId = 0;
+            TrafficKeys keys = null;
+            while (!ExecuteSIGMA(connection, out initiatorSessionId, out peerSessionId, out keys))
             {
-                return null;
+                Task.Delay(1000).GetAwaiter().GetResult();
+                retryCount--;
+                if (retryCount == 0)
+                {
+                    Console.WriteLine("Failed to establish SIGMA session after multiple attempts.");
+                    return null;
+                }
+
+                Console.WriteLine("Retrying SIGMA / CASE exchange...");
             }
 
             Console.WriteLine("Establishing secure session to device {0:X16} at IP address {1}:{2}", _node.NodeId, _ipAddress, _port);
@@ -141,7 +154,7 @@
                 sigma2tbs.AddOctetString(4, opsPubKey65);
                 sigma2tbs.EndContainer();
 
-                using var ecdsa = _node.SubjectPublicKey;
+                var ecdsa = _node.SubjectPublicKey;
                 if (!ecdsa.VerifyData(sigma2tbs.Serialize(), signature, HashAlgorithmName.SHA256))
                 {
                     Console.WriteLine("Responder Sigma2 signature invalid, abandoning operational commissioning!");

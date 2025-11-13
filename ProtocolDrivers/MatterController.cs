@@ -61,22 +61,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         numRetries--;
                     }
 
-                    // persist the fabric
-                    if (numRetries > 0)
-                    {
-                        _fabric.Save();
-                    }
-                    else
+                    if (numRetries == 0)
                     {
                         Console.WriteLine("Commissioning process timed out waiting for IP address.");
                     }
                 }
 
                 Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null);
-                if ((node != null) && !node.IsConnected)
+                if (node != null)
                 {
                     node.Connect(_fabric);
-                    node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
+
+                    // check if we can fetch the Matter Descriptions
+                    if (node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult())
+                    {
+                        // all good - persist the fabric with the new node descriptions
+                        _fabric.Save();
+                    }
                 }
             }
             catch (Exception ex)

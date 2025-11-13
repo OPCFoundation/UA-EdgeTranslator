@@ -24,8 +24,6 @@ namespace Matter.Core
 
         public ushort LastKnownPort { get; set; }
 
-        public bool IsConnected { get; set; }
-
         public void Connect(Fabric fabric)
         {
             try
@@ -38,22 +36,20 @@ namespace Matter.Core
                 _secureSession = client.EstablishSession();
                 if (_secureSession != null)
                 {
-                    IsConnected = true;
                     Console.WriteLine($"Established secure session to node {NodeId:X16}.");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to establish connection to node {NodeId:X16}: {ex.Message}");
-                IsConnected = false;
             }
         }
 
-        public async Task FetchDescriptionsAsync(Fabric fabric)
+        public async Task<bool> FetchDescriptionsAsync(Fabric fabric)
         {
-            if (!IsConnected || (_secureSession == null))
+            if (_secureSession == null)
             {
-                return;
+                return false;
             }
 
             MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
@@ -74,7 +70,7 @@ namespace Matter.Core
             if (MessageFrame.IsStatusReport(deviceTypeListResponse))
             {
                 Console.WriteLine("Received error status report in response to DeviceTypeList message, abandoning FetchDescriptions!");
-                return;
+                return false;
             }
 
             await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
@@ -98,7 +94,7 @@ namespace Matter.Core
                     if (MessageFrame.IsStatusReport(deviceTypeListResponse))
                     {
                         Console.WriteLine("Received error status report in response to DeviceTypeList chunked message, abandoning FetchDescriptions!");
-                        return;
+                        return false;
                     }
 
                     await secureExchange.AcknowledgeMessageAsync(deviceTypeListResponse.MessageCounter).ConfigureAwait(false);
@@ -122,7 +118,7 @@ namespace Matter.Core
             if (MessageFrame.IsStatusReport(serverListResponse))
             {
                 Console.WriteLine("Received error status report in response to ServerList message, abandoning FetchDescriptions!");
-                return;
+                return false;
             }
 
             await secureExchange.AcknowledgeMessageAsync(serverListResponse.MessageCounter).ConfigureAwait(false);
@@ -146,7 +142,7 @@ namespace Matter.Core
                     if (MessageFrame.IsStatusReport(serverListResponse))
                     {
                         Console.WriteLine("Received error status report in response to ServerList chunked message, abandoning FetchDescriptions!");
-                        return;
+                        return false;
                     }
                 }
 
@@ -155,6 +151,9 @@ namespace Matter.Core
             while (moreChunkedMessages);
 
             secureExchange.Close();
+            _secureSession = null;
+
+            return true;
         }
 
         private void ParseDescriptions(MatterTLV list, bool isServerList)
