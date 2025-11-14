@@ -16,7 +16,7 @@ namespace InTheHand.Bluetooth
 {
     public class RemoteGattServerLinux : IRemoteGattServer
     {
-        public IBluetoothDevice Device { get; set; } = new BluetoothDeviceLinux();
+        public IBluetoothDevice Device { get; set; }
 
         public bool IsConnected { get; set; }
 

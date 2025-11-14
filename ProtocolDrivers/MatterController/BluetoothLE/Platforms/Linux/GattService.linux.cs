@@ -25,7 +25,6 @@ namespace InTheHand.Bluetooth
         public async Task<IGattCharacteristic> GetCharacteristicAsync(BluetoothUuid characteristic)
         {
             var linuxCharacteristic = await _service.GetCharacteristicAsync(characteristic.Value.ToString()).ConfigureAwait(false);
-
             if (linuxCharacteristic != null)
             {
                 var gattCharacteristic = new GattCharacteristicLinux(linuxCharacteristic, characteristic);

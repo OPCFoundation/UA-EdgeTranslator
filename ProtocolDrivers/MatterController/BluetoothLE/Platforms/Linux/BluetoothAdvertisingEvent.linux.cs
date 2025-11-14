@@ -17,14 +17,19 @@ namespace InTheHand.Bluetooth
 {
     partial class BluetoothAdvertisingEventLinux : IBluetoothAdvertisingEvent
     {
-        public IBluetoothDevice Device { get; set; } = new BluetoothDeviceLinux();
+        public IBluetoothDevice Device { get; set; }
 
         private readonly string[] _advertisement;
 
         public BluetoothAdvertisingEventLinux(Device device, string[] data)
         {
-            Device.Id = device.GetNameAsync().GetAwaiter().GetResult();
-            Device.GattServer = new RemoteGattServerLinux();
+            Device = new BluetoothDeviceLinux
+            {
+                Id = device.GetNameAsync().GetAwaiter().GetResult(),
+                GattServer = new RemoteGattServerLinux(),
+                NativeDevice = device
+            };
+
             Device.GattServer.Device = Device;
 
             _advertisement = data;
@@ -34,45 +39,19 @@ namespace InTheHand.Bluetooth
         {
             var serviceData = new Dictionary<BluetoothUuid, byte[]>();
 
-            foreach (string data in _advertisement)
+            try
             {
-                var uuidBytes = new byte[16];
-
-                //if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData128BitUuids)
-                //{
-                //    // read uuid
-                //    data.Data.CopyTo(0, uuidBytes, 0, 16);
-
-                //    // read data
-                //    byte[] dataBytes = new byte[data.Data.Length - 16];
-                //    data.Data.CopyTo(16, dataBytes, 0, dataBytes.Length);
-                //    serviceData.Add(new Guid(uuidBytes), dataBytes);
-                //}
-
-                //if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData32BitUuids)
-                //{
-                //    // read uuid
-                //    data.Data.CopyTo(0, uuidBytes, 0, 4);
-
-                //    // read data
-                //    byte[] dataBytes = new byte[data.Data.Length - 4];
-                //    data.Data.CopyTo(4, dataBytes, 0, dataBytes.Length);
-                //    serviceData.Add(BluetoothUuid.FromShortId(BitConverter.ToUInt16(uuidBytes, 0)), dataBytes);
-                //}
-
-                //if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData16BitUuids)
-                //{
-                //    // read uuid
-                //    data.Data.CopyTo(0, uuidBytes, 0, 2);
-
-                //    // read data
-                //    byte[] dataBytes = new byte[data.Data.Length - 2];
-                //    data.Data.CopyTo(2, dataBytes, 0, dataBytes.Length);
-                //    serviceData.Add(BluetoothUuid.FromShortId(BitConverter.ToUInt16(uuidBytes, 0)), dataBytes);
-                //}
+                foreach (string data in _advertisement)
+                {
+                    serviceData.Add(new Guid(data), Array.Empty<byte>());
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Error parsing service data");
             }
 
-            return new ReadOnlyDictionary<BluetoothUuid, byte[]>(serviceData);
+            return serviceData;
         }
     }
 }

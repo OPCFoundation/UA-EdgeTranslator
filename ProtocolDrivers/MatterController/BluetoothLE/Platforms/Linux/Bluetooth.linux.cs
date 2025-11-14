@@ -52,37 +52,19 @@ public class BluetoothLinux : IBluetooth
 
         try
         {
-            Device device = eventArgs.Device;
             Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
-
-            Console.WriteLine($"BT Device Appearance: {properties.Appearance}");
-
             if (properties.UUIDs == null || properties.UUIDs.Length == 0)
             {
-                Console.WriteLine("No BT Service UUIDs found.");
                 return;
             }
             else
             {
-                foreach (var uuid in properties.UUIDs)
-                {
-                    Console.WriteLine($"BT Service UUID: {uuid}");
-                }
-            }
-
-            var eventInfo = new BluetoothAdvertisingEventLinux(device, properties.UUIDs);
-            if (AdvertisementReceived != null)
-            {
-                AdvertisementReceived.Invoke(this, eventInfo);
-            }
-            else
-            {
-                Console.WriteLine("No BT AdvertisementReceived handler!");
+                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, properties.UUIDs));
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error processing BT device found: {ex}");
+            Console.WriteLine($"Error processing Linux BTLE advertisement: {ex}");
         }
     }
 }

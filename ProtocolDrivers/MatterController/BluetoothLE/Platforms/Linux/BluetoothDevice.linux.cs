@@ -30,9 +30,7 @@ namespace InTheHand.Bluetooth
 
         public BluetoothDeviceLinux()
         {
-            NativeDevice = new Device();
             NativeDevice.Disconnected += _device_Disconnected;
-            Id = NativeDevice.GetNameAsync().GetAwaiter().GetResult();
         }
 
         private Task _device_Disconnected(Device sender, BlueZEventArgs eventArgs)

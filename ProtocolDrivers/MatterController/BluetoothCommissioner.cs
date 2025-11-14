@@ -89,6 +89,8 @@ namespace Matter.Core
                     {
                         if (adv.Value != null)
                         {
+                            Console.WriteLine("Discovered Matter device: " + adv.Key);
+
                             var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)adv.Value.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
                             if (discriminator == _payload.Discriminator)
                             {
