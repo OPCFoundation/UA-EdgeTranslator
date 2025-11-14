@@ -15,11 +15,11 @@ RUN dotnet restore "./UAEdgeTranslator.csproj"
 COPY . .
 WORKDIR "/src/."
 ARG TARGET_FRAMEWORK=net9.0
-RUN dotnet build "UAEdgeTranslator.csproj" -c Release -o /app/build -f $TARGET_FRAMEWORK
+RUN dotnet build "UAEdgeTranslator.csproj" -c Debug -o /app/build -f $TARGET_FRAMEWORK
 
 FROM build AS publish
 ARG TARGET_FRAMEWORK=net9.0
-RUN dotnet publish "UAEdgeTranslator.csproj" -c Release -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false
+RUN dotnet publish "UAEdgeTranslator.csproj" -c Debug -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

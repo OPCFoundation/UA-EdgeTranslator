@@ -91,11 +91,22 @@ namespace Matter.Core
                         {
                             Console.WriteLine("Discovered Matter device: " + adv.Key);
 
-                            var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)adv.Value.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
-                            if (discriminator == _payload.Discriminator)
+                            if (adv.Value.ServiceData()[BTPConnection.MATTER_UUID].Length > 0)
                             {
-                                e = adv.Value;
-                                break;
+                                var discriminator = (ushort)(BinaryPrimitives.ReadUInt16LittleEndian(((ReadOnlySpan<byte>)adv.Value.ServiceData()[BTPConnection.MATTER_UUID]).Slice(1, 2)) & 0xFFF);
+                                if (discriminator == _payload.Discriminator)
+                                {
+                                    e = adv.Value;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (adv.Key.Contains(_payload.Discriminator.ToString()))
+                                {
+                                    e = adv.Value;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -313,7 +324,6 @@ namespace Matter.Core
                 }
                 catch (Exception exp)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Error: {0}", exp.Message);
                 }
             }

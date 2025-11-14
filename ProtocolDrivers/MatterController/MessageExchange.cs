@@ -261,9 +261,7 @@ namespace Matter.Core
                 }
                 catch (Exception ex)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Failed to read incoming message: {0}: [{1}]", ex.Message, BitConverter.ToString(bytes));
-                    Console.ForegroundColor = ConsoleColor.White;
                 }
 
             } while (!_cancellationTokenSource.Token.IsCancellationRequested);
