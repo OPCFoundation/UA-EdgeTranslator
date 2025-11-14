@@ -55,21 +55,12 @@ public class BluetoothLinux : IBluetooth
             Device device = eventArgs.Device;
             Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
 
-            if (properties.ServiceData == null || properties.ServiceData.Count == 0)
-            {
-                Console.WriteLine("No BT Service data found.");
-            }
-            else
-            {
-                foreach (var data in properties.ServiceData)
-                {
-                    Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
-                }
-            }
+            Console.WriteLine($"BT Device Appearance: {properties.Appearance}");
 
             if (properties.UUIDs == null || properties.UUIDs.Length == 0)
             {
                 Console.WriteLine("No BT Service UUIDs found.");
+                return;
             }
             else
             {
@@ -79,28 +70,15 @@ public class BluetoothLinux : IBluetooth
                 }
             }
 
-            if (properties.ManufacturerData == null || properties.ManufacturerData.Count == 0)
+            var eventInfo = new BluetoothAdvertisingEventLinux(device, properties.UUIDs);
+            if (AdvertisementReceived != null)
             {
-                Console.WriteLine("No BT Manufacturer data found.");
+                AdvertisementReceived.Invoke(this, eventInfo);
             }
             else
             {
-                foreach (var data in properties.ManufacturerData)
-                {
-                    Console.WriteLine($"BT Manufacturer data Key: {data.Key}, Value: {data.Value}");
-                }
+                Console.WriteLine("No BT AdvertisementReceived handler!");
             }
-
-
-            // var eventInfo = new BluetoothAdvertisingEventLinux(device, (object)properties);
-            //if (AdvertisementReceived != null)
-            //{
-            //    AdvertisementReceived.Invoke(this, eventInfo);
-            //}
-            //else
-            //{
-            //    Console.WriteLine("No BT AdvertisementReceived handler!");
-            //}
         }
         catch (Exception ex)
         {

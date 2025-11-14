@@ -7,6 +7,7 @@
 
 #if !WINDOWS
 
+using libplctag.DataTypes;
 using Linux.Bluetooth;
 using System;
 using System.Collections.Generic;
@@ -18,22 +19,22 @@ namespace InTheHand.Bluetooth
     {
         public IBluetoothDevice Device { get; set; } = new BluetoothDeviceLinux();
 
-        private readonly IDictionary<string, object> _advertisement;
+        private readonly string[] _advertisement;
 
-        public BluetoothAdvertisingEventLinux(Device device, IDictionary<string, object> serviceData)
+        public BluetoothAdvertisingEventLinux(Device device, string[] data)
         {
             Device.Id = device.GetNameAsync().GetAwaiter().GetResult();
             Device.GattServer = new RemoteGattServerLinux();
             Device.GattServer.Device = Device;
 
-            _advertisement = serviceData;
+            _advertisement = data;
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()
         {
             var serviceData = new Dictionary<BluetoothUuid, byte[]>();
 
-            foreach (KeyValuePair<string, object> data in _advertisement)
+            foreach (string data in _advertisement)
             {
                 var uuidBytes = new byte[16];
 
