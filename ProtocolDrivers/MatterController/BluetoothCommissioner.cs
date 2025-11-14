@@ -44,9 +44,8 @@ namespace Matter.Core
             options.AcceptAllAdvertisements = false;
             options.KeepRepeatedDevices = false;
 
-            Console.WriteLine("Waiting 30s for Debugger to be connected...");
-            Task.Delay(30000).GetAwaiter().GetResult();
-            Console.WriteLine("Starting Bluetooth LE scan for Matter devices...");
+            Console.WriteLine("Waiting 45s for Debugger to be connected...");
+            Task.Delay(45000).GetAwaiter().GetResult();
 
             // scan for 15 seconds
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
@@ -60,8 +59,6 @@ namespace Matter.Core
 
         void Bluetooth_AdvertisementReceived(object sender, IBluetoothAdvertisingEvent e)
         {
-            Console.WriteLine("Discovered Bluetooth device: " + e.Device.Id);
-
             if (e.ServiceData().ContainsKey(BTPConnection.MATTER_UUID))
             {
                 // If we got this advertisment already, just ignore it.
