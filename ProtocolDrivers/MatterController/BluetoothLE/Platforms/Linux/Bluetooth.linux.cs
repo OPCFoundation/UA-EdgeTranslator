@@ -53,22 +53,54 @@ public class BluetoothLinux : IBluetooth
         try
         {
             Device device = eventArgs.Device;
-            IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
-            var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
+            Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
 
-            foreach (KeyValuePair<string, object> data in serviceData)
+            if (properties.ServiceData == null || properties.ServiceData.Count == 0)
             {
-                Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
-            }
-
-            if (AdvertisementReceived != null)
-            {
-                AdvertisementReceived.Invoke(this, eventInfo);
+                Console.WriteLine("No BT Service data found.");
             }
             else
             {
-                Console.WriteLine("No BT AdvertisementReceived handler!");
+                foreach (var data in properties.ServiceData)
+                {
+                    Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
+                }
             }
+
+            if (properties.UUIDs == null || properties.UUIDs.Length == 0)
+            {
+                Console.WriteLine("No BT Service UUIDs found.");
+            }
+            else
+            {
+                foreach (var uuid in properties.UUIDs)
+                {
+                    Console.WriteLine($"BT Service UUID: {uuid}");
+                }
+            }
+
+            if (properties.ManufacturerData == null || properties.ManufacturerData.Count == 0)
+            {
+                Console.WriteLine("No BT Manufacturer data found.");
+            }
+            else
+            {
+                foreach (var data in properties.ManufacturerData)
+                {
+                    Console.WriteLine($"BT Manufacturer data Key: {data.Key}, Value: {data.Value}");
+                }
+            }
+
+
+            // var eventInfo = new BluetoothAdvertisingEventLinux(device, (object)properties);
+            //if (AdvertisementReceived != null)
+            //{
+            //    AdvertisementReceived.Invoke(this, eventInfo);
+            //}
+            //else
+            //{
+            //    Console.WriteLine("No BT AdvertisementReceived handler!");
+            //}
         }
         catch (Exception ex)
         {
