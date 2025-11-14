@@ -50,22 +50,29 @@ public class BluetoothLinux : IBluetooth
     {
         Console.WriteLine($"BT Device found: {await eventArgs.Device.GetNameAsync().ConfigureAwait(false)} - {await eventArgs.Device.GetAddressAsync().ConfigureAwait(false)}");
 
-        Device device = eventArgs.Device;
-        IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
-        var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
+        try
+        {
+            Device device = eventArgs.Device;
+            IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
+            var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
 
-        foreach (KeyValuePair<string, object> data in serviceData)
-        {
-            Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
-        }
+            foreach (KeyValuePair<string, object> data in serviceData)
+            {
+                Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
+            }
 
-        if (AdvertisementReceived != null)
-        {
-            AdvertisementReceived.Invoke(this, eventInfo);
+            if (AdvertisementReceived != null)
+            {
+                AdvertisementReceived.Invoke(this, eventInfo);
+            }
+            else
+            {
+                Console.WriteLine("No BT AdvertisementReceived handler!");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("No BT AdvertisementReceived handler!");
+            Console.WriteLine($"Error processing BT device found: {ex}");
         }
     }
 }
