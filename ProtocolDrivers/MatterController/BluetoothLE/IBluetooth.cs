@@ -14,7 +14,7 @@ namespace InTheHand.Bluetooth
     {
         public event EventHandler<IBluetoothAdvertisingEvent> AdvertisementReceived;
 
-        public Task StartLEScanAsync(BluetoothLEScanOptions options = null);
+        public Task StartLEScanAsync();
 
         public Task StopLEScanAsync();
     }

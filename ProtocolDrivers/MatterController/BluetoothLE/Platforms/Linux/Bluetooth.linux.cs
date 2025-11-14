@@ -21,7 +21,7 @@ public class BluetoothLinux : IBluetooth
 
     public event EventHandler<IBluetoothAdvertisingEvent> AdvertisementReceived;
 
-    public async Task StartLEScanAsync(BluetoothLEScanOptions options)
+    public async Task StartLEScanAsync()
     {
         if (Adapter == null)
         {

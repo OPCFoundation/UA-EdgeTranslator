@@ -37,20 +37,13 @@ namespace Matter.Core
         {
             _payload = payload;
 
-            BluetoothLEScanOptions options = new BluetoothLEScanOptions();
-            BluetoothLEScanFilter filter = new BluetoothLEScanFilter();
-            filter.Services.Add(BTPConnection.MATTER_UUID);
-            options.Filters.Add(filter);
-            options.AcceptAllAdvertisements = false;
-            options.KeepRepeatedDevices = false;
-
             Console.WriteLine("Waiting 45s for Debugger to be connected...");
             Task.Delay(45000).GetAwaiter().GetResult();
 
-            // scan for 15 seconds
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
 
-            await _bluetooth.StartLEScanAsync(options).ConfigureAwait(false);
+            // scan for 15 seconds
+            await _bluetooth.StartLEScanAsync().ConfigureAwait(false);
             await Task.Delay(15000).ConfigureAwait(false);
             await _bluetooth.StopLEScanAsync().ConfigureAwait(false);
 

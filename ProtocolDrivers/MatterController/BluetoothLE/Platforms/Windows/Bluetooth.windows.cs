@@ -19,7 +19,7 @@ namespace InTheHand.Bluetooth
 
         private BluetoothLEAdvertisementWatcher _watcher;
 
-        public Task StartLEScanAsync(BluetoothLEScanOptions options = null)
+        public Task StartLEScanAsync()
         {
             _watcher = new BluetoothLEAdvertisementWatcher();
             _watcher.Received += Watcher_Received;
