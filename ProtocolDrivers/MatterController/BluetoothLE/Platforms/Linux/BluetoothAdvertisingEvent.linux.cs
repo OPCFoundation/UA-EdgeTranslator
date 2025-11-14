@@ -27,6 +27,11 @@ namespace InTheHand.Bluetooth
             Device.GattServer.Device = Device;
 
             _advertisement = serviceData;
+
+            foreach (KeyValuePair<string, object> data in _advertisement)
+            {
+                Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
+            }
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()
@@ -36,8 +41,6 @@ namespace InTheHand.Bluetooth
             foreach (KeyValuePair<string, object> data in _advertisement)
             {
                 var uuidBytes = new byte[16];
-
-                Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
 
                 //if (data.DataType == BluetoothLEAdvertisementDataTypes.ServiceData128BitUuids)
                 //{

@@ -56,6 +56,8 @@ namespace Matter.Core
 
         void Bluetooth_AdvertisementReceived(object sender, IBluetoothAdvertisingEvent e)
         {
+            Console.WriteLine("Discovered Bluetooth device: " + e.Device.Id);
+
             if (e.ServiceData().ContainsKey(BTPConnection.MATTER_UUID))
             {
                 // If we got this advertisment already, just ignore it.
@@ -79,8 +81,6 @@ namespace Matter.Core
                     Task.Delay(1000).GetAwaiter().GetResult();
                     continue;
                 }
-
-                Console.WriteLine("Discovered {0} advertisments", _receivedAdvertisments.Count);
 
                 try
                 {
