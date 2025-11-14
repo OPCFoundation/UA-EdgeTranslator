@@ -28,12 +28,7 @@ namespace InTheHand.Bluetooth
             GattServerDisconnected?.Invoke(this, EventArgs.Empty);
         }
 
-        public BluetoothDeviceLinux()
-        {
-            NativeDevice.Disconnected += _device_Disconnected;
-        }
-
-        private Task _device_Disconnected(Device sender, BlueZEventArgs eventArgs)
+        public Task Device_Disconnected(Device sender, BlueZEventArgs eventArgs)
         {
             if(eventArgs.IsStateChange)
             {

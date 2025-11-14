@@ -23,14 +23,14 @@ namespace InTheHand.Bluetooth
 
         public BluetoothAdvertisingEventLinux(Device device, string[] data)
         {
-            Device = new BluetoothDeviceLinux
-            {
+            Device = new BluetoothDeviceLinux {
                 Id = device.GetNameAsync().GetAwaiter().GetResult(),
                 GattServer = new RemoteGattServerLinux(),
                 NativeDevice = device
             };
 
             Device.GattServer.Device = Device;
+            ((BluetoothDeviceLinux)Device).NativeDevice.Disconnected += ((BluetoothDeviceLinux)Device).Device_Disconnected;
 
             _advertisement = data;
         }

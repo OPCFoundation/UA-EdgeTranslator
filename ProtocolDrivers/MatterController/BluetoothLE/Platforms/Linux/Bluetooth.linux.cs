@@ -48,8 +48,6 @@ public class BluetoothLinux : IBluetooth
 
     private async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
     {
-        Console.WriteLine($"BT Device found: {await eventArgs.Device.GetNameAsync().ConfigureAwait(false)} - {await eventArgs.Device.GetAddressAsync().ConfigureAwait(false)}");
-
         try
         {
             Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
