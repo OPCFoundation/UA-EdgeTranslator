@@ -50,9 +50,11 @@ public class BluetoothLinux : IBluetooth
     {
         try
         {
+            Console.WriteLine($"Linux BTLE Advertisement from {eventArgs.Device.GetNameAsync()}");
             Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
             if (properties.UUIDs == null || properties.UUIDs.Length == 0)
             {
+                Console.WriteLine("No UUIDs in advertisement, ignoring.");
                 return;
             }
             else
