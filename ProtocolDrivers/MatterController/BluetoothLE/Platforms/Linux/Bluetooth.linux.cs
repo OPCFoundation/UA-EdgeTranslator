@@ -54,7 +54,14 @@ public class BluetoothLinux : IBluetooth
         IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
         var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
 
-        AdvertisementReceived?.Invoke(this, eventInfo);
+        if (AdvertisementReceived != null)
+        {
+            AdvertisementReceived.Invoke(this, eventInfo);
+        }
+        else
+        {
+            Console.WriteLine("No BT AdvertisementReceived handler!");
+        }
     }
 }
 

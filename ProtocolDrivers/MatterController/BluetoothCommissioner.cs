@@ -80,6 +80,8 @@ namespace Matter.Core
                     continue;
                 }
 
+                Console.WriteLine("Discovered {0} advertisments", _receivedAdvertisments.Count);
+
                 try
                 {
                     IBluetoothAdvertisingEvent e = null;

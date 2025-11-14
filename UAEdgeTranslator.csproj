@@ -10,7 +10,7 @@
     <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <DockerfileRunArguments>--security-opt apparmor=unconfined -v /run/dbus:/run/dbus:ro --network=host</DockerfileRunArguments>
+    <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro --network=host</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>
