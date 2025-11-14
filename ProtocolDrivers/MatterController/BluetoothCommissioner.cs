@@ -44,6 +44,10 @@ namespace Matter.Core
             options.AcceptAllAdvertisements = false;
             options.KeepRepeatedDevices = false;
 
+            Console.WriteLine("Waiting 15s for Debugger to be connected...");
+            Task.Delay(15000).GetAwaiter().GetResult();
+            Console.WriteLine("Starting Bluetooth LE scan for Matter devices...");
+
             // scan for 15 seconds
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
 
