@@ -59,6 +59,8 @@ namespace Matter.Core
 
         void Bluetooth_AdvertisementReceived(object sender, IBluetoothAdvertisingEvent e)
         {
+            Console.WriteLine("Advertisement received from device: " + e.Device.Id + " with UUID " + e.ServiceData().Keys.First().ToString());
+
             if (e.ServiceData().ContainsKey(BTPConnection.MATTER_UUID))
             {
                 // If we got this advertisment already, just ignore it.
