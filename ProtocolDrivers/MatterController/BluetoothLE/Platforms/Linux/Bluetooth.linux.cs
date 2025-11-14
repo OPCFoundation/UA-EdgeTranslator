@@ -54,6 +54,11 @@ public class BluetoothLinux : IBluetooth
         IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
         var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
 
+        foreach (KeyValuePair<string, object> data in serviceData)
+        {
+            Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
+        }
+
         if (AdvertisementReceived != null)
         {
             AdvertisementReceived.Invoke(this, eventInfo);
