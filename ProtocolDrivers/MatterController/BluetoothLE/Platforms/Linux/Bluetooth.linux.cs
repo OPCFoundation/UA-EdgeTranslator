@@ -9,6 +9,7 @@
 
 using Linux.Bluetooth;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -29,6 +30,7 @@ public class BluetoothLinux : IBluetooth
             {
                 throw new PlatformNotSupportedException("No IBluetooth adapter present.");
             }
+
             Console.WriteLine($"Using BT adapter {Adapter.Name}");
 
             Adapter.DeviceFound += Adapter_DeviceFound;
@@ -46,9 +48,11 @@ public class BluetoothLinux : IBluetooth
 
     private async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
     {
+        Console.WriteLine($"BT Device found: {await eventArgs.Device.GetNameAsync().ConfigureAwait(false)} - {await eventArgs.Device.GetAddressAsync().ConfigureAwait(false)}");
+
         Device device = eventArgs.Device;
-        ushort appearance = await eventArgs.Device.GetAppearanceAsync().ConfigureAwait(false);
-        var eventInfo = new BluetoothAdvertisingEventLinux(device, appearance);
+        IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
+        var eventInfo = new BluetoothAdvertisingEventLinux(device, serviceData);
 
         AdvertisementReceived?.Invoke(this, eventInfo);
     }
