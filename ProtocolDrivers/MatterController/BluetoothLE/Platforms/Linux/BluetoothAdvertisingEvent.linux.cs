@@ -21,10 +21,10 @@ namespace InTheHand.Bluetooth
 
         private readonly string[] _advertisement;
 
-        public BluetoothAdvertisingEventLinux(Device device, string[] data)
+        public BluetoothAdvertisingEventLinux(Device device, string name, string[] data)
         {
             Device = new BluetoothDeviceLinux {
-                Id = device.GetNameAsync().GetAwaiter().GetResult(),
+                Id = name,
                 GattServer = new RemoteGattServerLinux(),
                 NativeDevice = device
             };

@@ -57,7 +57,7 @@ public class BluetoothLinux : IBluetooth
             }
             else
             {
-                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, properties.UUIDs));
+                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, properties.Name, properties.UUIDs));
             }
         }
         catch (Exception ex)
