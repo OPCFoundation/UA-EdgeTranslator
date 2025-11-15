@@ -48,20 +48,40 @@ public class BluetoothLinux : IBluetooth
 
     private async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
     {
+        string btName = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
+        string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
+        Console.WriteLine($"BT Device found: {btName} - {btAddress}");
+
         try
         {
-            string name = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
-            Console.WriteLine($"Linux BTLE Advertisement from {name}");
-            string[] uuids = await eventArgs.Device.GetUUIDsAsync().ConfigureAwait(false);
-            if (uuids == null || uuids.Length == 0)
+            Device device = eventArgs.Device;
+            Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
+
+            if (properties.ServiceData == null || properties.ServiceData.Count == 0)
             {
-                Console.WriteLine("No UUIDs in advertisement, ignoring.");
-                return;
+                Console.WriteLine("No BT Service data found.");
             }
             else
             {
-                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, name, uuids));
+                foreach (var data in properties.ServiceData)
+                {
+                    Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
+                }
             }
+
+            if (properties.UUIDs == null || properties.UUIDs.Length == 0)
+            {
+                Console.WriteLine("No BT Service UUIDs found.");
+            }
+            else
+            {
+                foreach (var uuid in properties.UUIDs)
+                {
+                    Console.WriteLine($"BT Service UUID: {uuid}");
+                }
+            }
+
+            AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, properties.UUIDs));
         }
         catch (Exception ex)
         {
