@@ -79,9 +79,9 @@ public class BluetoothLinux : IBluetooth
                 {
                     Console.WriteLine($"BT Service UUID: {uuid}");
                 }
-            }
 
-            AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, properties.UUIDs));
+                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, properties.UUIDs));
+            }
         }
         catch (Exception ex)
         {
