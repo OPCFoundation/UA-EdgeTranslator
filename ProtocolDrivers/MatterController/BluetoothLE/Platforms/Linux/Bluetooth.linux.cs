@@ -53,6 +53,20 @@ public class BluetoothLinux : IBluetooth
             string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
             Console.WriteLine($"BT Device found: {btAddress}");
 
+            IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
+            if ((serviceData == null) && (serviceData.Count == 0))
+            {
+                Console.WriteLine("  No service data");
+            }
+            else
+            {
+                foreach (var key in serviceData.Keys)
+                {
+                    byte[] data = (byte[])serviceData[key];
+                    Console.WriteLine($"  Service Data: {key} : {BitConverter.ToString(data)}");
+                }
+            }
+
             string btName = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
             string[] uuids = await eventArgs.Device.GetUUIDsAsync().ConfigureAwait(false);
             AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, uuids));
