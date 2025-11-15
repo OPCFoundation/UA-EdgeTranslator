@@ -48,40 +48,14 @@ public class BluetoothLinux : IBluetooth
 
     private async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
     {
-        string btName = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
-        string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
-        Console.WriteLine($"BT Device found: {btName} - {btAddress}");
-
         try
         {
-            Device device = eventArgs.Device;
-            Device1Properties properties = await eventArgs.Device.GetAllAsync().ConfigureAwait(false);
+            string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
+            Console.WriteLine($"BT Device found: {btAddress}");
 
-            if (properties.ServiceData == null || properties.ServiceData.Count == 0)
-            {
-                Console.WriteLine("No BT Service data found.");
-            }
-            else
-            {
-                foreach (var data in properties.ServiceData)
-                {
-                    Console.WriteLine($"BT Service data Key: {data.Key}, Value: {data.Value}");
-                }
-            }
-
-            if (properties.UUIDs == null || properties.UUIDs.Length == 0)
-            {
-                Console.WriteLine("No BT Service UUIDs found.");
-            }
-            else
-            {
-                foreach (var uuid in properties.UUIDs)
-                {
-                    Console.WriteLine($"BT Service UUID: {uuid}");
-                }
-
-                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, properties.UUIDs));
-            }
+            string btName = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
+            string[] uuids = await eventArgs.Device.GetUUIDsAsync().ConfigureAwait(false);
+            AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, uuids));
         }
         catch (Exception ex)
         {
