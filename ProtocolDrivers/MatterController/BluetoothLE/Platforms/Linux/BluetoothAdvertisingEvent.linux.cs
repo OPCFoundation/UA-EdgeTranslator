@@ -19,9 +19,9 @@ namespace InTheHand.Bluetooth
     {
         public IBluetoothDevice Device { get; set; }
 
-        private readonly string[] _advertisement;
+        private readonly IDictionary<string, object> _advertisement;
 
-        public BluetoothAdvertisingEventLinux(Device device, string name, string[] data)
+        public BluetoothAdvertisingEventLinux(Device device, string name, IDictionary<string, object> serviceData)
         {
             Device = new BluetoothDeviceLinux {
                 Id = name,
@@ -32,23 +32,16 @@ namespace InTheHand.Bluetooth
             Device.GattServer.Device = Device;
             ((BluetoothDeviceLinux)Device).NativeDevice.Disconnected += ((BluetoothDeviceLinux)Device).Device_Disconnected;
 
-            _advertisement = data;
+            _advertisement = serviceData;
         }
 
         public IReadOnlyDictionary<BluetoothUuid, byte[]> ServiceData()
         {
             var serviceData = new Dictionary<BluetoothUuid, byte[]>();
 
-            try
+            foreach (KeyValuePair<string, object> data in _advertisement)
             {
-                foreach (string data in _advertisement)
-                {
-                    serviceData.Add(new Guid(data), Array.Empty<byte>());
-                }
-            }
-            catch
-            {
-                Console.WriteLine("Error parsing service data");
+                serviceData.Add(new Guid(data.Key), (byte[])data.Value);
             }
 
             return serviceData;

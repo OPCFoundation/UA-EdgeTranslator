@@ -56,24 +56,16 @@ public class BluetoothLinux : IBluetooth
             IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
             if ((serviceData == null) && (serviceData.Count == 0))
             {
-                Console.WriteLine("  No service data");
+                Console.WriteLine("No BT service data!");
             }
             else
             {
-                foreach (var key in serviceData.Keys)
-                {
-                    byte[] data = (byte[])serviceData[key];
-                    Console.WriteLine($"  Service Data: {key} : {BitConverter.ToString(data)}");
-                }
+                AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btAddress, serviceData));
             }
-
-            string btName = await eventArgs.Device.GetNameAsync().ConfigureAwait(false);
-            string[] uuids = await eventArgs.Device.GetUUIDsAsync().ConfigureAwait(false);
-            AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btName, uuids));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Error processing Linux BTLE advertisement: {ex}");
+            return; // do nothing
         }
     }
 }
