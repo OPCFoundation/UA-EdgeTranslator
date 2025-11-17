@@ -24,7 +24,7 @@ namespace InTheHand.Bluetooth
 
         public async Task ConnectAsync()
         {
-            TimeSpan timeout = TimeSpan.FromSeconds(8);
+            TimeSpan timeout = TimeSpan.FromSeconds(15);
 
             if (await ((BluetoothDeviceLinux)Device).NativeDevice.GetPairedAsync().ConfigureAwait(false) == false)
             {
