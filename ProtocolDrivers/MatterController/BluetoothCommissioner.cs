@@ -37,8 +37,8 @@ namespace Matter.Core
         {
             _payload = payload;
 
-            Console.WriteLine("Waiting 45s for Debugger to be connected...");
-            Task.Delay(45000).GetAwaiter().GetResult();
+            Console.WriteLine("Waiting 60s for Debugger to be connected...");
+            Task.Delay(60000).GetAwaiter().GetResult();
 
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
 
@@ -113,14 +113,17 @@ namespace Matter.Core
                     }
 
                     // parse Matter node ID from advertisment
+                    string nodeIdString;
                     string[] parts = e.Device.Id.Split('-');
                     if (parts.Length < 2)
                     {
-                        Console.WriteLine("Invalid Bluetooth ID format: " + e.Device.Id);
-                        return;
+                        nodeIdString = parts[0].Replace(":", "");
+                    }
+                    else
+                    {
+                        nodeIdString = parts[1].Replace(":", "");
                     }
 
-                    string nodeIdString = parts[1].Replace(":", "");
                     ulong nodeId = Convert.ToUInt64(nodeIdString, 16);
 
                     BTPConnection btpConnection = new(e.Device);
