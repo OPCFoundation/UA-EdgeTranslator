@@ -11,6 +11,7 @@ using Linux.Bluetooth;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace InTheHand.Bluetooth;
@@ -36,6 +37,7 @@ public class BluetoothLinux : IBluetooth
             Adapter.DeviceFound += Adapter_DeviceFound;
         }
 
+        await Adapter.SetDiscoveryFilterAsync( new Dictionary<string, object>() { { "Transport", "le" } }).ConfigureAwait(false);
         await Adapter.StartDiscoveryAsync().ConfigureAwait(false);
     }
 
