@@ -50,9 +50,6 @@ public class BluetoothLinux : IBluetooth
     {
         try
         {
-            string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
-            Console.WriteLine($"BT Device found: {btAddress}");
-
             IDictionary<string, object> serviceData = await eventArgs.Device.GetServiceDataAsync().ConfigureAwait(false);
             if ((serviceData == null) && (serviceData.Count == 0))
             {
@@ -60,6 +57,7 @@ public class BluetoothLinux : IBluetooth
             }
             else
             {
+                string btAddress = await eventArgs.Device.GetAddressAsync().ConfigureAwait(false);
                 AdvertisementReceived?.Invoke(this, new BluetoothAdvertisingEventLinux(eventArgs.Device, btAddress, serviceData));
             }
         }
