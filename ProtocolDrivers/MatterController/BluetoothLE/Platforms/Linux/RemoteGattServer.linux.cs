@@ -32,8 +32,8 @@ namespace InTheHand.Bluetooth
             }
 
             await ((BluetoothDeviceLinux)Device).NativeDevice.ConnectAsync().ConfigureAwait(false);
-            await ((BluetoothDeviceLinux)Device).NativeDevice.WaitForPropertyValueAsync("Connected", value: true, timeout: timeout).ConfigureAwait(false);
-            await ((BluetoothDeviceLinux)Device).NativeDevice.WaitForPropertyValueAsync("ServicesResolved", value: true, timeout: timeout).ConfigureAwait(false);
+            await ((BluetoothDeviceLinux)Device).NativeDevice.WaitForPropertyValueAsync("Connected", true, timeout).ConfigureAwait(false);
+            await ((BluetoothDeviceLinux)Device).NativeDevice.WaitForPropertyValueAsync("ServicesResolved", true, timeout).ConfigureAwait(false);
         }
 
         public async Task<IGattService> GetPrimaryServiceAsync(BluetoothUuid service)
