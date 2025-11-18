@@ -7,11 +7,9 @@
 
 #if !WINDOWS
 
-using libplctag.DataTypes;
 using Linux.Bluetooth;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 
 namespace InTheHand.Bluetooth
 {
