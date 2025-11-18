@@ -300,7 +300,10 @@ namespace Opc.Ua.Edge.Translator.Models
         Short,
 
         [EnumMember(Value = "xsd:byte")]
-        Byte
+        Byte,
+
+        [EnumMember(Value = "xsd:timedCommand")]
+        TimedCommand
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

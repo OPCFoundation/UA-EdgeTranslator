@@ -172,7 +172,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // call the action on the Matter node
                 if (node.Connect(_fabric))
                 {
-                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs);
+                    bool timed = true; // TODO: Make this configurable by leveraging WoT Action metadata
+                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs, timed);
                 }
                 else
                 {
@@ -187,10 +188,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private CommissioningPayload ParseManualSetupCode(string hexDataset, string manualSetupCode)
         {
-            byte[] data = Decode(manualSetupCode);
-            ushort discriminator = (ushort)readBits(data, 45, 12);
-            uint passcode = readBits(data, 57, 27);
-            uint padding = readBits(data, 84, 4);
+            byte[] data = DecodeSetupCode(manualSetupCode);
+            ushort discriminator = (ushort)ReadBits(data, 45, 12);
+            uint passcode = ReadBits(data, 57, 27);
+            uint padding = ReadBits(data, 84, 4);
 
             if (padding != 0)
             {
@@ -224,19 +225,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             };
         }
 
-        private static byte[] Decode(string str)
+        private static byte[] DecodeSetupCode(string str)
         {
             List<byte> data = new List<byte>();
 
             for (int i = 0; i < str.Length; i += 5)
             {
-                data.AddRange(Unpack(str.Substring(i, Math.Min(5, str.Length - i))));
+                data.AddRange(UnpackSetupCode(str.Substring(i, Math.Min(5, str.Length - i))));
             }
 
             return data.ToArray();
         }
 
-        private static byte[] Unpack(string str)
+        private static byte[] UnpackSetupCode(string str)
         {
             uint digit = DecodeBase38(str);
 
@@ -276,7 +277,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         }
 
 
-        private static uint readBits(byte[] buf, int index, int numberOfBitsToRead)
+        private static uint ReadBits(byte[] buf, int index, int numberOfBitsToRead)
         {
             uint dest = 0;
 

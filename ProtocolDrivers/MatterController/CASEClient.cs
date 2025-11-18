@@ -42,7 +42,7 @@
             SecureSession secureSession = new SecureSession(connection, initiatorSessionId, peerSessionId, keys.I2R, keys.R2I);
             MessageExchange secureExchange = secureSession.CreateExchange(_fabric.RootNodeId, _node.NodeId);
 
-            MessageFrame completeCommissioningResult = secureExchange.SendCommand(0, 0x30, 4, ProtocolOpCode.InvokeRequest).GetAwaiter().GetResult(); // CompleteCommissioning
+            MessageFrame completeCommissioningResult = secureExchange.SendCommandAsync(0, 0x30, 4).GetAwaiter().GetResult(); // CompleteCommissioning
             if (MessageFrame.IsError(completeCommissioningResult))
             {
                 Console.WriteLine("Received error status in response to CompleteCommissioning message, abandoning commissioning!");

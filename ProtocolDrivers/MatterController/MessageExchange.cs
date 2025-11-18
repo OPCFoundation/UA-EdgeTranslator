@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Org.BouncyCastle.Math;
+using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
@@ -70,20 +71,42 @@ namespace Matter.Core
             return await WaitForNextMessageAsync().ConfigureAwait(false);
         }
 
-        public async Task<MessageFrame> SendCommand(byte endpoint, byte cluster, byte command, ProtocolOpCode opCode, object[] parameters = null)
+        public async Task<MessageFrame> SendTimedCommandAsync(ushort timeoutMs, byte endpoint, byte cluster, byte command, object[] parameters = null)
         {
             var payload = new MatterTLV();
             payload.AddStructure();
-            payload.AddBool(0, false);
-            payload.AddBool(1, false);
-            payload.AddArray(2); // InvokeRequests
+            payload.AddUInt16(0, timeoutMs);
+            payload.AddUInt8(255, 12);        // InteractionModelRevision
+            payload.EndContainer();           // Close the structure
+
+            MessageFrame timedResponse = await SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.TimedRequest).ConfigureAwait(false);
+
+            var status = StatusResponseResult.Parse(timedResponse.MessagePayload.ApplicationPayload);
+            if (!status.IsSuccess)
+            {
+                string diag = $"TimedRequest denied: IM={status.ImStatus}"
+                            + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty)
+                            + (status.InteractionModelRevision.HasValue ? $", IMRev={status.InteractionModelRevision.Value}" : string.Empty);
+                Console.WriteLine(diag);
+            }
+
+            return await SendCommandAsync(endpoint, cluster, command, parameters);
+        }
+
+        public async Task<MessageFrame> SendCommandAsync(byte endpoint, byte cluster, byte command, object[] parameters = null, bool timed = false)
+        {
+            var payload = new MatterTLV();
             payload.AddStructure();
-            payload.AddList(0); // CommandPath
+            payload.AddBool(0, false);  // Suppress Response
+            payload.AddBool(1, timed);  // Is Timed Invoke
+            payload.AddArray(2);        // Invoke Requests
+            payload.AddStructure();
+            payload.AddList(0);         // Command Path
             payload.AddUInt16(0, endpoint);
             payload.AddUInt32(1, cluster);
             payload.AddUInt16(2, command);
             payload.EndContainer();
-            payload.AddStructure(1); // CommandFields
+            payload.AddStructure(1);    // Command Fields
 
             if (parameters != null)
             {
@@ -98,41 +121,18 @@ namespace Matter.Core
                     object param = parameters[i];
                     switch (param)
                     {
-                        case byte b:
-                            payload.AddUInt8(i, b);
-                            break;
-                        case short s:
-                            payload.AddInt16(i, s);
-                            break;
-                        case ushort us:
-                            payload.AddUInt16(i, us);
-                            break;
-                        case int it:
-                            payload.AddInt32(i, it);
-                            break;
-                        case uint ui:
-                            payload.AddUInt32(i, ui);
-                            break;
-                        case long l:
-                            payload.AddInt64(i, l);
-                            break;
-                        case ulong ul:
-                            payload.AddUInt64(i, ul);
-                            break;
-                        case Org.BouncyCastle.Math.BigInteger bi:
-                            payload.AddUInt64(i, bi.ToByteArrayUnsigned());
-                            break;
-                        case string s:
-                            payload.AddUTF8String(i, s);
-                            break;
-                        case byte[] ba:
-                            payload.AddOctetString(i, ba);
-                            break;
-                        case bool bo:
-                            payload.AddBool(i, bo);
-                            break;
-                        default:
-                            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
+                        case byte b:        payload.AddUInt8(i, b); break;
+                        case short s:       payload.AddInt16(i, s); break;
+                        case ushort us:     payload.AddUInt16(i, us); break;
+                        case int it:        payload.AddInt32(i, it); break;
+                        case uint ui:       payload.AddUInt32(i, ui); break;
+                        case long l:        payload.AddInt64(i, l); break;
+                        case ulong ul:      payload.AddUInt64(i, ul); break;
+                        case BigInteger bi: payload.AddUInt64(i, bi.ToByteArrayUnsigned()); break;
+                        case string s:      payload.AddUTF8String(i, s); break;
+                        case byte[] ba:     payload.AddOctetString(i, ba); break;
+                        case bool bo:       payload.AddBool(i, bo); break;
+                        default:            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
                     }
                 }
             }
@@ -143,7 +143,7 @@ namespace Matter.Core
             payload.AddUInt8(255, 12); // interactionModelRevision
             payload.EndContainer(); // Close the structure
 
-            return await SendAndReceiveMessageAsync(payload, 1, opCode).ConfigureAwait(false);
+            return await SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.InvokeRequest).ConfigureAwait(false);
         }
 
         private async Task SendAsync(MessagePayload message)

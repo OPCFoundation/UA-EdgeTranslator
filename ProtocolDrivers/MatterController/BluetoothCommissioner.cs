@@ -144,7 +144,7 @@ namespace Matter.Core
                         (ushort)60, // 60 seconds expiration
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame armFailsafeMessageFrame = paseExchange.SendCommand(0, 0x30, 0, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // Arm Failsafe
+                    MessageFrame armFailsafeMessageFrame = paseExchange.SendCommandAsync(0, 0x30, 0, parameters).GetAwaiter().GetResult(); // Arm Failsafe
                     if (MessageFrame.IsError(armFailsafeMessageFrame))
                     {
                         Console.WriteLine("Received error status in response to Arm Failsafe message, abandoning commissioning!");
@@ -163,7 +163,7 @@ namespace Matter.Core
                     parameters = [
                         RandomNumberGenerator.GetBytes(32) // CSRNonce
                     ];
-                    MessageFrame csrResponseMessageFrame = paseExchange.SendCommand(0, 0x3E, 4, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // CSRRequest
+                    MessageFrame csrResponseMessageFrame = paseExchange.SendCommandAsync(0, 0x3E, 4, parameters).GetAwaiter().GetResult(); // CSRRequest
                     if (MessageFrame.IsError(csrResponseMessageFrame))
                     {
                         Console.WriteLine("Received error status in response to CSRRequest message, abandoning commissioning!");
@@ -187,7 +187,7 @@ namespace Matter.Core
                     parameters = [
                         _fabric.CA.GenerateCertMessage(_fabric.CA.RootCertificate)
                     ];
-                    MessageFrame addRootCertMessageFrame = paseExchange.SendCommand(0, 0x3E, 11, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddTrustedRootCertificate
+                    MessageFrame addRootCertMessageFrame = paseExchange.SendCommandAsync(0, 0x3E, 11, parameters).GetAwaiter().GetResult(); // AddTrustedRootCertificate
                     if (MessageFrame.IsError(addRootCertMessageFrame))
                     {
                         Console.WriteLine("Received error status in response to AddTrustedRootCertificate message, abandoning commissioning!");
@@ -211,7 +211,7 @@ namespace Matter.Core
                         _fabric.RootNodeId,
                         _fabric.VendorId
                     ];
-                    MessageFrame addNocResult = paseExchange.SendCommand(0, 0x3E, 6, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddNoc
+                    MessageFrame addNocResult = paseExchange.SendCommandAsync(0, 0x3E, 6, parameters).GetAwaiter().GetResult(); // AddNoc
                     if (MessageFrame.IsError(addNocResult))
                     {
                         Console.WriteLine("Received error status in response to AddNoc message, abandoning commissioning!");
@@ -231,7 +231,7 @@ namespace Matter.Core
                         null,
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame scanResult = paseExchange.SendCommand(0, 0x31, 0, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // ScanNetworks
+                    MessageFrame scanResult = paseExchange.SendCommandAsync(0, 0x31, 0, parameters).GetAwaiter().GetResult(); // ScanNetworks
                     if (MessageFrame.IsError(scanResult))
                     {
                         Console.WriteLine("Received error status in response to ScanNetworks message, abandoning commissioning!");
@@ -264,7 +264,7 @@ namespace Matter.Core
                         _payload.ThreadDataset,
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame addNetworkResult = paseExchange.SendCommand(0, 0x31, 3, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
+                    MessageFrame addNetworkResult = paseExchange.SendCommandAsync(0, 0x31, 3, parameters).GetAwaiter().GetResult(); // AddOrUpdateNetwork
                     if (MessageFrame.IsError(addNetworkResult))
                     {
                         Console.WriteLine("Received error status in response to AddOrUpdateNetwork message, abandoning commissioning!");
@@ -284,7 +284,7 @@ namespace Matter.Core
                         BitConverter.GetBytes(extendedPanId).Reverse().ToArray(),
                         (ulong)2222 // Breadcrumb
                     ];
-                    MessageFrame connectNetworkResult = paseExchange.SendCommand(0, 0x31, 6, ProtocolOpCode.InvokeRequest, parameters).GetAwaiter().GetResult(); // ConnectNetwork
+                    MessageFrame connectNetworkResult = paseExchange.SendCommandAsync(0, 0x31, 6, parameters).GetAwaiter().GetResult(); // ConnectNetwork
                     if (MessageFrame.IsError(connectNetworkResult))
                     {
                         Console.WriteLine("Received error status in response to ConnectNetwork message, abandoning commissioning!");

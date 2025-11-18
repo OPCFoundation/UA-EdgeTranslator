@@ -61,7 +61,7 @@ namespace Matter.Core
             }
         }
 
-        public string ExecuteCommand(Fabric fabric, string name, string[] inputArgs)
+        public string ExecuteCommand(Fabric fabric, string name, string[] inputArgs, bool timed = false)
         {
             if (inputArgs == null || inputArgs.Length == 0)
             {
@@ -89,7 +89,28 @@ namespace Matter.Core
                     inputArgs[0] = (inputArgs[0] == "True") ? "1" : "0";
                 }
 
-                MessageFrame commandResponseMessageFrame = secureExchange.SendCommand(1, (byte)clusterId, byte.Parse(inputArgs[0]), ProtocolOpCode.InvokeRequest).GetAwaiter().GetResult();
+                object[] parameters;
+                if (inputArgs.Count() > 1)
+                {
+                    parameters = new object[inputArgs.Count() - 1];
+                    Array.Copy(inputArgs, 1, parameters, 0, inputArgs.Count() - 1);
+                }
+                else
+                {
+                    parameters = null;
+                }
+
+                MessageFrame commandResponseMessageFrame;
+                if (timed)
+                {
+                    // 10s timeout
+                    commandResponseMessageFrame = secureExchange.SendTimedCommandAsync(10000, 1, (byte)clusterId, byte.Parse(inputArgs[0]), parameters).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    commandResponseMessageFrame = secureExchange.SendCommandAsync(1, (byte)clusterId, byte.Parse(inputArgs[0]), parameters).GetAwaiter().GetResult();
+                }
+
                 if (MessageFrame.IsError(commandResponseMessageFrame))
                 {
                     Console.WriteLine($"Received error status in response to command {name}!");
