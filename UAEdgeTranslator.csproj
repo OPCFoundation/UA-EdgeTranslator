@@ -55,7 +55,7 @@
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.374.176" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.176" />
     <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Sharp7" Version="1.1.84" />
     <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
