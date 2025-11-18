@@ -172,7 +172,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // call the action on the Matter node
                 if (node.Connect(_fabric))
                 {
-                    bool timed = true; // TODO: Make this configurable by leveraging WoT Action metadata
+                    // check if the method is a timed command
+                    bool timed = false;
+                    if (method.Handle is List<GenericForm> forms)
+                    {
+                        foreach (GenericForm form in forms)
+                        {
+                            if (form.Type == TypeString.TimedCommand)
+                            {
+                                timed = true;
+                                break;
+                            }
+                        }
+                    }
+
                     return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs, timed);
                 }
                 else

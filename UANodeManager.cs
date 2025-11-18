@@ -755,6 +755,19 @@ namespace Opc.Ua.Edge.Translator
                         method.OutputArguments = _nodeFactory.CreateMethodArguments(method, outputArgumentNames, outputArgumentNames, outputArgumentTypes, false, true);
                     }
 
+                    // check if there are any specified forms for the action
+                    if ((action.Value.Forms != null) && (action.Value.Forms.Length > 0))
+                    {
+                        List<GenericForm> methodForms = new();
+                        foreach (object form in action.Value.Forms)
+                        {
+                            GenericForm genericForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+                            methodForms.Add(genericForm);
+                        }
+
+                        method.Handle = methodForms;
+                    }
+
                     parent.AddChild(method);
                     AddPredefinedNode(SystemContext, method);
                 }

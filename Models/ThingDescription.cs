@@ -71,6 +71,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("output")]
         public TDArguments? Output { get; set; }
+
+        [JsonProperty("forms")]
+        public object[]? Forms { get; set; }
     }
 
     public class TDArguments
