@@ -28,12 +28,12 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)
 * LoRaWAN
+* Matter
 * OCPP (Open Charge Point Protocol) V1.6J
 * Siemens S7Comm (experimental)
 * Mitsubishi MC Protocol (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
-* Matter (experimental)
 * OCPP V2.1 (experimental). Bidirectional Power Transfer (BPT) for Electric Vehicles based in ISO 15118-20 is in the works!
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively or with the --net=host argument within a Docker container!
@@ -44,19 +44,17 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 > **Note**: The OCPP Central System is available on port 19520 (not secure) and on port 19521 (secure), which needs to be mapped to the Docker host for access.
 
-> **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --net=host argument as well as with the -v /run/dbus:/run/dbus:ro argument within a Docker container!
+> **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --network=host argument as well as with the -v /run/dbus:/run/dbus:ro argument within a Docker container!
 
-> **Note**: For testing the Matter asset interface, you will also need to create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, the setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://tommie.github.io/tools/matter-qr-decoder).
+> **Note**: For testing the Matter asset interface, you will also need to create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, the setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://zxing.org/w/decode.jspx).
 
 Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
 
 ## Running UA Edge Translator from a Docker environment
 
 The following folders within the Docker container store logs, certificates, secrets, settings and OPC UA nodeset files (used during asset mapping to OPC UA) and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
-* /app/logs
-* /app/settings
 * /app/pki
-* /app/nodesets
+* /app/settings
 
 E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 

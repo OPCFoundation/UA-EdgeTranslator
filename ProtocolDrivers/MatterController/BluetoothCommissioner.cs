@@ -37,9 +37,6 @@ namespace Matter.Core
         {
             _payload = payload;
 
-            Console.WriteLine("Waiting 60s for Debugger to be connected...");
-            Task.Delay(60000).GetAwaiter().GetResult();
-
             _bluetooth.AdvertisementReceived += Bluetooth_AdvertisementReceived;
 
             // scan for 15 seconds
