@@ -24,14 +24,17 @@
         "properties": {
           "target": {
             "type": "boolean"
+          },
+          "pinCode": {
+            "type": "string"
           }
         },
-        "required": [ "target" ]
+        "required": [ "target", "pinCode" ]
       },
       "forms": [
         {
           "href": "257",
-          "type": "xsd:boolean"
+          "type": "xsd:timedCommand"
         }
       ]
     }
