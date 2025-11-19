@@ -98,7 +98,35 @@ namespace Matter.Core
                 if (MessageFrame.IsError(commandResponseMessageFrame))
                 {
                     Console.WriteLine($"Received error status in response to command {commandName}!");
-                    return "Error response from command.";
+                    return "Command failed.";
+                }
+                else
+                {
+                    // parse status response
+                    if ((commandResponseMessageFrame.MessagePayload.ApplicationPayload != null) && (commandResponseMessageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusResponse))
+                    {
+                        var status = StatusResponseResult.Parse(commandResponseMessageFrame.MessagePayload.ApplicationPayload);
+                        if (!status.IsSuccess)
+                        {
+                            string diag = $"Command failed: IM={status.ImStatus}"
+                                        + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty);
+                            Console.WriteLine(diag);
+                            return diag;
+                        }
+                    }
+                    else
+                    {
+                        if ((commandResponseMessageFrame.MessagePayload.ApplicationPayload != null) && (commandResponseMessageFrame.MessagePayload.OpCode == ProtocolOpCode.InvokeResponse))
+                        {
+                            // simply print the reponse payload
+                            Console.WriteLine("Command response: " + Convert.ToHexString(commandResponseMessageFrame.MessagePayload.ApplicationPayload.Serialize()));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Unexpected OpCode {commandResponseMessageFrame.MessagePayload.OpCode} in command response.");
+                            return $"Unexpected OpCode {commandResponseMessageFrame.MessagePayload.OpCode} in command response.";
+                        }
+                    }
                 }
 
                 secureExchange.AcknowledgeMessageAsync(commandResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
