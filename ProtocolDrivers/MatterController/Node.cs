@@ -108,7 +108,7 @@ namespace Matter.Core
                         var status = StatusResponseResult.Parse(commandResponseMessageFrame.MessagePayload.ApplicationPayload);
                         if (!status.IsSuccess)
                         {
-                            string diag = $"Command failed: IM={status.ImStatus}"
+                            string diag = $"Command failed: {status.ImStatus}"
                                         + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty);
                             Console.WriteLine(diag);
                             return diag;
@@ -130,6 +130,70 @@ namespace Matter.Core
                 }
 
                 secureExchange.AcknowledgeMessageAsync(commandResponseMessageFrame.MessageCounter).GetAwaiter().GetResult();
+
+                secureExchange.Close();
+            }
+
+            return "success";
+        }
+
+        public string WriteACLAttribute(Fabric fabric, string clusterName, string attributeName, object[] parameters)
+        {
+            if (parameters.Length < 1)
+            {
+                return "Must provide target cluster!";
+            }
+
+            // find our cluster ID
+            ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(clusterName, StringComparison.OrdinalIgnoreCase)).Key;
+            if (clusterId == 0)
+            {
+                return $"Cluster name '{clusterName}' not found.";
+            }
+            else
+            {
+                if (_secureSession == null)
+                {
+                    return "Could not connect to Matter device!";
+                }
+
+                MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+
+                // Request the DeviceTypeList Attribute from the Description Cluster.
+                var readCluster = new MatterTLV();
+                var payload = new MatterTLV();
+                payload.AddStructure(); // WriteRequest
+                payload.AddList(0);     // AttributePath list
+                payload.AddStructure();
+                payload.AddUInt16(0, 0);  // Root endpoint
+                payload.AddUInt32(1, 31); // Cluster
+                payload.AddUInt16(2, 0);  // Attribute
+                payload.EndContainer();
+                payload.EndContainer();
+                payload.AddArray(1); // Data (ACL list)
+                payload.AddStructure(); // New ACL entry
+                payload.AddUInt8(0, 1); // FabricIndex
+                payload.AddUInt8(1, 3); // Privilege = Operate
+                payload.AddUInt8(2, 2); // AuthMode = CASE
+                payload.AddArray(3);    // Subjects
+                payload.AddUInt64(0, fabric.RootNodeId); // Node ID
+                payload.EndContainer();
+                payload.AddArray(4);    // Targets
+                payload.AddStructure();
+                payload.AddUInt32(0, uint.Parse(parameters[0].ToString())); // target cluster
+                payload.EndContainer();
+                payload.EndContainer(); // Targets
+                payload.EndContainer(); // ACL entry
+                payload.EndContainer(); // ACL list
+                payload.EndContainer(); // WriteRequest
+                MessageFrame attributeResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
+                if (MessageFrame.IsError(attributeResponse))
+                {
+                    Console.WriteLine("Received error status in response to write attribute message!");
+                    return "Write Attribute failed.";
+                }
+
+                secureExchange.AcknowledgeMessageAsync(attributeResponse.MessageCounter).GetAwaiter().GetResult();
 
                 secureExchange.Close();
             }

@@ -6,8 +6,8 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using static Matter.Core.MessageExchange;
 
 namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
@@ -121,42 +121,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public object Read(AssetTag tag)
         {
-            object value = null;
-
-            string[] addressParts = tag.Address.Split(['?', '/']);
-
-            // TODO: Implement the read logic from the Matter device
-
-            return value;
+            throw new NotImplementedException("Reading tags not supported in the Matter protocol!");
         }
 
         public void Write(AssetTag tag, string value)
         {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
-
-            if (tag.Type == "Float")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
-            }
-            else if (tag.Type == "Boolean")
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
-            }
-            else if (tag.Type == "Integer")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by LoRaWAN.");
-            }
-
-            // TODO: Implement the write logic to the Matter device
+            throw new NotImplementedException("Writing tags not supported in the Matter protocol!");
         }
 
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
@@ -197,7 +167,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         parameters = new object[inputArgs.Count() - 1];
                         for (int i = 1; i < inputArgs.Count(); i++)
                         {
-                            parameters[i - 1] = inputArgs[i];
+                            // TODO: Fix this workaround
+                            switch (method.InputArguments.Value[i].Name)
+                            {
+                                case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
+                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = 257 } }; break;
+                                default: parameters[i - 1] = inputArgs[i]; break;
+                            }
                         }
                     }
                     else

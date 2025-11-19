@@ -84,13 +84,18 @@ namespace Matter.Core
             var status = StatusResponseResult.Parse(timedResponse.MessagePayload.ApplicationPayload);
             if (!status.IsSuccess)
             {
-                string diag = $"TimedRequest denied: IM={status.ImStatus}"
+                string diag = $"TimedRequest denied: {status.ImStatus}"
                             + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty);
                 Console.WriteLine(diag);
                 return null;
             }
 
             return await SendCommandAsync(endpoint, cluster, command, parameters);
+        }
+
+        public class AccessControlTarget
+        {
+            public ulong Cluster { get; set; }
         }
 
         public async Task<MessageFrame> SendCommandAsync(byte endpoint, byte cluster, byte command, object[] parameters = null, bool timed = false)
@@ -131,7 +136,18 @@ namespace Matter.Core
                         case BigInteger bi: payload.AddUInt64(i, bi.ToByteArrayUnsigned()); break;
                         case string s:      payload.AddUTF8String(i, s); break;
                         case byte[] ba:     payload.AddOctetString(i, ba); break;
+                        case ulong[] ula:  payload.AddArray(i); for (byte j = 0; j < ula.Length; j++) { payload.AddUInt64(j, ula[j]); } payload.EndContainer(); break;
+                        case AccessControlTarget[] acta:
+                            payload.AddArray(i);  for (byte j = 0; j < acta.Length; j++)
+                            {
+                                payload.AddStructure();
+                                payload.AddUInt64(0, acta[j].Cluster);
+                                payload.EndContainer();
+                            }
+                            payload.EndContainer();
+                            break;
                         case bool bo:       payload.AddBool(i, bo); break;
+                        case double d:      payload.AddUInt64(i, ulong.Parse(d.ToString())); break; // not a bug: We convert WoT numbers to OPC UA doubles to Matter unsigned integers!
                         default:            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
                     }
                 }
