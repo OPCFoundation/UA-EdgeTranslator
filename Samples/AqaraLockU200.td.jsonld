@@ -22,14 +22,14 @@
       "input": {
         "type": "object",
         "properties": {
-          "target": {
+          "command": {
             "type": "boolean"
           },
           "pinCode": {
             "type": "string"
           }
         },
-        "required": [ "target", "pinCode" ]
+        "required": [ "command", "pinCode" ]
       },
       "forms": [
         {

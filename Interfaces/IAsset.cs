@@ -19,6 +19,6 @@
 
         public void Write(AssetTag tag, string value);
 
-        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs);
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs);
     }
 }

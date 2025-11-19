@@ -159,9 +159,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // TODO: Implement the write logic to the Matter device
         }
 
-        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             outputArgs = null; // not used
+
+            if ((inputArgs == null) || (inputArgs.Count == 0))
+            {
+                return "First argument is the command and cannot be null.";
+            }
 
             string nodeName = method.Parent?.BrowseName?.Name;
 
@@ -186,7 +191,21 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                     }
 
-                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs, timed);
+                    object[] parameters;
+                    if (inputArgs.Count() > 1)
+                    {
+                        parameters = new object[inputArgs.Count() - 1];
+                        for (int i = 1; i < inputArgs.Count(); i++)
+                        {
+                            parameters[i - 1] = inputArgs[i];
+                        }
+                    }
+                    else
+                    {
+                        parameters = null;
+                    }
+
+                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs[0].ToString(), parameters, timed);
                 }
                 else
                 {

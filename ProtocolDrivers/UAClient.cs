@@ -392,7 +392,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             reconnectHandler.Dispose();
         }
 
-        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             CallMethodRequestCollection requests = new CallMethodRequestCollection
             {
@@ -437,14 +437,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 if ((results[0].OutputArguments != null) && (results[0].OutputArguments.Count > 0))
                 {
-                    string[] outputStrings = new string[results[0].OutputArguments.Count];
+                    outputArgs = new List<object>(results[0].OutputArguments.Count);
 
                     for (int i = 0; i < results[0].OutputArguments.Count; i++)
                     {
-                        outputStrings[i] = results[0].OutputArguments[i].Value?.ToString();
+                        outputArgs.Add(results[0].OutputArguments[i].Value);
                     }
-
-                    outputArgs = outputStrings;
                 }
             }
 

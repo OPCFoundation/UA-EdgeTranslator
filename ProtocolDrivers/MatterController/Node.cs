@@ -61,18 +61,13 @@ namespace Matter.Core
             }
         }
 
-        public string ExecuteCommand(Fabric fabric, string name, string[] inputArgs, bool timed = false)
+        public string ExecuteCommand(Fabric fabric, string clusterName, string commandName, object[] parameters, bool timed = false)
         {
-            if (inputArgs == null || inputArgs.Length == 0)
-            {
-                return "Matter input arguments cannot be null/empty!";
-            }
-
             // find our cluster ID
-            ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(name, StringComparison.OrdinalIgnoreCase)).Key;
+            ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(clusterName, StringComparison.OrdinalIgnoreCase)).Key;
             if (clusterId == 0)
             {
-                return $"Cluster name '{name}' not found.";
+                return $"Cluster name '{clusterName}' not found.";
             }
             else
             {
@@ -83,37 +78,26 @@ namespace Matter.Core
 
                 MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
 
-                // map booleans
-                if ((inputArgs[0] == "True") || (inputArgs[0] == "False"))
+                // map booleans for command
+                if ((commandName == "True") || (commandName == "False"))
                 {
-                    inputArgs[0] = (inputArgs[0] == "True") ? "1" : "0";
-                }
-
-                object[] parameters;
-                if (inputArgs.Count() > 1)
-                {
-                    parameters = new object[inputArgs.Count() - 1];
-                    Array.Copy(inputArgs, 1, parameters, 0, inputArgs.Count() - 1);
-                }
-                else
-                {
-                    parameters = null;
+                    commandName = (commandName == "True") ? "1" : "0";
                 }
 
                 MessageFrame commandResponseMessageFrame;
                 if (timed)
                 {
                     // 10s timeout
-                    commandResponseMessageFrame = secureExchange.SendTimedCommandAsync(10000, 1, (byte)clusterId, byte.Parse(inputArgs[0]), parameters).GetAwaiter().GetResult();
+                    commandResponseMessageFrame = secureExchange.SendTimedCommandAsync(10000, 1, (byte)clusterId, byte.Parse(commandName), parameters).GetAwaiter().GetResult();
                 }
                 else
                 {
-                    commandResponseMessageFrame = secureExchange.SendCommandAsync(1, (byte)clusterId, byte.Parse(inputArgs[0]), parameters).GetAwaiter().GetResult();
+                    commandResponseMessageFrame = secureExchange.SendCommandAsync(1, (byte)clusterId, byte.Parse(commandName), parameters).GetAwaiter().GetResult();
                 }
 
                 if (MessageFrame.IsError(commandResponseMessageFrame))
                 {
-                    Console.WriteLine($"Received error status in response to command {name}!");
+                    Console.WriteLine($"Received error status in response to command {commandName}!");
                     return "Error response from command.";
                 }
 

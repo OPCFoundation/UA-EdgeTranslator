@@ -715,6 +715,10 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
                             }
+                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.ByteString);
+                            }
                             else
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.String); // default to string
@@ -745,6 +749,10 @@ namespace Opc.Ua.Edge.Translator
                             else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Boolean)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
+                            }
+                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.ByteString);
                             }
                             else
                             {
@@ -1515,13 +1523,8 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 string assetId = method.Parent.BrowseName.Name;
-                string[] actionInputArgs = inputArguments.Select(arg => arg?.ToString()).ToArray();
-                string[] actionOutputArgs = outputArguments.Select(arg => arg?.ToString()).ToArray();
 
-                string result = _assets[assetId].ExecuteAction(method, actionInputArgs, ref actionOutputArgs);
-
-                outputArguments = actionOutputArgs;
-
+                string result = _assets[assetId].ExecuteAction(method, inputArguments, ref outputArguments);
                 if (result == null)
                 {
                     return new ServiceResult(StatusCodes.Uncertain, new LocalizedText("no result"));

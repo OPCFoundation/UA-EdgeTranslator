@@ -257,7 +257,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             throw new NotImplementedException();
         }

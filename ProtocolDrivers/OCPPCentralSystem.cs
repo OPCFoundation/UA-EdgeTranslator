@@ -8,6 +8,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
 
@@ -291,11 +292,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // TODO: Implement the write logic to the charge point
         }
 
-        public string ExecuteAction(MethodState method, string[] inputArgs, ref string[] outputArgs)
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
-            if (inputArgs.Length > 0)
+            if (inputArgs.Count > 0)
             {
-                if (WebsocketJsonMiddlewareOCPP.ExecuteCommand(inputArgs[0], method.BrowseName.Name, inputArgs, outputArgs))
+                if (WebsocketJsonMiddlewareOCPP.ExecuteCommand(inputArgs[0].ToString(), method.BrowseName.Name, inputArgs.Select(arg => arg?.ToString()).ToArray(), outputArgs.Select(arg => arg?.ToString()).ToArray()))
                 {
                     return "Action executed successfully.";
                 }
