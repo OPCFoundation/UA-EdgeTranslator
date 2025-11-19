@@ -138,7 +138,8 @@ namespace Matter.Core
                         case byte[] ba:     payload.AddOctetString(i, ba); break;
                         case ulong[] ula:  payload.AddArray(i); for (byte j = 0; j < ula.Length; j++) { payload.AddUInt64(j, ula[j]); } payload.EndContainer(); break;
                         case AccessControlTarget[] acta:
-                            payload.AddArray(i);  for (byte j = 0; j < acta.Length; j++)
+                            payload.AddArray(i);
+                            for (byte j = 0; j < acta.Length; j++)
                             {
                                 payload.AddStructure();
                                 payload.AddUInt64(0, acta[j].Cluster);
