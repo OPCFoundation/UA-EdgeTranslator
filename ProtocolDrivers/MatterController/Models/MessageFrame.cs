@@ -143,16 +143,7 @@
             }
             else
             {
-                if ((messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusReport))
-                {
-                    // print the status report details
-                    Console.WriteLine("Matter Status Report: " + Convert.ToHexString(messageFrame.MessagePayload.ApplicationPayload.Serialize()));
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                return (messageFrame.MessagePayload.ProtocolId == 0) && (messageFrame.MessagePayload.OpCode == ProtocolOpCode.StatusReport);
             }
         }
     }
