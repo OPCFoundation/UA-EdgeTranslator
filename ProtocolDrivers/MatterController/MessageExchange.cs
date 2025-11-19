@@ -85,9 +85,9 @@ namespace Matter.Core
             if (!status.IsSuccess)
             {
                 string diag = $"TimedRequest denied: IM={status.ImStatus}"
-                            + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty)
-                            + (status.InteractionModelRevision.HasValue ? $", IMRev={status.InteractionModelRevision.Value}" : string.Empty);
+                            + (status.ClusterStatus.HasValue ? $", ClusterStatus=0x{status.ClusterStatus.Value:X4}" : string.Empty);
                 Console.WriteLine(diag);
+                return null;
             }
 
             return await SendCommandAsync(endpoint, cluster, command, parameters);

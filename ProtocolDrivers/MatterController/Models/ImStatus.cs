@@ -1,12 +1,7 @@
 ﻿
 namespace Matter.Core
 {
-    using log4net.Core;
-    using Opc.Ua.Edge.Translator.Models;
-    using PacketDotNet.LLDP;
     using System;
-    using System.Formats.Tar;
-    using System.Threading.Tasks;
 
     [Flags]
     public enum ImStatus : byte
