@@ -7,10 +7,15 @@ using System.Threading.Tasks;
 
 namespace Matter.Core
 {
+    /// <summary>
+    /// Note: This class is not thread safe. We ensure that there is only one instance of this at a time!
+    /// </summary>
     public class MessageExchange
     {
         private ushort _exchangeId;
         private ISession _session;
+
+        private static int _instanceCount = 0;
 
         private uint _receivedMessageCounter = 255;
         private uint _acknowledgedMessageCounter = 255;
@@ -21,25 +26,55 @@ namespace Matter.Core
 
         private void Callback(object state)
         {
-            _cancellationTokenSource.Cancel();
-            _readingThread.Wait();
+            lock (this)
+            {
+                Debug.WriteLine("Aborting and closing Message Exchange with ExchangeId {0} for Session {1} due to inactivity!", _exchangeId, _session.SessionId);
+
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                _cancellationTokenSource.Cancel();
+                _readingThread.Wait();
+
+                _instanceCount--;
+            }
         }
 
         private Channel<MessageFrame> _incomingMessageChannel = Channel.CreateBounded<MessageFrame>(10);
 
         public MessageExchange(ushort exchangeId, ISession session)
         {
-            _exchangeId = exchangeId;
-            _session = session;
+            lock (this)
+            {
+                if (_instanceCount > 0)
+                {
+                    throw new InvalidOperationException("Only one MessageExchange instance is allowed at a time.");
+                }
 
-            _timer = new Timer(Callback, null, Timeout.Infinite, Timeout.Infinite);
-            _readingThread = Task.Run(ReceiveAsync);
+                _instanceCount++;
+
+                Debug.WriteLine("Creating new MessageExchange with ExchangeId {0} for Session {1}.", exchangeId, session.SessionId);
+
+                _exchangeId = exchangeId;
+                _session = session;
+
+                _timer = new Timer(Callback, null, Timeout.Infinite, Timeout.Infinite);
+                _readingThread = Task.Run(ReceiveAsync);
+            }
         }
 
         public void Close()
         {
-            _cancellationTokenSource.Cancel();
-            _readingThread.Wait();
+            Task.Delay(250).GetAwaiter().GetResult(); // Grace period before close to allow the other side to cleanup
+
+            lock (this)
+            {
+                Debug.WriteLine("Closing Message Exchange with ExchangeId {0} for Session {1}.", _exchangeId, _session.SessionId);
+
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                _cancellationTokenSource.Cancel();
+                _readingThread.Wait();
+
+                _instanceCount--;
+            }
         }
 
         public async Task AcknowledgeMessageAsync(uint messageCounter, ushort exchangeId = 0)
@@ -136,7 +171,7 @@ namespace Matter.Core
                         case BigInteger bi: payload.AddUInt64(i, bi.ToByteArrayUnsigned()); break;
                         case string s:      payload.AddUTF8String(i, s); break;
                         case byte[] ba:     payload.AddOctetString(i, ba); break;
-                        case ulong[] ula:  payload.AddArray(i); for (byte j = 0; j < ula.Length; j++) { payload.AddUInt64(j, ula[j]); } payload.EndContainer(); break;
+                        case ulong[] ula:   payload.AddArray(i); for (byte j = 0; j < ula.Length; j++) { payload.AddUInt64(j, ula[j]); } payload.EndContainer(); break;
                         case AccessControlTarget[] acta:
                             payload.AddArray(i);
                             for (byte j = 0; j < acta.Length; j++)
@@ -232,7 +267,7 @@ namespace Matter.Core
 
                     if (frame.SessionID != _session.SessionId)
                     {
-                        Debug.WriteLine("[E: {0}] Message {1} [SourceNodeID: {2}] is not for this session {3}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SourceNodeID, _session.SessionId);
+                        Debug.WriteLine("Exchange {0}, Rcvd Message Counter {1}, Rcvd SessionID {2}, is not for this session {3}, peer session {4}. Ignoring...", _exchangeId, frame.MessageCounter, frame.SessionID, _session.SessionId, _session.PeerSessionId);
                         continue;
                     }
 
@@ -259,7 +294,7 @@ namespace Matter.Core
                     // If this is a standalone acknowledgement, don't pass this up a level.
                     if (frame.MessagePayload.ProtocolId == 0x00 && frame.MessagePayload.OpCode == ProtocolOpCode.Acknowledgement)
                     {
-                        Debug.WriteLine("RecvAck: msg flags {0} exch flags {1} msg counter {2} ack counter {3} session {4} exch {5}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                        Debug.WriteLine("RecvAck: msg flags {0}, exch flags {1}, msg counter {2}, ack counter {3}, rcvd session {4}, local session {5}, peer session {6}, exch {7}.", frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, _session.SessionId, _session.PeerSessionId, frame.MessagePayload.ExchangeId);
 
                         // check if the Ack needs an ack back
                         if (frame.MessagePayload.ExchangeFlags.HasFlag(ExchangeFlags.Reliability))
@@ -270,7 +305,7 @@ namespace Matter.Core
                         continue;
                     }
 
-                    Debug.WriteLine("Recv: opcode {0} msg flags {1} exch flags {2} msg counter {3} ack counter {4} session {5} exch {6}.", frame.MessagePayload.OpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, frame.MessagePayload.ExchangeId);
+                    Debug.WriteLine("Recv: opcode {0}, msg flags {1}, exch flags {2}, msg counter {3}, ack counter {4}, rcvd session {5}, local session {6}, peer session {7}, exch {8}.", frame.MessagePayload.OpCode, frame.MessageFlags, frame.MessagePayload.ExchangeFlags, frame.MessageCounter, frame.MessagePayload.AcknowledgedMessageCounter, frame.SessionID, _session.SessionId, _session.PeerSessionId, frame.MessagePayload.ExchangeId);
 
                     // This message needs processing, so put it onto the queue.
                     await _incomingMessageChannel.Writer.WriteAsync(frame).ConfigureAwait(false);

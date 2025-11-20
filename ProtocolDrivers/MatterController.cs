@@ -133,11 +133,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             outputArgs = null; // not used
 
-            if ((inputArgs == null) || (inputArgs.Count == 0))
-            {
-                return "First argument is the command and cannot be null.";
-            }
-
             string nodeName = method.Parent?.BrowseName?.Name;
 
             // find the node in the fabric
@@ -167,11 +162,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         parameters = new object[inputArgs.Count() - 1];
                         for (int i = 1; i < inputArgs.Count(); i++)
                         {
-                            // TODO: Fix this workaround
                             switch (method.InputArguments.Value[i].Name)
                             {
                                 case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
-                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = 257 } }; break;
+                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = 257 } }; break; // TODO: Make this configurable in the WoT file
                                 default: parameters[i - 1] = inputArgs[i]; break;
                             }
                         }
@@ -179,6 +173,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     else
                     {
                         parameters = null;
+                    }
+
+                    if (method.BrowseName.Name == "fetch descriptions")
+                    {
+                        return node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
+                    }
+
+                    if ((inputArgs == null) || (inputArgs.Count == 0))
+                    {
+                        return "First argument is the command and cannot be null.";
                     }
 
                     return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs[0].ToString(), parameters, timed);
