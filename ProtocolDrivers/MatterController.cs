@@ -51,6 +51,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     Console.WriteLine($"Matter device {ipParts[2]} is not commissioned. Starting commissioning process.");
 
+                    // clear any old ip address for this node
+                    Matter.Core.Node oldNode = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString());
+                    if (oldNode != null)
+                    {
+                        _fabric.UpdateNodeWithIPAddress(oldNode.NodeId.ToString("X4"), null, 0);
+                        _fabric.Save();
+                    }
+
                     _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
 
                     // wait 60 seconds or until we have an IP address for the node

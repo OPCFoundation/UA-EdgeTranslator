@@ -29,7 +29,7 @@ namespace Matter.Core
 
         private ISession _secureSession;
 
-        private List<ulong> _supportedClusters = new List<ulong>();
+        private List<KeyValuePair<uint, ulong>> _supportedClusters = new();
 
         public bool Connect(Fabric fabric)
         {
@@ -248,7 +248,7 @@ namespace Matter.Core
             return openedFields;
         }
 
-        public async Task<string> DiscoverCommandsAsync(Fabric fabric, byte endpoint, ulong cluster, bool accepted)
+        public async Task<string> DiscoverCommandsAsync(Fabric fabric, KeyValuePair<uint, ulong> cluster, bool accepted)
         {
             MessageExchange secureExchange = null;
 
@@ -257,23 +257,23 @@ namespace Matter.Core
                 secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
 
                 var payload = new MatterTLV();
-                payload.AddStructure();             // top-level InvokeRequest
-                payload.AddBool(0, false);          // SuppressResponse
-                payload.AddBool(1, false);          // TimedRequest = false
-                payload.AddArray(2);                // InvokeRequests
-                payload.AddStructure();             // CommandDataIB
-                payload.AddList(0);                 // CommandPath (list with three entries: endpoint, cluster, commandId)
-                payload.AddUInt16(0, endpoint);     // path[0] endpoint
-                payload.AddUInt64(1, cluster);      // path[1] cluster
-                payload.AddUInt16(2, 0x12);         // path[2] DiscoverCommandsRequest (IM-defined)
-                payload.EndContainer();             // end CommandPath
-                payload.AddStructure(1);            // CommandFields (structure)
-                payload.AddBool(0, accepted);       // [0] isDiscoverAcceptedCommands
-                payload.EndContainer();             // end CommandFields
-                payload.EndContainer();             // end CommandDataIB
-                payload.EndContainer();             // end InvokeRequests
-                payload.AddUInt8(255, 12);          // IM revision (commonly 12)
-                payload.EndContainer();             // end top-level InvokeRequest
+                payload.AddStructure();                     // top-level InvokeRequest
+                payload.AddBool(0, false);                  // SuppressResponse
+                payload.AddBool(1, false);                  // TimedRequest = false
+                payload.AddArray(2);                        // InvokeRequests
+                payload.AddStructure();                     // CommandDataIB
+                payload.AddList(0);                         // CommandPath (list with three entries: endpoint, cluster, commandId)
+                payload.AddUInt16(0, (ushort)cluster.Key);  // path[0] endpoint
+                payload.AddUInt64(1, cluster.Value);        // path[1] cluster
+                payload.AddUInt16(2, 0x12);                 // path[2] DiscoverCommandsRequest (IM-defined)
+                payload.EndContainer();                     // end CommandPath
+                payload.AddStructure(1);                    // CommandFields (structure)
+                payload.AddBool(0, accepted);               // [0] isDiscoverAcceptedCommands
+                payload.EndContainer();                     // end CommandFields
+                payload.EndContainer();                     // end CommandDataIB
+                payload.EndContainer();                     // end InvokeRequests
+                payload.AddUInt8(255, 12);                  // IM revision (commonly 12)
+                payload.EndContainer();                     // end top-level InvokeRequest
                 MessageFrame response = await secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.InvokeRequest).ConfigureAwait(false);
                 if (MessageFrame.IsError(response))
                 {
@@ -306,8 +306,6 @@ namespace Matter.Core
                     {
                         tlv.OpenStructure(); // CommandDataIB
 
-                        endpoint = 0;
-                        ushort clusterId = 0;
                         var cmdIds = new List<ushort>();
 
                         while (!tlv.IsEndContainerNext())
@@ -335,8 +333,8 @@ namespace Matter.Core
                                     while (!tlv.IsEndContainerNext())
                                     {
                                         int? pathTag = tlv.PeekTagNumber();
-                                        if (pathTag == 0) endpoint = (byte)tlv.GetUnsignedInt(0);
-                                        else if (pathTag == 1) clusterId = (ushort)tlv.GetUnsignedInt(1);
+                                        if (pathTag == 0) tlv.GetUnsignedInt(0);
+                                        else if (pathTag == 1) tlv.GetUnsignedInt(1);
                                         else tlv.GetObject(pathTag); // command (2) or vendor fields
                                     }
 
@@ -415,7 +413,9 @@ namespace Matter.Core
                         if (tlv.IsEndContainerNext()) tlv.CloseContainer();
 
                         if (cmdIds.Count > 0)
-                            results.Add(new DiscoverCommandsResult(endpoint, clusterId, cmdIds));
+                        {
+                            results.Add(new DiscoverCommandsResult((byte)cluster.Key, (ushort)cluster.Value, cmdIds));
+                        }
                     }
 
                     // Close InvokeResponses container
@@ -427,7 +427,7 @@ namespace Matter.Core
 
                 foreach (var r in results)
                 {
-                    Console.WriteLine($"Cluster 0x{r.ClusterId:X4} @ endpoint {r.Endpoint} supports:");
+                    Console.WriteLine($"Cluster 0x{r.ClusterId:X4} @ endpoint {r.Endpoint} supports (accepted: {accepted}):");
                     foreach (var id in r.CommandIds)
                     {
                         Console.WriteLine($"  - 0x{id:X4}");
@@ -563,13 +563,13 @@ namespace Matter.Core
 
                 foreach (var clusterId in _supportedClusters)
                 {
-                    string result = await DiscoverCommandsAsync(fabric, 0, clusterId, true).ConfigureAwait(false);
+                    string result = await DiscoverCommandsAsync(fabric, clusterId, true).ConfigureAwait(false);
                     if (result != "success")
                     {
                         return result;
                     }
 
-                    result = await DiscoverCommandsAsync(fabric, 0, clusterId, false).ConfigureAwait(false);
+                    result = await DiscoverCommandsAsync(fabric, clusterId, false).ConfigureAwait(false);
                     if (result != "success")
                     {
                         return result;
@@ -621,6 +621,7 @@ namespace Matter.Core
                 {
                     list.OpenArray(1); // attribute reports
 
+                    uint endpointId = 0;
                     while (!list.IsEndContainerNext())
                     {
                         list.OpenStructure(); // attribute report
@@ -633,7 +634,7 @@ namespace Matter.Core
                             {
                                 list.OpenList(0); // attribute path list
 
-                                GetEndpointClusterAttributes(list);
+                                endpointId = GetEndpointClusterAttributes(list);
 
                                 list.CloseContainer(); // attribute path list
                             }
@@ -663,7 +664,7 @@ namespace Matter.Core
 
                             list.OpenList(1); // attribute data list
 
-                            GetEndpointClusterAttributes(list);
+                            endpointId = GetEndpointClusterAttributes(list);
 
                             list.CloseContainer(); // attribute data list
 
@@ -682,9 +683,9 @@ namespace Matter.Core
                                                 if (MatterV13Clusters.IdToName.ContainsKey((ulong)innerItem))
                                                 {
                                                     dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)innerItem]}";
-                                                    if (!_supportedClusters.Contains((ulong)innerItem))
+                                                    if (!_supportedClusters.Contains(new KeyValuePair<uint, ulong>(endpointId, (ulong)innerItem)))
                                                     {
-                                                        _supportedClusters.Add((ulong)innerItem);
+                                                        _supportedClusters.Add(new KeyValuePair<uint, ulong>(endpointId, (ulong)innerItem));
                                                     }
                                                 }
                                             }
@@ -707,9 +708,9 @@ namespace Matter.Core
                                             if (MatterV13Clusters.IdToName.ContainsKey((ulong)item))
                                             {
                                                 dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)item]}";
-                                                if (!_supportedClusters.Contains((ulong)item))
+                                                if (!_supportedClusters.Contains(new KeyValuePair<uint, ulong>(endpointId, (ulong)item)))
                                                 {
-                                                    _supportedClusters.Add((ulong)item);
+                                                    _supportedClusters.Add(new KeyValuePair<uint, ulong>(endpointId, (ulong)item));
                                                 }
                                             }
                                         }
@@ -733,9 +734,9 @@ namespace Matter.Core
                                     if (MatterV13Clusters.IdToName.ContainsKey((ulong)data))
                                     {
                                         dataName = $"Supported Matter Cluster: {MatterV13Clusters.IdToName[(ulong)data]}";
-                                        if (!_supportedClusters.Contains((ulong)data))
+                                        if (!_supportedClusters.Contains(new KeyValuePair<uint, ulong>(endpointId, (ulong)data)))
                                         {
-                                            _supportedClusters.Add((ulong)data);
+                                            _supportedClusters.Add(new KeyValuePair<uint, ulong>(endpointId, (ulong)data));
                                         }
                                     }
                                 }
@@ -765,8 +766,10 @@ namespace Matter.Core
             }
         }
 
-        private void GetEndpointClusterAttributes(MatterTLV list)
+        private uint GetEndpointClusterAttributes(MatterTLV list)
         {
+            uint endpointId = 0;
+
             while (!list.IsEndContainerNext())
             {
                 if (list.IsTagNext(0))
@@ -798,7 +801,7 @@ namespace Matter.Core
 
                 if (list.IsTagNext(2))
                 {
-                    uint endpointId = (uint)list.GetUnsignedInt(2);
+                    endpointId = (uint)list.GetUnsignedInt(2);
                 }
 
                 if (list.IsTagNext(3))
@@ -821,6 +824,8 @@ namespace Matter.Core
                     uint wildcardPathFlags = (uint)list.GetUnsignedInt(6);
                 }
             }
+
+            return endpointId;
         }
     }
 }
