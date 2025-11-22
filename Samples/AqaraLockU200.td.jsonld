@@ -19,55 +19,20 @@
   "title": "Aqara Smart Lock U200",
   "actions": {
     "fetch descriptions": {},
-    "access control": {
-      "input": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "number"
-          },
-          "fabric": {
-            "type": "number"
-          },
-          "priviledge": {
-            "type": "number"
-          },
-          "authMode": {
-            "type": "number"
-          },
-          "subjects": {
-            "type": "object"
-          },
-          "targets": {
-            "type": "object"
-          }
-        },
-        "required": [ "command", "fabric", "priviledge", "authMode", "subjects", "targets" ]
-      },
-      "forms": [
-        {
-          "href": "31",
-          "type": "xsd:integer"
-        }
-      ]
-    },
     "door lock": {
       "input": {
         "type": "object",
         "properties": {
           "command": {
             "type": "boolean"
-          },
-          "pinCode": {
-            "type": "string"
           }
         },
-        "required": [ "command", "pinCode" ]
+        "required": [ "command" ]
       },
       "forms": [
         {
           "href": "257",
-          "type": "xsd:timedCommand"
+          "type": "xsd:boolean"
         }
       ]
     }
