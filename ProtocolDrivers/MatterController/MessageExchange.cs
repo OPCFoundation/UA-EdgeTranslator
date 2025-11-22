@@ -106,7 +106,7 @@ namespace Matter.Core
             return await WaitForNextMessageAsync().ConfigureAwait(false);
         }
 
-        public async Task<MessageFrame> SendTimedCommandAsync(ushort timeoutMs, byte endpoint, byte cluster, byte command, object[] parameters = null)
+        public async Task<MessageFrame> SendTimedCommandAsync(ushort timeoutMs, ushort endpoint, uint cluster, ushort command, object[] parameters = null)
         {
             var payload = new MatterTLV();
             payload.AddStructure();
@@ -133,7 +133,7 @@ namespace Matter.Core
             public ulong Cluster { get; set; }
         }
 
-        public async Task<MessageFrame> SendCommandAsync(byte endpoint, byte cluster, byte command, object[] parameters = null, bool timed = false)
+        public async Task<MessageFrame> SendCommandAsync(ushort endpoint, uint cluster, ushort command, object[] parameters = null, bool timed = false)
         {
             var payload = new MatterTLV();
             payload.AddStructure();

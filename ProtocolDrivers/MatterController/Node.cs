@@ -91,11 +91,11 @@ namespace Matter.Core
                 if (timed)
                 {
                     // 10s timeout
-                    commandResponseMessageFrame = secureExchange.SendTimedCommandAsync(10000, 1, (byte)clusterId, byte.Parse(commandName), parameters).GetAwaiter().GetResult();
+                    commandResponseMessageFrame = secureExchange.SendTimedCommandAsync(10000, 1, (uint)clusterId, ushort.Parse(commandName), parameters).GetAwaiter().GetResult();
                 }
                 else
                 {
-                    commandResponseMessageFrame = secureExchange.SendCommandAsync(1, (byte)clusterId, byte.Parse(commandName), parameters).GetAwaiter().GetResult();
+                    commandResponseMessageFrame = secureExchange.SendCommandAsync(1, (uint)clusterId, ushort.Parse(commandName), parameters).GetAwaiter().GetResult();
                 }
 
                 if (MessageFrame.IsError(commandResponseMessageFrame))
