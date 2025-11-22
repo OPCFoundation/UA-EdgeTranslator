@@ -51,11 +51,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     Console.WriteLine($"Matter device {ipParts[2]} is not commissioned. Starting commissioning process.");
 
-                    // clear any old ip address for this node
+                    // clear any old fabric entry for this node
                     Matter.Core.Node oldNode = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString());
                     if (oldNode != null)
                     {
-                        _fabric.UpdateNodeWithIPAddress(oldNode.NodeId.ToString("X4"), null, 0);
+                        _fabric.DeleteNode(oldNode.NodeId);
                         _fabric.Save();
                     }
 
@@ -152,6 +152,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     // check if the method is a timed command
                     bool timed = false;
+                    uint targetClusterId = 0;
                     if (method.Handle is List<GenericForm> forms)
                     {
                         foreach (GenericForm form in forms)
@@ -160,6 +161,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                             {
                                 timed = true;
                                 break;
+                            }
+
+                            if (form.Href != null)
+                            {
+                                if (uint.TryParse(form.Href, out uint parsedClusterId))
+                                {
+                                    targetClusterId = parsedClusterId;
+                                }
                             }
                         }
                     }
@@ -173,7 +182,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                             switch (method.InputArguments.Value[i].Name)
                             {
                                 case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
-                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = 257 } }; break; // TODO: Make this configurable in the WoT file
+                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = targetClusterId } }; break;
                                 default: parameters[i - 1] = inputArgs[i]; break;
                             }
                         }

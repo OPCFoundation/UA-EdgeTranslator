@@ -122,7 +122,7 @@ namespace Matter.Core
                         if ((commandResponseMessageFrame.MessagePayload.ApplicationPayload != null) && (commandResponseMessageFrame.MessagePayload.OpCode == ProtocolOpCode.InvokeResponse))
                         {
                             // simply print the reponse payload
-                            Console.WriteLine("Command response: " + Convert.ToHexString(commandResponseMessageFrame.MessagePayload.ApplicationPayload.Serialize()));
+                            Console.WriteLine("Command response: 0x" + Convert.ToHexString(commandResponseMessageFrame.MessagePayload.ApplicationPayload.Serialize()));
                         }
                         else
                         {

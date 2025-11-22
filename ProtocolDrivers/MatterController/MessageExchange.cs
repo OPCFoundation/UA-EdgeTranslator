@@ -46,7 +46,7 @@ namespace Matter.Core
             {
                 if (_instanceCount > 0)
                 {
-                    throw new InvalidOperationException("Only one MessageExchange instance is allowed at a time.");
+                    throw new InvalidOperationException("Only one MessageExchange instance is allowed at a time. This is a limitation with many Matter devices!");
                 }
 
                 _instanceCount++;

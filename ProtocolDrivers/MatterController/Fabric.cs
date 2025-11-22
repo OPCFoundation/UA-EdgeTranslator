@@ -115,6 +115,20 @@ namespace Matter.Core
                 OperationalNOCAsTLV = operationalNOCAsTLV,
                 SubjectPublicKey = subjectPublicKey
             });
+
+            Console.WriteLine($"Added new Matter node with ID: {nodeId.ToString("X4")} to Fabric.");
+        }
+
+        internal void DeleteNode(ulong nodeId)
+        {
+            if (Nodes.TryRemove(Nodes.FirstOrDefault(n => n.Value.NodeId == nodeId).Key, out Node removedNode))
+            {
+                Console.WriteLine($"Node with ID: {nodeId.ToString("X4")} removed from Fabric.");
+            }
+            else
+            {
+                Console.WriteLine($"Node with ID: {nodeId.ToString("X4")} not found in Fabric.");
+            }
         }
 
         public void UpdateNodeWithIPAddress(string id, string address, ushort port)
