@@ -140,64 +140,50 @@ namespace Matter.Core
             return "success";
         }
 
-        public string WriteACLAttribute(Fabric fabric, string clusterName, string attributeName, object[] parameters)
+        public string WriteAttribute(Fabric fabric, byte endpoint, string clusterName, uint attributeId, uint attribute)
         {
-            if (parameters.Length < 1)
-            {
-                return "Must provide target cluster!";
-            }
-
             // find our cluster ID
             ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(clusterName, StringComparison.OrdinalIgnoreCase)).Key;
             if (clusterId == 0)
             {
                 return $"Cluster name '{clusterName}' not found.";
             }
-            else
+
+            if (_secureSession == null)
             {
-                if (_secureSession == null)
-                {
-                    return "Could not connect to Matter device!";
-                }
+                return "Could not connect to Matter device!";
+            }
 
-                MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+            MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
 
-                // Request the DeviceTypeList Attribute from the Description Cluster.
-                var readCluster = new MatterTLV();
-                var payload = new MatterTLV();
-                payload.AddStructure(); // WriteRequest
-                payload.AddList(0);     // AttributePath list
-                payload.AddStructure();
-                payload.AddUInt16(0, 0);  // Root endpoint
-                payload.AddUInt32(1, 31); // Cluster
-                payload.AddUInt16(2, 0);  // Attribute
-                payload.EndContainer();
-                payload.EndContainer();
-                payload.AddArray(1); // Data (ACL list)
-                payload.AddStructure(); // New ACL entry
-                payload.AddUInt8(0, 1); // FabricIndex
-                payload.AddUInt8(1, 3); // Privilege = Operate
-                payload.AddUInt8(2, 2); // AuthMode = CASE
-                payload.AddArray(3);    // Subjects
-                payload.AddUInt64(0, fabric.RootNodeId); // Node ID
-                payload.EndContainer();
-                payload.AddArray(4);    // Targets
-                payload.AddStructure();
-                payload.AddUInt32(0, uint.Parse(parameters[0].ToString())); // target cluster
-                payload.EndContainer();
-                payload.EndContainer(); // Targets
-                payload.EndContainer(); // ACL entry
-                payload.EndContainer(); // ACL list
-                payload.EndContainer(); // WriteRequest
-                MessageFrame attributeResponse = secureExchange.SendAndReceiveMessageAsync(readCluster, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
-                if (MessageFrame.IsError(attributeResponse))
-                {
-                    Console.WriteLine("Received error status in response to write attribute message!");
-                    return "Write Attribute failed.";
-                }
+            var payload = new MatterTLV();
+            payload.AddStructure();
+            payload.AddList();                      // WriteRequests
+            payload.AddStructure();                 // AttributeDataIB
+            payload.AddList(0);                     // AttributePath list
+            payload.AddUInt16(0, endpoint);         // Endpoint
+            payload.AddUInt64(1, clusterId);        // Cluster
+            payload.AddUInt32(2, attributeId);      // Attribute
+            payload.EndContainer();                 // End AttributePath list
+            payload.AddUInt32(1, attribute);        // Data
+            payload.EndContainer();                 // End AttributeDataIB
+            payload.EndContainer();                 // End WriteRequest
+            payload.AddUInt8(255, 12);              // IM revision
+            payload.EndContainer();
+            MessageFrame attributeResponse = secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
+            if (MessageFrame.IsError(attributeResponse))
+            {
+                Console.WriteLine("Received error status in response to write attribute message!");
+                return "Write Attribute failed.";
+            }
 
-                secureExchange.AcknowledgeMessageAsync(attributeResponse.MessageCounter).GetAwaiter().GetResult();
-                secureExchange.Close();
+            secureExchange.AcknowledgeMessageAsync(attributeResponse.MessageCounter).GetAwaiter().GetResult();
+            secureExchange.Close();
+
+            // simply print the reponse payload
+            if (attributeResponse.MessagePayload.ApplicationPayload != null)
+            {
+                Console.WriteLine("Attribute write response: 0x" + Convert.ToHexString(attributeResponse.MessagePayload.ApplicationPayload.Serialize()));
             }
 
             return "success";

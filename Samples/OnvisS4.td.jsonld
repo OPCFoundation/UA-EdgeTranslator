@@ -23,11 +23,11 @@
       "input": {
         "type": "object",
         "properties": {
-          "target": {
+          "command": {
             "type": "boolean"
           }
         },
-        "required": [ "target" ]
+        "required": [ "command" ]
       },
       "forms": [
         {

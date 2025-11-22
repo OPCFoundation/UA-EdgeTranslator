@@ -173,28 +173,47 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                     }
 
-                    object[] parameters;
-                    if (inputArgs.Count() > 1)
+                    object[] parameters = null;
+                    bool attribute = false;
+                    if (inputArgs.Count() > 0)
                     {
-                        parameters = new object[inputArgs.Count() - 1];
-                        for (int i = 1; i < inputArgs.Count(); i++)
+                        // command or attribute?
+                        if (method.InputArguments.Value[0].Name == "attribute")
                         {
-                            switch (method.InputArguments.Value[i].Name)
+                            attribute = true;
+                        }
+                        else
+                        {
+                            if (method.InputArguments.Value[0].Name != "command")
                             {
-                                case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
-                                case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = targetClusterId } }; break;
-                                default: parameters[i - 1] = inputArgs[i]; break;
+                                throw new Exception("First argument must be 'command' for commands or 'attribute' for attribute writes.");
+                            }
+
+                            if (inputArgs.Count > 1)
+                            {
+                                parameters = new object[inputArgs.Count() - 1];
+                                for (int i = 1; i < inputArgs.Count(); i++)
+                                {
+                                    switch (method.InputArguments.Value[i].Name)
+                                    {
+                                        case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
+                                        case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = targetClusterId } }; break;
+                                        default: parameters[i - 1] = inputArgs[i]; break;
+                                    }
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        parameters = null;
                     }
 
                     if (method.BrowseName.Name == "fetch descriptions")
                     {
                         return node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
+                    }
+
+                    if (attribute)
+                    {
+                        // TODO: Support more than just attributeId = 0
+                        return node.WriteAttribute(_fabric, 1, method.BrowseName.Name, 0, uint.Parse(inputArgs[0].ToString()));
                     }
 
                     if ((inputArgs == null) || (inputArgs.Count == 0))

@@ -23,16 +23,16 @@
       "input": {
         "type": "object",
         "properties": {
-          "command": {
-            "type": "boolean"
+          "attribute": {
+            "type": "number"
           }
         },
-        "required": [ "command" ]
+        "required": [ "attribute" ]
       },
       "forms": [
         {
           "href": "257",
-          "type": "xsd:boolean"
+          "type": "xsd:integer"
         }
       ]
     }
