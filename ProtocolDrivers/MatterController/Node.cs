@@ -37,7 +37,6 @@ namespace Matter.Core
             {
                 if (_secureSession != null)
                 {
-                    Console.WriteLine($"Already connected to node {NodeId:X16}.");
                     return true;
                 }
 
@@ -140,6 +139,48 @@ namespace Matter.Core
             return "success";
         }
 
+        public string ReadAttribute(Fabric fabric, byte endpoint, string clusterName, uint attributeId)
+        {
+            // find our cluster ID
+            ulong clusterId = MatterV13Clusters.IdToName.FirstOrDefault(x => x.Value.Equals(clusterName, StringComparison.OrdinalIgnoreCase)).Key;
+            if (clusterId == 0)
+            {
+                return $"Cluster name '{clusterName}' not found.";
+            }
+
+            if (_secureSession == null)
+            {
+                return "Could not connect to Matter device!";
+            }
+
+            MessageExchange secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+
+            var payload = new MatterTLV();
+            payload.AddStructure();             // ReadRequestIB
+            payload.AddList(0);                 // AttributePathList (tag 0)
+            payload.AddStructure();             // AttributePathIB
+            payload.AddUInt16(0, endpoint);     // EndpointId
+            payload.AddUInt64(1, clusterId);    // ClusterId
+            payload.AddUInt32(2, attributeId);  // AttributeId
+            payload.EndContainer();             // AttributePathIB
+            payload.EndContainer();             // AttributePathList
+            payload.AddUInt8(255, 1);           // IM Revision
+            payload.EndContainer();             // ReadRequestIB
+            MessageFrame attributeReadResponse = secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
+            if (MessageFrame.IsError(attributeReadResponse))
+            {
+                Console.WriteLine("Received error status in response to read attribute message!");
+                return "Read Attribute failed.";
+            }
+
+            secureExchange.AcknowledgeMessageAsync(attributeReadResponse.MessageCounter).GetAwaiter().GetResult();
+            secureExchange.Close();
+
+            Console.WriteLine("Attribute read response: 0x" + Convert.ToHexString(attributeReadResponse.MessagePayload.ApplicationPayload.Serialize()));
+
+            return Convert.ToHexString(attributeReadResponse.MessagePayload.ApplicationPayload.Serialize());
+        }
+
         public string WriteAttribute(Fabric fabric, byte endpoint, string clusterName, uint attributeId, uint attribute)
         {
             // find our cluster ID
@@ -170,270 +211,270 @@ namespace Matter.Core
             payload.EndContainer();                 // End WriteRequest
             payload.AddUInt8(255, 12);              // IM revision
             payload.EndContainer();
-            MessageFrame attributeResponse = secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.ReadRequest).GetAwaiter().GetResult();
-            if (MessageFrame.IsError(attributeResponse))
+            MessageFrame attributeWriteResponse = secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.WriteRequest).GetAwaiter().GetResult();
+            if (MessageFrame.IsError(attributeWriteResponse))
             {
                 Console.WriteLine("Received error status in response to write attribute message!");
                 return "Write Attribute failed.";
             }
 
-            secureExchange.AcknowledgeMessageAsync(attributeResponse.MessageCounter).GetAwaiter().GetResult();
+            secureExchange.AcknowledgeMessageAsync(attributeWriteResponse.MessageCounter).GetAwaiter().GetResult();
             secureExchange.Close();
 
             // simply print the reponse payload
-            if (attributeResponse.MessagePayload.ApplicationPayload != null)
+            if (attributeWriteResponse.MessagePayload.ApplicationPayload != null)
             {
-                Console.WriteLine("Attribute write response: 0x" + Convert.ToHexString(attributeResponse.MessagePayload.ApplicationPayload.Serialize()));
+                Console.WriteLine("Attribute write response: 0x" + Convert.ToHexString(attributeWriteResponse.MessagePayload.ApplicationPayload.Serialize()));
             }
 
             return "success";
         }
 
-        static bool IsInteger(byte t) =>
-            t == (byte)ElementType.SByte ||
-            t == (byte)ElementType.Short ||
-            t == (byte)ElementType.Int ||
-            t == (byte)ElementType.Long ||
-            t == (byte)ElementType.Byte ||
-            t == (byte)ElementType.UShort ||
-            t == (byte)ElementType.UInt ||
-            t == (byte)ElementType.ULong;
+        //static bool IsInteger(byte t) =>
+        //    t == (byte)ElementType.SByte ||
+        //    t == (byte)ElementType.Short ||
+        //    t == (byte)ElementType.Int ||
+        //    t == (byte)ElementType.Long ||
+        //    t == (byte)ElementType.Byte ||
+        //    t == (byte)ElementType.UShort ||
+        //    t == (byte)ElementType.UInt ||
+        //    t == (byte)ElementType.ULong;
 
-        static ushort ReadU16(MatterTLV tlv, int? tagOrNull) => (ushort)tlv.GetUnsignedInt(tagOrNull);
+        //static ushort ReadU16(MatterTLV tlv, int? tagOrNull) => (ushort)tlv.GetUnsignedInt(tagOrNull);
 
-        bool TryOpenAsListOrArray(MatterTLV tlv, int? tag, out bool openedList, out bool openedArray)
-        {
-            openedList = openedArray = false;
-            byte t = tlv.PeekElementType();
+        //bool TryOpenAsListOrArray(MatterTLV tlv, int? tag, out bool openedList, out bool openedArray)
+        //{
+        //    openedList = openedArray = false;
+        //    byte t = tlv.PeekElementType();
 
-            // Only attempt to open if the next element is a container
-            if (t == (byte)ElementType.List)
-            {
-                try { tlv.OpenList(tag); openedList = true; return true; } catch { }
-            }
-            else if (t == (byte)ElementType.Array)
-            {
-                try { tlv.OpenArray(tag); openedArray = true; return true; } catch { }
-            }
+        //    // Only attempt to open if the next element is a container
+        //    if (t == (byte)ElementType.List)
+        //    {
+        //        try { tlv.OpenList(tag); openedList = true; return true; } catch { }
+        //    }
+        //    else if (t == (byte)ElementType.Array)
+        //    {
+        //        try { tlv.OpenArray(tag); openedArray = true; return true; } catch { }
+        //    }
 
-            return false; // not a container or open failed
-        }
+        //    return false; // not a container or open failed
+        //}
 
-        bool TryOpenFieldsContainer(MatterTLV tlv, out bool openedFields)
-        {
-            openedFields = false;
-            byte t = tlv.PeekElementType();
+        //bool TryOpenFieldsContainer(MatterTLV tlv, out bool openedFields)
+        //{
+        //    openedFields = false;
+        //    byte t = tlv.PeekElementType();
 
-            if (t == (byte)ElementType.Structure)
-            { try { tlv.OpenStructure(1); openedFields = true; } catch { } }
-            else if (t == (byte)ElementType.List)
-            { try { tlv.OpenList(1); openedFields = true; } catch { } }
-            else if (t == (byte)ElementType.Array)
-            { try { tlv.OpenArray(1); openedFields = true; } catch { } }
+        //    if (t == (byte)ElementType.Structure)
+        //    { try { tlv.OpenStructure(1); openedFields = true; } catch { } }
+        //    else if (t == (byte)ElementType.List)
+        //    { try { tlv.OpenList(1); openedFields = true; } catch { } }
+        //    else if (t == (byte)ElementType.Array)
+        //    { try { tlv.OpenArray(1); openedFields = true; } catch { } }
 
-            return openedFields;
-        }
+        //    return openedFields;
+        //}
 
-        public async Task<string> DiscoverCommandsAsync(Fabric fabric, KeyValuePair<uint, ulong> cluster, bool accepted)
-        {
-            MessageExchange secureExchange = null;
+        //public async Task<string> DiscoverCommandsAsync(Fabric fabric, KeyValuePair<uint, ulong> cluster, bool accepted)
+        //{
+        //    MessageExchange secureExchange = null;
 
-            try
-            {
-                secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
+        //    try
+        //    {
+        //        secureExchange = _secureSession.CreateExchange(fabric.RootNodeId, NodeId);
 
-                var payload = new MatterTLV();
-                payload.AddStructure();                     // top-level InvokeRequest
-                payload.AddBool(0, false);                  // SuppressResponse
-                payload.AddBool(1, false);                  // TimedRequest = false
-                payload.AddArray(2);                        // InvokeRequests
-                payload.AddStructure();                     // CommandDataIB
-                payload.AddList(0);                         // CommandPath (list with three entries: endpoint, cluster, commandId)
-                payload.AddUInt16(0, (ushort)cluster.Key);  // path[0] endpoint
-                payload.AddUInt64(1, cluster.Value);        // path[1] cluster
-                payload.AddUInt16(2, 0x12);                 // path[2] DiscoverCommandsRequest (IM-defined)
-                payload.EndContainer();                     // end CommandPath
-                payload.AddStructure(1);                    // CommandFields (structure)
-                payload.AddBool(0, accepted);               // [0] isDiscoverAcceptedCommands
-                payload.EndContainer();                     // end CommandFields
-                payload.EndContainer();                     // end CommandDataIB
-                payload.EndContainer();                     // end InvokeRequests
-                payload.AddUInt8(255, 12);                  // IM revision (commonly 12)
-                payload.EndContainer();                     // end top-level InvokeRequest
-                MessageFrame response = await secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.InvokeRequest).ConfigureAwait(false);
-                if (MessageFrame.IsError(response))
-                {
-                    Console.WriteLine("Received error status in response to discover commands message!");
-                    return "Discover Commands failed.";
-                }
+        //        var payload = new MatterTLV();
+        //        payload.AddStructure();                     // top-level InvokeRequest
+        //        payload.AddBool(0, false);                  // SuppressResponse
+        //        payload.AddBool(1, false);                  // TimedRequest = false
+        //        payload.AddArray(2);                        // InvokeRequests
+        //        payload.AddStructure();                     // CommandDataIB
+        //        payload.AddList(0);                         // CommandPath (list with three entries: endpoint, cluster, commandId)
+        //        payload.AddUInt16(0, (ushort)cluster.Key);  // path[0] endpoint
+        //        payload.AddUInt64(1, cluster.Value);        // path[1] cluster
+        //        payload.AddUInt16(2, 0x12);                 // path[2] DiscoverCommandsRequest (IM-defined)
+        //        payload.EndContainer();                     // end CommandPath
+        //        payload.AddStructure(1);                    // CommandFields (structure)
+        //        payload.AddBool(0, accepted);               // [0] isDiscoverAcceptedCommands
+        //        payload.EndContainer();                     // end CommandFields
+        //        payload.EndContainer();                     // end CommandDataIB
+        //        payload.EndContainer();                     // end InvokeRequests
+        //        payload.AddUInt8(255, 12);                  // IM revision (commonly 12)
+        //        payload.EndContainer();                     // end top-level InvokeRequest
+        //        MessageFrame response = await secureExchange.SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.InvokeRequest).ConfigureAwait(false);
+        //        if (MessageFrame.IsError(response))
+        //        {
+        //            Console.WriteLine("Received error status in response to discover commands message!");
+        //            return "Discover Commands failed.";
+        //        }
 
-                secureExchange.AcknowledgeMessageAsync(response.MessageCounter).GetAwaiter().GetResult();
-                secureExchange.Close();
+        //        secureExchange.AcknowledgeMessageAsync(response.MessageCounter).GetAwaiter().GetResult();
+        //        secureExchange.Close();
 
-                var results = new List<DiscoverCommandsResult>();
+        //        var results = new List<DiscoverCommandsResult>();
 
-                MatterTLV tlv = response.MessagePayload.ApplicationPayload;
-                tlv.OpenStructure(); // InvokeResponse
+        //        MatterTLV tlv = response.MessagePayload.ApplicationPayload;
+        //        tlv.OpenStructure(); // InvokeResponse
 
-                while (!tlv.IsEndContainerNext())
-                {
-                    int? topTag = tlv.PeekTagNumber();
-                    byte topType = tlv.PeekElementType();
+        //        while (!tlv.IsEndContainerNext())
+        //        {
+        //            int? topTag = tlv.PeekTagNumber();
+        //            byte topType = tlv.PeekElementType();
 
-                    // Locate InvokeResponses container (List OR Array). Skip non-target top-level fields.
-                    if (!TryOpenAsListOrArray(tlv, topTag, out var openedList, out var openedArray))
-                    {
-                        tlv.GetObject(topTag);
-                        continue;
-                    }
+        //            // Locate InvokeResponses container (List OR Array). Skip non-target top-level fields.
+        //            if (!TryOpenAsListOrArray(tlv, topTag, out var openedList, out var openedArray))
+        //            {
+        //                tlv.GetObject(topTag);
+        //                continue;
+        //            }
 
-                    // Walk InvokeResponses items
-                    while (!tlv.IsEndContainerNext())
-                    {
-                        tlv.OpenStructure(); // CommandDataIB
+        //            // Walk InvokeResponses items
+        //            while (!tlv.IsEndContainerNext())
+        //            {
+        //                tlv.OpenStructure(); // CommandDataIB
 
-                        var cmdIds = new List<ushort>();
+        //                var cmdIds = new List<ushort>();
 
-                        while (!tlv.IsEndContainerNext())
-                        {
-                            int? innerTag = tlv.PeekTagNumber();
-                            byte innerType = tlv.PeekElementType();
+        //                while (!tlv.IsEndContainerNext())
+        //                {
+        //                    int? innerTag = tlv.PeekTagNumber();
+        //                    byte innerType = tlv.PeekElementType();
 
-                            if (innerTag == 0) // CommandPath
-                            {
-                                bool openedPath = false;
-                                // CommandPath is usually a LIST; some stacks use STRUCTURE. Try both safely.
-                                try { tlv.OpenList(0); openedPath = true; }
-                                catch
-                                {
-                                    try { tlv.OpenStructure(0); openedPath = true; }
-                                    catch { /* neither -> consume */ }
-                                }
+        //                    if (innerTag == 0) // CommandPath
+        //                    {
+        //                        bool openedPath = false;
+        //                        // CommandPath is usually a LIST; some stacks use STRUCTURE. Try both safely.
+        //                        try { tlv.OpenList(0); openedPath = true; }
+        //                        catch
+        //                        {
+        //                            try { tlv.OpenStructure(0); openedPath = true; }
+        //                            catch { /* neither -> consume */ }
+        //                        }
 
-                                if (!openedPath)
-                                {
-                                    tlv.GetObject(0);
-                                }
-                                else
-                                {
-                                    while (!tlv.IsEndContainerNext())
-                                    {
-                                        int? pathTag = tlv.PeekTagNumber();
-                                        if (pathTag == 0) tlv.GetUnsignedInt(0);
-                                        else if (pathTag == 1) tlv.GetUnsignedInt(1);
-                                        else tlv.GetObject(pathTag); // command (2) or vendor fields
-                                    }
+        //                        if (!openedPath)
+        //                        {
+        //                            tlv.GetObject(0);
+        //                        }
+        //                        else
+        //                        {
+        //                            while (!tlv.IsEndContainerNext())
+        //                            {
+        //                                int? pathTag = tlv.PeekTagNumber();
+        //                                if (pathTag == 0) tlv.GetUnsignedInt(0);
+        //                                else if (pathTag == 1) tlv.GetUnsignedInt(1);
+        //                                else tlv.GetObject(pathTag); // command (2) or vendor fields
+        //                            }
 
-                                    // Only close if we really opened it
-                                    if (tlv.IsEndContainerNext()) tlv.CloseContainer();
-                                }
-                            }
-                            else if (innerTag == 1) // CommandFields: DiscoverCommands payload lives here
-                            {
-                                // Try to open as container; if not, consume primitive/empty and continue
-                                if (!TryOpenFieldsContainer(tlv, out var openedFields))
-                                {
-                                    tlv.GetObject(1);
-                                    continue;
-                                }
+        //                            // Only close if we really opened it
+        //                            if (tlv.IsEndContainerNext()) tlv.CloseContainer();
+        //                        }
+        //                    }
+        //                    else if (innerTag == 1) // CommandFields: DiscoverCommands payload lives here
+        //                    {
+        //                        // Try to open as container; if not, consume primitive/empty and continue
+        //                        if (!TryOpenFieldsContainer(tlv, out var openedFields))
+        //                        {
+        //                            tlv.GetObject(1);
+        //                            continue;
+        //                        }
 
-                                // Inside CommandFields, there are two common shapes:
-                                // (A) a child List/Array (often tag 0) holding anonymous/context-tagged integers (IDs)
-                                // (B) repeated integer fields directly under CommandFields (often tag 0), no child container
+        //                        // Inside CommandFields, there are two common shapes:
+        //                        // (A) a child List/Array (often tag 0) holding anonymous/context-tagged integers (IDs)
+        //                        // (B) repeated integer fields directly under CommandFields (often tag 0), no child container
 
-                                bool openedIdsContainer = false;
+        //                        bool openedIdsContainer = false;
 
-                                if (!tlv.IsEndContainerNext())
-                                {
-                                    int? maybeIdsTag = tlv.PeekTagNumber();
-                                    byte maybeIdsType = tlv.PeekElementType();
+        //                        if (!tlv.IsEndContainerNext())
+        //                        {
+        //                            int? maybeIdsTag = tlv.PeekTagNumber();
+        //                            byte maybeIdsType = tlv.PeekElementType();
 
-                                    // If first child is a container, open it and read IDs from it
-                                    if (maybeIdsType == (byte)ElementType.List || maybeIdsType == (byte)ElementType.Array)
-                                    {
-                                        openedIdsContainer = TryOpenAsListOrArray(tlv, maybeIdsTag, out var idsList, out var idsArray);
-                                        if (openedIdsContainer)
-                                        {
-                                            while (!tlv.IsEndContainerNext())
-                                            {
-                                                // Items can be anonymous or context-tagged ints
-                                                ushort cmdId = ReadU16(tlv, null);
-                                                cmdIds.Add(cmdId);
-                                            }
-                                            if (tlv.IsEndContainerNext()) tlv.CloseContainer(); // child IDs container
-                                        }
-                                    }
-                                }
+        //                            // If first child is a container, open it and read IDs from it
+        //                            if (maybeIdsType == (byte)ElementType.List || maybeIdsType == (byte)ElementType.Array)
+        //                            {
+        //                                openedIdsContainer = TryOpenAsListOrArray(tlv, maybeIdsTag, out var idsList, out var idsArray);
+        //                                if (openedIdsContainer)
+        //                                {
+        //                                    while (!tlv.IsEndContainerNext())
+        //                                    {
+        //                                        // Items can be anonymous or context-tagged ints
+        //                                        ushort cmdId = ReadU16(tlv, null);
+        //                                        cmdIds.Add(cmdId);
+        //                                    }
+        //                                    if (tlv.IsEndContainerNext()) tlv.CloseContainer(); // child IDs container
+        //                                }
+        //                            }
+        //                        }
 
-                                if (!openedIdsContainer)
-                                {
-                                    // No child container → consume integer primitives directly under CommandFields
-                                    while (!tlv.IsEndContainerNext())
-                                    {
-                                        int? fTag = tlv.PeekTagNumber();
-                                        byte fType = tlv.PeekElementType();
+        //                        if (!openedIdsContainer)
+        //                        {
+        //                            // No child container → consume integer primitives directly under CommandFields
+        //                            while (!tlv.IsEndContainerNext())
+        //                            {
+        //                                int? fTag = tlv.PeekTagNumber();
+        //                                byte fType = tlv.PeekElementType();
 
-                                        if (!IsInteger(fType))
-                                        {
-                                            tlv.GetObject(fTag); // skip non-integer field (vendor extras)
-                                            continue;
-                                        }
+        //                                if (!IsInteger(fType))
+        //                                {
+        //                                    tlv.GetObject(fTag); // skip non-integer field (vendor extras)
+        //                                    continue;
+        //                                }
 
-                                        // Honour tag 0 if present; anonymous also works with null
-                                        ushort cmdId = ReadU16(tlv, fTag == 0 ? 0 : (int?)null);
-                                        cmdIds.Add(cmdId);
-                                    }
-                                }
+        //                                // Honour tag 0 if present; anonymous also works with null
+        //                                ushort cmdId = ReadU16(tlv, fTag == 0 ? 0 : (int?)null);
+        //                                cmdIds.Add(cmdId);
+        //                            }
+        //                        }
 
-                                // Close CommandFields ONLY if we opened it and EndOfContainer is indeed next
-                                if (tlv.IsEndContainerNext()) tlv.CloseContainer();
-                            }
-                            else
-                            {
-                                // Unknown field inside CommandDataIB → consume safely
-                                tlv.GetObject(innerTag);
-                            }
-                        }
+        //                        // Close CommandFields ONLY if we opened it and EndOfContainer is indeed next
+        //                        if (tlv.IsEndContainerNext()) tlv.CloseContainer();
+        //                    }
+        //                    else
+        //                    {
+        //                        // Unknown field inside CommandDataIB → consume safely
+        //                        tlv.GetObject(innerTag);
+        //                    }
+        //                }
 
-                        // Close CommandDataIB
-                        if (tlv.IsEndContainerNext()) tlv.CloseContainer();
+        //                // Close CommandDataIB
+        //                if (tlv.IsEndContainerNext()) tlv.CloseContainer();
 
-                        if (cmdIds.Count > 0)
-                        {
-                            results.Add(new DiscoverCommandsResult((byte)cluster.Key, (ushort)cluster.Value, cmdIds));
-                        }
-                    }
+        //                if (cmdIds.Count > 0)
+        //                {
+        //                    results.Add(new DiscoverCommandsResult((byte)cluster.Key, (ushort)cluster.Value, cmdIds));
+        //                }
+        //            }
 
-                    // Close InvokeResponses container
-                    if (tlv.IsEndContainerNext()) tlv.CloseContainer();
-                }
+        //            // Close InvokeResponses container
+        //            if (tlv.IsEndContainerNext()) tlv.CloseContainer();
+        //        }
 
-                // Close top-level InvokeResponse
-                if (tlv.IsEndContainerNext()) tlv.CloseContainer();
+        //        // Close top-level InvokeResponse
+        //        if (tlv.IsEndContainerNext()) tlv.CloseContainer();
 
-                foreach (var r in results)
-                {
-                    Console.WriteLine($"Cluster 0x{r.ClusterId:X4} @ endpoint {r.Endpoint} supports (accepted: {accepted}):");
-                    foreach (var id in r.CommandIds)
-                    {
-                        Console.WriteLine($"  - 0x{id:X4}");
-                    }
-                }
+        //        foreach (var r in results)
+        //        {
+        //            Console.WriteLine($"Cluster 0x{r.ClusterId:X4} @ endpoint {r.Endpoint} supports (accepted: {accepted}):");
+        //            foreach (var id in r.CommandIds)
+        //            {
+        //                Console.WriteLine($"  - 0x{id:X4}");
+        //            }
+        //        }
 
-                return "success";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to discover commands from node {NodeId:X16}: {ex.Message}");
+        //        return "success";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Failed to discover commands from node {NodeId:X16}: {ex.Message}");
 
-                if (secureExchange != null)
-                {
-                    secureExchange.Close();
-                }
+        //        if (secureExchange != null)
+        //        {
+        //            secureExchange.Close();
+        //        }
 
-                return ex.Message;
-            }
-        }
+        //        return ex.Message;
+        //    }
+        //}
 
         public async Task<string> FetchDescriptionsAsync(Fabric fabric)
         {
@@ -546,21 +587,6 @@ namespace Matter.Core
                 while (moreChunkedMessages);
 
                 secureExchange.Close();
-
-                foreach (var clusterId in _supportedClusters)
-                {
-                    string result = await DiscoverCommandsAsync(fabric, clusterId, true).ConfigureAwait(false);
-                    if (result != "success")
-                    {
-                        return result;
-                    }
-
-                    result = await DiscoverCommandsAsync(fabric, clusterId, false).ConfigureAwait(false);
-                    if (result != "success")
-                    {
-                        return result;
-                    }
-                }
 
                 return "success";
             }

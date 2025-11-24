@@ -39,7 +39,7 @@ namespace InTheHand.Bluetooth
 
         private void AddCharacteristicValueChanged()
         {
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 _eventHandler = await _characteristicLinux.WatchPropertiesAsync(OnCharacteristicValueChangedInternal).ConfigureAwait(false);
             });

@@ -129,12 +129,50 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public object Read(AssetTag tag)
         {
-            throw new NotImplementedException("Reading tags not supported in the Matter protocol!");
+            // find the node in the fabric
+            string[] nameParts = tag.Name.Split([':']);
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nameParts[0]);
+            if (node != null)
+            {
+                if (node.Connect(_fabric))
+                {
+                    return node.ReadAttribute(_fabric, 1, nameParts[1], 0);
+                }
+                else
+                {
+                    return $"Failed to connect to Node {tag.Name}";
+                }
+            }
+            else
+            {
+                return $"Node {tag.Name} not found";
+            }
         }
 
         public void Write(AssetTag tag, string value)
         {
-            throw new NotImplementedException("Writing tags not supported in the Matter protocol!");
+            // find the node in the fabric
+            string[] nameParts = tag.Name.Split([':']);
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nameParts[0]);
+            if (node != null)
+            {
+                if (node.Connect(_fabric))
+                {
+                    string response = node.WriteAttribute(_fabric, 1, nameParts[1], 0, uint.Parse(value));
+                    if (response != "success")
+                    {
+                        throw new Exception($"Failed to write attribute {tag.Address} on Node {tag.Name} with {response}!");
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Failed to connect to Node {tag.Name}");
+                }
+            }
+            else
+            {
+                throw new Exception($"Node {tag.Name} not found");
+            }
         }
 
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
@@ -147,7 +185,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nodeName);
             if (node != null)
             {
-                // call the action on the Matter node
                 if (node.Connect(_fabric))
                 {
                     // check if the method is a timed command

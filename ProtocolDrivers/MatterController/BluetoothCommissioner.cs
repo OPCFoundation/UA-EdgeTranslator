@@ -30,7 +30,7 @@ namespace Matter.Core
             Console.WriteLine("Running on Linux");
             _bluetooth = new BluetoothLinux();
 #endif
-            Task.Run(CommissionDiscoveredDevices);
+            _ = Task.Run(CommissionDiscoveredDevices);
         }
 
         public async Task StartBluetoothDiscovery(CommissioningPayload payload)

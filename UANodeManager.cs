@@ -1114,6 +1114,7 @@ namespace Opc.Ua.Edge.Translator
                     Address = matterForm.Href,
                     UnitID = unitId,
                     Type = matterForm.Type.ToString(),
+                    PollingInterval = (int)matterForm.PollingTime,
                     MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
                     MappedUAFieldPath = fieldPath
                 };
@@ -1579,8 +1580,11 @@ namespace Opc.Ua.Edge.Translator
                         try
                         {
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                            _assets[assetId].Disconnect();
-                            _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                            if ((remoteEndpoint.Length > 1) && !string.IsNullOrEmpty(remoteEndpoint[0]) && !string.IsNullOrEmpty(remoteEndpoint[1]))
+                            {
+                                _assets[assetId].Disconnect();
+                                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                            }
                         }
                         catch (Exception)
                         {
