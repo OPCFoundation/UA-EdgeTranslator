@@ -37,6 +37,7 @@ namespace Matter.Core
         {
             // Check if the next tag is an End Container (either 0x18 or 0x1F. 0x1F is an alias for backward compat)
             byte elementType = (byte)(_values[_pointer] & (byte)ElementType.ElementTypeMask);
+
             return (elementType == (byte)ElementType.EndOfContainer);// || (elementType == 0x1F);
         }
 
@@ -65,6 +66,7 @@ namespace Matter.Core
         {
             // Anonymous i.e. has no tag number.
             _values.Add((byte)ElementType.Structure);
+
             return this;
         }
 
@@ -72,6 +74,7 @@ namespace Matter.Core
         {
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Structure));
             _values.Add(tagNumber);
+
             return this;
         }
 
@@ -79,6 +82,7 @@ namespace Matter.Core
         {
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Array));
             _values.Add(tagNumber);
+
             return this;
         }
 
@@ -86,12 +90,14 @@ namespace Matter.Core
         {
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.List));
             _values.Add((byte)tagNumber);
+
             return this;
         }
 
         public MatterTLV AddList()
         {
             _values.Add((byte)ElementType.List);
+
             return this;
         }
 
@@ -159,6 +165,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Byte));
             _values.Add(tagNumber);
             _values.Add(value); // No length required
+
             return this;
         }
 
@@ -166,6 +173,7 @@ namespace Matter.Core
         {
             _values.Add((byte)ElementType.Byte);
             _values.Add(value);
+
             return this;
         }
 
@@ -174,6 +182,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.SByte));
             _values.Add(tagNumber);
             _values.Add((byte)value); // No length required
+
             return this;
         }
 
@@ -181,6 +190,7 @@ namespace Matter.Core
         {
             _values.Add((byte)ElementType.SByte);
             _values.Add((byte)value);
+
             return this;
         }
 
@@ -194,6 +204,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Short));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -207,6 +218,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.UShort));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -220,6 +232,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Int));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -233,6 +246,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.UInt));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -246,6 +260,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.Long));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -259,6 +274,7 @@ namespace Matter.Core
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.ULong));
             _values.Add(tagNumber);
             _values.AddRange(BitConverter.GetBytes(value)); // No length required.
+
             return this;
         }
 
@@ -268,9 +284,11 @@ namespace Matter.Core
             {
                 throw new Exception("Value must be 8 bytes long");
             }
+
             _values.Add((byte)(ElementType.ContextSpecific | ElementType.ULong));
             _values.Add(tagNumber);
             _values.AddRange(value);
+
             return this;
         }
 
@@ -286,12 +304,79 @@ namespace Matter.Core
             }
 
             _values.Add(tagNumber);
+
+            return this;
+        }
+
+        public MatterTLV AddDouble(byte tagNumber, double value)
+        {
+            _values.Add((byte)(ElementType.ContextSpecific | ElementType.Double));
+            _values.Add(tagNumber);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddFloat(byte tagNumber, float value)
+        {
+            _values.Add((byte)(ElementType.ContextSpecific | ElementType.Float));
+            _values.Add(tagNumber);
+            _values.AddRange(BitConverter.GetBytes(value));
+
+            return this;
+        }
+
+        public MatterTLV AddObject(byte tagNumber, object value)
+        {
+            if (value is bool)
+            {
+                AddBool(tagNumber, (bool)value);
+            }
+            else if (value is uint || value is ulong || value is ushort || value is byte)
+            {
+                AddUInt64(tagNumber, (ulong)value);
+            }
+            else if (value is int || value is long || value is short || value is sbyte)
+            {
+                AddInt64(tagNumber, (long)value);
+            }
+            else if (value is float)
+            {
+                AddFloat(tagNumber, (float)value);
+            }
+            else if (value is double)
+            {
+                AddDouble(tagNumber, (double)value);
+            }
+            else if (value is byte[])
+            {
+                AddOctetString(tagNumber, (byte[])value);
+            }
+            else if (value is string)
+            {
+                AddUTF8String(tagNumber, (string)value);
+            }
+            else if (value is Array array)
+            {
+                AddArray(tagNumber);
+                for (byte i = 0; i < array.Length; i++)
+                {
+                    AddObject(i, array.GetValue(i));
+                }
+                EndContainer();
+            }
+            else
+            {
+                throw new Exception("Unknown type " + value.GetType());
+            }
+
             return this;
         }
 
         public MatterTLV EndContainer()
         {
             _values.Add((byte)ElementType.EndOfContainer);
+
             return this;
         }
 

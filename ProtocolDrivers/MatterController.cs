@@ -250,7 +250,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     if (attribute)
                     {
                         // TODO: Support more than just attributeId = 0
-                        return node.WriteAttribute(_fabric, 1, method.BrowseName.Name, 0, uint.Parse(inputArgs[0].ToString()));
+                        return node.WriteAttribute(_fabric, 1, method.BrowseName.Name, 0, inputArgs[0]);
                     }
 
                     if ((inputArgs == null) || (inputArgs.Count == 0))
