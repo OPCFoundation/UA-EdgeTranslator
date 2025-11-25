@@ -29,9 +29,9 @@
           "pollingTime": 10000
         }
       ]
-    },
-    "actions": {
-      "fetch descriptions": {}
     }
+  },
+  "actions": {
+    "fetch descriptions": {}
   }
 }

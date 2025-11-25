@@ -527,7 +527,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Opc.Ua.LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -640,7 +640,7 @@ namespace Opc.Ua.Edge.Translator
         public void OnboardAssetFromWoTFile(NodeState parent, string contents)
         {
             // parse WoT TD file contents
-            ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents);
+            ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents.Trim('\uFEFF')); // strip BOM, if present
 
             List<string> newNamespaceUris = LoadNamespacesFromThingDescription(td);
             List<string> existingNamespaceUris = NamespaceUris.ToList();
