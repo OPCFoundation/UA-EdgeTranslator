@@ -146,10 +146,11 @@ namespace Matter.Core
             payload.AddUInt32(1, cluster);
             payload.AddUInt16(2, command);
             payload.EndContainer();
-            payload.AddStructure(1);    // Command Fields
 
-            if (parameters != null)
+            if ((parameters != null) && (parameters.Length > 0))
             {
+                payload.AddStructure(1);    // Command Fields
+
                 for (byte i = 0; i < parameters.Length; i++)
                 {
                     if (parameters[i] == null)
@@ -187,13 +188,14 @@ namespace Matter.Core
                         default:            throw new NotSupportedException($"Parameter type {param.GetType()} is not supported.");
                     }
                 }
+
+                payload.EndContainer(); // Close the CommandFields
             }
 
-            payload.EndContainer(); // Close the CommandFields
-            payload.EndContainer(); // Close the structure
-            payload.EndContainer(); // Close the array
-            payload.AddUInt8(255, 12); // interactionModelRevision
-            payload.EndContainer(); // Close the structure
+            payload.EndContainer();     // Close the structure
+            payload.EndContainer();     // Close the array
+            payload.AddUInt8(255, 12);  // interactionModelRevision
+            payload.EndContainer();     // Close the structure
 
             return await SendAndReceiveMessageAsync(payload, 1, ProtocolOpCode.InvokeRequest).ConfigureAwait(false);
         }
