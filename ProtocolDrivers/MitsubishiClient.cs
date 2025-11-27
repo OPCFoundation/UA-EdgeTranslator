@@ -13,6 +13,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         private string _endpoint = string.Empty;
 
+        public bool IsConnected { get; private set; } = false;
+
         public List<string> Discover()
         {
             // MCP does not support discovery
@@ -48,6 +50,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 var result = PLCData.PLC.Open().GetAwaiter().GetResult();
 
                 Log.Logger.Information("Connected to Mitsubishi PLC: " + result.ToString());
+
+                IsConnected = true;
             }
             catch (Exception ex)
             {
@@ -62,6 +66,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 PLCData.PLC.Close();
                 PLCData.PLC = null;
             }
+
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()

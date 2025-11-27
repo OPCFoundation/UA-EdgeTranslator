@@ -16,6 +16,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         private string _endpoint = string.Empty;
 
+        public bool IsConnected { get; private set; } = false;
+
         public List<string> Discover()
         {
             List<string> assets = new();
@@ -227,6 +229,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 tags.Read();
 
                 Log.Logger.Information("Connected to Rockwell ControlLogix PLC at " + ipAddress);
+                IsConnected = true;
             }
             catch (Exception ex)
             {
@@ -404,7 +407,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Disconnect()
         {
-            // nothing to do
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()
@@ -423,7 +426,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if (!addressParts[0].StartsWith("Cxn:Standard:"))
                 {
                     byte[] tagBytes = Read(addressParts[0], byte.Parse(addressParts[1]), tag.Type, 0).GetAwaiter().GetResult();
-                    
+
                     if ((tagBytes != null) && (tagBytes.Length > 0))
                     {
                         if (tag.Type == "BOOL")

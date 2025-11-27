@@ -18,6 +18,8 @@
 
         private string _endpoint = string.Empty;
 
+        public bool IsConnected { get; private set; } = false;
+
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint)
         {
             var address = endpoint.Split([':', '/']);
@@ -133,11 +135,21 @@
         {
             _client.Connect(ipAddress, port);
             _endpoint = ipAddress + ":" + port;
+            IsConnected = true;
         }
 
         public void Disconnect()
         {
-            _client.Abort();
+            try
+            {
+                _client.Abort();
+            }
+            catch (Exception)
+            {
+                // do nothing
+            }
+
+            IsConnected = false;
         }
 
         public List<string> Discover()

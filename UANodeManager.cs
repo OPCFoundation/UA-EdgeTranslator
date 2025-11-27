@@ -1401,7 +1401,15 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 value = _uaVariables[tag.Name].Value;
                                 timestamp = _uaVariables[tag.Name].Timestamp;
-                                statusCode = StatusCodes.Good;
+
+                                if (_assets[assetId].IsConnected)
+                                {
+                                    statusCode = StatusCodes.Good;
+                                }
+                                else
+                                {
+                                    statusCode = StatusCodes.BadDataUnavailable;
+                                }
 
                                 return ServiceResult.Good;
                             }
@@ -1410,7 +1418,7 @@ namespace Opc.Ua.Edge.Translator
                         {
                             Log.Logger.Error(ex.Message, ex);
 
-                            return new ServiceResult(ex);
+                            return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
                         }
                     }
                 }
@@ -1501,7 +1509,15 @@ namespace Opc.Ua.Edge.Translator
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
                                 _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
-                                statusCode = StatusCodes.Good;
+
+                                if (_assets[assetId].IsConnected)
+                                {
+                                    statusCode = StatusCodes.Good;
+                                }
+                                else
+                                {
+                                    statusCode = StatusCodes.BadDataUnavailable;
+                                }
 
                                 return ServiceResult.Good;
                             }
@@ -1510,7 +1526,7 @@ namespace Opc.Ua.Edge.Translator
                         {
                             Log.Logger.Error(ex.Message, ex);
 
-                            return new ServiceResult(ex);
+                            return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
                         }
                     }
                 }

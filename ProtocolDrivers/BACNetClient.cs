@@ -19,6 +19,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private List<string> _discoverdAssets = new();
 
+        public bool IsConnected { get; private set; } = false;
+
         public List<string> Discover()
         {
             _client.OnIam += OnIAm;
@@ -73,6 +75,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                     Connect(new BacnetAddress(BacnetAddressTypes.IP, _endpoint), deviceId, 0, BacnetSegmentations.SEGMENTATION_NONE, 0);
                     Log.Logger.Information("Connected to BACNet device at " + ipAddress);
+                    IsConnected = true;
                 }
                 else
                 {
@@ -109,7 +112,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Disconnect()
         {
-            // nothing to do
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()

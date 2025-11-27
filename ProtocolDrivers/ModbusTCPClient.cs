@@ -36,6 +36,8 @@
 
         private object _lock = new object();
 
+        public bool IsConnected { get; private set; } = false;
+
         private void HandlerError(byte errorCode)
         {
             switch (errorCode)
@@ -84,6 +86,8 @@
             _tcpClient = new TcpClient(ipAddress, port);
             _tcpClient.GetStream().ReadTimeout = _timeout;
             _tcpClient.GetStream().WriteTimeout = _timeout;
+
+            IsConnected = true;
         }
 
         public string GetRemoteEndpoint()
@@ -98,6 +102,8 @@
                 _tcpClient.Close();
                 _tcpClient = null;
             }
+
+            IsConnected = false;
         }
 
         public object Read(AssetTag tag)

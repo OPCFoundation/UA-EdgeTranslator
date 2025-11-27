@@ -16,6 +16,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         public static ConcurrentDictionary<string, ChargePoint> ChargePoints { get; set; } = new();
 
+        public bool IsConnected => true;
+
         public OCPPCentralSystem()
         {
             _ = Task.Run(() => CentralSystemServer.RunServerAsync());

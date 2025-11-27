@@ -17,6 +17,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
     public class LoRaWANNetworkServer : IAsset
     {
+        public bool IsConnected { get; private set; } = false;
+
         public LoRaWANNetworkServer()
         {
             _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(new CancellationTokenSource().Token));
@@ -73,11 +75,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 Log.Logger.Error(ex.Message, ex);
             }
+
+            IsConnected = true;
         }
 
         public void Disconnect()
         {
-            // nothing to do
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()

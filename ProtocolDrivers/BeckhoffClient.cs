@@ -6,10 +6,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Generic;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using Viscon.Communication.Ads;
-    using Viscon.Communication.Ads.Common;
 
     /*
     Authorize this Beckhoff ADS client for accessing the Beckhoff PLC by adding an AMS route.
@@ -38,6 +36,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         private AdsClient _adsClient = null;
 
         private string _endpoint = string.Empty;
+
+        public bool IsConnected { get; private set; } = false;
 
         public List<string> Discover()
         {
@@ -83,6 +83,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     var result = _adsClient.ReadDeviceInfoAsync().GetAwaiter().GetResult();
 
                     Log.Logger.Information("Connected to Beckhoff TwinCAT ADS PLC: " + result.ToString());
+                    IsConnected = true;
                 }
                 else
                 {
@@ -101,6 +102,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 _adsClient = null;
             }
+
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()

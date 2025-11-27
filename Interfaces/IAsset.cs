@@ -5,6 +5,8 @@
 
     public interface IAsset
     {
+        public bool IsConnected { get; }
+
         public List<string> Discover();
 
         public ThingDescription BrowseAndGenerateTD(string name, string endpoint);

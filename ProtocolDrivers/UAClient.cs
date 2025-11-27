@@ -26,6 +26,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private readonly Dictionary<ISession, ComplexTypeSystem> _complexTypeList = new Dictionary<ISession, ComplexTypeSystem>();
 
+        public bool IsConnected => _session != null && _session.Connected;
+
         public List<string> Discover()
         {
             List<string> discoveredServers = new();

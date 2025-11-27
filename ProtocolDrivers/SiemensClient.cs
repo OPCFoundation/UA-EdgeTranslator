@@ -15,6 +15,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private string _endpoint = string.Empty;
 
+        public bool IsConnected { get; private set; } = false;
+
         public List<string> Discover()
         {
             // S7Comm does not support discovery
@@ -105,6 +107,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if (result == 0)
                 {
                     Log.Logger.Information("Connected to Siemens S7");
+                    IsConnected = true;
                 }
             }
             catch (Exception ex)
@@ -120,6 +123,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 _S7.Disconnect();
                 _S7 = null;
             }
+
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()

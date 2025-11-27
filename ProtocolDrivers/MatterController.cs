@@ -18,6 +18,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         private readonly ServiceDiscovery _serviceDiscovery;
         private readonly BluetoothCommissioner _commissioner;
 
+        public bool IsConnected { get; private set; } = false;
+
         public MatterController()
         {
             _fabric = Fabric.Load();
@@ -119,7 +121,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Disconnect()
         {
-            // nothing to do
+            IsConnected = false;
         }
 
         public string GetRemoteEndpoint()
@@ -136,15 +138,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 if (node.Connect(_fabric))
                 {
+                    IsConnected = true;
                     return node.ReadAttribute(_fabric, 1, nameParts[1], 0);
                 }
                 else
                 {
+                    IsConnected = false;
                     return $"Failed to connect to Node {tag.Name}";
                 }
             }
             else
             {
+                IsConnected = false;
                 return $"Node {tag.Name} not found";
             }
         }
@@ -158,6 +163,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 if (node.Connect(_fabric))
                 {
+                    IsConnected = true;
                     string response = node.WriteAttribute(_fabric, 1, nameParts[1], 0, uint.Parse(value));
                     if (response != "success")
                     {
@@ -166,11 +172,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else
                 {
+                    IsConnected = false;
                     throw new Exception($"Failed to connect to Node {tag.Name}");
                 }
             }
             else
             {
+                IsConnected = false;
                 throw new Exception($"Node {tag.Name} not found");
             }
         }
