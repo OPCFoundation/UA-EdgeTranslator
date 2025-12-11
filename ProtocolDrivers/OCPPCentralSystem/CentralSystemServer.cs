@@ -1,7 +1,7 @@
 
 namespace OCPPCentralSystem
 {
-    using Microsoft.AspNetCore;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Server.Kestrel.Https;
     using Microsoft.Extensions.DependencyInjection;
@@ -14,21 +14,30 @@ namespace OCPPCentralSystem
         public static async Task RunServerAsync()
         {
             bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
-            using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:19521")]
-                                                            : [FormattableString.Invariant($"http://0.0.0.0:19520")])
-                                       .UseStartup<OCPPStartup>()
-                                       .UseKestrel(config =>
-                                       {
-                                           if (secureComms)
-                                           {
-                                               config.ConfigureHttpsDefaults(https =>
-                                                   ConfigureHttpsSettings(secureComms,
-                                                                          config.ApplicationServices.GetService<OCPPClientCertificateValidatorService>(),
-                                                                          https));
-                                           }
-                                       })
-                                       .Build();
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<OCPPStartup>();
+
+            builder.WebHost
+                .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:19521")]
+                                     : [FormattableString.Invariant($"http://0.0.0.0:19520")])
+                .UseKestrel(config =>
+                {
+                    if (secureComms)
+                    {
+                        config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(
+                            secureComms,
+                            builder.Services.BuildServiceProvider().GetService<OCPPClientCertificateValidatorService>(),
+                            https));
+                    }
+                });
+
+            var preBuildStartup = new OCPPStartup(builder.Configuration);
+            preBuildStartup.ConfigureServices(builder.Services);
+
+            var webHost = builder.Build();
+
+            var startup = webHost.Services.GetRequiredService<OCPPStartup>();
+            startup.Configure(webHost, webHost.Environment);
 
             try
             {

@@ -5,7 +5,7 @@
 
 namespace LoRaWan.NetworkServer.BasicsStation
 {
-    using Microsoft.AspNetCore;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Server.Kestrel.Https;
     using Microsoft.Extensions.DependencyInjection;
@@ -23,26 +23,37 @@ namespace LoRaWan.NetworkServer.BasicsStation
         internal const int LnsSecurePort = 5001;
         internal const int LnsPort = 5000;
 
-        public static async Task RunServerAsync(CancellationToken cancellationToken)
+        public static async Task RunServerAsync()
         {
             bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
-            using var webHost = WebHost.CreateDefaultBuilder()
-                                       .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
-                                                            : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
-                                       .UseStartup<BasicsStationNetworkServerStartup>()
-                                       .UseKestrel(config =>
-                                       {
-                                           if (secureComms)
-                                           {
-                                               config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(config.ApplicationServices.GetService<ClientCertificateValidatorService>(),
-                                                                                                             https));
-                                           }
-                                       })
-                                       .Build();
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<BasicsStationNetworkServerStartup>();
+
+            builder.WebHost
+                .UseUrls(secureComms ? [FormattableString.Invariant($"https://0.0.0.0:{LnsSecurePort}")]
+                                     : [FormattableString.Invariant($"http://0.0.0.0:{LnsPort}")])
+                .UseKestrel(config =>
+                {
+                    if (secureComms)
+                    {
+                        config.ConfigureHttpsDefaults(https => ConfigureHttpsSettings(
+                            builder.Services.BuildServiceProvider().GetService<ClientCertificateValidatorService>(),
+                            https));
+                    }
+                });
+
+
+            var preBuildStartup = new BasicsStationNetworkServerStartup();
+            preBuildStartup.ConfigureServices(builder.Services);
+
+            var webHost = builder.Build();
+
+            var startup = webHost.Services.GetRequiredService<BasicsStationNetworkServerStartup>();
+            startup.Configure(webHost);
 
             try
             {
-                await webHost.RunAsync(cancellationToken).ConfigureAwait(false);
+                await webHost.RunAsync().ConfigureAwait(false);
             }
             finally
             {

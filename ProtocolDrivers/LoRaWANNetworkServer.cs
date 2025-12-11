@@ -11,7 +11,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using static LoRaWan.NetworkServer.LoRaDevice;
 
@@ -21,7 +20,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public LoRaWANNetworkServer()
         {
-            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync(new CancellationTokenSource().Token));
+            _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync());
         }
 
         public List<string> Discover()
