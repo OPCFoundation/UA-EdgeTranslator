@@ -1476,7 +1476,7 @@ namespace Opc.Ua.Edge.Translator
 
                     _uaVariables["License"].Value = value;
                     _uaVariables["License"].Timestamp = DateTime.UtcNow;
-                    _uaVariables["License"].ClearChangeMasks(SystemContext, false);
+                    _uaVariables["License"].ClearChangeMasks(SystemContext, true);
                     statusCode = StatusCodes.Good;
 
                     return ServiceResult.Good;
@@ -1508,7 +1508,7 @@ namespace Opc.Ua.Edge.Translator
 
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+                                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, true);
 
                                 if (_assets[assetId].IsConnected)
                                 {
@@ -1584,7 +1584,7 @@ namespace Opc.Ua.Edge.Translator
                     {
                         if (_ticks * 1000 % tag.PollingInterval == 0)
                         {
-                            UpdateUAServerVariable(tag, _assets[assetId].Read(tag));
+                            UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
                     }
                     catch (Exception ex)
@@ -1611,93 +1611,110 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private void UpdateUAServerVariable(AssetTag tag, object value)
+        private void UpdateUAServerVariable(AssetTag tag, object value, bool connected)
         {
+            BaseDataVariableState variable = _uaVariables[tag.Name];
+
             // check for complex type
-            if (_uaVariables[tag.Name].Value is ExtensionObject)
+            if (variable.Value is ExtensionObject oldEo)
             {
                 // decode existing values and re-encode them with our updated value
-                BinaryDecoder decoder = new((byte[])((ExtensionObject)_uaVariables[tag.Name].Value).Body, ServiceMessageContext.GlobalContext);
-                BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
+                var oldBody = oldEo.Body as byte[];
+                var decoder = new BinaryDecoder(oldBody, ServiceMessageContext.GlobalContext);
+                var encoder = new BinaryEncoder(ServiceMessageContext.GlobalContext);
 
-                DataTypeState opcuaType = (DataTypeState)Find(_uaVariables[tag.Name].DataType);
-                if ((opcuaType != null) && ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields?.Count > 0)
+                // Resolve the structured type definition so we can preserve all fields
+                var opcuaType = (DataTypeState)Find(variable.DataType);
+
+                var structDef = opcuaType?.DataTypeDefinition?.Body as StructureDefinition;
+                if (structDef == null || structDef.Fields == null || structDef.Fields.Count == 0)
                 {
-                    foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
-                    {
-                        // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                        switch (field.DataType.ToString())
-                        {
-                            case "i=10":
-                                {
-                                    float newValue = decoder.ReadFloat(field.Name);
-
-                                    if (field.Name == tag.MappedUAFieldPath)
-                                    {
-                                        // overwrite existing value with our updated value
-                                        newValue = (float)value;
-                                    }
-
-                                    encoder.WriteFloat(field.Name, newValue);
-
-                                    break;
-                                }
-                            case "i=1":
-                                {
-                                    bool newValue = decoder.ReadBoolean(field.Name);
-
-                                    if (field.Name == tag.MappedUAFieldPath)
-                                    {
-                                        // overwrite existing value with our updated value
-                                        newValue = (bool)value;
-                                    }
-
-                                    encoder.WriteBoolean(field.Name, newValue);
-
-                                    break;
-                                }
-                            case "i=6":
-                                {
-                                    int newValue = decoder.ReadInt32(field.Name);
-
-                                    if (field.Name == tag.MappedUAFieldPath)
-                                    {
-                                        // overwrite existing value with our updated value
-                                        newValue = (int)value;
-                                    }
-
-                                    encoder.WriteInt32(field.Name, newValue);
-
-                                    break;
-                                }
-                            case "i=12":
-                                {
-                                    string newValue = decoder.ReadString(field.Name);
-
-                                    if (field.Name == tag.MappedUAFieldPath)
-                                    {
-                                        // overwrite existing value with our updated value
-                                        newValue = (string)value;
-                                    }
-
-                                    encoder.WriteString(field.Name, newValue);
-
-                                    break;
-                                }
-                            default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                        }
-                    }
-
-                    ((ExtensionObject)_uaVariables[tag.Name].Value).Body = encoder.CloseAndReturnBuffer();
+                    throw new InvalidOperationException($"DataTypeDefinition for {variable.DataType} is missing or not a structure.");
                 }
+
+                foreach (StructureField field in structDef.Fields)
+                {
+                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
+                    switch (field.DataType.ToString())
+                    {
+                        case "i=10":
+                            {
+                                float newValue = decoder.ReadFloat(field.Name);
+
+                                if (field.Name == tag.MappedUAFieldPath)
+                                {
+                                    // overwrite existing value with our updated value
+                                    newValue = (float)value;
+                                }
+
+                                encoder.WriteFloat(field.Name, newValue);
+
+                                break;
+                            }
+                        case "i=1":
+                            {
+                                bool newValue = decoder.ReadBoolean(field.Name);
+
+                                if (field.Name == tag.MappedUAFieldPath)
+                                {
+                                    // overwrite existing value with our updated value
+                                    newValue = (bool)value;
+                                }
+
+                                encoder.WriteBoolean(field.Name, newValue);
+
+                                break;
+                            }
+                        case "i=6":
+                            {
+                                int newValue = decoder.ReadInt32(field.Name);
+
+                                if (field.Name == tag.MappedUAFieldPath)
+                                {
+                                    // overwrite existing value with our updated value
+                                    newValue = (int)value;
+                                }
+
+                                encoder.WriteInt32(field.Name, newValue);
+
+                                break;
+                            }
+                        case "i=12":
+                            {
+                                string newValue = decoder.ReadString(field.Name);
+
+                                if (field.Name == tag.MappedUAFieldPath)
+                                {
+                                    // overwrite existing value with our updated value
+                                    newValue = (string)value;
+                                }
+
+                                encoder.WriteString(field.Name, newValue);
+
+                                break;
+                            }
+                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                    }
+                }
+
+                variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
             }
             else
             {
-                _uaVariables[tag.Name].Value = value;
+                variable.Value = value;
             }
 
-            _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-            _uaVariables[tag.Name].ClearChangeMasks(SystemContext, false);
+            if (connected)
+            {
+                variable.StatusCode = StatusCodes.Good;
+            }
+            else
+            {
+                variable.StatusCode = StatusCodes.BadDataUnavailable;
+            }
+
+            variable.Timestamp = DateTime.UtcNow;
+            variable.ClearChangeMasks(SystemContext, true);
         }
     }
 }
