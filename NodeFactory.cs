@@ -15,14 +15,14 @@
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
 
-        public MethodState CreateMethod(NodeState parent, string name)
+        public MethodState CreateMethod(NodeState parent, string name, ushort namespaceIndex)
         {
             MethodState method = new(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypeIds.HasComponent,
-                NodeId = new NodeId(name, _manager.NamespaceIndex),
-                BrowseName = new QualifiedName(name, _manager.NamespaceIndex),
+                NodeId = new NodeId(name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Opc.Ua.LocalizedText("en", name),
                 Executable = true,
                 UserExecutable = true
