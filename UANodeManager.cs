@@ -685,7 +685,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            ushort assetNamespaceIndex = GetAssetNamespaceIndex(td.Name);
+            ushort assetNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/");
 
             // create nodes for each TD action
             if ((td.Actions != null) && (td.Actions.Count > 0))
@@ -803,7 +803,7 @@ namespace Opc.Ua.Edge.Translator
                 variableName = property.Value.OpcUaNodeId.Substring(property.Value.OpcUaNodeId.IndexOf("=") + 1);
             }
 
-            ushort assetNamespaceIndex = GetAssetNamespaceIndex(td.Name);
+            ushort assetNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/");
 
             string fieldPath = string.Empty;
 
@@ -906,19 +906,6 @@ namespace Opc.Ua.Edge.Translator
             }
 
             AddTag(td, form, assetId, unitId, variableId, fieldPath);
-        }
-
-        private ushort GetAssetNamespaceIndex(string name)
-        {
-            string namespaceUri = "http://opcfoundation.org/UA/" + name + "/";
-            List<string> namespaceUris = NamespaceUris.ToList();
-            if (namespaceUris.Contains(namespaceUri))
-            {
-                return (ushort) namespaceUris.IndexOf(namespaceUri);
-            }
-
-            // return the default namespace index
-            return 0;
         }
 
         private void AddTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string fieldPath)
