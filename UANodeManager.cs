@@ -497,6 +497,7 @@ namespace Opc.Ua.Edge.Translator
                 allAddresses.AddRange(new BeckhoffClient().Discover());
                 allAddresses.AddRange(new MitsubishiClient().Discover());
                 allAddresses.AddRange(new ModbusTCPClient().Discover());
+                allAddresses.AddRange(new ModbusRTUClient().Discover());
                 allAddresses.AddRange(new RockwellClient().Discover());
                 allAddresses.AddRange(new SiemensClient().Discover());
                 allAddresses.AddRange(new UAClient().Discover());
@@ -539,6 +540,11 @@ namespace Opc.Ua.Edge.Translator
                 if (assetEndpoint.StartsWith("modbus+tcp://"))
                 {
                     td = new ModbusTCPClient().BrowseAndGenerateTD(assetName, assetEndpoint);
+                }
+
+                if (assetEndpoint.StartsWith("modbus+rtu://"))
+                {
+                    td = new ModbusRTUClient().BrowseAndGenerateTD(assetName, assetEndpoint);
                 }
 
                 if (assetEndpoint.StartsWith("opc.tcp://"))
@@ -931,6 +937,27 @@ namespace Opc.Ua.Edge.Translator
                 _tags[assetId].Add(tag);
             }
 
+            if (td.Base.ToLower().StartsWith("modbus+rtu://"))
+            {
+                // create an asset tag and add to our list
+                ModbusForm modbusForm = JsonConvert.DeserializeObject<ModbusForm>(form.ToString());
+                AssetTag tag = new()
+                {
+                    Name = variableId,
+                    Address = modbusForm.Href,
+                    UnitID = unitId,
+                    Type = modbusForm.ModbusType.ToString(),
+                    PollingInterval = (int)modbusForm.ModbusPollingTime,
+                    Entity = modbusForm.ModbusEntity.ToString(),
+                    IsBigEndian = modbusForm.MostSignificantByte || modbusForm.MostSignificantWord,
+                    SwapPerWord = modbusForm.MostSignificantWord,
+                    MappedUAExpandedNodeID = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString(),
+                    MappedUAFieldPath = fieldPath
+                };
+
+                _tags[assetId].Add(tag);
+            }
+
             if (td.Base.ToLower().StartsWith("opc.tcp://"))
             {
                 // create an asset tag and add to our list
@@ -1146,6 +1173,22 @@ namespace Opc.Ua.Edge.Translator
                 ModbusTCPClient client = new();
                 client.Connect(address[3], int.Parse(address[4]));
 
+                assetInterface = client;
+            }
+
+            if (td.Base.ToLower().StartsWith("modbus+rtu://"))
+            {
+                string[] address = td.Base.Split([':', '/']);
+                if ((address.Length != 6) || (address[0] != "modbus+rtu"))
+                {
+                    throw new Exception("Expected Modbus RTU server address in the format modbus+rtu://comport:baudrate/unitID!");
+                }
+
+                // check if we can reach the Modbus RTU asset
+                unitId = byte.Parse(address[5]);
+                ModbusRTUClient client = new();
+                client.Connect(address[3], int.Parse(address[4]));
+                
                 assetInterface = client;
             }
 

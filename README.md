@@ -24,6 +24,7 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods re
 The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
 
 * Modbus TCP
+* Modbus RTU (experimental)
 * OPC UA
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)

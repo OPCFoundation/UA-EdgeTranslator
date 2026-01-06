@@ -2,7 +2,6 @@
 {
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
-    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO;
