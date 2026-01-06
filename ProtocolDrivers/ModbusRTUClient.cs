@@ -199,8 +199,6 @@
         {
             lock (_lock)
             {
-                EnsureConnected();
-
                 ushort startAddress = ushort.Parse(addressWithinAsset);
 
                 switch (function)
@@ -234,8 +232,6 @@
         {
             lock (_lock)
             {
-                EnsureConnected();
-
                 ushort startAddress = ushort.Parse(addressWithinAsset);
 
                 if (singleBitOnly)
@@ -261,17 +257,9 @@
                     }
 
                     _master!.WriteMultipleRegisters(unitID, startAddress, regs);
-                    
+
                     return Task.CompletedTask;
                 }
-            }
-        }
-
-        private void EnsureConnected()
-        {
-            if (_serialPort == null || !_serialPort.IsOpen || _master == null)
-            {
-                throw new InvalidOperationException("Not connected. Call Connect(serialPortName, baudRate) first.");
             }
         }
 
@@ -303,7 +291,9 @@
             for (int i = 0; i < coils.Length; i++)
             {
                 if (coils[i])
+                {
                     data[i / 8] |= (byte)(1 << (i % 8)); // LSB-first
+                }
             }
 
             return data;
