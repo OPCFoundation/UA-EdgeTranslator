@@ -7,6 +7,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using Opc.Ua.Export;
     using Opc.Ua.Server;
     using Serilog;
     using System;
@@ -18,15 +19,12 @@ namespace Opc.Ua.Edge.Translator
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using UANodeSet = Export.UANodeSet;
 
     public class UANodeManager : CustomNodeManager2
     {
         private long _lastUsedId = 0;
 
         private bool _shutdown = false;
-
-        private bool _wotAssetManagementLoaded = false;
 
         private readonly NodeFactory _nodeFactory;
 
@@ -77,22 +75,18 @@ namespace Opc.Ua.Edge.Translator
                 Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
             }
 
+            // create our nodesets folder, if required
+            if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")))
+            {
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
+            }
+
             List<string> namespaceUris = new()
             {
                 "http://opcfoundation.org/UA/EdgeTranslator/"
             };
 
             _uacloudLibraryClient.Login();
-
-            // load namespaces from downloaded nodesets
-            List<string> namespacesFromDownloadedNodesets = _uacloudLibraryClient.GetNamespacesFromDownloadedNodesets();
-            foreach (string namespaceFromDownloadedNodeset in namespacesFromDownloadedNodesets)
-            {
-                if (!namespaceUris.Contains(namespaceFromDownloadedNodeset))
-                {
-                    namespaceUris.Add(namespaceFromDownloadedNodeset);
-                }
-            }
 
             NamespaceUris = namespaceUris;
         }
@@ -130,9 +124,7 @@ namespace Opc.Ua.Edge.Translator
                     externalReferences[ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
                 }
 
-                AddAllNodesFromDownloadedNodesetFiles();
-
-                _wotAssetManagementLoaded = true;
+                AddNodeset(_cWotCon);
 
                 AddNodesForAssetManagement();
 
@@ -233,13 +225,8 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, variable);
         }
 
-        private List<string> LoadNamespacesFromThingDescription(ThingDescription td)
+        private void LoadNamespacesFromThingDescription(ThingDescription td)
         {
-            // add a new namespace for the Thing Description itself
-            List<string> namespaceUris = new() {
-                "http://opcfoundation.org/UA/" + td.Name + "/"
-            };
-
             // check if an OPC UA companion spec is mentioned in the WoT TD file
             foreach (object ns in td.Context)
             {
@@ -253,22 +240,7 @@ namespace Opc.Ua.Edge.Translator
                     Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
                     if (namespaceUri != null)
                     {
-                        // check if namespace URI is already loaded
-                        if (namespaceUris.Contains(namespaceUri.OriginalString))
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            List<string> dependentNamespaces = _uacloudLibraryClient.DownloadNodeset(namespaceUri.OriginalString);
-                            foreach (string dependentNamespace in dependentNamespaces)
-                            {
-                                if (!namespaceUris.Contains(dependentNamespace))
-                                {
-                                    namespaceUris.Add(dependentNamespace);
-                                }
-                            }
-                        }
+                        AddNodeset(namespaceUri.ToString());
                     }
                 }
                 catch (Exception ex)
@@ -276,47 +248,100 @@ namespace Opc.Ua.Edge.Translator
                     Log.Logger.Error(ex.Message, ex);
                 }
             }
-
-            return namespaceUris;
         }
 
-        private void AddAllNodesFromDownloadedNodesetFiles()
+        public void AddNodeset(string namespaceUri)
         {
-            // we need as many passes as we have downloaded nodeset files to make sure all references can be resolved
-            // because the nodeset files may reference each other and we need to load them in the correct order
-            string[] nodesetFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
-            if (nodesetFiles.Length > 0)
+            if (string.IsNullOrEmpty(namespaceUri))
             {
-                for (int i = 0; i < nodesetFiles.Length; i++)
+                Console.WriteLine("Namespace URI is null or empty.");
+                return;
+            }
+
+            // special case: Our WoT-Con nodeset is always available
+            string nodesetXml;
+            if (namespaceUri == _cWotCon)
+            {
+                nodesetXml = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Opc.Ua.WotCon.NodeSet2.xml"));
+            }
+            else
+            {
+                // download nodeset from UA Cloud Library, if required
+                nodesetXml = _uacloudLibraryClient.DownloadNodeset(namespaceUri);
+            }
+
+            if (string.IsNullOrEmpty(nodesetXml))
+            {
+                Console.WriteLine($"Required nodeset {namespaceUri} not found.");
+                return;
+            }
+
+            using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(nodesetXml)))
+            {
+                UANodeSet nodeSet = UANodeSet.Read(stream);
+
+                // first load dependencies
+                if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
                 {
-                    foreach (string nodesetFile in nodesetFiles)
+                    foreach (ModelTableEntry te in nodeSet.Models)
                     {
-                        using (Stream stream = new FileStream(nodesetFile, FileMode.Open))
+                        if (te.RequiredModel != null && (te.RequiredModel.Length > 0))
                         {
-                            UANodeSet nodeSet = UANodeSet.Read(stream);
-
-                            if ((nodeSet.Models?[0]?.ModelUri == _cWotCon) && _wotAssetManagementLoaded)
+                            foreach (ModelTableEntry rm in te.RequiredModel)
                             {
-                                // skip the WoT asset management nodeset file, we already loaded it
-                                continue;
-                            }
-
-                            NodeStateCollection predefinedNodes = new NodeStateCollection();
-
-                            nodeSet.Import(SystemContext, predefinedNodes);
-
-                            for (int j = 0; j < predefinedNodes.Count; j++)
-                            {
-                                try
+                                if (rm.ModelUri == Namespaces.OpcUa)
                                 {
-                                    AddPredefinedNode(SystemContext, predefinedNodes[j]);
+                                    // skip the base UA nodeset as it is always loaded
+                                    continue;
                                 }
-                                catch (Exception ex)
+
+                                if (NamespaceUris.Contains(rm.ModelUri))
                                 {
-                                    Log.Logger.Error(ex.Message, ex);
+                                    // skip any dependent nodesets already loaded
+                                    continue;
                                 }
+
+                                // recursively add the dependent nodeset
+                                AddNodeset(rm.ModelUri);
                             }
                         }
+                    }
+                }
+
+                if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
+                {
+                    List<string> newNamespaceUris = nodeSet.NamespaceUris.ToList();
+                    List<string> existingNamespaceUris = NamespaceUris.ToList();
+
+                    foreach (string ns in newNamespaceUris)
+                    {
+                        if (!existingNamespaceUris.Contains(ns))
+                        {
+                            lock (Lock)
+                            {
+                                existingNamespaceUris.Add(ns);
+
+                                // update the table used by this NodeManager
+                                SetNamespaces(existingNamespaceUris.ToArray());
+
+                                // register the new URI with the MasterNodeManager
+                                Server.NodeManager.RegisterNamespaceManager(ns, this);
+                            }
+                        }
+                    }
+                }
+
+                NodeStateCollection predefinedNodes = new NodeStateCollection();
+                nodeSet.Import(SystemContext, predefinedNodes);
+                for (int i = 0; i < predefinedNodes.Count; i++)
+                {
+                    try
+                    {
+                        AddPredefinedNode(SystemContext, predefinedNodes[i]);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message, ex);
                     }
                 }
             }
@@ -415,7 +440,7 @@ namespace Opc.Ua.Edge.Translator
 
             var ev = new GeneralModelChangeEventState(null);
 
-            ev.Initialize(SystemContext, null, EventSeverity.Medium, new LocalizedText("Model change"));
+            ev.Initialize(SystemContext, null, EventSeverity.Medium, new Ua.LocalizedText("Model change"));
             ev.Changes = new PropertyState<ModelChangeStructureDataType[]>(ev);
             ev.Changes.Value = changes;
 
@@ -528,7 +553,7 @@ namespace Opc.Ua.Edge.Translator
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
-                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new LocalizedText(assetNode.NodeId.ToString()));
+                return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Ua.LocalizedText(assetNode.NodeId.ToString()));
             }
             else
             {
@@ -648,27 +673,22 @@ namespace Opc.Ua.Edge.Translator
             // parse WoT TD file contents
             ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents.Trim('\uFEFF')); // strip BOM, if present
 
-            List<string> newNamespaceUris = LoadNamespacesFromThingDescription(td);
+            LoadNamespacesFromThingDescription(td);
+
+            // add a new namespace for the Thing Description itself
+            string namespaceUri = "http://opcfoundation.org/UA/" + td.Name + "/";
             List<string> existingNamespaceUris = NamespaceUris.ToList();
 
-            foreach (string ns in newNamespaceUris)
+            lock (Lock)
             {
-                if (!existingNamespaceUris.Contains(ns))
-                {
-                    lock (Lock)
-                    {
-                        existingNamespaceUris.Add(ns);
+                existingNamespaceUris.Add(namespaceUri);
 
-                        // update the table used by this NodeManager
-                        SetNamespaces(existingNamespaceUris.ToArray());
+                // update the table used by this NodeManager
+                SetNamespaces(existingNamespaceUris.ToArray());
 
-                        // register the new URI with the MasterNodeManager
-                        Server.NodeManager.RegisterNamespaceManager(ns, this);
-                    }
-                }
+                // register the new URI with the MasterNodeManager
+                Server.NodeManager.RegisterNamespaceManager(namespaceUri, this);
             }
-
-            AddAllNodesFromDownloadedNodesetFiles();
 
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
@@ -850,7 +870,7 @@ namespace Opc.Ua.Edge.Translator
 
                                     if (field.Name == property.Value.OpcUaFieldPath)
                                     {
-                                        // add the field path to make sure we can distinguish the tag during data updates
+                                        // capture the field path to make sure we can identify the tag during data updates
                                         fieldPath = field.Name;
                                     }
                                 }
@@ -1188,7 +1208,7 @@ namespace Opc.Ua.Edge.Translator
                 unitId = byte.Parse(address[5]);
                 ModbusRTUClient client = new();
                 client.Connect(address[3], int.Parse(address[4]));
-                
+
                 assetInterface = client;
             }
 
@@ -1591,15 +1611,15 @@ namespace Opc.Ua.Edge.Translator
                 string result = _assets[assetId].ExecuteAction(method, inputArguments, ref outputArguments);
                 if (result == null)
                 {
-                    return new ServiceResult(StatusCodes.Uncertain, new LocalizedText("no result"));
+                    return new ServiceResult(StatusCodes.Uncertain, new Ua.LocalizedText("no result"));
                 }
                 else if (result.ToLower() == "ok" || result.ToLower() == "success")
                 {
-                    return new ServiceResult(StatusCodes.Good, new LocalizedText("success"));
+                    return new ServiceResult(StatusCodes.Good, new Ua.LocalizedText("success"));
                 }
                 else
                 {
-                    return new ServiceResult(StatusCodes.Bad, new LocalizedText(result));
+                    return new ServiceResult(StatusCodes.Bad, new Ua.LocalizedText(result));
                 }
             }
             catch (Exception ex)

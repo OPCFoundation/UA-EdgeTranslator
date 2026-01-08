@@ -76,21 +76,19 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public List<string> DownloadNodeset(string namespaceUrl)
+        public string DownloadNodeset(string namespaceUrl)
         {
-            List<string> namespaces = new List<string>();
-
             if (string.IsNullOrEmpty(namespaceUrl))
             {
                 Log.Logger.Error("Namespace URL is null or empty.");
-                return namespaces;
+                return string.Empty;
             }
 
             string filePath = null;
 
             // check if we have the nodeset already downloaded
-            List<string> existingNamespaces = GetNamespacesFromDownloadedNodesets();
-            if (!existingNamespaces.Contains(namespaceUrl))
+            string nodesetXml = GetDownloadedNodesetXml(namespaceUrl);
+            if (string.IsNullOrEmpty(nodesetXml))
             {
                 Log.Logger.Information("Nodeset " + namespaceUrl + " not available locally, trying download from cloud library.");
 
@@ -109,57 +107,40 @@ namespace Opc.Ua.Edge.Translator
                             filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", nameSpace.Title + ".nodeset2.xml");
                             File.WriteAllText(filePath, nameSpace.Nodeset.NodesetXml);
                             Log.Logger.Information("Downloaded nodeset " + namespaceUrl + " from cloud library.");
-                            namespaces.Add(namespaceUrl);
+                            return nameSpace.Nodeset.NodesetXml;
                         }
                         else
                         {
                             Log.Logger.Error("Nodeset " + namespaceUrl + " not found in cloud library.");
-                            return namespaces;
+                            return string.Empty;
                         }
                     }
                     catch (Exception ex)
                     {
                         Log.Logger.Error("Could not download nodeset " + namespaceUrl + ": " + ex.Message);
-                        return namespaces;
+                        return string.Empty;
                     }
                 }
                 else
                 {
                     Log.Logger.Error("Nodeset " + namespaceUrl + " not available in cloud library.");
-                    return namespaces;
+                    return string.Empty;
                 }
             }
             else
             {
-                filePath = GetFilePathFromDownloadedNamespace(namespaceUrl);
                 Log.Logger.Information("Nodeset " + namespaceUrl + " already downloaded.");
-                namespaces.Add(namespaceUrl);
+                return nodesetXml;
             }
-
-            // check that we also have all dependent nodesets
-            List<string> dependentNamespaces = EnumerateDependentNodesets(filePath);
-            foreach (string dependentNodeset in dependentNamespaces)
-            {
-                if (!namespaces.Contains(dependentNodeset))
-                {
-                    // recursively download dependent nodesets
-                    List<string> downloadedDependentNamespaces = DownloadNodeset(dependentNodeset);
-                    foreach (string downloadedDependentNamespace in downloadedDependentNamespaces)
-                    {
-                        if (!namespaces.Contains(downloadedDependentNamespace))
-                        {
-                            namespaces.Add(downloadedDependentNamespace);
-                        }
-                    }
-                }
-            }
-
-            return namespaces;
         }
 
-        private string GetFilePathFromDownloadedNamespace(string namespaceUrl)
+        public string GetDownloadedNodesetXml(string namespaceUrl)
         {
-            string filePath = null;
+            if (string.IsNullOrEmpty(namespaceUrl))
+            {
+                Log.Logger.Error("Namespace URL is null or empty.");
+                return string.Empty;
+            }
 
             foreach (string file in Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")))
             {
@@ -172,121 +153,15 @@ namespace Opc.Ua.Edge.Translator
                         {
                             if (ns == namespaceUrl)
                             {
-                                filePath = file;
-                                break;
+                                return File.ReadAllText(file);
                             }
                         }
                     }
                 }
             }
 
-            return filePath;
-        }
-
-        public List<string> GetNamespacesFromDownloadedNodesets()
-        {
-            List<string> namespaces = new List<string>();
-
-            // check if we have any nodesets in our directory
-            string[] files = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
-            if (files.Length > 0)
-            {
-                foreach (string file in files)
-                {
-                    using (Stream stream = new FileStream(file, FileMode.Open))
-                    {
-                        UANodeSet nodeSet = UANodeSet.Read(stream);
-                        if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
-                        {
-                            foreach (ModelTableEntry te in nodeSet.Models)
-                            {
-                                if (!namespaces.Contains(te.ModelUri))
-                                {
-                                    namespaces.Add(te.ModelUri);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return namespaces;
-        }
-
-        private List<string> EnumerateDependentNodesets(string nodesetFilename)
-        {
-            // Collect all referenced model namespace URIs listed in the file
-            List<string> modelreferences = new List<string>();
-
-            using (Stream stream = new FileStream(nodesetFilename, FileMode.Open))
-            {
-                UANodeSet nodeSet = UANodeSet.Read(stream);
-
-                // validate namespace URIs
-                if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
-                {
-                    foreach (string ns in nodeSet.NamespaceUris)
-                    {
-                        if (string.IsNullOrEmpty(ns) || !Uri.IsWellFormedUriString(ns, UriKind.Absolute))
-                        {
-                            Log.Logger.Error("Nodeset file " + nodesetFilename + " contains an invalid Namespace URI: \"" + ns + "\"");
-                            return modelreferences;
-                        }
-                    }
-                }
-                else
-                {
-                    Log.Logger.Error("'NamespaceUris' entry missing in " + nodesetFilename + ".");
-                    return modelreferences;
-                }
-
-                // validate model URIs
-                if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
-                {
-                    foreach (ModelTableEntry model in nodeSet.Models)
-                    {
-                        if (model != null)
-                        {
-                            if (!Uri.IsWellFormedUriString(model.ModelUri, UriKind.Absolute))
-                            {
-                                Log.Logger.Error("Nodeset file " + nodesetFilename + " contains an invalid Model Namespace URI: \"" + model.ModelUri + "\"");
-                                return modelreferences;
-                            }
-
-                            if ((model.RequiredModel != null) && (model.RequiredModel.Length > 0))
-                            {
-                                foreach (ModelTableEntry requiredModel in model.RequiredModel)
-                                {
-                                    if (requiredModel != null)
-                                    {
-                                        if (Uri.IsWellFormedUriString(requiredModel.ModelUri, UriKind.Absolute))
-                                        {
-                                            // ignore the default namespace which is always required and don't add duplicates
-                                            if ((requiredModel.ModelUri != "http://opcfoundation.org/UA/") && !modelreferences.Contains(requiredModel.ModelUri))
-                                            {
-                                                modelreferences.Add(requiredModel.ModelUri);
-                                            }
-                                        }
-                                        else
-                                        {
-                                            Log.Logger.Error("Nodeset file " + nodesetFilename + " contains an invalid referenced Model Namespace URI: \"" + requiredModel.ModelUri + "\"");
-                                            return modelreferences;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    Log.Logger.Error("'Model' entry missing in " + nodesetFilename + ".");
-                    return modelreferences;
-                }
-            }
-
-            // return the collected model references
-            return modelreferences;
+            Log.Logger.Error("Nodeset " + namespaceUrl + " not found.");
+            return string.Empty;
         }
     }
 }

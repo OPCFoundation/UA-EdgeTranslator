@@ -361,3 +361,5 @@ MigrationBackup/
 /Test
 /Fabric
 /FAB000000000001D
+/nodesets/opcfoundation_org_UA_DI.nodeset2.xml
+/nodesets/opcfoundation_org_UA_PNEM.nodeset2.xml

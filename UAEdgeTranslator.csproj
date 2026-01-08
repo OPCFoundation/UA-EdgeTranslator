@@ -32,7 +32,7 @@
     <Content Include="libiec61850.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="nodesets\Opc.Ua.WotCon.NodeSet2.xml">
+    <Content Include="Opc.Ua.WotCon.NodeSet2.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="runtimes\linux-arm64\native\libiec61850.dll">
