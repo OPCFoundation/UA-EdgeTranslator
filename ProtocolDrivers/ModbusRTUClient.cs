@@ -58,6 +58,12 @@
             {
                 Disconnect();
 
+                // if running on Linux, append /dev/ to the serial port name
+                if ((Environment.OSVersion.Platform == PlatformID.Unix) && !ipAddress.StartsWith("/dev/"))
+                {
+                    ipAddress = "/dev/" + ipAddress;
+                }
+
                 _serialPort = new SerialPort(ipAddress)
                 {
                     BaudRate = port,
