@@ -1,0 +1,340 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "uav": "http://opcfoundation.org/UA/PNEM/"
+    }
+  ],
+  "id": "urn:pac4200",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "modbus-pac4200-sn123rtu",
+  "base": "modbus+rtu://ttyUSB1:9600/1",
+  "title": "Siemens SENTRON PAC4200",
+  "properties": {
+    "VoltageL1-N": {
+      "type": "number",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "1?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL2-N": {
+      "type": "number",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "3?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL3-N": {
+      "type": "number",
+      "uav:mapToNodeId": "s=VoltageL-N",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "5?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL1-L2": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "7?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL2-L3": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "9?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "VoltageL3-L1": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "11?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL1": {
+      "type": "number",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "13?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL2": {
+      "type": "number",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "15?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "CurrentL3": {
+      "type": "number",
+      "uav:mapToNodeId": "s=Current",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "17?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL1": {
+      "type": "number",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "A",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "37?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL2": {
+      "type": "number",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "B",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "39?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "PowerFactorL3": {
+      "type": "number",
+      "uav:mapToNodeId": "s=PowerFactor",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+      "uav:mapByFieldPath": "C",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "41?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalApparentPower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "63?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalActivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "65?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalReactivePower": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "67?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    },
+    "TotalPowerFactor": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "69?quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "modv:type": "xsd:float",
+          "modv:entity": "HoldingRegister",
+          "modv:mostSignificantByte": true,
+          "modv:pollingTime": 2000
+        }
+      ]
+    }
+  }
+}
