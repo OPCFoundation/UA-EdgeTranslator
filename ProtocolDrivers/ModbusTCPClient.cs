@@ -98,7 +98,15 @@
         {
             if (_tcpClient != null)
             {
-                _tcpClient.Close();
+                try
+                {
+                    _tcpClient.Close();
+                }
+                catch (Exception)
+                {
+                    // ignore errors on close
+                }
+
                 _tcpClient = null;
             }
 
