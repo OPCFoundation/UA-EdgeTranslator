@@ -246,6 +246,11 @@
 
         public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
         {
+            if (_tcpClient == null)
+            {
+                throw new Exception("Not connected to Modbus server");
+            }
+
             lock (_lock)
             {
                 // check funtion code

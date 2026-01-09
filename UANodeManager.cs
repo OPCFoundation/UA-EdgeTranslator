@@ -254,7 +254,7 @@ namespace Opc.Ua.Edge.Translator
         {
             if (string.IsNullOrEmpty(namespaceUri))
             {
-                Console.WriteLine("Namespace URI is null or empty.");
+                Log.Logger.Error("Namespace URI is null or empty.");
                 return;
             }
 
@@ -272,7 +272,7 @@ namespace Opc.Ua.Edge.Translator
 
             if (string.IsNullOrEmpty(nodesetXml))
             {
-                Console.WriteLine($"Required nodeset {namespaceUri} not found.");
+                Log.Logger.Error($"Required nodeset {namespaceUri} not found.");
                 return;
             }
 
@@ -341,7 +341,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(ex.Message, ex);
+                        Log.Logger.Error(ex.Message, ex);
                     }
                 }
             }
@@ -1663,6 +1663,7 @@ namespace Opc.Ua.Edge.Translator
                         // try reconnecting
                         try
                         {
+                            Log.Logger.Error("Trying to reconnect to asset " +  assetId);
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
                             if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
                             {
