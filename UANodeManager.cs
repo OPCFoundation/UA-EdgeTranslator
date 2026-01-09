@@ -1656,17 +1656,26 @@ namespace Opc.Ua.Edge.Translator
                     }
                     catch (Exception ex)
                     {
-                        // skip this tag, but log an error
+                        // set this tag to zero, update its status and log an error
+                        UpdateUAServerVariable(tag, 0, false);
                         Log.Logger.Error(ex.Message, ex);
 
                         // try reconnecting
                         try
                         {
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                            if ((remoteEndpoint.Length > 1) && !string.IsNullOrEmpty(remoteEndpoint[0]) && !string.IsNullOrEmpty(remoteEndpoint[1]))
+                            if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
                             {
                                 _assets[assetId].Disconnect();
-                                _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+
+                                if ((remoteEndpoint.Length > 1) && !string.IsNullOrEmpty(remoteEndpoint[1]))
+                                {
+                                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
+                                }
+                                else
+                                {
+                                    _assets[assetId].Connect(remoteEndpoint[0], 0);
+                                }
                             }
                         }
                         catch (Exception)
@@ -1753,7 +1762,14 @@ namespace Opc.Ua.Edge.Translator
                                 if (field.Name == tag.MappedUAFieldPath)
                                 {
                                     // overwrite existing value with our updated value
-                                    newValue = (string)value;
+                                    try
+                                    {
+                                        newValue = Convert.ToString(value);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        newValue = string.Empty;
+                                    }
                                 }
 
                                 encoder.WriteString(field.Name, newValue);
