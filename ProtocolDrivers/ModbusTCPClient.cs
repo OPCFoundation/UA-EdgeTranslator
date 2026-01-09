@@ -26,6 +26,8 @@
 
         private TcpClient _tcpClient = null;
 
+        private string _endpoint = string.Empty;
+
         // Modbus uses long timeouts (10 seconds minimum)
         private const int _timeout = 10000;
 
@@ -86,12 +88,14 @@
             _tcpClient.GetStream().ReadTimeout = _timeout;
             _tcpClient.GetStream().WriteTimeout = _timeout;
 
+            _endpoint = ipAddress + ":" + port.ToString();
+
             IsConnected = true;
         }
 
         public string GetRemoteEndpoint()
         {
-            return _tcpClient.Client.RemoteEndPoint.ToString();
+            return _endpoint;
         }
 
         public void Disconnect()
