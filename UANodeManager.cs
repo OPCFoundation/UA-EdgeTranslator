@@ -1720,7 +1720,14 @@ namespace Opc.Ua.Edge.Translator
                                 if (field.Name == tag.MappedUAFieldPath)
                                 {
                                     // overwrite existing value with our updated value
-                                    newValue = (float)value;
+                                    try
+                                    {
+                                        newValue = (float)value;
+                                    }
+                                    catch (Exception)
+                                    {
+                                        newValue = 0.0f;
+                                    }
                                 }
 
                                 encoder.WriteFloat(field.Name, newValue);
@@ -1734,7 +1741,14 @@ namespace Opc.Ua.Edge.Translator
                                 if (field.Name == tag.MappedUAFieldPath)
                                 {
                                     // overwrite existing value with our updated value
-                                    newValue = (bool)value;
+                                    try
+                                    {
+                                        newValue = (bool)value;
+                                    }
+                                    catch (Exception)
+                                    {
+                                        newValue = false;
+                                    }
                                 }
 
                                 encoder.WriteBoolean(field.Name, newValue);
