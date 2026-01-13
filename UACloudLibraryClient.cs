@@ -147,11 +147,11 @@ namespace Opc.Ua.Edge.Translator
                 using (Stream stream = new FileStream(file, FileMode.Open))
                 {
                     UANodeSet nodeSet = UANodeSet.Read(stream);
-                    if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
+                    if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
                     {
-                        foreach (string ns in nodeSet.NamespaceUris)
+                        foreach (ModelTableEntry te in nodeSet.Models)
                         {
-                            if (ns == namespaceUrl)
+                            if (te.ModelUri == namespaceUrl)
                             {
                                 return File.ReadAllText(file);
                             }
