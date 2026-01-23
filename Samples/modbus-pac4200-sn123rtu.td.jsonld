@@ -18,7 +18,7 @@
     "Thing"
   ],
   "name": "modbus-pac4200-sn123rtu",
-  "base": "modbus+rtu://ttyUSB1:9600/1",
+  "base": "modbus+rtu://ttyUSB1/9600/8/E/1/1",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
     "VoltageL1-N": {

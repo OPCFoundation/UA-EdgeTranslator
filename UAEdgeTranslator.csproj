@@ -10,7 +10,7 @@
     <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro --network=host</DockerfileRunArguments>
+    <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro -v /dev/ttyUSB1:/dev/ttyUSB1 --network=host --privileged</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>
@@ -63,10 +63,6 @@
     <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
     <PackageReference Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <PackageReference Include="Linux.Bluetooth" Version="5.67.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="settings\" />
   </ItemGroup>
 
 </Project>

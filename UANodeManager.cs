@@ -1199,15 +1199,15 @@ namespace Opc.Ua.Edge.Translator
             if (td.Base.ToLower().StartsWith("modbus+rtu://"))
             {
                 string[] address = td.Base.Split([':', '/']);
-                if ((address.Length != 6) || (address[0] != "modbus+rtu"))
+                if ((address.Length != 9) || (address[0] != "modbus+rtu"))
                 {
-                    throw new Exception("Expected Modbus RTU server address in the format modbus+rtu://comport:baudrate/unitID!");
+                    throw new Exception("Expected Modbus RTU server address in the format modbus+rtu://comPort/baudRate/dataBits/parity/stopBits/unitId, e.g. modbus+rtu://ttyUSB1/9600/8/E/1/1");
                 }
 
                 // check if we can reach the Modbus RTU asset
                 unitId = byte.Parse(address[5]);
                 ModbusRTUClient client = new();
-                client.Connect(address[3], int.Parse(address[4]));
+                client.Connect(td.Base, 0);
 
                 assetInterface = client;
             }

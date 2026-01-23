@@ -58,21 +58,73 @@
             {
                 Disconnect();
 
-                // if running on Linux, append /dev/ to the serial port name
-                if ((Environment.OSVersion.Platform == PlatformID.Unix) && !ipAddress.StartsWith("/dev/"))
+                string comPort = string.Empty;
+                int baudRate = 0;
+                int dataBits = 0;
+                Parity parity = Parity.None;
+                StopBits stopBits = StopBits.None;
+                int unitId = 0;
+
+                // split ipAddress into port name, baud rate, data bits, parity, stop bits and unit ID, formatted as "COM3/19200/8/E/1/1"
+                string[] parts = ipAddress.Split('/');
+                if (parts.Length >= 8)
                 {
-                    ipAddress = "/dev/" + ipAddress;
+                    comPort = parts[2];
+                    baudRate = int.Parse(parts[3]);
+                    dataBits = int.Parse(parts[4]);
+                    unitId = int.Parse(parts[7]);
+
+                    switch (parts[5].ToUpper())
+                    {
+                        case "N":
+                            parity = Parity.None;
+                            break;
+                        case "E":
+                            parity = Parity.Even;
+                            break;
+                        case "O":
+                            parity = Parity.Odd;
+                            break;
+                        case "M":
+                            parity = Parity.Mark;
+                            break;
+                        case "S":
+                            parity = Parity.Space;
+                            break;
+                        default:
+                            parity = Parity.None;
+                            break;
+                    }
+
+                    switch (parts[6])
+                    {
+                        case "1":
+                            stopBits = StopBits.One;
+                            break;
+                        case "1.5":
+                            stopBits = StopBits.OnePointFive;
+                            break;
+                        case "2":
+                            stopBits = StopBits.Two;
+                            break;
+                        default:
+                            stopBits = StopBits.None;
+                            break;
+                    }
                 }
 
-                _serialPort = new SerialPort(ipAddress)
+                // if running on Linux, append /dev/ to the com port name
+                if ((Environment.OSVersion.Platform == PlatformID.Unix) && !comPort.StartsWith("/dev/"))
                 {
-                    BaudRate = port,
-                    DataBits = 8,
+                    comPort = "/dev/" + comPort;
+                }
 
-                    // IMPORTANT: Many Modbus RTU devices default to 8E1.
-                    Parity = Parity.Even,
-                    StopBits = StopBits.One,
-
+                _serialPort = new SerialPort(comPort)
+                {
+                    BaudRate = baudRate,
+                    DataBits = dataBits,
+                    Parity = parity,
+                    StopBits = stopBits,
                     ReadTimeout = DefaultTimeoutMs,
                     WriteTimeout = DefaultTimeoutMs
                 };
