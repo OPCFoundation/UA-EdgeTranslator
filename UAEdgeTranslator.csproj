@@ -47,7 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BACnet" Version="3.0.1" />
+    <PackageReference Include="BACnet" Version="3.0.2" />
     <PackageReference Include="libplctag" Version="1.5.2" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="McProtocol" Version="1.2.5" />
