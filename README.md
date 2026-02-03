@@ -51,21 +51,24 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 > **Note**: The Modbus RTU interface requires access to a serial port on the host system. When running UA Edge Translator in a Docker container, make sure to map the serial port device into the container using the --device argument, e.g. -v /dev/ttyUSB1:/dev/ttyUSB1 and run the container with the --privileged argument.
 
-Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
+Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
+
+There is also a tool provided (WoTThingModelGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file to a WoT Thing Model file.
 
 ## How to build your own Protocol Driver
 
-Ua Edge Translator loads protocol drivers as DLLs from the /app/drivers folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is included:
+UA Edge Translator loads protocol drivers as DLLs from the /app/drivers folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
 
-```<ItemGroup>
-	<ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
-	  <Private>true</Private>
-	  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-	</ProjectReference>
-  </ItemGroup>
+```
+<ItemGroup>
+  <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
+    <Private>true</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+  </ProjectReference>
+</ItemGroup>
 ```
 
-Then implement the IProtocolDriver and IAsset interface and build the project. Publish your project into the ..\..\UAServer\drivers\<yourdrivername> folder and restart UA Edge Translator to load your new protocol driver.
+Then implement the IProtocolDriver and IAsset interface and publish your project into the ..\..\UAServer\drivers\<yourdrivername> folder and restart UA Edge Translator to load your new protocol driver.
 
 ## Running UA Edge Translator from a Docker environment
 
