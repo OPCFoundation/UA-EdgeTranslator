@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.26100.0</TargetFrameworks>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>UAEdgeTranslator</AssemblyName>
+    <RootNamespace>Opc.Ua.Edge.Translator</RootNamespace>
+    <StartupObject></StartupObject>
+    <PackageId>UAEdgeTranslator</PackageId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>.</DockerfileContext>
+    <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro -v /dev/ttyUSB1:/dev/ttyUSB1 --network=host --privileged</DockerfileRunArguments>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="drivers\**" />
+    <Content Remove="drivers\**" />
+    <EmbeddedResource Remove="drivers\**" />
+    <None Remove="drivers\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Opc.Ua.WotCon.NodeSet2.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Ua.Edge.Translator.Config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.374.176" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.176" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="settings\" />
+  </ItemGroup>
+
+</Project>

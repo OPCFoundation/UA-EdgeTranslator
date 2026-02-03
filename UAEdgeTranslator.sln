@@ -1,16 +1,66 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.4.33122.133
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UAEdgeTranslator", "UAEdgeTranslator.csproj", "{0F6CBC98-48B9-40D3-BC34-94733739A4B6}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{28C9D48D-859A-4F4C-AD74-BF380A944330}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		.github\workflows\docker-publish.yml = .github\workflows\docker-publish.yml
+		LICENSE = LICENSE
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WoTThingModelGenerator", "WoTThingModelGenerator\WoTThingModelGenerator.csproj", "{37DCF037-4101-45F1-8AF1-5A5D1195C636}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UAEdgeTranslator", "UAServer\UAEdgeTranslator.csproj", "{FBF1A649-68BC-390E-9ADC-472DB44A17FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BACNetDriver", "ProtocolDrivers\BACNet\BACNetDriver.csproj", "{C282D871-9496-B767-0061-5DB540948A9D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Beckhoff", "ProtocolDrivers\Beckhoff\Beckhoff.csproj", "{16F59085-DE0D-F521-E542-1AB6E767576F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IEC61850", "ProtocolDrivers\IEC61850\IEC61850.csproj", "{DD67C595-74F0-999D-8767-6AD607092B84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoRaWAN", "ProtocolDrivers\LoRaWAN\LoRaWAN.csproj", "{F57C4C34-33A6-5862-9761-C9977A61C0B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matter", "ProtocolDrivers\Matter\Matter.csproj", "{A0384B3F-BD8A-2C8F-2FE3-2230FA03F57F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mitsubishi", "ProtocolDrivers\Mitsubishi\Mitsubishi.csproj", "{0A642062-DC74-0F5D-4DC3-40EE1599DAAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModbusRTU", "ProtocolDrivers\ModbusRTU\ModbusRTU.csproj", "{3D5E2860-C933-5FB4-CF2C-940AC3197840}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModbusTCP", "ProtocolDrivers\ModbusTCP\ModbusTCP.csproj", "{F179D41A-EDBB-7F2E-012E-27FC6AE2AFDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OCPP", "ProtocolDrivers\OCPP\OCPP.csproj", "{1ECC5761-285D-E797-013C-BC3A40232B34}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPCUA", "ProtocolDrivers\OPCUA\OPCUA.csproj", "{A5BE4672-C2F2-0ADA-56FA-C6C13E8B7462}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rockwell", "ProtocolDrivers\Rockwell\Rockwell.csproj", "{C9CF00B2-370F-D3DB-8B35-E6830114C347}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Siemens", "ProtocolDrivers\Siemens\Siemens.csproj", "{0E7D6171-F966-678D-881B-16E0164A502B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{36D11C8B-53D0-4BEE-80FE-B34E656DB448}"
+	ProjectSection(SolutionItems) = preProject
+		Samples\AMLSimpleExample.tm.jsonld = Samples\AMLSimpleExample.tm.jsonld
+		Samples\AqaraLockU200.td.jsonld = Samples\AqaraLockU200.td.jsonld
+		Samples\AqaraSensorP2.td.jsonld = Samples\AqaraSensorP2.td.jsonld
+		Samples\assembly.station.td.jsonld = Samples\assembly.station.td.jsonld
+		Samples\BACNet.td.jsonld = Samples\BACNet.td.jsonld
+		Samples\cx-257846.td.jsonld = Samples\cx-257846.td.jsonld
+		Samples\DraginoLHT65N.td.jsonld = Samples\DraginoLHT65N.td.jsonld
+		Samples\kinetos-3af8.td.jsonld = Samples\kinetos-3af8.td.jsonld
+		Samples\Logix5581E.td.jsonld = Samples\Logix5581E.td.jsonld
+		Samples\MilesightEM300-TH.td.jsonld = Samples\MilesightEM300-TH.td.jsonld
+		Samples\modbus-pac4200-sn123rtu.td.jsonld = Samples\modbus-pac4200-sn123rtu.td.jsonld
+		Samples\OnvisS4.td.jsonld = Samples\OnvisS4.td.jsonld
+		Samples\pac4200.td.jsonld = Samples\pac4200.td.jsonld
+		Samples\pac4200.tm.jsonld = Samples\pac4200.tm.jsonld
+		Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld = Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld
+		Samples\s7.td.jsonld = Samples\s7.td.jsonld
+		Samples\Simple PLC.tm.jsonld = Samples\Simple PLC.tm.jsonld
+		Samples\Station.Nodeset2.tm.jsonld = Samples\Station.Nodeset2.tm.jsonld
+		Samples\SX1301EU.td.jsonld = Samples\SX1301EU.td.jsonld
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,14 +68,62 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{0F6CBC98-48B9-40D3-BC34-94733739A4B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0F6CBC98-48B9-40D3-BC34-94733739A4B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0F6CBC98-48B9-40D3-BC34-94733739A4B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0F6CBC98-48B9-40D3-BC34-94733739A4B6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{37DCF037-4101-45F1-8AF1-5A5D1195C636}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{37DCF037-4101-45F1-8AF1-5A5D1195C636}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37DCF037-4101-45F1-8AF1-5A5D1195C636}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37DCF037-4101-45F1-8AF1-5A5D1195C636}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBF1A649-68BC-390E-9ADC-472DB44A17FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBF1A649-68BC-390E-9ADC-472DB44A17FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBF1A649-68BC-390E-9ADC-472DB44A17FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBF1A649-68BC-390E-9ADC-472DB44A17FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C282D871-9496-B767-0061-5DB540948A9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C282D871-9496-B767-0061-5DB540948A9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C282D871-9496-B767-0061-5DB540948A9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C282D871-9496-B767-0061-5DB540948A9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16F59085-DE0D-F521-E542-1AB6E767576F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16F59085-DE0D-F521-E542-1AB6E767576F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16F59085-DE0D-F521-E542-1AB6E767576F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16F59085-DE0D-F521-E542-1AB6E767576F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD67C595-74F0-999D-8767-6AD607092B84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD67C595-74F0-999D-8767-6AD607092B84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD67C595-74F0-999D-8767-6AD607092B84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD67C595-74F0-999D-8767-6AD607092B84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F57C4C34-33A6-5862-9761-C9977A61C0B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F57C4C34-33A6-5862-9761-C9977A61C0B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F57C4C34-33A6-5862-9761-C9977A61C0B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F57C4C34-33A6-5862-9761-C9977A61C0B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0384B3F-BD8A-2C8F-2FE3-2230FA03F57F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0384B3F-BD8A-2C8F-2FE3-2230FA03F57F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0384B3F-BD8A-2C8F-2FE3-2230FA03F57F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0384B3F-BD8A-2C8F-2FE3-2230FA03F57F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A642062-DC74-0F5D-4DC3-40EE1599DAAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A642062-DC74-0F5D-4DC3-40EE1599DAAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A642062-DC74-0F5D-4DC3-40EE1599DAAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A642062-DC74-0F5D-4DC3-40EE1599DAAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D5E2860-C933-5FB4-CF2C-940AC3197840}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D5E2860-C933-5FB4-CF2C-940AC3197840}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D5E2860-C933-5FB4-CF2C-940AC3197840}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D5E2860-C933-5FB4-CF2C-940AC3197840}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F179D41A-EDBB-7F2E-012E-27FC6AE2AFDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F179D41A-EDBB-7F2E-012E-27FC6AE2AFDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F179D41A-EDBB-7F2E-012E-27FC6AE2AFDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F179D41A-EDBB-7F2E-012E-27FC6AE2AFDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1ECC5761-285D-E797-013C-BC3A40232B34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1ECC5761-285D-E797-013C-BC3A40232B34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1ECC5761-285D-E797-013C-BC3A40232B34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1ECC5761-285D-E797-013C-BC3A40232B34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5BE4672-C2F2-0ADA-56FA-C6C13E8B7462}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5BE4672-C2F2-0ADA-56FA-C6C13E8B7462}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5BE4672-C2F2-0ADA-56FA-C6C13E8B7462}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5BE4672-C2F2-0ADA-56FA-C6C13E8B7462}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9CF00B2-370F-D3DB-8B35-E6830114C347}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9CF00B2-370F-D3DB-8B35-E6830114C347}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9CF00B2-370F-D3DB-8B35-E6830114C347}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9CF00B2-370F-D3DB-8B35-E6830114C347}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E7D6171-F966-678D-881B-16E0164A502B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E7D6171-F966-678D-881B-16E0164A502B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E7D6171-F966-678D-881B-16E0164A502B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E7D6171-F966-678D-881B-16E0164A502B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

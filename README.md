@@ -14,12 +14,12 @@ UA Edge Translator supports provisioning via GDS Server Push functionality as de
 
 ## Operation
 
-UA Edge Translator can be controlled through the use of just 2 OPC UA methods readily available through the OPC UA server interface built in. The methods are:
+UA Edge Translator can be controlled through the use of just 2 OPC UA methods (and OPC UA file transfer functionality) readily available through the OPC UA server interface built in. The methods are:
 
 * CreateAsset(assetName) - Creates an asset node and an OPC UA File API node below the asset node (which can be used to upload the WoT Thing Description), returning the node ID of the newly created asset node on success.
 * DeleteAsset(assetNodeId) - deletes a configured asset.
 
-## Supported Southbound Asset Interfaces
+## Supported Southbound Asset Interfaces (Protocol Drivers)
 
 The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
 
@@ -51,13 +51,30 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 > **Note**: The Modbus RTU interface requires access to a serial port on the host system. When running UA Edge Translator in a Docker container, make sure to map the serial port device into the container using the --device argument, e.g. -v /dev/ttyUSB1:/dev/ttyUSB1 and run the container with the --privileged argument.
 
-Other interfaces can easily be added by implementing the IAsset interface. There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
+Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). There is also a tool provided that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file, to a WoT Thing Model file.
+
+## How to build your own Protocol Driver
+
+Ua Edge Translator loads protocol drivers as DLLs from the /app/drivers folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is included:
+
+```<ItemGroup>
+	<ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
+	  <Private>true</Private>
+	  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+	</ProjectReference>
+  </ItemGroup>
+```
+
+Then implement the IProtocolDriver and IAsset interface and build the project. Publish your project into the ..\..\UAServer\drivers\<yourdrivername> folder and restart UA Edge Translator to load your new protocol driver.
 
 ## Running UA Edge Translator from a Docker environment
 
 The following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
-* /app/pki
-* /app/settings
+* /app/logs (log files)
+* /app/pki (certificates and keys)
+* /app/settings (WoT Thing Descriptions)
+* /app/nodesets (OPC UA nodesets for referenced companion specifications)
+* /app/drivers (protocol driver DLLs)
 
 E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 

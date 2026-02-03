@@ -1,0 +1,420 @@
+﻿
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+{
+    using Makaretu.Dns;
+    using Matter.Core;
+    using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Edge.Translator.Models;
+    using System;
+    using System.Buffers.Binary;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
+    using static Matter.Core.MessageExchange;
+
+    public class MatterControllerAsset : IAsset
+    {
+        private readonly MulticastService _mDNSService = new();
+        public readonly Fabric _fabric;
+        private readonly ServiceDiscovery _serviceDiscovery;
+        private readonly BluetoothCommissioner _commissioner;
+
+        public bool IsConnected { get; private set; } = false;
+
+        public MatterControllerAsset()
+        {
+            _fabric = Fabric.Load();
+
+            _mDNSService.NetworkInterfaceDiscovered += (s, e) =>
+            {
+                _mDNSService.SendQuery("_matter._tcp.local");
+            };
+
+            _mDNSService.AnswerReceived += _mDNSService_AnswerReceived;
+
+            _serviceDiscovery = new ServiceDiscovery(_mDNSService);
+            _serviceDiscovery.ServiceDiscovered += _serviceDiscovery_ServiceDiscovered;
+            _serviceDiscovery.ServiceInstanceDiscovered += _serviceDiscovery_ServiceInstanceDiscovered;
+
+            _commissioner = new BluetoothCommissioner(_fabric);
+
+            _mDNSService.Start();
+        }
+
+        public void Connect(string ipAddress, int port)
+        {
+            string[] ipParts = ipAddress.Split(['/']);
+
+            try
+            {
+                CommissioningPayload commissioningPayload = ParseManualSetupCode(ipParts[3], ipParts[4]);
+
+                // check if the node is already commissioned into our Fabric
+                if (!_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.Name != null))
+                {
+                    Console.WriteLine($"Matter device {ipParts[2]} is not commissioned. Starting commissioning process.");
+
+                    // clear any old fabric entry for this node
+                    Matter.Core.Node oldNode = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString());
+                    if (oldNode != null)
+                    {
+                        _fabric.DeleteNode(oldNode.NodeId);
+                        _fabric.Save();
+                    }
+
+                    _commissioner.StartBluetoothDiscovery(commissioningPayload).GetAwaiter().GetResult();
+
+                    // wait 60 seconds or until we have an IP address for the node
+                    uint numRetries = 60;
+                    while ((numRetries > 0) && !_fabric.Nodes.Values.Any(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null))
+                    {
+                        Task.Delay(1000).GetAwaiter().GetResult();
+                        numRetries--;
+                    }
+
+                    if (numRetries == 0)
+                    {
+                        Console.WriteLine("Commissioning process timed out waiting for IP address.");
+                    }
+                }
+
+                Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.SetupCode == commissioningPayload.Passcode.ToString() && n.Discriminator == commissioningPayload.Discriminator.ToString() && n.LastKnownIpAddress != null);
+                if (node != null)
+                {
+                    if (node.Connect(_fabric))
+                    {
+                        node.Name = ipParts[2];
+                        _fabric.Save();
+                    }
+
+                    node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Failed to connect to Matter device: " + ex.Message);
+            }
+        }
+
+        public void Disconnect()
+        {
+            IsConnected = false;
+        }
+
+        public string GetRemoteEndpoint()
+        {
+            return string.Empty;
+        }
+
+        public object Read(AssetTag tag)
+        {
+            // find the node in the fabric
+            string[] nameParts = tag.Name.Split([':']);
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nameParts[0]);
+            if (node != null)
+            {
+                if (node.Connect(_fabric))
+                {
+                    IsConnected = true;
+                    return node.ReadAttribute(_fabric, 1, nameParts[1], 0);
+                }
+                else
+                {
+                    IsConnected = false;
+                    return $"Failed to connect to Node {tag.Name}";
+                }
+            }
+            else
+            {
+                IsConnected = false;
+                return $"Node {tag.Name} not found";
+            }
+        }
+
+        public void Write(AssetTag tag, string value)
+        {
+            // find the node in the fabric
+            string[] nameParts = tag.Name.Split([':']);
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nameParts[0]);
+            if (node != null)
+            {
+                if (node.Connect(_fabric))
+                {
+                    IsConnected = true;
+                    string response = node.WriteAttribute(_fabric, 1, nameParts[1], 0, uint.Parse(value));
+                    if (response != "success")
+                    {
+                        throw new Exception($"Failed to write attribute {tag.Address} on Node {tag.Name} with {response}!");
+                    }
+                }
+                else
+                {
+                    IsConnected = false;
+                    throw new Exception($"Failed to connect to Node {tag.Name}");
+                }
+            }
+            else
+            {
+                IsConnected = false;
+                throw new Exception($"Node {tag.Name} not found");
+            }
+        }
+
+        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        {
+            outputArgs = null; // not used
+
+            string nodeName = method.Parent?.BrowseName?.Name;
+
+            // find the node in the fabric
+            Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nodeName);
+            if (node != null)
+            {
+                if (node.Connect(_fabric))
+                {
+                    // check if the method is a timed command
+                    bool timed = false;
+                    uint targetClusterId = 0;
+                    if (method.Handle is List<GenericForm> forms)
+                    {
+                        foreach (GenericForm form in forms)
+                        {
+                            if (form.Type == TypeString.TimedCommand)
+                            {
+                                timed = true;
+                                break;
+                            }
+
+                            if (form.Href != null)
+                            {
+                                if (uint.TryParse(form.Href, out uint parsedClusterId))
+                                {
+                                    targetClusterId = parsedClusterId;
+                                }
+                            }
+                        }
+                    }
+
+                    object[] parameters = null;
+                    bool attribute = false;
+                    if (inputArgs.Count() > 0)
+                    {
+                        // command or attribute?
+                        if (method.InputArguments.Value[0].Name == "attribute")
+                        {
+                            attribute = true;
+                        }
+                        else
+                        {
+                            if (method.InputArguments.Value[0].Name != "command")
+                            {
+                                throw new Exception("First argument must be 'command' for commands or 'attribute' for attribute writes.");
+                            }
+
+                            if (inputArgs.Count > 1)
+                            {
+                                parameters = new object[inputArgs.Count() - 1];
+                                for (int i = 1; i < inputArgs.Count(); i++)
+                                {
+                                    switch (method.InputArguments.Value[i].Name)
+                                    {
+                                        case "subjects": parameters[i - 1] = new ulong[] { _fabric.RootNodeId }; break;
+                                        case "targets": parameters[i - 1] = new AccessControlTarget[] { new AccessControlTarget() { Cluster = targetClusterId } }; break;
+                                        default: parameters[i - 1] = inputArgs[i]; break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (method.BrowseName.Name == "fetch descriptions")
+                    {
+                        return node.FetchDescriptionsAsync(_fabric).GetAwaiter().GetResult();
+                    }
+
+                    if (attribute)
+                    {
+                        // TODO: Support more than just attributeId = 0
+                        return node.WriteAttribute(_fabric, 1, method.BrowseName.Name, 0, inputArgs[0]);
+                    }
+
+                    if ((inputArgs == null) || (inputArgs.Count == 0))
+                    {
+                        return "First argument is the command and cannot be null.";
+                    }
+
+                    return node.ExecuteCommand(_fabric, method.BrowseName.Name, inputArgs[0].ToString(), parameters, timed);
+                }
+                else
+                {
+                    return $"Failed to connect to Node {nodeName}";
+                }
+            }
+            else
+            {
+                return $"Node {nodeName} not found";
+            }
+        }
+
+        private CommissioningPayload ParseManualSetupCode(string hexDataset, string manualSetupCode)
+        {
+            byte[] data = DecodeSetupCode(manualSetupCode);
+            ushort discriminator = (ushort)ReadBits(data, 45, 12);
+            uint passcode = ReadBits(data, 57, 27);
+            uint padding = ReadBits(data, 84, 4);
+
+            if (padding != 0)
+            {
+                throw new ArgumentException("Invalid QR Code");
+            }
+
+            byte[] bytes = Array.Empty<byte>();
+            try
+            {
+                if (hexDataset.Length % 2 != 0)
+                {
+                    throw new ArgumentException("Hex string must have an even length.");
+                }
+
+                bytes = new byte[hexDataset.Length / 2];
+                for (int i = 0; i < hexDataset.Length; i += 2)
+                {
+                    bytes[i / 2] = Convert.ToByte(hexDataset.Substring(i, 2), 16);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error converting hex string to byte array: " + ex.Message);
+            }
+
+            return new CommissioningPayload()
+            {
+                Discriminator = discriminator,
+                Passcode = passcode,
+                ThreadDataset = bytes
+            };
+        }
+
+        private static byte[] DecodeSetupCode(string str)
+        {
+            List<byte> data = new List<byte>();
+
+            for (int i = 0; i < str.Length; i += 5)
+            {
+                data.AddRange(UnpackSetupCode(str.Substring(i, Math.Min(5, str.Length - i))));
+            }
+
+            return data.ToArray();
+        }
+
+        private static byte[] UnpackSetupCode(string str)
+        {
+            uint digit = DecodeBase38(str);
+
+            if (str.Length == 5)
+            {
+                byte[] result = new byte[3];
+                result[0] = (byte)digit;
+                result[1] = (byte)(digit >> 8);
+                result[2] = (byte)(digit >> 16);
+                return result;
+            }
+            else if (str.Length == 4)
+            {
+                return [(byte)digit, (byte)(digit >> 8)];
+            }
+            else if (str.Length == 2)
+            {
+                return [(byte)(digit & 0xFF)];
+            }
+            else
+            {
+                throw new ArgumentException("Invalid QR String");
+            }
+        }
+
+        private static uint DecodeBase38(string sIn)
+        {
+            const string map = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-.";
+            uint ret = 0;
+
+            for (int i = sIn.Length - 1; i >= 0; i--)
+            {
+                ret = (uint)(ret * 38 + map.IndexOf(sIn[i]));
+            }
+
+            return ret;
+        }
+
+
+        private static uint ReadBits(byte[] buf, int index, int numberOfBitsToRead)
+        {
+            uint dest = 0;
+
+            int currentIndex = index;
+            for (int bitsRead = 0; bitsRead < numberOfBitsToRead; bitsRead++)
+            {
+                if ((buf[currentIndex / 8] & 1 << currentIndex % 8) != 0)
+                {
+                    dest |= (uint)(1 << bitsRead);
+                }
+
+                currentIndex++;
+            }
+
+            return dest;
+        }
+
+        private void _mDNSService_AnswerReceived(object sender, MessageEventArgs e)
+        {
+            var servers = e.Message.Answers.OfType<SRVRecord>();
+
+            foreach (var server in servers)
+            {
+                var instanceName = server.Name.ToString();
+                if (instanceName.EndsWith("_matter._tcp.local"))
+                {
+                    Console.WriteLine($"Discovered Matter Node {instanceName} via mDNS.");
+
+                    var addresses = e.Message.AdditionalRecords.OfType<AddressRecord>();
+
+                    if (!addresses.Any())
+                    {
+                        Console.WriteLine("No IP address received from Matter device: " + instanceName);
+                        continue;
+                    }
+
+                    string[] parts = instanceName.Replace("._matter._tcp.local", "").Split('-');
+
+                    if (parts.Length < 2)
+                    {
+                        Console.WriteLine("Invalid Matter ID format: " + instanceName);
+                        continue;
+                    }
+
+                    string compressedFabricId = parts[0];
+                    string nodeId = parts[1];
+
+                    if (BinaryPrimitives.ReadUInt64BigEndian(_fabric.CompressedFabricId).ToString("X4") != compressedFabricId)
+                    {
+                        Console.WriteLine($"Ignoring node from different fabric: {instanceName}");
+                        continue;
+                    }
+
+                    _fabric.UpdateNodeWithIPAddress(nodeId, addresses.FirstOrDefault()?.Address.ToString(), server.Port);
+                    _fabric.Save();
+                }
+            }
+        }
+
+        private void _serviceDiscovery_ServiceInstanceDiscovered(object sender, ServiceInstanceDiscoveryEventArgs e)
+        {
+            _mDNSService.SendQuery(e.ServiceInstanceName, type: DnsType.SRV);
+        }
+
+        private void _serviceDiscovery_ServiceDiscovered(object sender, DomainName serviceName)
+        {
+            _mDNSService.SendQuery(serviceName, type: DnsType.PTR);
+        }
+    }
+}
