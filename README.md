@@ -57,7 +57,7 @@ There is also a tool provided (WoTThingModelGenerator) that can convert from an 
 
 ## How to build your own Protocol Driver
 
-UA Edge Translator loads protocol drivers as DLLs from the /app/drivers folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
+UA Edge Translator loads protocol drivers as DLLs from the `/app/drivers` folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
 
 ```
 <ItemGroup>
@@ -68,16 +68,16 @@ UA Edge Translator loads protocol drivers as DLLs from the /app/drivers folder a
 </ItemGroup>
 ```
 
-Then implement the IProtocolDriver and IAsset interface and publish your project into the ..\..\UAServer\drivers\<yourdrivername> folder and restart UA Edge Translator to load your new protocol driver.
+Then implement the IProtocolDriver and IAsset interface and publish your project into the `..\..\UAServer\drivers\<yourdrivername>` folder and restart UA Edge Translator to load your new protocol driver.
 
 ## Running UA Edge Translator from a Docker environment
 
 The following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
-* /app/logs (log files)
-* /app/pki (certificates and keys)
-* /app/settings (WoT Thing Descriptions)
-* /app/nodesets (OPC UA nodesets for referenced companion specifications)
-* /app/drivers (protocol driver DLLs)
+* `/app/logs` (log files)
+* `/app/pki` (certificates and keys)
+* `/app/settings` (WoT Thing Descriptions)
+* `/app/nodesets` (OPC UA nodesets for referenced companion specifications)
+* `/app/drivers` (protocol driver DLLs)
 
 E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 
