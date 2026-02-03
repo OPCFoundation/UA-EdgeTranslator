@@ -1,0 +1,28 @@
+# ProtocolDrivers/Dockerfile.driverpack
+# Driver pack image that contains published driver folders under /drivers/<name>.
+# Built by GitHub Actions: artifacts are downloaded into drivers/_driverpack/driverpack-*
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
+
+# We'll assemble a clean /drivers/<driverName>/ layout in the image.
+WORKDIR /drivers
+
+# Copy the downloaded artifacts tree (each artifact is a folder like driverpack-bacnet, ...)
+# IMPORTANT: build context is repo root (context: . in your workflow), so this path is relative to repo root.
+COPY drivers/_driverpack/ /tmp/driverpack/
+
+# Flatten:
+#   /tmp/driverpack/driverpack-bacnet  -> /drivers/bacnet
+#   /tmp/driverpack/driverpack-matter  -> /drivers/matter
+RUN set -eux; \
+    mkdir -p /drivers; \
+    for d in /tmp/driverpack/driverpack-*; do \
+      [ -d "$d" ] || continue; \
+      base="$(basename "$d")"; \
+      name="${base#driverpack-}"; \
+      mkdir -p "/drivers/$name"; \
+      cp -a "$d/." "/drivers/$name/"; \
+    done; \
+    rm -rf /tmp/driverpack
+
+# No ENTRYPOINT/CMD: this is an "artifact image" (driver pack) to be used as a source for copying drivers.

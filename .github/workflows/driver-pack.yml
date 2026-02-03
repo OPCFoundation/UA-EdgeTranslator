@@ -110,7 +110,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: drivers/Dockerfile.driverpack
+          file: ProtocolDrivers/Dockerfile.driverpack
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

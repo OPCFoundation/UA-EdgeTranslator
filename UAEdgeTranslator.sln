@@ -7,6 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		.github\workflows\docker-publish.yml = .github\workflows\docker-publish.yml
+		ProtocolDrivers\Dockerfile.driverpack = ProtocolDrivers\Dockerfile.driverpack
 		.github\workflows\driver-pack.yml = .github\workflows\driver-pack.yml
 		LICENSE = LICENSE
 		README.md = README.md
