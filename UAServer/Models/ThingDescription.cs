@@ -45,6 +45,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }
 
+        [JsonProperty("const")]
+        public object? Const { get; set; }
+
         [JsonProperty("uav:mapToNodeId")]
         public string? OpcUaNodeId { get; set; }
 

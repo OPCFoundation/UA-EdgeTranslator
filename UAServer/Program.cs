@@ -67,10 +67,10 @@ namespace Opc.Ua.Edge.Translator
 
             // load protocol drivers
             DriverLoadContext.LoadProtocolDrivers();
+            Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
             // start the server
             await App.Start(new UAServer()).ConfigureAwait(false);
-            Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);

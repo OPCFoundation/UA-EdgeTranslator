@@ -21,6 +21,12 @@
   "base": "modbus+tcp://{{address}}:{{port}}/1",
   "title": "Siemens SENTRON PAC4200",
   "properties": {
+    "site": {
+      "type": "string",
+      "const": "SITE_X",
+      "readOnly": true,
+      "description": "Site identifier"
+    },
     "VoltageL1-N": {
       "type": "number",
       "uav:mapToNodeId": "s=VoltageL-N",

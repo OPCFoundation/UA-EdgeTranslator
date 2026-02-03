@@ -639,9 +639,58 @@ namespace Opc.Ua.Edge.Translator
                             AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
                         }
                     }
+                    else
+                    {
+                        AddConstantProperty(parent, td, property);
+                    }
                 }
             }
 
+            AddActionsFromWoTFile(parent, td);
+
+            _ = Task.Factory.StartNew(ReadAssetTags, td.Name, TaskCreationOptions.LongRunning);
+
+            Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
+        }
+
+        private void AddConstantProperty(NodeState parent, ThingDescription td, KeyValuePair<string, Property> property)
+        {
+            ushort assetNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/");
+
+            // check for constant
+            if (property.Value.Const != null)
+            {
+                // create a variable with the constant value
+                BaseDataVariableState variable;
+                if (property.Value.Type == TypeEnum.String)
+                {
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.String), assetNamespaceIndex, false, property.Value.Const.ToString());
+                }
+                else if (property.Value.Type == TypeEnum.Number)
+                {
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Double), assetNamespaceIndex, false, Convert.ToDouble(property.Value.Const));
+                }
+                else if (property.Value.Type == TypeEnum.Integer)
+                {
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Int32), assetNamespaceIndex, false, Convert.ToInt32(property.Value.Const));
+                }
+                else if (property.Value.Type == TypeEnum.Boolean)
+                {
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Boolean), assetNamespaceIndex, false, Convert.ToBoolean(property.Value.Const));
+                }
+                else
+                {
+                    // default to string
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.String), assetNamespaceIndex, false, property.Value.Const.ToString());
+                }
+
+                AddPredefinedNode(SystemContext, variable);
+                _uaVariables.Add($"{td.Name}:{property.Key}", variable);
+            }
+        }
+
+        private void AddActionsFromWoTFile(NodeState parent, ThingDescription td)
+        {
             ushort assetNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + td.Name + "/");
 
             // create nodes for each TD action
@@ -739,10 +788,6 @@ namespace Opc.Ua.Edge.Translator
                     AddPredefinedNode(SystemContext, method);
                 }
             }
-
-            _ = Task.Factory.StartNew(ReadAssetTags, td.Name, TaskCreationOptions.LongRunning);
-
-            Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
         }
 
         private void AddNodeForWoTForm(NodeState assetFolder, ThingDescription td, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
