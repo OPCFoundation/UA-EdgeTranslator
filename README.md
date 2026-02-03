@@ -72,12 +72,23 @@ Then implement the IProtocolDriver and IAsset interface and publish your project
 
 ## Running UA Edge Translator from a Docker environment
 
-The following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
+```
+# 1) Create a named volume for drivers
+docker volume create translator_drivers
+
+# 2) Copy drivers from the driver-pack image into the volume
+docker run --rm -v translator_drivers:/out ghcr.io/opcfoundation/ua-edgetranslator-drivers:main /bin/sh -c 'cp -a /drivers/. /out/'
+
+# 3) Run UA Edge Translator with the drivers volume mounted to /app/drivers
+docker run -d --name ua-edge-translator -v translator_drivers:/app/drivers -p 4840:4840 ghcr.io/opcfoundation/ua-edgetranslator:main
+```
+
+In addition, the following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
 * `/app/logs` (log files)
 * `/app/pki` (certificates and keys)
 * `/app/settings` (WoT Thing Descriptions)
 * `/app/nodesets` (OPC UA nodesets for referenced companion specifications)
-* `/app/drivers` (protocol driver DLLs)
+* `/app/drivers` (protocol driver DLLs, see above)
 
 E.g. -v c:/uaedgetranslator/pki:/app/pki, etc.
 
