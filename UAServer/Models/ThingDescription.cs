@@ -91,30 +91,6 @@ namespace Opc.Ua.Edge.Translator.Models
         public string[]? Required { get; set; }
     }
 
-    public class ModbusForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("modv:type")]
-        public TypeString ModbusType { get; set; }
-
-        [JsonProperty("modv:entity")]
-        public ModbusEntity ModbusEntity { get; set; }
-
-        [JsonProperty("modv:mostSignificantByte")]
-        public bool MostSignificantByte { get; set; } // big endian on a per byte basis
-
-        [JsonProperty("modv:mostSignificantWord")]
-        public bool MostSignificantWord { get; set; } // big endian on a per word basis
-
-        [JsonProperty("modv:pollingTime")]
-        public long ModbusPollingTime { get; set; }
-    }
-
     public class GenericForm
     {
         [JsonProperty("href")]
@@ -125,90 +101,6 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("type")]
         public TypeString Type { get; set; }
-
-        [JsonProperty("pollingTime")]
-        public long PollingTime { get; set; }
-    }
-
-    public class LoRaWANForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("type")]
-        public TypeString Type { get; set; }
-
-        [JsonProperty("lorav:mostSignificantByte")]
-        public bool MostSignificantByte { get; set; } // big endian on a per byte basis
-
-        [JsonProperty("lorav:mostSignificantWord")]
-        public bool MostSignificantWord { get; set; } // big endian on a per word basis
-
-        [JsonProperty("lorav:bitmask")]
-        public string? BitMask { get; set; } // bitmask to apply to the value
-
-        [JsonProperty("lorav:multiplier")]
-        public float? Multiplier { get; set; } // multiplier to multiply the value with to get the correct unit of measure
-
-        [JsonProperty("pollingTime")]
-        public long PollingTime { get; set; }
-    }
-
-    public class EIPForm
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("type")]
-        public EIPTypeString Type { get; set; }
-
-        [JsonProperty("pollingTime")]
-        public long PollingTime { get; set; }
-    }
-
-    public class S7Form
-    {
-        [JsonProperty("href")]
-        public string? Href { get; set; }
-
-        [JsonProperty("op")]
-        public Op[]? Op { get; set; }
-
-        [JsonProperty("s7:rack")]
-        public int S7Rack { get; set; }
-
-        [JsonProperty("s7:slot")]
-        public int S7Slot { get; set; }
-
-        [JsonProperty("s7:dbnumber")]
-        public int S7DBNumber { get; set; }
-
-        [JsonProperty("s7:start")]
-        public int S7Start { get; set; }
-
-        [JsonProperty("s7:size")]
-        public int S7Size { get; set; }
-
-        [JsonProperty("s7:pos")]
-        public int S7Pos { get; set; }
-
-        [JsonProperty("s7:maxlen")]
-        public int S7MaxLen { get; set; }
-
-        [JsonProperty("type")]
-        public TypeString Type { get; set; }
-
-        [JsonProperty("s7:target")]
-        public S7Target S7Target { get; set; }
-
-        [JsonProperty("s7:address")]
-        public string? S7Address { get; set; }
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -225,35 +117,6 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("scheme")]
         public string? Scheme { get; set; }
     }
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum ModbusEntity
-    {
-        [EnumMember(Value = "HoldingRegister")]
-        HoldingRegister
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum S7Target
-    {
-        [EnumMember(Value = "DB")]
-        DataBlock,
-
-        [EnumMember(Value = "MB")]
-        Merker,
-
-        [EnumMember(Value = "EB")]
-        IPIProcessInput,
-
-        [EnumMember(Value = "AB")]
-        IPUProcessInput,
-
-        [EnumMember(Value = "TM")]
-        Timer,
-
-        [EnumMember(Value = "CT")]
-        Counter
-    };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
     public enum Op
@@ -310,42 +173,5 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [EnumMember(Value = "xsd:timedCommand")]
         TimedCommand
-    };
-
-    [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
-    public enum EIPTypeString
-    {
-        [EnumMember(Value = "xsd:BOOL")]
-        BOOL,
-
-        [EnumMember(Value = "xsd:SINT")]
-        SINT,
-
-        [EnumMember(Value = "xsd:INT")]
-        INT,
-
-        [EnumMember(Value = "xsd:DINT")]
-        DINT,
-
-        [EnumMember(Value = "xsd:LINT")]
-        LINT,
-
-        [EnumMember(Value = "xsd:USINT")]
-        USINT,
-
-        [EnumMember(Value = "xsd:UINT")]
-        UINT,
-
-        [EnumMember(Value = "xsd:UDINT")]
-        UDINT,
-
-        [EnumMember(Value = "xsd:ULINT")]
-        ULINT,
-
-        [EnumMember(Value = "xsd:REAL")]
-        REAL,
-
-        [EnumMember(Value = "xsd:LREAL")]
-        LREAL
     };
 }
