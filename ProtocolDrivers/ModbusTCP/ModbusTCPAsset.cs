@@ -119,6 +119,8 @@
                     if (tag.Type == "Float")
                     {
                         value = BitConverter.ToSingle(tagBytes);
+                        if (tag.Multiplier != 0.0f)
+                            value = (int)((float)value * tag.Multiplier);
                     }
                     else if (tag.Type == "Boolean")
                     {
@@ -127,6 +129,8 @@
                     else if (tag.Type == "Integer")
                     {
                         value = BitConverter.ToInt32(tagBytes);
+                        if (tag.Multiplier != 0.0f)
+                            value = (int)((float)value * tag.Multiplier);
                     }
                     else if (tag.Type == "String")
                     {

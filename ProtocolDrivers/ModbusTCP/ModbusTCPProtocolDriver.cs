@@ -6,7 +6,7 @@
     using System;
     using System.Collections.Generic;
 
-    public class ModbusTCPProtocolDriver: IProtocolDriver
+    public class ModbusTCPProtocolDriver : IProtocolDriver
     {
         public string Scheme => "modbus+tcp";
 
@@ -74,6 +74,7 @@
                 Entity = modbusForm.ModbusEntity.ToString(),
                 IsBigEndian = modbusForm.MostSignificantByte || modbusForm.MostSignificantWord,
                 SwapPerWord = modbusForm.MostSignificantWord,
+                Multiplier = modbusForm.ModbusScaler,
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };
