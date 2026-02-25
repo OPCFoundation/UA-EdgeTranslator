@@ -26,16 +26,17 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Modbus TCP
 * Modbus RTU (experimental)
 * OPC UA
+* HTTP (experimental)
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)
 * LoRaWAN
 * Matter
 * OCPP (Open Charge Point Protocol) V1.6J
+* OCPP (Open Charge Point Protocol) V2.1 (experimental)
 * Siemens S7Comm (experimental)
 * Mitsubishi MC Protocol (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
-* OCPP V2.1 (experimental). Bidirectional Power Transfer (BPT) for Electric Vehicles based in ISO 15118-20 is in the works!
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively or with the --net=host argument within a Docker container!
 

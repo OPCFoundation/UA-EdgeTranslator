@@ -48,6 +48,8 @@ jobs:
             csproj: ProtocolDrivers/Rockwell/Rockwell.csproj
           - name: siemens
             csproj: ProtocolDrivers/Siemens/Siemens.csproj
+          - name: http
+            csproj: ProtocolDrivers/HTTPClient/HTTPClient.csproj
 
     steps:
       - name: Checkout
