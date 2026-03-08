@@ -61,11 +61,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{36D1
 		Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld = Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld
 		Samples\s7.td.jsonld = Samples\s7.td.jsonld
 		Samples\Simple PLC.tm.jsonld = Samples\Simple PLC.tm.jsonld
+		Samples\SimpleHTTPClient.td.jsonld = Samples\SimpleHTTPClient.td.jsonld
 		Samples\Station.Nodeset2.tm.jsonld = Samples\Station.Nodeset2.tm.jsonld
 		Samples\SX1301EU.td.jsonld = Samples\SX1301EU.td.jsonld
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTTPClient", "ProtocolDrivers\HTTPClient\HTTPClient.csproj", "{C55BF4F3-7D54-037D-79EF-EBE6F23A61B1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{AA49A8FE-EDD2-404A-95D9-12CD3F4FF459}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

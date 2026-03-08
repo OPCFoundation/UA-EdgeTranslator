@@ -125,13 +125,12 @@
             return arguments;
         }
 
-        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId? nodeTypeId = null)
         {
             BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
-                TypeDefinitionId = VariableTypeIds.BaseVariableType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Opc.Ua.LocalizedText("en", name),
@@ -142,6 +141,11 @@
                 Value = value,
                 OnReadValue = _manager.OnReadValue
             };
+
+            if (variable != null && nodeTypeId != null)
+                variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, nodeTypeId);
+            else
+                variable.TypeDefinitionId = VariableTypeIds.BaseVariableType;
 
             if (writeable)
             {
