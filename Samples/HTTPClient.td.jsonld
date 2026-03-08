@@ -1,0 +1,114 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:http-sensor-01",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "http-sensor-01",
+  "base": "http://192.168.1.100:8080",
+  "title": "HTTP REST Sensor",
+  "properties": {
+    "Temperature": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/api/temperature",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "Humidity": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/api/humidity",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "Status": {
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/api/status",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 10000
+        }
+      ]
+    },
+    "Threshold": {
+      "type": "number",
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "/api/threshold",
+          "op": [
+            "readproperty",
+            "writeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 10000
+        }
+      ]
+    }
+  },
+  "actions": {
+    "Reset": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "Confirm": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "Result": {
+            "type": "string"
+          }
+        }
+      },
+      "forms": [
+        {
+          "href": "/api/reset",
+          "op": null,
+          "type": "xsd:string",
+          "pollingTime": 0
+        }
+      ]
+    }
+  }
+}
