@@ -29,8 +29,8 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("modv:pollingTime")]
         public long ModbusPollingTime { get; set; }
 
-        [JsonProperty("modv:scaling")]
-        public float ModbusScaler { get; set; }
+        [JsonProperty("modv:multiplier")]
+        public float ModbusMultiplier { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

@@ -74,7 +74,7 @@
                 Entity = modbusForm.ModbusEntity.ToString(),
                 IsBigEndian = modbusForm.MostSignificantByte || modbusForm.MostSignificantWord,
                 SwapPerWord = modbusForm.MostSignificantWord,
-                Multiplier = modbusForm.ModbusScaler,
+                Multiplier = modbusForm.ModbusMultiplier,
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };

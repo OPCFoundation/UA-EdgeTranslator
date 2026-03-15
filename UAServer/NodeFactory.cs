@@ -112,7 +112,7 @@
 
             PropertyState<Argument[]> arguments = new(methodState)
             {
-                NodeId = (nodeId == null)? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
+                NodeId = (nodeId == null) ? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
                 BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
@@ -125,7 +125,7 @@
             return arguments;
         }
 
-        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId? nodeTypeId = null)
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId? typeDefinitionId = null)
         {
             BaseDataVariableState variable = new(parent)
             {
@@ -142,8 +142,8 @@
                 OnReadValue = _manager.OnReadValue
             };
 
-            if (variable != null && nodeTypeId != null)
-                variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, nodeTypeId);
+            if (variable != null && typeDefinitionId != null)
+                variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
             else
                 variable.TypeDefinitionId = VariableTypeIds.BaseVariableType;
 

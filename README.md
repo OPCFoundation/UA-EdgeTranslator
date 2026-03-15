@@ -141,11 +141,11 @@ To test your setup bevor provisioning the UAEdgeTranslator with the proper certi
 "IGNORE_PROVISIONING_MODE": "1"
 ```
 
-Once connected, you will see the OPC UA Tree with branch called "WoTAssetConnectionManagement"
+Once connected, you will see the OPC UA address space with a node called "WoTAssetConnectionManagement"
 
-5) Open this branch and you will find another branch called "SimpleHTTPClient.td"
+5) Open this node and you will find another node called "SimpleHTTPClient.td"
 
 In this branch you will find a variable "IPAddress" that was defined in the "SimpleHTTPClient.td.jsonld". The variable is read every 60 seconds, although it probably does not change since it just calls a service on the internet determining your external IP address.
 
-More details on the WoT File format and description see https://reference.opcfoundation.org/WoT/Binding/v100/docs/6
+For more details on the WoT File format and description see https://reference.opcfoundation.org/WoT/Binding/v100/docs/6
 

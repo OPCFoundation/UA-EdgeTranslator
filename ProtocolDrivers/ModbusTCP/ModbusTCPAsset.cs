@@ -120,7 +120,7 @@
                     {
                         value = BitConverter.ToSingle(tagBytes);
                         if (tag.Multiplier != 0.0f)
-                            value = (int)((float)value * tag.Multiplier);
+                            value = (float)value * tag.Multiplier;
                     }
                     else if (tag.Type == "Boolean")
                     {
