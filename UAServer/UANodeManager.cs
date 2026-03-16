@@ -826,9 +826,16 @@ namespace Opc.Ua.Edge.Translator
                             DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
                             if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
+
+                                NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(opcuaType);
+                                if (defaultBinaryEncodingId == null)
+                                {
+                                    throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {opcuaType.BrowseName} ({opcuaType.NodeId}).");
+                                }
+
                                 ExtensionObject complexTypeInstance = new()
                                 {
-                                    TypeId = opcuaType.NodeId
+                                    TypeId = defaultBinaryEncodingId
                                 };
 
                                 BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
@@ -908,6 +915,25 @@ namespace Opc.Ua.Edge.Translator
             }
 
             AddTag(td, form, assetId, unitId, variableId, fieldPath);
+        }
+
+        private NodeId GetDefaultBinaryEncodingId(DataTypeState dataType)
+        {
+            var refs = new List<IReference>();
+            dataType.GetReferences(SystemContext, refs, ReferenceTypeIds.HasEncoding, isInverse: false);
+
+            foreach (var r in refs)
+            {
+                var targetId = ExpandedNodeId.ToNodeId(r.TargetId, SystemContext.NamespaceUris);
+                var targetNode = Find(targetId);
+
+                if (targetNode?.BrowseName?.Name == "Default Binary")
+                {
+                    return targetNode.NodeId;
+                }
+            }
+
+            return null;
         }
 
         private void AddTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string fieldPath)
