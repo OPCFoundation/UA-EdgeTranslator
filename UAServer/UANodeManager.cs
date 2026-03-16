@@ -827,7 +827,6 @@ namespace Opc.Ua.Edge.Translator
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
                             var opcuaType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
-                            //DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
                             if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
                                 ExtensionObject complexTypeInstance = new()
