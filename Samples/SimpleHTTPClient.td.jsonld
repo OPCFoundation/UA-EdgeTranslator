@@ -30,7 +30,7 @@
             "observeproperty"
           ],
           "type": "xsd:string",
-          "pollingTime": 100000
+          "pollingTime": 60000
         }
       ]
     }
