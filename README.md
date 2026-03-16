@@ -136,7 +136,7 @@ You can change these credentials in the launchSettings.json file under "Properti
 "OPCUA_PASSWORD": "myPassword",
 ```
 
-To test your setup bevor provisioning the UAEdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
+To test your setup before provisioning the UAEdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
 ```
 "IGNORE_PROVISIONING_MODE": "1"
 ```
