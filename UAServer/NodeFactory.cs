@@ -142,7 +142,7 @@
                 OnReadValue = _manager.OnReadValue
             };
 
-            if (variable != null && typeDefinitionId != null)
+            if (typeDefinitionId != null)
                 variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
             else
                 variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;

@@ -827,7 +827,6 @@ namespace Opc.Ua.Edge.Translator
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
                             var opcuaType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
-                            //DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
                             if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
                                 ExtensionObject complexTypeInstance = new()
@@ -1223,7 +1222,9 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        if (_ticks * 1000 % ((tag.PollingInterval / 1000) * 1000) == 0)
+                        int effectivePollingIntervalMs = tag.PollingInterval <= 0 ? 1000 : tag.PollingInterval;
+                        int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
+                        if (_ticks * 1000 % divisorMs == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }

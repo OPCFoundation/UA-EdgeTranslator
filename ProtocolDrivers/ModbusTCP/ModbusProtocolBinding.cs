@@ -30,7 +30,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public long ModbusPollingTime { get; set; }
 
         [JsonProperty("modv:multiplier")]
-        public float ModbusMultiplier { get; set; }
+        public float? ModbusMultiplier { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
