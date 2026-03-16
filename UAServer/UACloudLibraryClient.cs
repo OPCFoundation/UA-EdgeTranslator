@@ -104,8 +104,8 @@ namespace Opc.Ua.Edge.Translator
 
                         if (!string.IsNullOrEmpty(nameSpace.Nodeset.NodesetXml))
                         {
-                            Uri NodeSetUri= new Uri(namespaceUrl);
-                            var fileName = (NodeSetUri.Host+NodeSetUri.PathAndQuery).TrimEnd('/').Replace('/','.');
+                            Uri nodeSetUri = new Uri(namespaceUrl);
+                            var fileName = (nodeSetUri.Host + nodeSetUri.PathAndQuery).TrimEnd('/').Replace('/', '.');
                             filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", fileName + ".nodeset2.xml");
                             File.WriteAllText(filePath, nameSpace.Nodeset.NodesetXml);
                             Log.Logger.Information("Downloaded nodeset " + namespaceUrl + " from cloud library.");
