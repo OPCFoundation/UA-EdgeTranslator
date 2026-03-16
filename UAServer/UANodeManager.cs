@@ -1223,7 +1223,9 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        if (_ticks * 1000 % ((tag.PollingInterval / 1000) * 1000) == 0)
+                        int effectivePollingIntervalMs = tag.PollingInterval <= 0 ? 1000 : tag.PollingInterval;
+                        int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
+                        if (_ticks * 1000 % divisorMs == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
