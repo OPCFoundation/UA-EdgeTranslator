@@ -372,8 +372,8 @@ namespace Opc.Ua.Edge.Translator
 
         private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
-           lock (Lock)
-           {
+            lock (Lock)
+            {
                 // check if the asset node already exists
                 INodeBrowser browser = _assetManagement.CreateBrowser(
                     SystemContext,
@@ -416,7 +416,7 @@ namespace Opc.Ua.Edge.Translator
 
                 assetNode = asset;
                 return true;
-           }
+            }
         }
 
         public void RaiseModelChangedEvent(NodeId nodeId, ModelChangeStructureVerbMask verb)
@@ -860,7 +860,7 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
+                                    variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance, nodeTypeId);
                                     _uaVariables.Add(variableId, variable);
                                     AddPredefinedNode(SystemContext, variable);
                                 }
@@ -877,7 +877,7 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // it's an OPC UA built-in type
-                            variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly,null, nodeTypeId);
+                            variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
                             _uaVariables.Add(variableId, variable);
                             AddPredefinedNode(SystemContext, variable);
                         }
@@ -1223,7 +1223,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        if (_ticks * 1000 % ((tag.PollingInterval/1000)*1000) == 0)
+                        if (_ticks * 1000 % ((tag.PollingInterval / 1000) * 1000) == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
@@ -1237,7 +1237,7 @@ namespace Opc.Ua.Edge.Translator
                         // try reconnecting
                         try
                         {
-                            Log.Logger.Error("Trying to reconnect to asset " +  assetId);
+                            Log.Logger.Error("Trying to reconnect to asset " + assetId);
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
                             if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
                             {

@@ -55,7 +55,7 @@
 
   <ServerConfiguration>
     <BaseAddresses>
-      <ua:String>opc.tcp://localhost:4844/UA/UAEdgeTranslator</ua:String>
+      <ua:String>opc.tcp://localhost:4840/UA/UAEdgeTranslator</ua:String>
     </BaseAddresses>
 
     <SecurityPolicies>
@@ -96,12 +96,12 @@
     <AvailableSamplingRates />
 
     <RegistrationEndpoint>
-      <ua:EndpointUrl>opc.tcp://localhost:4844</ua:EndpointUrl>
+      <ua:EndpointUrl>opc.tcp://localhost:4840</ua:EndpointUrl>
       <ua:Server>
-        <ua:ApplicationUri>opc.tcp://localhost:4844</ua:ApplicationUri>
+        <ua:ApplicationUri>opc.tcp://localhost:4840</ua:ApplicationUri>
         <ua:ApplicationType>DiscoveryServer_3</ua:ApplicationType>
         <ua:DiscoveryUrls>
-          <ua:String>opc.tcp://localhost:4844</ua:String>
+          <ua:String>opc.tcp://localhost:4840</ua:String>
         </ua:DiscoveryUrls>
       </ua:Server>
       <ua:SecurityMode>SignAndEncrypt_3</ua:SecurityMode>

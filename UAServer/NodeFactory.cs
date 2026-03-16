@@ -145,7 +145,7 @@
             if (variable != null && typeDefinitionId != null)
                 variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
             else
-                variable.TypeDefinitionId = VariableTypeIds.BaseVariableType;
+                variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
 
             if (writeable)
             {

@@ -2,7 +2,7 @@
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
-EXPOSE 4844
+EXPOSE 4840
 EXPOSE 5000
 EXPOSE 5001
 EXPOSE 19520
