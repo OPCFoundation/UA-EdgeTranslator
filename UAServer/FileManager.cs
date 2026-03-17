@@ -289,7 +289,9 @@ namespace Opc.Ua.Edge.Translator
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
                     if (writeContent)
+                    {
                         File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
+                    }
                 }
 
                 return ServiceResult.Good;

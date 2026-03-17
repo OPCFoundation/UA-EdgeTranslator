@@ -114,13 +114,11 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
 
-# Quick Start Guide
+## Developer Quick Start Guide
 
-The following guide will help you get started with UA Edge Translator and onboard your first asset using the httpclient WoT driver. 
+The following guide will help you get started with adding protocol drivers to UA Edge Translator and onboard your first asset using the httpclient WoT driver. 
 
-This should give you a fast way to get to a useful state that you can modify with other drivers and WoT files.
-
-## 1) Prepare the UA-EdgeTranslator
+This should give you a fast way to get to a state that you can modify with other drivers and WoT files.
 
 1) Publish the HttpClient driver. This will copy the httpclient.dll and its debug file in the "drivers" folder under "UAServer"
 

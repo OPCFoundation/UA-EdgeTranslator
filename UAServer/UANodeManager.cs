@@ -41,8 +41,6 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly Dictionary<NodeId, FileManager> _fileManagers = new();
 
-        private uint _ticks = 0;
-
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
 
         private const uint _cWoTAssetManagement = 31;
@@ -809,7 +807,6 @@ namespace Opc.Ua.Edge.Translator
 
             string fieldPath = string.Empty;
 
-
             // create an OPC UA variable optionally with a specified type.
             if (!string.IsNullOrEmpty(property.Value.OpcUaType))
             {
@@ -818,8 +815,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string namespaceURI = opcuaTypeParts[1];
                     uint nodeID = uint.Parse(opcuaTypeParts[3]);
-                    var nodeTypeId = ExpandedNodeId.Parse(property.Value.OpcUaType, SystemContext.NamespaceUris);
-                    BaseDataVariableState variable = null;
+                    NodeId typeDefinitionId = ExpandedNodeId.Parse(property.Value.OpcUaType, SystemContext.NamespaceUris);
 
                     if (NamespaceUris.Contains(namespaceURI))
                     {
@@ -866,7 +862,7 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance, nodeTypeId);
+                                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance, typeDefinitionId);
                                     _uaVariables.Add(variableId, variable);
                                     AddPredefinedNode(SystemContext, variable);
                                 }
@@ -875,7 +871,7 @@ namespace Opc.Ua.Edge.Translator
                             {
 
                                 // OPC UA type info not found, default to float
-                                variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
+                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
                                 _uaVariables.Add(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
@@ -883,7 +879,7 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // it's an OPC UA built-in type
-                            variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
+                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
                             _uaVariables.Add(variableId, variable);
                             AddPredefinedNode(SystemContext, variable);
                         }
@@ -891,11 +887,10 @@ namespace Opc.Ua.Edge.Translator
                     else
                     {
                         // no namespace info, default to float
-                        variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
+                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
                         _uaVariables.Add(variableId, variable);
                         AddPredefinedNode(SystemContext, variable);
                     }
-
                 }
                 else
                 {
@@ -1233,8 +1228,11 @@ namespace Opc.Ua.Edge.Translator
         private void ReadAssetTags(object assetNameObject)
         {
             bool assetDeleted = false;
+            uint ticks = 0;
+
             while (!_shutdown && !assetDeleted)
             {
+                // the smallest polling frequency for an asset is 1 second to avoid unnecessary asset interface load from too frequent polling
                 Thread.Sleep(1000);
 
                 string assetId = (string)assetNameObject;
@@ -1250,7 +1248,7 @@ namespace Opc.Ua.Edge.Translator
                     {
                         int effectivePollingIntervalMs = tag.PollingInterval <= 0 ? 1000 : tag.PollingInterval;
                         int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
-                        if (_ticks * 1000 % divisorMs == 0)
+                        if (ticks * 1000 % divisorMs == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
@@ -1286,7 +1284,8 @@ namespace Opc.Ua.Edge.Translator
                         }
                     }
                 }
-                _ticks++;
+
+                ticks++;
             }
         }
 

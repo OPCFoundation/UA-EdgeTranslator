@@ -125,7 +125,7 @@
             return arguments;
         }
 
-        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId? typeDefinitionId = null)
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId typeDefinitionId = null)
         {
             BaseDataVariableState variable = new(parent)
             {
@@ -143,9 +143,13 @@
             };
 
             if (typeDefinitionId != null)
+            {
                 variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
+            }
             else
+            {
                 variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
+            }
 
             if (writeable)
             {

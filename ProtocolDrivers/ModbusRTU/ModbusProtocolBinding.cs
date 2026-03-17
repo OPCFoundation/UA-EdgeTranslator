@@ -27,7 +27,10 @@ namespace Opc.Ua.Edge.Translator.Models
         public bool MostSignificantWord { get; set; } // big endian on a per word basis
 
         [JsonProperty("modv:pollingTime")]
-        public long ModbusPollingTime { get; set; }
+        public long PollingTime { get; set; }
+
+        [JsonProperty("modv:multiplier")]
+        public float? Multiplier { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
