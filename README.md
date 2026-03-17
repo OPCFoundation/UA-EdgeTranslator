@@ -156,7 +156,7 @@ UA Edge Translator uses a zero trust security model and implements the following
 * OPC UA GDS Server Push provisioning mechanism for secure provisioning of the UA Edge Translator with issuer certificates and client certificates.
 * Secure Websockets using TLS for secure communication with LoRaWAN Network Server and OCPP Central System.
 * Matter Fabric persistency of certificates and keys in the /app/pki folder for secure communication with Matter assets.
-* Drivers can be loaded as DLLs at runtime and drivers considered insecure can be easily turned off by removing the respective DLL from the "drivers" folder.
+* Protocol drivers can be loaded as DLLs at runtime and drivers considered insecure can be easily turned off by removing the respective DLL from the "drivers" folder.
 
 > **Note**: If the /app/pki folder is mapped to a folder on the Docker host, make sure to protect this folder properly since it contains private keys and certificates. For example, you can use BitLocker to encrypt the folder on the Docker host.
 
