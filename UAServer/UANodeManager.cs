@@ -372,8 +372,8 @@ namespace Opc.Ua.Edge.Translator
 
         private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
-           lock (Lock)
-           {
+            lock (Lock)
+            {
                 // check if the asset node already exists
                 INodeBrowser browser = _assetManagement.CreateBrowser(
                     SystemContext,
@@ -416,7 +416,7 @@ namespace Opc.Ua.Edge.Translator
 
                 assetNode = asset;
                 return true;
-           }
+            }
         }
 
         public void RaiseModelChangedEvent(NodeId nodeId, ModelChangeStructureVerbMask verb)
@@ -809,6 +809,7 @@ namespace Opc.Ua.Edge.Translator
 
             string fieldPath = string.Empty;
 
+
             // create an OPC UA variable optionally with a specified type.
             if (!string.IsNullOrEmpty(property.Value.OpcUaType))
             {
@@ -817,13 +818,15 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string namespaceURI = opcuaTypeParts[1];
                     uint nodeID = uint.Parse(opcuaTypeParts[3]);
+                    var nodeTypeId = ExpandedNodeId.Parse(property.Value.OpcUaType, SystemContext.NamespaceUris);
+                    BaseDataVariableState variable = null;
 
                     if (NamespaceUris.Contains(namespaceURI))
                     {
                         // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
-                            DataTypeState opcuaType = (DataTypeState)Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris));
+                            var opcuaType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
                             if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
 
@@ -863,15 +866,16 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
+                                    variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance, nodeTypeId);
                                     _uaVariables.Add(variableId, variable);
                                     AddPredefinedNode(SystemContext, variable);
                                 }
                             }
                             else
                             {
+
                                 // OPC UA type info not found, default to float
-                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly);
+                                variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
                                 _uaVariables.Add(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
@@ -879,7 +883,7 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // it's an OPC UA built-in type
-                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly);
+                            variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
                             _uaVariables.Add(variableId, variable);
                             AddPredefinedNode(SystemContext, variable);
                         }
@@ -887,10 +891,11 @@ namespace Opc.Ua.Edge.Translator
                     else
                     {
                         // no namespace info, default to float
-                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly);
+                        variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, nodeTypeId);
                         _uaVariables.Add(variableId, variable);
                         AddPredefinedNode(SystemContext, variable);
                     }
+
                 }
                 else
                 {
@@ -1232,8 +1237,6 @@ namespace Opc.Ua.Edge.Translator
             {
                 Thread.Sleep(1000);
 
-                _ticks++;
-
                 string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
                 {
@@ -1245,7 +1248,9 @@ namespace Opc.Ua.Edge.Translator
                 {
                     try
                     {
-                        if (_ticks * 1000 % tag.PollingInterval == 0)
+                        int effectivePollingIntervalMs = tag.PollingInterval <= 0 ? 1000 : tag.PollingInterval;
+                        int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
+                        if (_ticks * 1000 % divisorMs == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
@@ -1259,7 +1264,7 @@ namespace Opc.Ua.Edge.Translator
                         // try reconnecting
                         try
                         {
-                            Log.Logger.Error("Trying to reconnect to asset " +  assetId);
+                            Log.Logger.Error("Trying to reconnect to asset " + assetId);
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
                             if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
                             {
@@ -1281,6 +1286,7 @@ namespace Opc.Ua.Edge.Translator
                         }
                     }
                 }
+                _ticks++;
             }
         }
 

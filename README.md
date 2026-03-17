@@ -113,3 +113,39 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space.
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
+
+# Quick Start Guide
+
+The following guide will help you get started with UA Edge Translator and onboard your first asset using the httpclient WoT driver. 
+
+This should give you a fast way to get to a useful state that you can modify with other drivers and WoT files.
+
+## 1) Prepare the UA-EdgeTranslator
+
+1) Publish the HttpClient driver. This will copy the httpclient.dll and its debug file in the "drivers" folder under "UAServer"
+
+2) Copy the WoT File "SimpleHTTPClient.td.jsonld" in the "settings" folder under "UAServer"
+
+3) Load the UAEdgeTranslator project and run it.
+
+4) Connect to the opc server of the UAEdgeTranslator using your favorite OPC UA Client (i.e. UAExpert). The default credentials are "myUsername" and "myPassword". 
+
+You can change these credentials in the launchSettings.json file under "Properties" of the UAEdgeTranslator project:
+```
+"OPCUA_USERNAME": "myUsername",
+"OPCUA_PASSWORD": "myPassword",
+```
+
+To test your setup before provisioning the UAEdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
+```
+"IGNORE_PROVISIONING_MODE": "1"
+```
+
+Once connected, you will see the OPC UA address space with a node called "WoTAssetConnectionManagement"
+
+5) Open this node and you will find another node called "SimpleHTTPClient.td"
+
+In this branch you will find a variable "IPAddress" that was defined in the "SimpleHTTPClient.td.jsonld". The variable is read every 60 seconds, although it probably does not change since it just calls a service on the internet determining your external IP address.
+
+For more details on the WoT File format and description see https://reference.opcfoundation.org/WoT/Binding/v100/docs/6
+

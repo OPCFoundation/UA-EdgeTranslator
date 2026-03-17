@@ -112,7 +112,7 @@
 
             PropertyState<Argument[]> arguments = new(methodState)
             {
-                NodeId = (nodeId == null)? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
+                NodeId = (nodeId == null) ? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
                 BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,
@@ -125,13 +125,12 @@
             return arguments;
         }
 
-        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId? typeDefinitionId = null)
         {
             BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
-                TypeDefinitionId = VariableTypeIds.BaseVariableType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Opc.Ua.LocalizedText("en", name),
@@ -142,6 +141,11 @@
                 Value = value,
                 OnReadValue = _manager.OnReadValue
             };
+
+            if (typeDefinitionId != null)
+                variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
+            else
+                variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
 
             if (writeable)
             {
