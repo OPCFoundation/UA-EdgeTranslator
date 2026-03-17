@@ -39,6 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="nodesets\" />
     <Folder Include="settings\" />
   </ItemGroup>
 

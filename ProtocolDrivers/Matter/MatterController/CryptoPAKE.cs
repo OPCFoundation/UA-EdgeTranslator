@@ -67,9 +67,6 @@ namespace Matter.Core
             var Z = yNwo.Multiply(x);
             var V = yNwo.Multiply(w1);
 
-            var Zs = BitConverter.ToString(Z.GetEncoded(false)).Replace("-", "");
-            var Vs = BitConverter.ToString(V.GetEncoded(false)).Replace("-", "");
-
             return ComputeSecretAndVerifiers(contextHash, w0, X, Y, Z, V);
         }
 

@@ -147,3 +147,31 @@ In this branch you will find a variable "IPAddress" that was defined in the "Sim
 
 For more details on the WoT File format and description see https://reference.opcfoundation.org/WoT/Binding/v100/docs/6
 
+## Threat Model and Security Considerations
+
+UA Edge Translator uses a zero trust security model and implements the following security features:
+* UA Edge Translator runs within a Docker container in a restricted network environment and with limited permissions to the host system.
+* UA Edge Translator comes with extensive logging to the console and to disk, but does not log any sensitive information such as passwords or private keys.
+* OPC UA SHA256 sign & encrypt security policies and username/passowrd user authentication for secure communication between clients and the UA Edge Translator OPC UA server as well as between the UA Edge Translator OPC UA client protocol driver and OPC UA assets.
+* OPC UA GDS Server Push provisioning mechanism for secure provisioning of the UA Edge Translator with issuer certificates and client certificates.
+* Secure Websockets using TLS for secure communication with LoRaWAN Network Server and OCPP Central System.
+* Matter Fabric persistency of certificates and keys in the /app/pki folder for secure communication with Matter assets.
+* Drivers can be loaded as DLLs at runtime and drivers considered insecure can be easily turned off by removing the respective DLL from the "drivers" folder.
+
+> **Note**: If the /app/pki folder is mapped to a folder on the Docker host, make sure to protect this folder properly since it contains private keys and certificates. For example, you can use BitLocker to encrypt the folder on the Docker host.
+
+### STRIDE Analysis of OPC UA server interface
+* Spoofing: Mitigated by OPC UA username/password authentication and client certificate authentication.
+* Tampering: Mitigated by OPC UA message signing and encryption.
+* Repudiation: Mitigated by OPC UA message signing and encryption, as well as append-only logging.
+* Information Disclosure: Mitigated by OPC UA message encryption.
+* Denial of Service: Mitigated by OPC UA secure channels and session management with maximums set for sessions, subscriptions, monitored items and message size limits.
+* Elevation of Privilege: Mitigated by OPC UA user authentication as well as a provisioning mode preventing read/write access to variables before GDS Push is carried out.
+
+### STRIDE Analysis of LoRaWAN and OCPP Secure Websocket server interfaces
+* Spoofing: Mitigated by TLS client certificate authentication for the LoRaWAN Network and communication for OCPP Central System.
+* Tampering: Mitigated by TLS encryption for the LoRaWAN Network and OCPP Central System.
+* Repudiation: Mitigated by TLS encryption for the LoRaWAN Network and OCPP Central System, as well as append-only logging.
+* Information Disclosure: Mitigated by TLS encryption for the LoRaWAN Network and OCPP Central System.
+* Denial of Service: Mitigated by secure Websocket communication and retry/backoff mechanisms in the code.
+* Elevation of Privilege: Mitigated by TLS client certificate authentication for the LoRaWAN Network and secure Websocket communication for OCPP.
