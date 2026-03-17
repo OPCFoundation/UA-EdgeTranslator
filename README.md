@@ -152,13 +152,13 @@ For more details on the WoT File format and description see https://reference.op
 UA Edge Translator uses a zero trust security model and implements the following security features:
 * UA Edge Translator runs within a Docker container in a restricted network environment and with limited permissions to the host system.
 * UA Edge Translator comes with extensive logging to the console and to disk, but does not log any sensitive information such as passwords or private keys.
-* OPC UA SHA256 sign & encrypt security policies and username/passowrd user authentication for secure communication between clients and the UA Edge Translator OPC UA server as well as between the UA Edge Translator OPC UA client protocol driver and OPC UA assets.
+* OPC UA SHA256 sign & encrypt server security policy and username/passowrd user authentication for secure communication between clients and the UA Edge Translator OPC UA server as well as between the UA Edge Translator OPC UA client protocol driver and OPC UA assets.
 * OPC UA GDS Server Push provisioning mechanism for secure provisioning of the UA Edge Translator with issuer certificates and client certificates.
 * Secure Websockets using TLS for secure communication with LoRaWAN Network Server and OCPP Central System.
 * Matter Fabric persistency of certificates and keys in the /app/pki folder for secure communication with Matter assets.
-* Protocol drivers can be loaded as DLLs at runtime and drivers considered insecure can be easily turned off by removing the respective DLL from the "drivers" folder.
+* Protocol drivers are loaded as DLLs at runtime and drivers considered insecure can be easily turned off by removing the respective DLL from the "drivers" folder.
 
-> **Note**: If the /app/pki folder is mapped to a folder on the Docker host, make sure to protect this folder properly since it contains private keys and certificates. For example, you can use BitLocker to encrypt the folder on the Docker host.
+> **Note**: If the /app/pki folder is mapped to a folder on the Docker host, make sure to protect this folder since it contains private keys and certificates. For example, you can use BitLocker to encrypt the folder on the Docker host.
 
 ### STRIDE Analysis of OPC UA server interface
 * Spoofing: Mitigated by OPC UA username/password authentication and client certificate authentication.
