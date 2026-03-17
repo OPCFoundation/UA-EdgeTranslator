@@ -145,7 +145,7 @@ Once connected, you will see the OPC UA address space with a node called "WoTAss
 
 In this branch you will find a variable "IPAddress" that was defined in the "SimpleHTTPClient.td.jsonld". The variable is read every 60 seconds, although it probably does not change since it just calls a service on the internet determining your external IP address.
 
-For more details on the WoT File format and description see https://reference.opcfoundation.org/WoT/Binding/v100/docs/6
+For more details on the Web of Things file format and description see https://www.w3.org/TR/wot-thing-description-2.0/
 
 ## Threat Model and Security Considerations
 
