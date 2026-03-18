@@ -280,10 +280,11 @@ namespace Opc.Ua.Edge.Translator
                     bool writeContent = true;
                     if (string.IsNullOrEmpty(contents))
                     {
-                        //user closed the file transfer without content. Try to load contents locally instead
+                        // the user closed the file transfer without content: Try to load contents locally instead
                         writeContent = false;
                         contents = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"));
                     }
+
                     _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
 
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);

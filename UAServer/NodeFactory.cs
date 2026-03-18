@@ -54,7 +54,7 @@
             return obj;
         }
 
-        public PropertyState CreateProperty(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null)
+        public PropertyState CreateProperty(NodeState parent, string name, NodeId dataType, ushort namespaceIndex, bool writeable = false, object value = null)
         {
             PropertyState property = new(parent)
             {
@@ -67,7 +67,7 @@
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
-                DataType = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris),
+                DataType = dataType,
                 Value = value,
                 OnReadValue = _manager.OnReadValue
             };
@@ -125,31 +125,23 @@
             return arguments;
         }
 
-        public BaseDataVariableState CreateVariable(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, bool writeable = false, object value = null, ExpandedNodeId typeDefinitionId = null)
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, NodeId dataType, ushort namespaceIndex, bool writeable = false, object value = null)
         {
             BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
                 ReferenceTypeId = ReferenceTypes.Organizes,
                 NodeId = new NodeId(name, namespaceIndex),
+                TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new Opc.Ua.LocalizedText("en", name),
                 WriteMask = AttributeWriteMask.None,
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
-                DataType = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris),
+                DataType = dataType,
                 Value = value,
                 OnReadValue = _manager.OnReadValue
             };
-
-            if (typeDefinitionId != null)
-            {
-                variable.AddReference(ReferenceTypeIds.HasTypeDefinition, false, typeDefinitionId);
-            }
-            else
-            {
-                variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
-            }
 
             if (writeable)
             {

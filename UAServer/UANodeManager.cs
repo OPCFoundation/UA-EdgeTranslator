@@ -122,6 +122,7 @@ namespace Opc.Ua.Edge.Translator
                 LoadLocalWoTFiles();
 
                 AddReverseReferences(externalReferences);
+
                 base.CreateAddressSpace(externalReferences);
             }
         }
@@ -193,11 +194,11 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, fileNode);
 
             // create a property listing our supported WoT protocol bindings
-            PropertyState supportedWoTBindingsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedWoTBindings", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
+            PropertyState supportedWoTBindingsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedWoTBindings", DataTypes.UriString, WoTConNamespaceIndex, false);
             AddPredefinedNode(SystemContext, supportedWoTBindingsProperty);
 
             // create a property listing our supported OPC UA nodesets to map to
-            PropertyState supportedOPCUAInfoModelsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", new ExpandedNodeId(DataTypes.UriString), WoTConNamespaceIndex, false);
+            PropertyState supportedOPCUAInfoModelsProperty = _nodeFactory.CreateProperty(_assetManagement, "SupportedOPCUAInfoModels", DataTypes.UriString, WoTConNamespaceIndex, false);
             AddPredefinedNode(SystemContext, supportedOPCUAInfoModelsProperty);
 
             BaseObjectState configuration = _nodeFactory.CreateObject(
@@ -207,12 +208,12 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, configuration);
 
             // create a property for the license key
-            PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", new ExpandedNodeId(DataTypes.String), WoTConNamespaceIndex, true, string.Empty);
+            PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", DataTypes.String, WoTConNamespaceIndex, true, string.Empty);
             _uaProperties.Add("License", licenseProperty);
             AddPredefinedNode(SystemContext, licenseProperty);
 
             // create a variable for the current memory working set
-            BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "MemoryWorkingSet(MB)", new ExpandedNodeId(DataTypes.Int32), WoTConNamespaceIndex);
+            BaseDataVariableState variable = _nodeFactory.CreateVariable(_assetManagement, "MemoryWorkingSet(MB)", DataTypes.Int32, WoTConNamespaceIndex);
             AddPredefinedNode(SystemContext, variable);
         }
 
@@ -301,24 +302,9 @@ namespace Opc.Ua.Edge.Translator
 
                 if ((nodeSet.NamespaceUris != null) && (nodeSet.NamespaceUris.Length > 0))
                 {
-                    List<string> newNamespaceUris = nodeSet.NamespaceUris.ToList();
-                    List<string> existingNamespaceUris = NamespaceUris.ToList();
-
-                    foreach (string ns in newNamespaceUris)
+                    foreach (string ns in nodeSet.NamespaceUris)
                     {
-                        if (!existingNamespaceUris.Contains(ns))
-                        {
-                            lock (Lock)
-                            {
-                                existingNamespaceUris.Add(ns);
-
-                                // update the table used by this NodeManager
-                                SetNamespaces(existingNamespaceUris.ToArray());
-
-                                // register the new URI with the MasterNodeManager
-                                Server.NodeManager.RegisterNamespaceManager(ns, this);
-                            }
-                        }
+                        AddNamespace(ns);
                     }
                 }
 
@@ -335,6 +321,18 @@ namespace Opc.Ua.Edge.Translator
                         Log.Logger.Error(ex.Message, ex);
                     }
                 }
+
+                // ensure reverse references are registered for the predefined nodes added at runtime
+                Dictionary<NodeId, IList<IReference>> externalReferences = new();
+                AddReverseReferences(externalReferences);
+
+                // apply external refs via MasterNodeManager
+                foreach (var kvp in externalReferences)
+                {
+                    Server.NodeManager.AddReferences(kvp.Key, kvp.Value);
+                }
+
+                RaiseModelChangedEvent(ObjectIds.TypesFolder, ModelChangeStructureVerbMask.NodeAdded);
             }
         }
 
@@ -606,18 +604,7 @@ namespace Opc.Ua.Edge.Translator
 
             // add a new namespace for the Thing Description itself
             string namespaceUri = "http://opcfoundation.org/UA/" + td.Name + "/";
-            List<string> existingNamespaceUris = NamespaceUris.ToList();
-
-            lock (Lock)
-            {
-                existingNamespaceUris.Add(namespaceUri);
-
-                // update the table used by this NodeManager
-                SetNamespaces(existingNamespaceUris.ToArray());
-
-                // register the new URI with the MasterNodeManager
-                Server.NodeManager.RegisterNamespaceManager(namespaceUri, this);
-            }
+            AddNamespace(namespaceUri);
 
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
@@ -648,7 +635,67 @@ namespace Opc.Ua.Edge.Translator
 
             _ = Task.Factory.StartNew(ReadAssetTags, td.Name, TaskCreationOptions.LongRunning);
 
+            RaiseModelChangedEvent(parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
+
             Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
+        }
+
+        private void AddNamespace(string namespaceUri)
+        {
+			if (string.IsNullOrWhiteSpace(namespaceUri))
+            {
+                throw new ArgumentNullException(nameof(namespaceUri));
+            }
+
+            NamespaceTable serverNSTable = Server.NamespaceUris;
+            List<string> nodeManagerNSTable = NamespaceUris.ToList();
+            int index = serverNSTable.GetIndex(namespaceUri);
+            if (index >= 0)
+            {
+                // already added
+                return;
+            }
+
+            lock (Lock)
+            {
+                serverNSTable.Append(namespaceUri);
+                nodeManagerNSTable.Add(namespaceUri);
+
+                // update the table used by this NodeManager
+                SetNamespaces(nodeManagerNSTable.ToArray());
+
+                // register the new URI with the MasterNodeManager
+                Server.NodeManager.RegisterNamespaceManager(namespaceUri, this);
+            }
+
+            if (Server.ServerObject != null)
+            {
+                lock (Server.CoreNodeManager.DataLock)
+                {
+                    // update the NamespaceArray variable with the new list of namespaces
+                    var nsArrayVar = Server.ServerObject.NamespaceArray;
+                    if (nsArrayVar != null)
+                    {
+                        nsArrayVar.Value = Server.NamespaceUris.ToArray();
+                        nsArrayVar.Timestamp = DateTime.UtcNow;
+                        nsArrayVar.StatusCode = StatusCodes.Good;
+                        nsArrayVar.ClearChangeMasks(SystemContext, false);
+                    }
+
+                    // update the URIs version variable to trigger client updates of the namespace array
+                    var uvVar = Server.ServerObject.UrisVersion;
+                    if (uvVar != null)
+                    {
+                        uvVar.Value = (uint)DateTime.UtcNow.Ticks;
+                        uvVar.Timestamp = DateTime.UtcNow;
+                        uvVar.StatusCode = StatusCodes.Good;
+                        uvVar.ClearChangeMasks(SystemContext, false);
+                    }
+
+                    // ensure changes propagate
+                    Server.ServerObject.ClearChangeMasks(SystemContext, true);
+                }
+            }
         }
 
         private void AddConstantProperty(NodeState parent, ThingDescription td, KeyValuePair<string, Property> property)
@@ -662,24 +709,24 @@ namespace Opc.Ua.Edge.Translator
                 BaseDataVariableState variable;
                 if (property.Value.Type == TypeEnum.String)
                 {
-                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.String), assetNamespaceIndex, false, property.Value.Const.ToString());
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, DataTypes.String, assetNamespaceIndex, false, property.Value.Const.ToString());
                 }
                 else if (property.Value.Type == TypeEnum.Number)
                 {
-                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Double), assetNamespaceIndex, false, Convert.ToDouble(property.Value.Const));
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, DataTypes.Double, assetNamespaceIndex, false, Convert.ToDouble(property.Value.Const));
                 }
                 else if (property.Value.Type == TypeEnum.Integer)
                 {
-                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Int32), assetNamespaceIndex, false, Convert.ToInt32(property.Value.Const));
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, DataTypes.Int32, assetNamespaceIndex, false, Convert.ToInt32(property.Value.Const));
                 }
                 else if (property.Value.Type == TypeEnum.Boolean)
                 {
-                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.Boolean), assetNamespaceIndex, false, Convert.ToBoolean(property.Value.Const));
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, DataTypes.Boolean, assetNamespaceIndex, false, Convert.ToBoolean(property.Value.Const));
                 }
                 else
                 {
                     // default to string
-                    variable = _nodeFactory.CreateVariable(parent, property.Key, new ExpandedNodeId(DataTypes.String), assetNamespaceIndex, false, property.Value.Const.ToString());
+                    variable = _nodeFactory.CreateVariable(parent, property.Key, DataTypes.String, assetNamespaceIndex, false, property.Value.Const.ToString());
                 }
 
                 AddPredefinedNode(SystemContext, variable);
@@ -814,22 +861,20 @@ namespace Opc.Ua.Edge.Translator
                 if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i"))
                 {
                     string namespaceURI = opcuaTypeParts[1];
-                    uint nodeID = uint.Parse(opcuaTypeParts[3]);
-                    NodeId typeDefinitionId = ExpandedNodeId.Parse(property.Value.OpcUaType, SystemContext.NamespaceUris);
-
                     if (NamespaceUris.Contains(namespaceURI))
                     {
+                        var dataType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
+
                         // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
-                            var opcuaType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
-                            if ((opcuaType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)opcuaType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
+                            if ((dataType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)dataType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
                             {
 
-                                NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(opcuaType);
+                                NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
                                 if (defaultBinaryEncodingId == null)
                                 {
-                                    throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {opcuaType.BrowseName} ({opcuaType.NodeId}).");
+                                    throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
                                 }
 
                                 ExtensionObject complexTypeInstance = new()
@@ -837,8 +882,12 @@ namespace Opc.Ua.Edge.Translator
                                     TypeId = defaultBinaryEncodingId
                                 };
 
-                                BinaryEncoder encoder = new(ServiceMessageContext.GlobalContext);
-                                foreach (StructureField field in ((StructureDefinition)opcuaType?.DataTypeDefinition?.Body).Fields)
+                                BinaryEncoder encoder = new(new ServiceMessageContext {
+                                    NamespaceUris = Server.NamespaceUris,
+                                    Factory = Server.Factory
+                                });
+
+                                foreach (StructureField field in ((StructureDefinition)dataType?.DataTypeDefinition?.Body).Fields)
                                 {
                                     // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
                                     switch (field.DataType.ToString())
@@ -862,16 +911,15 @@ namespace Opc.Ua.Edge.Translator
                                 // now add it, if it doesn't already exist
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
-                                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance, typeDefinitionId);
+                                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
                                     _uaVariables.Add(variableId, variable);
                                     AddPredefinedNode(SystemContext, variable);
                                 }
                             }
                             else
                             {
-
                                 // OPC UA type info not found, default to float
-                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
+                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
                                 _uaVariables.Add(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
@@ -879,7 +927,7 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // it's an OPC UA built-in type
-                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(new NodeId(nodeID), namespaceURI), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
+                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly);
                             _uaVariables.Add(variableId, variable);
                             AddPredefinedNode(SystemContext, variable);
                         }
@@ -887,7 +935,7 @@ namespace Opc.Ua.Edge.Translator
                     else
                     {
                         // no namespace info, default to float
-                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly, null, typeDefinitionId);
+                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
                         _uaVariables.Add(variableId, variable);
                         AddPredefinedNode(SystemContext, variable);
                     }
@@ -895,7 +943,7 @@ namespace Opc.Ua.Edge.Translator
                 else
                 {
                     // can't parse type info, default to float
-                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly);
+                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
                     _uaVariables.Add(variableId, variable);
                     AddPredefinedNode(SystemContext, variable);
                 }
@@ -903,7 +951,7 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 // no type info, default to float
-                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, new ExpandedNodeId(DataTypes.Float), assetNamespaceIndex, !property.Value.ReadOnly);
+                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
                 _uaVariables.Add(variableId, variable);
                 AddPredefinedNode(SystemContext, variable);
             }
@@ -1298,8 +1346,18 @@ namespace Opc.Ua.Edge.Translator
             {
                 // decode existing values and re-encode them with our updated value
                 var oldBody = oldEo.Body as byte[];
-                var decoder = new BinaryDecoder(oldBody, ServiceMessageContext.GlobalContext);
-                var encoder = new BinaryEncoder(ServiceMessageContext.GlobalContext);
+                var decoder = new BinaryDecoder(
+                    oldBody,
+                    new ServiceMessageContext {
+                        NamespaceUris = Server.NamespaceUris,
+                        Factory = Server.Factory
+                    });
+
+                var encoder = new BinaryEncoder(
+                    new ServiceMessageContext {
+                        NamespaceUris = Server.NamespaceUris,
+                        Factory = Server.Factory
+                    });
 
                 // Resolve the structured type definition so we can preserve all fields
                 var opcuaType = (DataTypeState)Find(variable.DataType);
