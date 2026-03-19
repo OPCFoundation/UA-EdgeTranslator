@@ -26,7 +26,8 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Modbus TCP
 * Modbus RTU (experimental)
 * OPC UA
-* HTTP (experimental)
+* HTTP
+* Aveva PI (experimental)
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)
 * LoRaWAN

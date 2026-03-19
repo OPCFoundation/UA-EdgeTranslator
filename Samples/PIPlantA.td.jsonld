@@ -1,0 +1,72 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:pi:af:PlantA",
+  "title": "PlantA",
+  "description": "Sample Thing Description for AVEVA PI Web API (AF hierarchy -> dot notation).",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "base": "piwebapi://piwebapi.example.com/piwebapi",
+  "properties": {
+    "PlantA.Area1.Pump01.Flow": {
+      "title": "Flow",
+      "description": "AF Attribute: \\\\AFSERVER\\MyDb\\PlantA\\Area1\\Pump01|Flow",
+      "type": "number",
+      "readOnly": true,
+      "forms": [
+        {
+          "href": "streams/AbCDefGhIjKlMnOpQrStUv/value",
+          "type": "Float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "PlantA.Area1.Pump01.Running": {
+      "title": "Running",
+      "description": "AF Attribute: \\\\AFSERVER\\MyDb\\PlantA\\Area1\\Pump01|Running",
+      "type": "boolean",
+      "readOnly": true,
+      "forms": [
+        {
+          "href": "streams/ZyXwVuTsRqPoNmLkJiHgFeDc/value",
+          "type": "Boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "PlantA.Area1.Pump01.TotalStarts": {
+      "title": "TotalStarts",
+      "description": "AF Attribute: \\\\AFSERVER\\MyDb\\PlantA\\Area1\\Pump01|TotalStarts",
+      "type": "integer",
+      "readOnly": true,
+      "forms": [
+        {
+          "href": "streams/QqRrSsTtUuVvWwXxYyZz0011/value",
+          "type": "Integer",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "PlantA.Area1.Pump01.OperatorNote": {
+      "title": "OperatorNote",
+      "description": "AF Attribute: \\\\AFSERVER\\MyDb\\PlantA\\Area1\\Pump01|OperatorNote",
+      "type": "string",
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "streams/NnOoPpQqRrSsTtUuVvWw2233/value",
+          "type": "String",
+          "pollingTime": 10000
+        }
+      ]
+    }
+  },
+  "actions": {}
+}

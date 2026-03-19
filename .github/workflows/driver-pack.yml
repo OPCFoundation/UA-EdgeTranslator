@@ -50,6 +50,8 @@ jobs:
             csproj: ProtocolDrivers/Siemens/Siemens.csproj
           - name: http
             csproj: ProtocolDrivers/HTTPClient/HTTPClient.csproj
+          - name: avevapi
+            csproj: ProtocolDrivers/AvevaPI/PIClient.csproj
 
     steps:
       - name: Checkout
