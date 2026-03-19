@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
+    <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
