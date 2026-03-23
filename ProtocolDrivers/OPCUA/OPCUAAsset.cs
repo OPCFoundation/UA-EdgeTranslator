@@ -11,6 +11,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.IO;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class OPCUAAsset : IAsset
@@ -40,7 +41,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             if (_session != null)
             {
-                _session.Close();
+                _session.CloseAsync().GetAwaiter().GetResult();
                 _session = null;
             }
         }
@@ -116,7 +117,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (_session != null)
             {
                 var nodeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(addressWithinAsset), _session.NamespaceUris);
-                var value = _session.ReadValue(nodeId);
+                var value = _session.ReadValueAsync(nodeId).GetAwaiter().GetResult();
 
 #pragma warning disable SYSLIB0011
                 BinaryFormatter bf = new();
@@ -157,21 +158,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     ReturnDiagnostics = (uint)DiagnosticsMasks.All
                 };
 
-                StatusCodeCollection results = null;
-                DiagnosticInfoCollection diagnosticInfos = null;
-
-                var responseHeader = _session.Write(
+                WriteResponse response = _session.WriteAsync(
                     requestHeader,
                     nodesToWrite,
-                    out results,
-                    out diagnosticInfos);
+                    CancellationToken.None).GetAwaiter().GetResult();
+                ClientBase.ValidateResponse(response.Results, nodesToWrite);
+                ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToWrite);
 
-                ClientBase.ValidateResponse(results, nodesToWrite);
-                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToWrite);
-
-                if (StatusCode.IsBad(results[0]))
+                if (StatusCode.IsBad(response.Results[0]))
                 {
-                    throw ServiceResultException.Create(results[0], 0, diagnosticInfos, responseHeader.StringTable);
+                    throw ServiceResultException.Create(response.Results[0], 0, response.DiagnosticInfos, response.ResponseHeader.StringTable);
                 }
 
                 return Task.CompletedTask;
@@ -188,7 +184,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 return;
             }
 
-            var selectedEndpoint = CoreClientUtils.SelectEndpoint(Program.App.ApplicationConfiguration, endpointUrl, true);
+            var selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(Program.App.ApplicationConfiguration, endpointUrl, true, Program.Telemetry).ConfigureAwait(false);
             var configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create(Program.App.ApplicationConfiguration));
 
             var timeout = (uint)Program.App.ApplicationConfiguration.ClientConfiguration.DefaultSessionTimeout;
@@ -200,12 +196,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             else
             {
-                userIdentity = new UserIdentity(username, password);
+                userIdentity = new UserIdentity(username, Encoding.UTF8.GetBytes(password));
             }
 
             try
             {
-                _session = await Session.Create(
+                _session = await new DefaultSessionFactory(Program.Telemetry).CreateAsync(
                     Program.App.ApplicationConfiguration,
                     configuredEndpoint,
                     true,
@@ -241,7 +237,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     _complexTypeList.Add(_session, new ComplexTypeSystem(_session));
                 }
 
-                await _complexTypeList[_session].Load().ConfigureAwait(false);
+                await _complexTypeList[_session].LoadAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -291,7 +287,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                                 if (!reconnectInProgress)
                                 {
-                                    var reconnectHandler = new SessionReconnectHandler();
+                                    var reconnectHandler = new SessionReconnectHandler(Program.Telemetry);
                                     lock (_reconnectHandlersLock)
                                     {
                                         _reconnectHandlers.Add(reconnectHandler);
@@ -371,35 +367,31 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
             }
 
-            CallMethodResultCollection results;
-            DiagnosticInfoCollection diagnosticInfos;
-
-            ResponseHeader responseHeader = _session.Call(
+            CallResponse response = _session.CallAsync(
                 null,
                 requests,
-                out results,
-                out diagnosticInfos);
+                CancellationToken.None).GetAwaiter().GetResult();
 
-            ClientBase.ValidateResponse(results, requests);
-            ClientBase.ValidateDiagnosticInfos(diagnosticInfos, requests);
+            ClientBase.ValidateResponse(response.Results, requests);
+            ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, requests);
 
             StatusCode status = new StatusCode(0);
-            if ((results != null) && (results.Count > 0))
+            if ((response.Results != null) && (response.Results.Count > 0))
             {
-                status = results[0].StatusCode;
+                status = response.Results[0].StatusCode;
 
-                if (StatusCode.IsBad(results[0].StatusCode) && (responseHeader.StringTable != null) && (responseHeader.StringTable.Count > 0))
+                if (StatusCode.IsBad(response.Results[0].StatusCode) && (response.ResponseHeader.StringTable != null) && (response.ResponseHeader.StringTable.Count > 0))
                 {
-                    return responseHeader.StringTable[0];
+                    return response.ResponseHeader.StringTable[0];
                 }
 
-                if ((results[0].OutputArguments != null) && (results[0].OutputArguments.Count > 0))
+                if ((response.Results[0].OutputArguments != null) && (response.Results[0].OutputArguments.Count > 0))
                 {
-                    outputArgs = new List<object>(results[0].OutputArguments.Count);
+                    outputArgs = new List<object>(response.Results[0].OutputArguments.Count);
 
-                    for (int i = 0; i < results[0].OutputArguments.Count; i++)
+                    for (int i = 0; i < response.Results[0].OutputArguments.Count; i++)
                     {
-                        outputArgs.Add(results[0].OutputArguments[i].Value);
+                        outputArgs.Add(response.Results[0].OutputArguments[i].Value);
                     }
                 }
             }

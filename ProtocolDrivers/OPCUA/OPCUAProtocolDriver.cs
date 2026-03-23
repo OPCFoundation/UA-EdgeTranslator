@@ -21,9 +21,9 @@
             // connect to an OPC UA Global Discovery Server
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")))
             {
-                var client = DiscoveryClient.Create(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")));
+                var client = DiscoveryClient.CreateAsync(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")), Program.Telemetry).GetAwaiter().GetResult();
 
-                var servers = client.FindServers(null);
+                var servers = client.FindServersAsync(null).GetAwaiter().GetResult();
                 foreach (var server in servers)
                 {
                     Log.Logger.Information($"Server: {server.ApplicationName}");

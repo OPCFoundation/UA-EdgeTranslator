@@ -103,7 +103,6 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 
 ## Optional Environment Variables
 
-* `LOG_FILE_PATH` - path to the log file to use. Default is /logs/uaedgetranslator.logfile.txt (in the Docker container).
 * `APP_NAME` - OPC UA application name to use. Default is UAEdgeTranslator.
 * `UACLURL` - UA Cloud Library URL (e.g. https://uacloudlibrary.opcfoundation.org or https://cloudlib.cesmii.net).
 * `UACLUsername` - UA Cloud Library username.

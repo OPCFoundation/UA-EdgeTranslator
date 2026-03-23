@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
+    using Opc.Ua.Cloud;
     using Opc.Ua.Configuration;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using Serilog;
@@ -17,21 +18,14 @@ namespace Opc.Ua.Edge.Translator
 
         public static ProtocolDriverRegistry Drivers { get; } = new();
 
+        public static ConsoleTelemetry Telemetry { get; private set; } = new();
+
         public static async Task Main()
         {
             // make sure our directories exist
-            Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "logs"));
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "drivers"));
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
-
-            // setup logging
-            string pathToLogFile = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-            if (Environment.GetEnvironmentVariable("LOG_FILE_PATH") != null)
-            {
-                pathToLogFile = Environment.GetEnvironmentVariable("LOG_FILE_PATH");
-            }
-            InitLogging(pathToLogFile);
 
             // create OPC UA client app
             string appName = "UAEdgeTranslator";
@@ -41,21 +35,20 @@ namespace Opc.Ua.Edge.Translator
             }
 
             ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
-            App = new ApplicationInstance
-            {
+            App = new ApplicationInstance(Telemetry) {
                 ApplicationName = appName,
                 ApplicationType = ApplicationType.ClientAndServer,
                 ConfigSectionName = "Ua.Edge.Translator"
             };
 
-            await App.LoadApplicationConfiguration(false).ConfigureAwait(false);
+            await App.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
 
-            await App.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
+            await App.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
 
             // create OPC UA cert validator
-            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
+            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator(Telemetry);
             App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
-            App.ApplicationConfiguration.CertificateValidator.Update(App.ApplicationConfiguration).GetAwaiter().GetResult();
+            App.ApplicationConfiguration.CertificateValidator.UpdateAsync(App.ApplicationConfiguration).GetAwaiter().GetResult();
 
             string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             if (!Directory.Exists(issuerPath))
@@ -63,14 +56,12 @@ namespace Opc.Ua.Edge.Translator
                 Directory.CreateDirectory(issuerPath);
             }
 
-            Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
-
             // load protocol drivers
             DriverLoadContext.LoadProtocolDrivers();
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
             // start the server
-            await App.Start(new UAServer()).ConfigureAwait(false);
+            await App.StartAsync(new UAServer()).ConfigureAwait(false);
 
             Log.Logger.Information("UA Edge Translator is running.");
             await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
@@ -87,50 +78,6 @@ namespace Opc.Ua.Edge.Translator
                 Log.Logger.Warning("Auto-accepting certificate while in provisioning mode!");
                 e.Accept = true;
             }
-        }
-
-        private static void OpcStackLoggingHandler(object sender, TraceEventArgs e)
-        {
-            if ((e.TraceMask & App.ApplicationConfiguration.TraceConfiguration.TraceMasks) != 0)
-            {
-                if (e.Exception != null)
-                {
-                    Log.Logger.Error(e.Exception, e.Format, e.Arguments);
-                    return;
-                }
-
-                switch (e.TraceMask)
-                {
-                    case Utils.TraceMasks.StartStop:
-                    case Utils.TraceMasks.Information: Log.Logger.Information(e.Format, e.Arguments); break;
-                    case Utils.TraceMasks.Error: Log.Logger.Error(e.Format, e.Arguments); break;
-                    case Utils.TraceMasks.StackTrace:
-                    case Utils.TraceMasks.Security: Log.Logger.Warning(e.Format, e.Arguments); break;
-                    default: Log.Logger.Verbose(e.Format, e.Arguments); break;
-                }
-            }
-        }
-
-        private static void InitLogging(string pathToLogFile)
-        {
-            LoggerConfiguration loggerConfiguration = new LoggerConfiguration();
-
-#if DEBUG
-            loggerConfiguration.MinimumLevel.Debug();
-#else
-            loggerConfiguration.MinimumLevel.Information();
-#endif
-            if (!Directory.Exists(pathToLogFile))
-            {
-                Directory.CreateDirectory(pathToLogFile);
-            }
-
-            // set logging sinks
-            loggerConfiguration.WriteTo.Console();
-            loggerConfiguration.WriteTo.File(Path.Combine(pathToLogFile, "uaedgetranslator.logfile.txt"), fileSizeLimitBytes: 1024 * 1024, rollOnFileSizeLimit: true, retainedFileCountLimit: 10);
-
-            Log.Logger = loggerConfiguration.CreateLogger();
-            Log.Logger.Information($"Log file is: {Path.Combine(pathToLogFile, "uaedgetranslator.logfile.txt")}");
         }
     }
 }

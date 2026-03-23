@@ -35,13 +35,13 @@ namespace Matter.Core
 
             var pbkdf = Rfc2898DeriveBytes.Pbkdf2(passcodeBytes, salt, iterations, HashAlgorithmName.SHA256, 2 * CRYPTO_W_SIZE_BYTES);
 
-            var w0s = new BigInteger(1, pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray(), true);
-            var w1s = new BigInteger(1, pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray(), true);
+            var w0s = new BigInteger(1, pbkdf.AsSpan().Slice(0, CRYPTO_W_SIZE_BYTES).ToArray());
+            var w1s = new BigInteger(1, pbkdf.AsSpan().Slice(CRYPTO_W_SIZE_BYTES, CRYPTO_W_SIZE_BYTES).ToArray());
 
             var w0 = w0s.Mod(curve.N);
             var w1 = w1s.Mod(curve.N);
 
-            BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES), true);
+            BigInteger x = new BigInteger(1, RandomNumberGenerator.GetBytes(GROUP_SIZE_BYTES));
 
             M = curve.Curve.DecodePoint(Convert.FromHexString("02886e2f97ace46e55ba9dd7242579f2993b64e16ef3dcab95afd497333d8fa12f"));
 

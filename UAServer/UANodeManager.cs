@@ -21,7 +21,7 @@ namespace Opc.Ua.Edge.Translator
 
     public class UANodeManager : CustomNodeManager2
     {
-        private long _lastUsedId = 0;
+        private uint _lastUsedId = 0;
 
         private bool _shutdown = false;
 
@@ -281,7 +281,7 @@ namespace Opc.Ua.Edge.Translator
                         {
                             foreach (ModelTableEntry rm in te.RequiredModel)
                             {
-                                if (rm.ModelUri == Namespaces.OpcUa)
+                                if (rm.ModelUri == Ua.Namespaces.OpcUa)
                                 {
                                     // skip the base UA nodeset as it is always loaded
                                     continue;
@@ -329,7 +329,7 @@ namespace Opc.Ua.Edge.Translator
                 // apply external refs via MasterNodeManager
                 foreach (var kvp in externalReferences)
                 {
-                    Server.NodeManager.AddReferences(kvp.Key, kvp.Value);
+                    Server.NodeManager.AddReferencesAsync(kvp.Key, kvp.Value).GetAwaiter().GetResult();
                 }
 
                 RaiseModelChangedEvent(ObjectIds.TypesFolder, ModelChangeStructureVerbMask.NodeAdded);
@@ -882,7 +882,7 @@ namespace Opc.Ua.Edge.Translator
                                     TypeId = defaultBinaryEncodingId
                                 };
 
-                                BinaryEncoder encoder = new(new ServiceMessageContext {
+                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
                                     NamespaceUris = Server.NamespaceUris,
                                     Factory = Server.Factory
                                 });
@@ -1348,13 +1348,13 @@ namespace Opc.Ua.Edge.Translator
                 var oldBody = oldEo.Body as byte[];
                 var decoder = new BinaryDecoder(
                     oldBody,
-                    new ServiceMessageContext {
+                    new ServiceMessageContext(Program.Telemetry) {
                         NamespaceUris = Server.NamespaceUris,
                         Factory = Server.Factory
                     });
 
                 var encoder = new BinaryEncoder(
-                    new ServiceMessageContext {
+                    new ServiceMessageContext(Program.Telemetry) {
                         NamespaceUris = Server.NamespaceUris,
                         Factory = Server.Factory
                     });

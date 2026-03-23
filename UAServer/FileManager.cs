@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Export;
+    using Opc.Ua.Server;
     using Serilog;
     using System;
     using System.Collections.Generic;
@@ -63,11 +64,21 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        private static NodeId GetSessionId(ISystemContext context)
+        {
+            if (context is ServerSystemContext serverContext)
+            {
+                return serverContext.SessionId;
+            }
+
+            return NodeId.Null;
+        }
+
         public void Write(ISystemContext context, byte[] contents)
         {
             Handle handle = new()
             {
-                SessionId = context.SessionId,
+                SessionId = GetSessionId(context),
                 Stream = new MemoryStream(contents),
                 Position = 0
             };
@@ -90,7 +101,7 @@ namespace Opc.Ua.Edge.Translator
                     throw new ServiceResultException(StatusCodes.BadInvalidArgument);
                 }
 
-                if (handle.SessionId != _context.SessionId)
+                if (handle.SessionId != GetSessionId(_context))
                 {
                     throw new ServiceResultException(StatusCodes.BadUserAccessDenied);
                 }
@@ -125,7 +136,7 @@ namespace Opc.Ua.Edge.Translator
 
                 Handle handle = new()
                 {
-                    SessionId = _context.SessionId,
+                    SessionId = GetSessionId(_context),
                     Stream = new MemoryStream(),
                     Position = 0
                 };
@@ -242,7 +253,7 @@ namespace Opc.Ua.Edge.Translator
                     return StatusCodes.BadInvalidArgument;
                 }
 
-                if (handle.SessionId != _context.SessionId)
+                if (handle.SessionId != GetSessionId(_context))
                 {
                     return StatusCodes.BadUserAccessDenied;
                 }
