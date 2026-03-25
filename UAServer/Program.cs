@@ -81,13 +81,13 @@ namespace Opc.Ua.Edge.Translator
             if (provisioningMode)
             {
                 // No issuer cert on disk yet — accept everything during initial setup
-                Log.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", e.Certificate?.Subject);
+                Log.Logger.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", e.Certificate?.Subject);
                 e.Accept = true;
                 return;
             }
 
             // Post-provisioning: accept only if the cert was signed by a CA
-            // that the GDS explicitly pushed into our issuer store.
+            // that the GDS explicitly pushed into our issuer store
             if (e.Certificate != null)
             {
                 foreach (string certFile in Directory.EnumerateFiles(issuerCertsDir))
@@ -97,7 +97,7 @@ namespace Opc.Ua.Edge.Translator
                         using var issuerCert = X509CertificateLoader.LoadCertificateFromFile(certFile);
                         if (e.Certificate.Issuer == issuerCert.Subject)
                         {
-                            Log.Information("Accepting certificate signed by provisioned CA: [{Subject}], Issuer: [{Issuer}]",
+                            Log.Logger.Information("Accepting certificate signed by provisioned CA: [{Subject}], Issuer: [{Issuer}]",
                                 e.Certificate.Subject, issuerCert.Subject);
                             e.Accept = true;
                             return;
@@ -105,7 +105,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                     catch (Exception ex)
                     {
-                        Log.Warning(ex, "Could not read issuer cert file: {File}", certFile);
+                        Log.Logger.Error(ex, "Could not read issuer cert file: {File}", certFile);
                     }
                 }
             }
