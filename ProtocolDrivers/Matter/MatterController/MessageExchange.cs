@@ -125,7 +125,7 @@ namespace Matter.Core
                 return null;
             }
 
-            return await SendCommandAsync(endpoint, cluster, command, parameters);
+            return await SendCommandAsync(endpoint, cluster, command, parameters).ConfigureAwait(false);
         }
 
         public class AccessControlTarget

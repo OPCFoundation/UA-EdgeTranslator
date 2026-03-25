@@ -77,8 +77,6 @@ namespace Opc.Ua.Edge.Translator
                 "http://opcfoundation.org/UA/EdgeTranslator/"
             };
 
-            _uacloudLibraryClient.Login();
-
             NamespaceUris = namespaceUris;
         }
 
@@ -106,28 +104,35 @@ namespace Opc.Ua.Edge.Translator
 
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
         {
+            IList<IReference> objectsFolderReferences = null;
+
             lock (Lock)
             {
-                // in the create address space call, we add all our nodes
-                IList<IReference> objectsFolderReferences = null;
                 if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out objectsFolderReferences))
                 {
                     externalReferences[ObjectIds.ObjectsFolder] = objectsFolderReferences = new List<IReference>();
                 }
+            }
 
-                AddNodeset(_cWotCon);
+            // Async methods internally acquire Lock where needed
+            // Holding Lock here while blocking would deadlock with AddNamespace's lock(Lock) on the continuation thread
+            AddNodesetAsync(_cWotCon).GetAwaiter().GetResult();
 
+            lock (Lock)
+            {
                 AddNodesForAssetManagement();
+            }
 
-                LoadLocalWoTFiles();
+            LoadLocalWoTFilesAsync().GetAwaiter().GetResult();
 
+            lock (Lock)
+            {
                 AddReverseReferences(externalReferences);
-
                 base.CreateAddressSpace(externalReferences);
             }
         }
 
-        private void LoadLocalWoTFiles()
+        private async Task LoadLocalWoTFilesAsync()
         {
             IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
             foreach (string file in WoTFiles)
@@ -142,7 +147,7 @@ namespace Opc.Ua.Edge.Translator
                         throw new Exception("Asset already exists");
                     }
 
-                    OnboardAssetFromWoTFile(assetNode, contents);
+                    await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -217,7 +222,7 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, variable);
         }
 
-        private void LoadNamespacesFromThingDescription(ThingDescription td)
+        private async Task LoadNamespacesFromThingDescriptionAsync(ThingDescription td)
         {
             // check if an OPC UA companion spec is mentioned in the WoT TD file
             foreach (object ns in td.Context)
@@ -232,7 +237,7 @@ namespace Opc.Ua.Edge.Translator
                     Uri namespaceUri = new(((JValue)((JProperty)((JContainer)ns).First).Value).Value.ToString());
                     if (namespaceUri != null)
                     {
-                        AddNodeset(namespaceUri.ToString());
+                        await AddNodesetAsync(namespaceUri.ToString()).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -242,7 +247,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public void AddNodeset(string namespaceUri)
+        public async Task AddNodesetAsync(string namespaceUri)
         {
             if (string.IsNullOrEmpty(namespaceUri))
             {
@@ -259,7 +264,7 @@ namespace Opc.Ua.Edge.Translator
             else
             {
                 // download nodeset from UA Cloud Library, if required
-                nodesetXml = _uacloudLibraryClient.DownloadNodeset(namespaceUri);
+                nodesetXml = await _uacloudLibraryClient.DownloadNodesetAsync(namespaceUri).ConfigureAwait(false);
             }
 
             if (string.IsNullOrEmpty(nodesetXml))
@@ -294,7 +299,7 @@ namespace Opc.Ua.Edge.Translator
                                 }
 
                                 // recursively add the dependent nodeset
-                                AddNodeset(rm.ModelUri);
+                                await AddNodesetAsync(rm.ModelUri).ConfigureAwait(false);
                             }
                         }
                     }
@@ -329,7 +334,7 @@ namespace Opc.Ua.Edge.Translator
                 // apply external refs via MasterNodeManager
                 foreach (var kvp in externalReferences)
                 {
-                    Server.NodeManager.AddReferencesAsync(kvp.Key, kvp.Value).GetAwaiter().GetResult();
+                    await Server.NodeManager.AddReferencesAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
                 }
 
                 RaiseModelChangedEvent(ObjectIds.TypesFolder, ModelChangeStructureVerbMask.NodeAdded);
@@ -553,7 +558,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
 
-                OnboardAssetFromWoTFile(assetNode, contents);
+                OnboardAssetFromWoTFileAsync(assetNode, contents).GetAwaiter().GetResult();
 
                 System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
 
@@ -595,12 +600,12 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public void OnboardAssetFromWoTFile(NodeState parent, string contents)
+        public async Task OnboardAssetFromWoTFileAsync(NodeState parent, string contents)
         {
             // parse WoT TD file contents
             ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents.Trim('\uFEFF')); // strip BOM, if present
 
-            LoadNamespacesFromThingDescription(td);
+            await LoadNamespacesFromThingDescriptionAsync(td).ConfigureAwait(false);
 
             // add a new namespace for the Thing Description itself
             string namespaceUri = "http://opcfoundation.org/UA/" + td.Name + "/";
@@ -642,22 +647,24 @@ namespace Opc.Ua.Edge.Translator
 
         private void AddNamespace(string namespaceUri)
         {
-			if (string.IsNullOrWhiteSpace(namespaceUri))
+            if (string.IsNullOrWhiteSpace(namespaceUri))
             {
                 throw new ArgumentNullException(nameof(namespaceUri));
             }
 
             NamespaceTable serverNSTable = Server.NamespaceUris;
-            List<string> nodeManagerNSTable = NamespaceUris.ToList();
-            int index = serverNSTable.GetIndex(namespaceUri);
-            if (index >= 0)
-            {
-                // already added
-                return;
-            }
 
             lock (Lock)
             {
+                int index = serverNSTable.GetIndex(namespaceUri);
+                if (index >= 0)
+                {
+                    // already added
+                    return;
+                }
+
+                List<string> nodeManagerNSTable = NamespaceUris.ToList();
+
                 serverNSTable.Append(namespaceUri);
                 nodeManagerNSTable.Add(namespaceUri);
 

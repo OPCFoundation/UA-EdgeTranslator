@@ -48,7 +48,7 @@ namespace Opc.Ua.Edge.Translator
             // create OPC UA cert validator
             App.ApplicationConfiguration.CertificateValidator = new CertificateValidator(Telemetry);
             App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
-            App.ApplicationConfiguration.CertificateValidator.UpdateAsync(App.ApplicationConfiguration).GetAwaiter().GetResult();
+            await App.ApplicationConfiguration.CertificateValidator.UpdateAsync(App.ApplicationConfiguration).ConfigureAwait(false);
 
             string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             if (!Directory.Exists(issuerPath))
@@ -69,13 +69,13 @@ namespace Opc.Ua.Edge.Translator
 
         private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)
         {
-            // check if we have a trusted issuer cert yet
-            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
-
-            // we allow conections in provisoning mode, but limit access to the server
-            if ((e.Error.StatusCode == StatusCodes.BadCertificateUntrusted) && provisioningMode)
+            // Auto-accept only during initial provisioning (no issuer cert on disk yet).
+            // Once the GDS push delivers the issuer cert, all certs signed by that CA are trusted
+            // automatically — no per-peer storage needed.
+            bool provisioningMode = !Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Any();
+            if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted && provisioningMode)
             {
-                Log.Logger.Warning("Auto-accepting certificate while in provisioning mode!");
+                Log.Logger.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", e.Certificate?.Subject);
                 e.Accept = true;
             }
         }

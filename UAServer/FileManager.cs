@@ -296,7 +296,7 @@ namespace Opc.Ua.Edge.Translator
                         contents = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"));
                     }
 
-                    _nodeManager.OnboardAssetFromWoTFile(_file.Parent, contents);
+                    _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents).GetAwaiter().GetResult();
 
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 

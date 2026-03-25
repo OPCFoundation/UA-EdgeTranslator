@@ -10,6 +10,7 @@ namespace Opc.Ua.Edge.Translator
     using System.IO;
     using System.Net.Http;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class UACloudLibraryClient
     {
@@ -19,7 +20,7 @@ namespace Opc.Ua.Edge.Translator
 
         private string _uaCloudLibraryUrl = Environment.GetEnvironmentVariable("UACLURL");
 
-        public void Login()
+        private async Task LoginAsync()
         {
             if (string.IsNullOrEmpty(_uaCloudLibraryUrl))
             {
@@ -51,8 +52,8 @@ namespace Opc.Ua.Edge.Translator
 
             // get namespaces
             string address = _uaCloudLibraryUrl + "infomodel/namespaces";
-            HttpResponseMessage response = _client.Send(new HttpRequestMessage(HttpMethod.Get, address));
-            string[] identifiers = JsonConvert.DeserializeObject<string[]>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, address)).ConfigureAwait(false);
+            string[] identifiers = JsonConvert.DeserializeObject<string[]>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
 
             if (identifiers != null)
             {
@@ -76,12 +77,17 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public string DownloadNodeset(string namespaceUrl)
+        public async Task<string> DownloadNodesetAsync(string namespaceUrl)
         {
             if (string.IsNullOrEmpty(namespaceUrl))
             {
                 Log.Logger.Error("Namespace URL is null or empty.");
                 return string.Empty;
+            }
+
+            if (_namespacesInCloudLibrary.Count == 0)
+            {
+                await LoginAsync().ConfigureAwait(false);
             }
 
             string filePath = null;
@@ -100,7 +106,7 @@ namespace Opc.Ua.Edge.Translator
                         string address = _uaCloudLibraryUrl + "infomodel/download/" + Uri.EscapeDataString(_namespacesInCloudLibrary[namespaceUrl].Item1);
                         HttpResponseMessage response = _client.Send(new HttpRequestMessage(HttpMethod.Get, address));
 
-                        UANameSpace nameSpace = JsonConvert.DeserializeObject<UANameSpace>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+                        UANameSpace nameSpace = JsonConvert.DeserializeObject<UANameSpace>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
 
                         if (!string.IsNullOrEmpty(nameSpace.Nodeset.NodesetXml))
                         {

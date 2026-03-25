@@ -2,6 +2,7 @@
 namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua.Configuration;
+    using Serilog;
     using System;
     using System.Threading.Tasks;
 
@@ -21,11 +22,11 @@ namespace Opc.Ua.Edge.Translator
             if (ask)
             {
                 message += " (y/n, default y): ";
-                Console.Write(message);
+                Log.Logger.Information(message);
             }
             else
             {
-                Console.WriteLine(message);
+                Log.Logger.Information(message);
             }
 
             if (ask)
@@ -33,7 +34,6 @@ namespace Opc.Ua.Edge.Translator
                 try
                 {
                     ConsoleKeyInfo result = Console.ReadKey();
-                    Console.WriteLine();
                     return await Task.FromResult((result.KeyChar == 'y') || (result.KeyChar == 'Y') || (result.KeyChar == '\r')).ConfigureAwait(false);
                 }
                 catch
