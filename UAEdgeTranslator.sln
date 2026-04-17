@@ -56,6 +56,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{36D1
 		Samples\MilesightEM300-TH.td.jsonld = Samples\MilesightEM300-TH.td.jsonld
 		Samples\modbus-pac4200-sn123rtu.td.jsonld = Samples\modbus-pac4200-sn123rtu.td.jsonld
 		Samples\OnvisS4.td.jsonld = Samples\OnvisS4.td.jsonld
+		Samples\OPCDA.td.jsonld = Samples\OPCDA.td.jsonld
 		Samples\pac4200.td.jsonld = Samples\pac4200.td.jsonld
 		Samples\pac4200.tm.jsonld = Samples\pac4200.tm.jsonld
 		Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld = Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld
@@ -76,6 +77,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution 
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIClient", "ProtocolDrivers\AvevaPI\PIClient.csproj", "{81A92234-66F5-31EA-DE72-D615C6771A8B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPCDA", "ProtocolDrivers\OPCDA\OPCDA.csproj", "{2FA671E7-BA2A-708A-D2BD-2399E42782C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -147,6 +150,10 @@ Global
 		{81A92234-66F5-31EA-DE72-D615C6771A8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{81A92234-66F5-31EA-DE72-D615C6771A8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{81A92234-66F5-31EA-DE72-D615C6771A8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FA671E7-BA2A-708A-D2BD-2399E42782C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FA671E7-BA2A-708A-D2BD-2399E42782C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FA671E7-BA2A-708A-D2BD-2399E42782C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FA671E7-BA2A-708A-D2BD-2399E42782C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

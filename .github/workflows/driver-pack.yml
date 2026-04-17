@@ -76,9 +76,39 @@ jobs:
           name: driverpack-${{ matrix.driver.name }}
           path: drivers/_driverpack/${{ matrix.driver.name }}
 
+  build-windows-drivers:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        driver:
+          - name: opcda
+            csproj: ProtocolDrivers/OPCDA/OPCDA.csproj
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish driver (self-contained folder with deps)
+        run: |
+          New-Item -ItemType Directory -Force -Path drivers/_driverpack/${{ matrix.driver.name }}
+          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows
+
+      - name: Upload staged drivers as artifact (debug aid)
+        uses: actions/upload-artifact@v4
+        with:
+          name: driverpack-${{ matrix.driver.name }}
+          path: drivers/_driverpack/${{ matrix.driver.name }}
+
   assemble-image:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [build-and-push, build-windows-drivers]
 
     steps:
       - name: Checkout
