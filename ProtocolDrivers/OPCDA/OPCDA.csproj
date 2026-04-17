@@ -13,6 +13,8 @@
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
+      <SetTargetFramework>TargetFramework=net10.0-windows</SetTargetFramework>
+      <GlobalPropertiesToRemove>RuntimeIdentifier</GlobalPropertiesToRemove>
     </ProjectReference>
   </ItemGroup>
 
