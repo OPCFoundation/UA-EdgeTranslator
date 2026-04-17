@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NModbus" Version="3.0.81" />
-    <PackageReference Include="NModbus.Serial" Version="3.0.81" />
+    <PackageReference Include="NModbus" Version="3.0.83" />
+    <PackageReference Include="NModbus.Serial" Version="3.0.83" />
   </ItemGroup>
 
   <ItemGroup>

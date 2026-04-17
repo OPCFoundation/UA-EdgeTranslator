@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="BACnet" Version="3.0.2" />
-    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="log4net" Version="3.3.0" />
   </ItemGroup>
 
   <ItemGroup>

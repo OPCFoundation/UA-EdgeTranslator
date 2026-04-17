@@ -44,9 +44,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aml.Engine" Version="4.5.0" />
+    <PackageReference Include="Aml.Engine" Version="4.5.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.106" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.134" />
   </ItemGroup>
 
   <ItemGroup>

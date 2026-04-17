@@ -9,6 +9,7 @@
     <PackageReference Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <PackageReference Include="Linux.Bluetooth" Version="5.67.1" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
+    <PackageReference Include="Tmds.DBus" Version="0.92.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -161,14 +161,14 @@ namespace Opc.Ua.Edge.Translator
         {
             ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
 
-            _assetManagement = (BaseObjectState)FindPredefinedNode(new NodeId(_cWoTAssetManagement, WoTConNamespaceIndex), typeof(BaseObjectState));
+            _assetManagement = FindPredefinedNode<BaseObjectState>(new NodeId(_cWoTAssetManagement, WoTConNamespaceIndex));
 
-            MethodState createAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTCreateAsset, WoTConNamespaceIndex), typeof(MethodState));
+            MethodState createAsset = FindPredefinedNode<MethodState>(new NodeId(_cWoTCreateAsset, WoTConNamespaceIndex));
             createAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAsset);
             createAsset.InputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetName"], ["A unique name for the asset."], [new ExpandedNodeId(DataTypes.String)], true, false, new NodeId(_cWoTCreateAssetInputArguments, WoTConNamespaceIndex));
             createAsset.OutputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false, false, new NodeId(_cWoTCreateAssetOutputArguments, WoTConNamespaceIndex));
 
-            MethodState deleteAsset = (MethodState)FindPredefinedNode(new NodeId(_cWoTDeleteAsset, WoTConNamespaceIndex), typeof(MethodState));
+            MethodState deleteAsset = FindPredefinedNode<MethodState>(new NodeId(_cWoTDeleteAsset, WoTConNamespaceIndex));
             deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
             deleteAsset.InputArguments = _nodeFactory.CreateMethodArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], [new ExpandedNodeId(DataTypes.NodeId)], true, false, new NodeId(_cWoTDeleteAssetInputArguments, WoTConNamespaceIndex));
 
@@ -455,7 +455,7 @@ namespace Opc.Ua.Edge.Translator
 
             lock (Lock)
             {
-                NodeState asset = FindPredefinedNode(assetId, typeof(BaseInterfaceState));
+                NodeState asset = FindPredefinedNode<BaseInterfaceState>(assetId);
                 if (asset == null)
                 {
                     return StatusCodes.BadNodeIdUnknown;
