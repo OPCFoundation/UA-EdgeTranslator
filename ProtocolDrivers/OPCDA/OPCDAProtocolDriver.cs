@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using TitaniumAS.Opc.Client.Common;
     using TitaniumAS.Opc.Client.Da;
     using TitaniumAS.Opc.Client.Da.Browsing;
@@ -25,8 +26,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // Discover OPC DA servers on local machine
                 var serverHost = Environment.GetEnvironmentVariable("OPC_DA_SERVER_HOST") ?? "localhost";
                 var serverEnumerator = new OpcServerEnumeratorAuto();
-                var servers = serverEnumerator.Enumerate(serverHost, OpcServerCategory.OpcDaServer10,
-                    OpcServerCategory.OpcDaServer20, OpcServerCategory.OpcDaServer30);
+                var servers = serverEnumerator.Enumerate(serverHost, OpcServerCategory.OpcDaServer10, OpcServerCategory.OpcDaServer20, OpcServerCategory.OpcDaServer30);
 
                 foreach (var server in servers)
                 {
@@ -71,30 +71,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     using var server = new OpcDaServer(progId, host);
                     server.Connect();
 
-                    // Browse root items
                     var browser = new OpcDaBrowserAuto(server);
-                    var items = browser.GetElements(null);
-
-                    foreach (var item in items)
-                    {
-                        if (item.IsItem)
-                        {
-                            td.Properties.Add(item.ItemId, new Property()
-                            {
-                                Type = TypeEnum.String,
-                                ReadOnly = false,
-                                Forms = [new GenericForm()
-                                {
-                                    Href = item.ItemId,
-                                    Op = [Op.Readproperty],
-                                    Type = TypeString.String,
-                                    PollingTime = 1000
-                                }]
-                            });
-                        }
-                    }
+                    BrowseElements(browser, null, td);
 
                     server.Disconnect();
+                }
+                else
+                {
+                    Log.Logger.Error($"Invalid OPC DA endpoint format: {assetEndpoint}");
                 }
             }
             catch (Exception ex)
@@ -150,6 +134,61 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };
+        }
+
+        private void BrowseElements(OpcDaBrowserAuto browser, string parentId, ThingDescription td)
+        {
+            var elements = browser.GetElements(parentId, null, new OpcDaPropertiesQuery(true));
+
+            foreach (var element in elements)
+            {
+                if (element.IsItem)
+                {
+                    var (typeEnum, typeString) = MapOpcDaType(element.ItemProperties);
+
+                    td.Properties.Add(element.ItemId, new Property()
+                    {
+                        Type = typeEnum,
+                        ReadOnly = false,
+                        Forms = [new GenericForm()
+                        {
+                            Href = element.ItemId,
+                            Op = [Op.Readproperty],
+                            Type = typeString,
+                            PollingTime = 1000
+                        }]
+                    });
+                }
+
+                if (element.HasChildren)
+                {
+                    BrowseElements(browser, element.ItemId, td);
+                }
+            }
+        }
+
+        private (TypeEnum typeEnum, TypeString typeString) MapOpcDaType(OpcDaItemProperties properties)
+        {
+            if (properties != null)
+            {
+                // Property ID 1 is the standard OPC DA DataType property
+                var dataTypeProp = properties.Properties.FirstOrDefault(p => p.PropertyId == 2);
+                if (dataTypeProp?.DataType is Type dataType)
+                {
+                    return dataType switch
+                    {
+                        Type t when t == typeof(bool)
+                            => (TypeEnum.Boolean, TypeString.Boolean),
+                        Type t when t == typeof(sbyte) || t == typeof(byte) || t == typeof(short) || t == typeof(ushort) || t == typeof(int) || t == typeof(uint) || t == typeof(long) || t == typeof(ulong)
+                            => (TypeEnum.Integer, TypeString.Integer),
+                        Type t when t == typeof(float) || t == typeof(double) || t == typeof(decimal)
+                            => (TypeEnum.Number, TypeString.Float),
+                        _ => (TypeEnum.String, TypeString.String)
+                    };
+                }
+            }
+
+            return (TypeEnum.String, TypeString.String);
         }
     }
 }

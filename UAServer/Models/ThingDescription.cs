@@ -156,17 +156,20 @@ namespace Opc.Ua.Edge.Translator.Models
         [EnumMember(Value = "xsd:float")]
         Float,
 
+        [EnumMember(Value = "xsd:double")]
+        Double,
+
         [EnumMember(Value = "xsd:boolean")]
         Boolean,
+
+        [EnumMember(Value = "xsd:short")]
+        Short,
 
         [EnumMember(Value = "xsd:integer")]
         Integer,
 
         [EnumMember(Value = "xsd:string")]
         String,
-
-        [EnumMember(Value = "xsd:short")]
-        Short,
 
         [EnumMember(Value = "xsd:byte")]
         Byte,

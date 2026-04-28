@@ -98,7 +98,7 @@ jobs:
       - name: Publish driver (self-contained folder with deps)
         run: |
           New-Item -ItemType Directory -Force -Path drivers/_driverpack/${{ matrix.driver.name }}
-          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows
+          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows -r win-x86
 
       - name: Upload staged drivers as artifact (debug aid)
         uses: actions/upload-artifact@v4

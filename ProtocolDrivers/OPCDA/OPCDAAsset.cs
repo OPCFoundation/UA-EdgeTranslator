@@ -95,6 +95,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new InvalidOperationException("OPC DA server is not connected.");
             }
 
+            // special case: write-only variable
+            if (tag.Address.StartsWith("Write Only"))
+            {
+                return null;
+            }
+
             lock (_lock)
             {
                 try
@@ -227,6 +233,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             // Get the actual item from the group after adding
             var addedItem = _group.Items.First(i => i.ItemId == itemId);
+
             _items[itemId] = addedItem;
             return addedItem;
         }

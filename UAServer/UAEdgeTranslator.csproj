@@ -11,6 +11,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
     <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro -v /dev/ttyUSB1:/dev/ttyUSB1 --network=host --privileged</DockerfileRunArguments>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
 
   <ItemGroup>

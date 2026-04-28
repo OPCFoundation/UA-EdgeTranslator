@@ -1,6 +1,5 @@
 ﻿namespace Opc.Ua.Edge.Translator
 {
-    using Microsoft.Win32;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Serilog;
     using System;

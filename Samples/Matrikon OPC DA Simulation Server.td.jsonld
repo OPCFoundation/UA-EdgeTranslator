@@ -1,0 +1,2493 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Matrikon OPC DA Simulation Server",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "Matrikon OPC DA Simulation Server",
+  "base": "opc.da://localhost/Matrikon.OPC.Simulation.1",
+  "title": "Matrikon OPC DA Simulation Server",
+  "properties": {
+    "#MonitorACLFile": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "#MonitorACLFile",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "@ClientCount": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "@ClientCount",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "@Clients": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "@Clients",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.ArrayOfReal8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.ArrayOfString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Boolean": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Int8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Int8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Qualities": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Qualities",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.Time": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Bucket Brigade.UInt8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Bucket Brigade.UInt8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.ArrayOfReal8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.ArrayOfString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Boolean": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Int8": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Int8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Qualities": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Qualities",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.Time": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Random.UInt8": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Random.UInt8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.ArrayOfReal8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.ArrayOfString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Boolean": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Int1": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Int2": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Int4": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Money": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Real4": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Real8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.Time": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.UInt1": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.UInt2": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Read Error.UInt4": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Read Error.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.ArrayOfReal8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.ArrayOfString": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Boolean": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Int8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Int8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Qualities": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Qualities",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.String": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.Time": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Saw-toothed Waves.UInt8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Saw-toothed Waves.UInt8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.ArrayOfReal8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.ArrayOfString": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Boolean": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Int8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Int8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Qualities": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Qualities",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.String": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.Time": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Square Waves.UInt8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Square Waves.UInt8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.ArrayOfReal8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.ArrayOfString": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Boolean": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Int8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Int8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Qualities": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Qualities",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.String": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.Time": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Triangle Waves.UInt8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Triangle Waves.UInt8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.ArrayOfReal8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.ArrayOfString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Boolean": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.Time": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Error.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Error.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.ArrayOfReal8": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.ArrayOfReal8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.ArrayOfString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.ArrayOfString",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Boolean": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Boolean",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Int1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Int1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Int2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Int2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Int4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Int4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Money": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Money",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Real4": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Real4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Real8": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Real8",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.String",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.Time": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.Time",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.UInt1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.UInt1",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.UInt2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.UInt2",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "Write Only.UInt4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": false,
+      "forms": [
+        {
+          "href": "Write Only.UInt4",
+          "op": [
+            "readproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 1000
+        }
+      ]
+    }
+  },
+  "actions": {}
+}

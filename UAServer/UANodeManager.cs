@@ -554,7 +554,7 @@ namespace Opc.Ua.Edge.Translator
 
                 ThingDescription td = drv.BrowseAndGenerateTD(assetName, assetEndpoint);
 
-                string contents = JsonConvert.SerializeObject(td);
+                string contents = JsonConvert.SerializeObject(td, Formatting.Indented);
 
                 _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
 
