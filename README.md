@@ -26,7 +26,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Modbus TCP
 * Modbus RTU (experimental)
 * OPC UA
-* OPC DA (a.k.a. OPC Classic, experimental)
+* OPC DA (a.k.a. OPC Classic)
 * HTTP
 * Aveva PI (experimental)
 * Rockwell CIP (Ethernet/IP)
