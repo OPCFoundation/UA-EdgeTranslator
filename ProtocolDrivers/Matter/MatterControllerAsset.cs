@@ -131,7 +131,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             // find the node in the fabric
             string[] nameParts = tag.Name.Split([':']);
@@ -141,7 +141,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if (node.Connect(_fabric))
                 {
                     IsConnected = true;
-                    string response = node.WriteAttribute(_fabric, 1, nameParts[1], 0, uint.Parse(value));
+                    string response = node.WriteAttribute(_fabric, 1, nameParts[1], 0, uint.Parse(value.ToString()));
                     if (response != "success")
                     {
                         throw new Exception($"Failed to write attribute {tag.Address} on Node {tag.Name} with {response}!");

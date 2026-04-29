@@ -164,7 +164,7 @@
                     EIPForm form = new()
                     {
                         Href = propertyName,
-                        Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
+                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
                         StructureDefinition = structDef
                     };
@@ -172,7 +172,7 @@
                     Property property = new()
                     {
                         Type = TypeEnum.Object,
-                        ReadOnly = true,
+                        ReadOnly = false,
                         Observable = true,
                         OpcUaType = $"nsu={assetNamespaceUri};s={structDef.TypeName}Type",
                         Forms = [form]
@@ -192,7 +192,7 @@
                     EIPForm form = new()
                     {
                         Href = properyName + "?0",
-                        Op = [Op.Readproperty, Op.Observeproperty],
+                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
                         Type = ParseDataType(tag.Type)
                     };
@@ -200,7 +200,7 @@
                     Property property = new()
                     {
                         Type = TypeEnum.Number,
-                        ReadOnly = true,
+                        ReadOnly = false,
                         Observable = true,
                         Forms = [form]
                     };

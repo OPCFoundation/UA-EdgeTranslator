@@ -88,13 +88,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             try
             {
                 string url = _baseUrl.TrimEnd('/') + "/" + tag.Address.TrimStart('/');
 
-                var content = new StringContent(value, Encoding.UTF8, "application/json");
+                var content = new StringContent(value.ToString(), Encoding.UTF8, "application/json");
                 var request = new HttpRequestMessage(HttpMethod.Put, url) { Content = content };
                 var response = _client.Send(request);
                 response.EnsureSuccessStatusCode();

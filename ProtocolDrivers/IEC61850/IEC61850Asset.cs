@@ -83,26 +83,26 @@
             return value;
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = null;
 
             if (tag.Type == "Float")
             {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
+                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
             }
             else if (tag.Type == "Boolean")
             {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
             }
             else if (tag.Type == "Integer")
             {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
+                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
             }
             else if (tag.Type == "String")
             {
-                tagBytes = Encoding.UTF8.GetBytes(value);
+                tagBytes = Encoding.UTF8.GetBytes(value.ToString());
             }
             else
             {

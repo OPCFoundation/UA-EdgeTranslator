@@ -24,14 +24,15 @@
       "uav:mapToNodeId": null,
       "uav:mapToType": null,
       "uav:mapByFieldPath": null,
-      "readOnly": true,
+      "readOnly": false,
       "observable": true,
       "forms": [
         {
           "href": "Cxn:Standard:fc7fc958?0",
           "op": [
             "readproperty",
-            "observeproperty"
+            "observeproperty",
+            "writeproperty"
           ],
           "type": "xsd:REAL",
           "pollingTime": 1000,
@@ -45,14 +46,15 @@
       "uav:mapToNodeId": null,
       "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=AB:1756_DO:O:0Type",
       "uav:mapByFieldPath": null,
-      "readOnly": true,
+      "readOnly": false,
       "observable": true,
       "forms": [
         {
           "href": "Local:2:O",
           "op": [
             "readproperty",
-            "observeproperty"
+            "observeproperty",
+            "writeproperty"
           ],
           "type": "xsd:BOOL",
           "pollingTime": 1000,
@@ -77,14 +79,15 @@
       "uav:mapToNodeId": null,
       "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=UDT_Shift_DataType",
       "uav:mapByFieldPath": null,
-      "readOnly": true,
+      "readOnly": false,
       "observable": true,
       "forms": [
         {
           "href": "Production_Data",
           "op": [
             "readproperty",
-            "observeproperty"
+            "observeproperty",
+            "writeproperty"
           ],
           "type": "xsd:BOOL",
           "pollingTime": 1000,
@@ -165,14 +168,15 @@
       "uav:mapToNodeId": null,
       "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=UDT_Shift_DataType",
       "uav:mapByFieldPath": null,
-      "readOnly": true,
+      "readOnly": false,
       "observable": true,
       "forms": [
         {
           "href": "Previous_Shift_Production_Data",
           "op": [
             "readproperty",
-            "observeproperty"
+            "observeproperty",
+            "writeproperty"
           ],
           "type": "xsd:BOOL",
           "pollingTime": 1000,
@@ -253,14 +257,15 @@
       "uav:mapToNodeId": null,
       "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=IO_ControlType",
       "uav:mapByFieldPath": null,
-      "readOnly": true,
+      "readOnly": false,
       "observable": true,
       "forms": [
         {
           "href": "IO_Control",
           "op": [
             "readproperty",
-            "observeproperty"
+            "observeproperty",
+            "writeproperty"
           ],
           "type": "xsd:BOOL",
           "pollingTime": 1000,

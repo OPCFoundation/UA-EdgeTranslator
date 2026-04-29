@@ -113,7 +113,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             try
             {
@@ -123,7 +123,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 string url = _baseUrl.TrimEnd('/') + "/streams/" + Uri.EscapeDataString(webId) + "/value";
 
-                string payload = BuildPiValuePayload(value, tag.Type);
+                string payload = BuildPiValuePayload(value.ToString(), tag.Type);
 
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
                 var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };

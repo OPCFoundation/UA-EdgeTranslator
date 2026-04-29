@@ -296,13 +296,13 @@
                     // Primitive tag — use EIPForm with EIP-specific type strings
                     EIPForm form = new() {
                         Href = propertyName,
-                        Op = [Op.Readproperty, Op.Observeproperty],
+                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000
                     };
 
                     Property property = new()
                     {
-                        ReadOnly = true,
+                        ReadOnly = false,
                         Observable = true,
                         Forms = [form]
                     };
@@ -397,14 +397,14 @@
 
                     EIPForm form = new() {
                         Href = propertyName,
-                        Op = [Op.Readproperty, Op.Observeproperty],
+                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
                         StructureDefinition = structDef
                     };
 
                     Property property = new() {
                         Type = TypeEnum.Object,
-                        ReadOnly = true,
+                        ReadOnly = false,
                         Observable = true,
                         OpcUaType = $"nsu={assetNamespaceUri};s={baseTypeName}Type",
                         Forms = [form]

@@ -150,54 +150,71 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return value;
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            byte[] tagBytes = null;
 
+            // UDT: Value is the OPC UA binary-encoded ExtensionObject.
+            // Decode each field per the StructureDefinition field order, then write
+            // to the PLC tag at the corresponding EIP offsets.
+            if (tag.Type == "UDT")
+            {
+                if (!_udtDefinitions.TryGetValue(tag.Address, out var structDef))
+                {
+                    throw new ArgumentException($"No UDT definition registered for tag '{tag.Address}'.");
+                }
+
+                byte[] body = ((ExtensionObject)value).Body as byte[];
+
+                WriteUdtFromBinaryBody(tag.Address, body, structDef);
+
+                return;
+            }
+
+            byte[] tagBytes = null;
             if (tag.Type == "BOOL")
             {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value));
+                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
             }
             else if (tag.Type == "SINT")
             {
-                tagBytes = BitConverter.GetBytes(char.Parse(value));
+                tagBytes = BitConverter.GetBytes(char.Parse(value.ToString()));
             }
             else if (tag.Type == "INT")
             {
-                tagBytes = BitConverter.GetBytes(short.Parse(value));
+                tagBytes = BitConverter.GetBytes(short.Parse(value.ToString()));
             }
             else if (tag.Type == "DINT")
             {
-                tagBytes = BitConverter.GetBytes(int.Parse(value));
+                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
             }
             else if (tag.Type == "LINT")
             {
-                tagBytes = BitConverter.GetBytes(Int64.Parse(value));
+                tagBytes = BitConverter.GetBytes(Int64.Parse(value.ToString()));
             }
             else if (tag.Type == "USINT")
             {
-                tagBytes = BitConverter.GetBytes(char.Parse(value));
+                tagBytes = BitConverter.GetBytes(char.Parse(value.ToString()));
             }
             else if (tag.Type == "UINT")
             {
-                tagBytes = BitConverter.GetBytes(ushort.Parse(value));
+                tagBytes = BitConverter.GetBytes(ushort.Parse(value.ToString()));
             }
             else if (tag.Type == "UDINT")
             {
-                tagBytes = BitConverter.GetBytes(uint.Parse(value));
+                tagBytes = BitConverter.GetBytes(uint.Parse(value.ToString()));
             }
             else if (tag.Type == "ULINT")
             {
-                tagBytes = BitConverter.GetBytes(UInt64.Parse(value));
+                tagBytes = BitConverter.GetBytes(UInt64.Parse(value.ToString()));
             }
             else if (tag.Type == "REAL")
             {
-                tagBytes = BitConverter.GetBytes(float.Parse(value));
+                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
             }
             else if (tag.Type == "LREAL")
             {
-                tagBytes = BitConverter.GetBytes(double.Parse(value));
+                tagBytes = BitConverter.GetBytes(double.Parse(value.ToString()));
             }
             else
             {
@@ -387,6 +404,125 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             return System.Text.Encoding.ASCII.GetString(buffer, offset + 4, length);
+        }
+
+        /// <summary>
+        /// Writes a UDT tag from an OPC UA binary-encoded ExtensionObject body.
+        /// The body contains fields encoded sequentially in StructureDefinition field order.
+        /// Each field is decoded from the body using OPC UA binary encoding sizes, then
+        /// written into the PLC tag buffer at the corresponding EIP byte offset.
+        /// </summary>
+        private void WriteUdtFromBinaryBody(string tagAddress, byte[] body, EIPStructureDefinition structDef)
+        {
+            var plcTag = new Tag()
+            {
+                Name = tagAddress,
+                Gateway = _endpoint,
+                Path = "1,0",
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip
+            };
+
+            // Read current tag to initialise the buffer (preserves fields not in the write)
+            plcTag.Read();
+
+            int bodyOffset = 0;
+            WriteFieldsFromBody(plcTag, body, ref bodyOffset, structDef);
+
+            plcTag.Write();
+        }
+
+        /// <summary>
+        /// Recursively decodes OPC UA binary-encoded fields from <paramref name="body"/>
+        /// and writes each value into the PLC tag at its EIP offset.
+        ///
+        /// OPC UA binary encoding order matches the StructureDefinition field order.
+        /// Field sizes follow OPC UA Part 6 binary encoding:
+        ///   Boolean/SByte/Byte = 1, Int16/UInt16 = 2, Int32/UInt32/Float = 4,
+        ///   Int64/UInt64/Double = 8, String = 4-byte length prefix + UTF-8 bytes.
+        /// </summary>
+        private static void WriteFieldsFromBody(
+            Tag plcTag,
+            byte[] body,
+            ref int bodyOffset,
+            EIPStructureDefinition structDef)
+        {
+            if (structDef.Fields == null) return;
+
+            foreach (EIPFieldDefinition field in structDef.Fields)
+            {
+                if (field.StructureDefinition != null)
+                {
+                    // Nested UDT — recurse; fields are encoded inline (no length prefix)
+                    WriteFieldsFromBody(plcTag, body, ref bodyOffset, field.StructureDefinition);
+                    continue;
+                }
+
+                int eipOffset = field.Offset;
+
+                switch (field.Type)
+                {
+                    case "xsd:BOOL":
+                        plcTag.SetUInt8(eipOffset, body[bodyOffset]);
+                        bodyOffset += 1;
+                        break;
+                    case "xsd:SINT":
+                        plcTag.SetInt8(eipOffset, (sbyte)body[bodyOffset]);
+                        bodyOffset += 1;
+                        break;
+                    case "xsd:USINT":
+                        plcTag.SetUInt8(eipOffset, body[bodyOffset]);
+                        bodyOffset += 1;
+                        break;
+                    case "xsd:INT":
+                        plcTag.SetInt16(eipOffset, BitConverter.ToInt16(body, bodyOffset));
+                        bodyOffset += 2;
+                        break;
+                    case "xsd:UINT":
+                        plcTag.SetUInt16(eipOffset, BitConverter.ToUInt16(body, bodyOffset));
+                        bodyOffset += 2;
+                        break;
+                    case "xsd:DINT":
+                        plcTag.SetInt32(eipOffset, BitConverter.ToInt32(body, bodyOffset));
+                        bodyOffset += 4;
+                        break;
+                    case "xsd:UDINT":
+                        plcTag.SetUInt32(eipOffset, BitConverter.ToUInt32(body, bodyOffset));
+                        bodyOffset += 4;
+                        break;
+                    case "xsd:LINT":
+                        plcTag.SetInt64(eipOffset, BitConverter.ToInt64(body, bodyOffset));
+                        bodyOffset += 8;
+                        break;
+                    case "xsd:ULINT":
+                        plcTag.SetUInt64(eipOffset, BitConverter.ToUInt64(body, bodyOffset));
+                        bodyOffset += 8;
+                        break;
+                    case "xsd:REAL":
+                        plcTag.SetFloat32(eipOffset, BitConverter.ToSingle(body, bodyOffset));
+                        bodyOffset += 4;
+                        break;
+                    case "xsd:LREAL":
+                        plcTag.SetFloat64(eipOffset, BitConverter.ToDouble(body, bodyOffset));
+                        bodyOffset += 8;
+                        break;
+                    case "xsd:STRING":
+                        // OPC UA binary: 4-byte length prefix (Int32) + UTF-8 bytes
+                        int strLen = BitConverter.ToInt32(body, bodyOffset);
+                        bodyOffset += 4;
+                        // Rockwell PLC string: 4-byte length prefix (DINT) + char data
+                        plcTag.SetInt32(eipOffset, strLen);
+                        for (int i = 0; i < strLen; i++)
+                        {
+                            plcTag.SetUInt8(eipOffset + 4 + i, body[bodyOffset + i]);
+                        }
+                        bodyOffset += strLen;
+                        break;
+                    default:
+                        Log.Logger.Warning($"Unsupported UDT field type '{field.Type}' for field '{field.Name}' during write.");
+                        break;
+                }
+            }
         }
     }
 }

@@ -1261,7 +1261,7 @@ namespace Opc.Ua.Edge.Translator
                         {
                             if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
                             {
-                                _assets[assetId].Write(tag, value.ToString());
+                                _assets[assetId].Write(tag, value);
 
                                 _uaVariables[tag.Name].Value = value;
                                 _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;

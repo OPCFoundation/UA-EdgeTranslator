@@ -15,7 +15,7 @@
 
         public object Read(AssetTag tag);
 
-        public void Write(AssetTag tag, string value);
+        public void Write(AssetTag tag, object value);
 
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs);
     }

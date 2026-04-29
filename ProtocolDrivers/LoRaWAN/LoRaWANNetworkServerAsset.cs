@@ -167,7 +167,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return bytes;
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             // Writing sensor values is not supported by LoRaWAN.
         }

@@ -148,7 +148,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, string value)
+        public void Write(AssetTag tag, object value)
         {
             if (_server == null || !_server.IsConnected)
             {
@@ -166,15 +166,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     object convertedValue;
                     if (tag.Type == "Float")
                     {
-                        convertedValue = float.Parse(value);
+                        convertedValue = float.Parse(value.ToString());
                     }
                     else if (tag.Type == "Boolean")
                     {
-                        convertedValue = bool.Parse(value);
+                        convertedValue = bool.Parse(value.ToString());
                     }
                     else if (tag.Type == "Integer")
                     {
-                        convertedValue = int.Parse(value);
+                        convertedValue = int.Parse(value.ToString());
                     }
                     else
                     {
