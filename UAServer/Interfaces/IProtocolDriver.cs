@@ -23,5 +23,16 @@
             string variableId,
             string mappedUAExpandedNodeId,
             string mappedUAFieldPath);
+
+        /// <summary>
+        /// Called after namespace setup but before property/variable creation.
+        /// Allows protocol drivers to register custom OPC UA DataType nodes
+        /// (e.g. StructureTypes for PLCs with UDTs) into the address space
+        /// so that uav:mapToType references resolve during AddNodeForWoTForm().
+        /// </summary>
+        public void RegisterStructureTypes(ThingDescription td, UANodeManager nodeManager)
+        {
+            // Default implementation does nothing
+        }
     }
 }

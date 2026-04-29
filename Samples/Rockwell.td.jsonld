@@ -1,0 +1,305 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:Rockwell",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "Rockwell",
+  "base": "eip://192.168.178.122",
+  "title": "Rockwell",
+  "properties": {
+    "Cxn:Standard:fc7fc958": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Cxn:Standard:fc7fc958?0",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:REAL",
+          "pollingTime": 1000,
+          "eip:structureDefinition": null
+        }
+      ]
+    },
+    "Local:2:O": {
+      "type": "object",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=AB:1756_DO:O:0Type",
+      "uav:mapByFieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Local:2:O",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:BOOL",
+          "pollingTime": 1000,
+          "eip:structureDefinition": {
+            "typeName": "AB:1756_DO:O:0",
+            "fields": [
+              {
+                "name": "Data",
+                "type": "xsd:DINT",
+                "offset": 0,
+                "description": null,
+                "eip:structureDefinition": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Production_Data": {
+      "type": "object",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=UDT_Shift_DataType",
+      "uav:mapByFieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Production_Data",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:BOOL",
+          "pollingTime": 1000,
+          "eip:structureDefinition": {
+            "typeName": "UDT_Shift_Data",
+            "fields": [
+              {
+                "name": "Prodution_Count",
+                "type": "xsd:DINT",
+                "offset": 0,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Rejected_Product_Count",
+                "type": "xsd:DINT",
+                "offset": 4,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Cycle_Time",
+                "type": "xsd:REAL",
+                "offset": 8,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE",
+                "type": "xsd:REAL",
+                "offset": 12,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Availablity",
+                "type": "xsd:REAL",
+                "offset": 16,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Performance",
+                "type": "xsd:REAL",
+                "offset": 20,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Quality",
+                "type": "xsd:REAL",
+                "offset": 24,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Shift_Number",
+                "type": "xsd:DINT",
+                "offset": 28,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Time_In_Shift",
+                "type": "xsd:DINT",
+                "offset": 32,
+                "description": null,
+                "eip:structureDefinition": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Previous_Shift_Production_Data": {
+      "type": "object",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=UDT_Shift_DataType",
+      "uav:mapByFieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "Previous_Shift_Production_Data",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:BOOL",
+          "pollingTime": 1000,
+          "eip:structureDefinition": {
+            "typeName": "UDT_Shift_Data",
+            "fields": [
+              {
+                "name": "Prodution_Count",
+                "type": "xsd:DINT",
+                "offset": 0,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Rejected_Product_Count",
+                "type": "xsd:DINT",
+                "offset": 4,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Cycle_Time",
+                "type": "xsd:REAL",
+                "offset": 8,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE",
+                "type": "xsd:REAL",
+                "offset": 12,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Availablity",
+                "type": "xsd:REAL",
+                "offset": 16,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Performance",
+                "type": "xsd:REAL",
+                "offset": 20,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "OEE_Quality",
+                "type": "xsd:REAL",
+                "offset": 24,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Shift_Number",
+                "type": "xsd:DINT",
+                "offset": 28,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Time_In_Shift",
+                "type": "xsd:DINT",
+                "offset": 32,
+                "description": null,
+                "eip:structureDefinition": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "IO_Control": {
+      "type": "object",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/Rockwell/;s=IO_ControlType",
+      "uav:mapByFieldPath": null,
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "IO_Control",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:BOOL",
+          "pollingTime": 1000,
+          "eip:structureDefinition": {
+            "typeName": "IO_Control",
+            "fields": [
+              {
+                "name": "Set_LEDControl",
+                "type": "xsd:DINT",
+                "offset": 0,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Set_Speed",
+                "type": "xsd:DINT",
+                "offset": 4,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Sts_LEDMode",
+                "type": "xsd:DINT",
+                "offset": 8,
+                "description": null,
+                "eip:structureDefinition": null
+              },
+              {
+                "name": "Sts_Speed",
+                "type": "xsd:DINT",
+                "offset": 12,
+                "description": null,
+                "eip:structureDefinition": null
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "actions": {}
+}

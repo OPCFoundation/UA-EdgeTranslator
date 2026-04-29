@@ -611,6 +611,13 @@ namespace Opc.Ua.Edge.Translator
             string namespaceUri = "http://opcfoundation.org/UA/" + td.Name + "/";
             AddNamespace(namespaceUri);
 
+            // let the protocol driver register any structure types (e.g. EIP UDTs)
+            // into the address space before we create variables that reference them
+            if (Program.Drivers.TryGetByUri(td.Base, out var driver))
+            {
+                driver.RegisterStructureTypes(td, this);
+            }
+
             byte unitId = 1;
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
             {
@@ -643,6 +650,11 @@ namespace Opc.Ua.Edge.Translator
             RaiseModelChangedEvent(parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
             Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
+        }
+
+        public void AddPredefinedNodePublic(NodeState node)
+        {
+            AddPredefinedNode(SystemContext, node);
         }
 
         private void AddNamespace(string namespaceUri)
@@ -864,8 +876,8 @@ namespace Opc.Ua.Edge.Translator
             // create an OPC UA variable optionally with a specified type.
             if (!string.IsNullOrEmpty(property.Value.OpcUaType))
             {
-                string[] opcuaTypeParts = property.Value.OpcUaType.Split(new char[] { '=', ';' });
-                if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i"))
+                string[] opcuaTypeParts = property.Value.OpcUaType.Split(['=', ';']);
+                if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i" || opcuaTypeParts[2] == "s"))
                 {
                     string namespaceURI = opcuaTypeParts[1];
                     if (NamespaceUris.Contains(namespaceURI))
@@ -889,22 +901,16 @@ namespace Opc.Ua.Edge.Translator
                                     TypeId = defaultBinaryEncodingId
                                 };
 
-                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
+                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
+                                {
                                     NamespaceUris = Server.NamespaceUris,
                                     Factory = Server.Factory
                                 });
 
+                                // In the OpcUaFieldPath branch (existing complex type with field path):
                                 foreach (StructureField field in ((StructureDefinition)dataType?.DataTypeDefinition?.Body).Fields)
                                 {
-                                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                                    switch (field.DataType.ToString())
-                                    {
-                                        case "i=10": encoder.WriteFloat(field.Name, 0); break;
-                                        case "i=1": encoder.WriteBoolean(field.Name, false); break;
-                                        case "i=6": encoder.WriteInt32(field.Name, 0); break;
-                                        case "i=12": encoder.WriteString(field.Name, string.Empty); break;
-                                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
-                                    }
+                                    EncodeField(encoder, field, null);
 
                                     if (field.Name == property.Value.OpcUaFieldPath)
                                     {
@@ -933,10 +939,43 @@ namespace Opc.Ua.Edge.Translator
                         }
                         else
                         {
-                            // it's an OPC UA built-in type
-                            BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly);
-                            _uaVariables.Add(variableId, variable);
-                            AddPredefinedNode(SystemContext, variable);
+                            // No field path — check if it's a structure type that needs an initialized ExtensionObject, or a simple built-in type.
+                            if ((dataType?.DataTypeDefinition?.Body is StructureDefinition structDef) && (structDef.Fields?.Count > 0))
+                            {
+                                NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
+                                if (defaultBinaryEncodingId == null)
+                                {
+                                    throw new InvalidOperationException(
+                                        $"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
+                                }
+
+                                ExtensionObject complexTypeInstance = new() {
+                                    TypeId = defaultBinaryEncodingId
+                                };
+
+                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
+                                    NamespaceUris = Server.NamespaceUris,
+                                    Factory = Server.Factory
+                                });
+
+                                foreach (StructureField field in structDef.Fields)
+                                {
+                                    EncodeField(encoder, field, null);
+                                }
+
+                                complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+
+                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
+                                _uaVariables.Add(variableId, variable);
+                                AddPredefinedNode(SystemContext, variable);
+                            }
+                            else
+                            {
+                                // it's an OPC UA built-in type
+                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly);
+                                _uaVariables.Add(variableId, variable);
+                                AddPredefinedNode(SystemContext, variable);
+                            }
                         }
                     }
                     else
@@ -1024,7 +1063,7 @@ namespace Opc.Ua.Edge.Translator
             if (!string.IsNullOrEmpty(nodeString))
             {
                 string[] parentNodeDetails = nodeString.Split('=', ';');
-                if (parentNodeDetails.Length > 3 && parentNodeDetails[0] == "nsu" && parentNodeDetails[2] == "i")
+                if (parentNodeDetails.Length > 3 && parentNodeDetails[0] == "nsu" && (parentNodeDetails[2] == "i" || parentNodeDetails[2] == "s"))
                 {
                     string namespaceUri = parentNodeDetails[1];
 
@@ -1351,22 +1390,6 @@ namespace Opc.Ua.Edge.Translator
             // check for complex type
             if (variable.Value is ExtensionObject oldEo)
             {
-                // decode existing values and re-encode them with our updated value
-                var oldBody = oldEo.Body as byte[];
-                var decoder = new BinaryDecoder(
-                    oldBody,
-                    new ServiceMessageContext(Program.Telemetry) {
-                        NamespaceUris = Server.NamespaceUris,
-                        Factory = Server.Factory
-                    });
-
-                var encoder = new BinaryEncoder(
-                    new ServiceMessageContext(Program.Telemetry) {
-                        NamespaceUris = Server.NamespaceUris,
-                        Factory = Server.Factory
-                    });
-
-                // Resolve the structured type definition so we can preserve all fields
                 var opcuaType = (DataTypeState)Find(variable.DataType);
 
                 var structDef = opcuaType?.DataTypeDefinition?.Body as StructureDefinition;
@@ -1375,110 +1398,194 @@ namespace Opc.Ua.Edge.Translator
                     throw new InvalidOperationException($"DataTypeDefinition for {variable.DataType} is missing or not a structure.");
                 }
 
-                foreach (StructureField field in structDef.Fields)
+                if (string.IsNullOrEmpty(tag.MappedUAFieldPath))
                 {
-                    // check which built-in type the complex type field is. See https://reference.opcfoundation.org/Core/Part6/v104/docs/5.1.2
-                    switch (field.DataType.ToString())
+                    // Whole-UDT update: driver returns decoded field values
+                    if (value is Dictionary<string, object> fieldValues)
                     {
-                        case "i=10":
-                            {
-                                float newValue = decoder.ReadFloat(field.Name);
+                        var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry)
+                        {
+                            NamespaceUris = Server.NamespaceUris,
+                            Factory = Server.Factory
+                        });
 
-                                if (field.Name == tag.MappedUAFieldPath)
-                                {
-                                    // overwrite existing value with our updated value
-                                    try
-                                    {
-                                        newValue = (float)value;
-                                    }
-                                    catch (Exception)
-                                    {
-                                        newValue = 0.0f;
-                                    }
-                                }
+                        foreach (StructureField field in structDef.Fields)
+                        {
+                            fieldValues.TryGetValue(field.Name, out object fieldVal);
+                            EncodeField(encoder, field, fieldVal);
+                        }
 
-                                encoder.WriteFloat(field.Name, newValue);
-
-                                break;
-                            }
-                        case "i=1":
-                            {
-                                bool newValue = decoder.ReadBoolean(field.Name);
-
-                                if (field.Name == tag.MappedUAFieldPath)
-                                {
-                                    // overwrite existing value with our updated value
-                                    try
-                                    {
-                                        newValue = (bool)value;
-                                    }
-                                    catch (Exception)
-                                    {
-                                        newValue = false;
-                                    }
-                                }
-
-                                encoder.WriteBoolean(field.Name, newValue);
-
-                                break;
-                            }
-                        case "i=6":
-                            {
-                                int newValue = decoder.ReadInt32(field.Name);
-
-                                if (field.Name == tag.MappedUAFieldPath)
-                                {
-                                    // overwrite existing value with our updated value
-                                    newValue = (int)value;
-                                }
-
-                                encoder.WriteInt32(field.Name, newValue);
-
-                                break;
-                            }
-                        case "i=12":
-                            {
-                                string newValue = decoder.ReadString(field.Name);
-
-                                if (field.Name == tag.MappedUAFieldPath)
-                                {
-                                    // overwrite existing value with our updated value
-                                    try
-                                    {
-                                        newValue = Convert.ToString(value);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        newValue = string.Empty;
-                                    }
-                                }
-
-                                encoder.WriteString(field.Name, newValue);
-
-                                break;
-                            }
-                        default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                        variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
                     }
                 }
+                else
+                {
+                    // Single-field update: decode all existing values, overwrite the
+                    // matching field, and re-encode the entire structure.
+                    var oldBody = oldEo.Body as byte[];
+                    var decoder = new BinaryDecoder(oldBody, new ServiceMessageContext(Program.Telemetry) {
+                        NamespaceUris = Server.NamespaceUris,
+                        Factory = Server.Factory
+                    });
 
-                variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
+                    var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry) {
+                        NamespaceUris = Server.NamespaceUris,
+                        Factory = Server.Factory
+                    });
+
+                    foreach (StructureField field in structDef.Fields)
+                    {
+                        bool isTargetField = field.Name == tag.MappedUAFieldPath;
+
+                        switch ((uint)field.DataType.Identifier)
+                        {
+                            case DataTypes.Float:
+                            {
+                                float v = decoder.ReadFloat(field.Name);
+                                if (isTargetField) v = value is float f ? f : 0f;
+                                encoder.WriteFloat(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Double:
+                            {
+                                double v = decoder.ReadDouble(field.Name);
+                                if (isTargetField) v = value is double d ? d : 0d;
+                                encoder.WriteDouble(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Boolean:
+                            {
+                                bool v = decoder.ReadBoolean(field.Name);
+                                if (isTargetField) v = value is bool b && b;
+                                encoder.WriteBoolean(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.SByte:
+                            {
+                                sbyte v = decoder.ReadSByte(field.Name);
+                                if (isTargetField) v = value is sbyte sb ? sb : (sbyte)0;
+                                encoder.WriteSByte(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Byte:
+                            {
+                                byte v = decoder.ReadByte(field.Name);
+                                if (isTargetField) v = value is byte by ? by : (byte)0;
+                                encoder.WriteByte(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Int16:
+                            {
+                                short v = decoder.ReadInt16(field.Name);
+                                if (isTargetField) v = value is short s ? s : (short)0;
+                                encoder.WriteInt16(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.UInt16:
+                            {
+                                ushort v = decoder.ReadUInt16(field.Name);
+                                if (isTargetField) v = value is ushort us ? us : (ushort)0;
+                                encoder.WriteUInt16(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Int32:
+                            {
+                                int v = decoder.ReadInt32(field.Name);
+                                if (isTargetField) v = value is int iv ? iv : 0;
+                                encoder.WriteInt32(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.UInt32:
+                            {
+                                uint v = decoder.ReadUInt32(field.Name);
+                                if (isTargetField) v = value is uint uv ? uv : 0u;
+                                encoder.WriteUInt32(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.Int64:
+                            {
+                                long v = decoder.ReadInt64(field.Name);
+                                if (isTargetField) v = value is long lv ? lv : 0L;
+                                encoder.WriteInt64(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.UInt64:
+                            {
+                                ulong v = decoder.ReadUInt64(field.Name);
+                                if (isTargetField) v = value is ulong ulv ? ulv : 0UL;
+                                encoder.WriteUInt64(field.Name, v);
+                                break;
+                            }
+                            case DataTypes.String:
+                            {
+                                string v = decoder.ReadString(field.Name);
+                                if (isTargetField) v = Convert.ToString(value) ?? string.Empty;
+                                encoder.WriteString(field.Name, v);
+                                break;
+                            }
+                            default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+                        }
+                    }
+
+                    variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
+                }
             }
             else
             {
                 variable.Value = value;
             }
 
-            if (connected)
-            {
-                variable.StatusCode = StatusCodes.Good;
-            }
-            else
-            {
-                variable.StatusCode = StatusCodes.BadDataUnavailable;
-            }
-
+            variable.StatusCode = connected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
             variable.Timestamp = DateTime.UtcNow;
             variable.ClearChangeMasks(SystemContext, true);
+        }
+
+        /// <summary>
+        /// Encodes a single structure field value for whole-UDT updates.
+        /// Used by both AddNodeForWoTForm (initialization) and UpdateUAServerVariable (runtime).
+        /// </summary>
+        private static void EncodeField(BinaryEncoder encoder, StructureField field, object value)
+        {
+            switch ((uint)field.DataType.Identifier)
+            {
+                case DataTypes.Float:
+                    encoder.WriteFloat(field.Name, value is float f ? f : 0f);
+                    break;
+                case DataTypes.Double:
+                    encoder.WriteDouble(field.Name, value is double d ? d : 0d);
+                    break;
+                case DataTypes.Boolean:
+                    encoder.WriteBoolean(field.Name, value is bool b && b);
+                    break;
+                case DataTypes.SByte:
+                    encoder.WriteSByte(field.Name, value is sbyte sb ? sb : (sbyte)0);
+                    break;
+                case DataTypes.Byte:
+                    encoder.WriteByte(field.Name, value is byte by ? by : (byte)0);
+                    break;
+                case DataTypes.Int16:
+                    encoder.WriteInt16(field.Name, value is short s ? s : (short)0);
+                    break;
+                case DataTypes.UInt16:
+                    encoder.WriteUInt16(field.Name, value is ushort us ? us : (ushort)0);
+                    break;
+                case DataTypes.Int32:
+                    encoder.WriteInt32(field.Name, value is int iv ? iv : 0);
+                    break;
+                case DataTypes.UInt32:
+                    encoder.WriteUInt32(field.Name, value is uint uv ? uv : 0u);
+                    break;
+                case DataTypes.Int64:
+                    encoder.WriteInt64(field.Name, value is long lv ? lv : 0L);
+                    break;
+                case DataTypes.UInt64:
+                    encoder.WriteUInt64(field.Name, value is ulong ulv ? ulv : 0UL);
+                    break;
+                case DataTypes.String:
+                    encoder.WriteString(field.Name, value?.ToString() ?? string.Empty);
+                    break;
+                default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
+            }
         }
     }
 }

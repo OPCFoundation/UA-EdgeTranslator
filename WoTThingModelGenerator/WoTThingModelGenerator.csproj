@@ -51,6 +51,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ProtocolDrivers\ModbusTCP\ModbusTCP.csproj" />
+    <ProjectReference Include="..\ProtocolDrivers\Rockwell\Rockwell.csproj" />
     <ProjectReference Include="..\UAServer\UAEdgeTranslator.csproj" />
   </ItemGroup>
 

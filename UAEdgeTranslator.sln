@@ -61,6 +61,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{36D1
 		Samples\pac4200.tm.jsonld = Samples\pac4200.tm.jsonld
 		Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld = Samples\PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.tm.jsonld
 		Samples\PIPlantA.td.jsonld = Samples\PIPlantA.td.jsonld
+		Samples\Rockwell.td.jsonld = Samples\Rockwell.td.jsonld
 		Samples\s7.td.jsonld = Samples\s7.td.jsonld
 		Samples\Simple PLC.tm.jsonld = Samples\Simple PLC.tm.jsonld
 		Samples\SimpleHTTPClient.td.jsonld = Samples\SimpleHTTPClient.td.jsonld

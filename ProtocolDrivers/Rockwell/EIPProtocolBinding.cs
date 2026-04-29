@@ -19,6 +19,45 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
+
+        [JsonProperty("eip:structureDefinition")]
+        public EIPStructureDefinition? StructureDefinition { get; set; }
+    }
+
+    public class EIPStructureDefinition
+    {
+        [JsonProperty("typeName")]
+        public string? TypeName { get; set; }
+
+        [JsonProperty("fields")]
+        public EIPFieldDefinition[]? Fields { get; set; }
+    }
+
+    public class EIPFieldDefinition
+    {
+        [JsonProperty("name")]
+        public string? Name { get; set; }
+
+        /// <summary>
+        /// For primitive fields: "xsd:DINT", "xsd:REAL", etc.
+        /// For nested UDT fields: null (use structureDefinition instead).
+        /// </summary>
+        [JsonProperty("type")]
+        public string? Type { get; set; }
+
+        [JsonProperty("offset")]
+        public int Offset { get; set; }
+
+        [JsonProperty("description")]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Present when this field is a nested UDT. Contains the full
+        /// structure definition of the nested type, enabling recursive
+        /// OPC UA StructureType creation.
+        /// </summary>
+        [JsonProperty("eip:structureDefinition")]
+        public EIPStructureDefinition? StructureDefinition { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
@@ -55,6 +94,9 @@ namespace Opc.Ua.Edge.Translator.Models
         REAL,
 
         [EnumMember(Value = "xsd:LREAL")]
-        LREAL
+        LREAL,
+
+        [EnumMember(Value = "xsd:STRING")]
+        STRING
     };
 }

@@ -12,7 +12,22 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         private string _endpoint = string.Empty;
 
+        /// <summary>
+        /// Maps tag address (href) to its EIP structure definition.
+        /// Populated by the protocol driver during tag creation.
+        /// </summary>
+        private readonly Dictionary<string, EIPStructureDefinition> _udtDefinitions = new();
+
         public bool IsConnected { get; private set; } = false;
+
+        /// <summary>
+        /// Registers an EIP structure definition for a UDT tag address
+        /// so that Read() can decode the raw PLC bytes field-by-field.
+        /// </summary>
+        public void RegisterUdtDefinition(string tagAddress, EIPStructureDefinition structDef)
+        {
+            _udtDefinitions[tagAddress] = structDef;
+        }
 
         public void Connect(string ipAddress, int port)
         {
@@ -54,6 +69,21 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public object Read(AssetTag tag)
         {
             object value = null;
+
+            // UDT: read the entire tag as a raw byte buffer, then decode
+            // each field at its EIP offset into a dictionary.
+            if (tag.Type == "UDT")
+            {
+                byte[] rawBuffer = ReadRawTag(tag.Address);
+                if ((rawBuffer != null)
+                    && _udtDefinitions.TryGetValue(tag.Address, out var structDef)
+                    && (structDef.Fields != null))
+                {
+                    return DecodeUdtFields(rawBuffer, structDef);
+                }
+
+                return rawBuffer;
+            }
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
@@ -177,6 +207,33 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Write(addressParts[0], byte.Parse(addressParts[1]), tag.Type, tagBytes, false).GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Reads an entire tag (including UDTs) as a raw byte buffer.
+        /// libplctag reads the full UDT structure in a single EIP request.
+        /// </summary>
+        private byte[] ReadRawTag(string tagName)
+        {
+            var tag = new Tag()
+            {
+                Name = tagName,
+                Gateway = _endpoint,
+                Path = "1,0",
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip
+            };
+
+            tag.Read();
+
+            int size = tag.GetSize();
+            byte[] buffer = new byte[size];
+            for (int i = 0; i < size; i++)
+            {
+                buffer[i] = tag.GetUInt8(i);
+            }
+
+            return buffer;
+        }
+
         private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
         {
             var addressParts = addressWithinAsset.Split('.');
@@ -197,17 +254,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             switch (function)
             {
                 case "BOOL": return Task.FromResult(BitConverter.GetBytes(tag.GetBit(offset)));
-                case "SINT": return Task.FromResult(new byte[] { (byte) tag.GetInt8(offset) } );
+                case "SINT": return Task.FromResult(new byte[] { (byte)tag.GetInt8(offset) });
                 case "INT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt16(offset)));
                 case "DINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt32(offset)));
                 case "LINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt64(offset)));
-                case "USINT": return Task.FromResult(new byte[] { tag.GetUInt8(offset) } );
+                case "USINT": return Task.FromResult(new byte[] { tag.GetUInt8(offset) });
                 case "UINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt16(offset)));
                 case "UDINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt32(offset)));
                 case "ULINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt64(offset)));
                 case "REAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat32(offset)));
                 case "LREAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat64(offset)));
-                default: return Task.FromResult((byte[]) null);
+                default: return Task.FromResult((byte[])null);
             }
         }
 
@@ -229,7 +286,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             switch (function)
             {
                 case "BOOL": tag.SetBit(offset, BitConverter.ToBoolean(values)); break;
-                case "SINT": tag.SetInt8(offset, (sbyte) BitConverter.ToChar(values)); break;
+                case "SINT": tag.SetInt8(offset, (sbyte)BitConverter.ToChar(values)); break;
                 case "INT": tag.SetInt16(offset, BitConverter.ToInt16(values)); break;
                 case "DINT": tag.SetInt32(offset, BitConverter.ToInt32(values)); break;
                 case "LINT": tag.SetInt64(offset, BitConverter.ToInt64(values)); break;
@@ -250,6 +307,86 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             return null;
+        }
+
+        /// <summary>
+        /// Decodes a raw PLC UDT byte buffer into a dictionary of field name → value
+        /// using the EIP field offsets from the structure definition.
+        /// Nested UDTs are decoded recursively.
+        /// </summary>
+        private static Dictionary<string, object> DecodeUdtFields(byte[] buffer, EIPStructureDefinition structDef)
+        {
+            var result = new Dictionary<string, object>();
+
+            foreach (EIPFieldDefinition field in structDef.Fields)
+            {
+                if (field.StructureDefinition != null)
+                {
+                    // Nested UDT: decode recursively from the same buffer
+                    // starting at the nested field's offset
+                    result[field.Name] = DecodeUdtFields(buffer, field.StructureDefinition);
+                }
+                else
+                {
+                    result[field.Name] = ExtractFieldValue(buffer, field);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Extracts a single primitive field value from the raw PLC buffer
+        /// at the EIP byte offset.
+        /// </summary>
+        private static object ExtractFieldValue(byte[] buffer, EIPFieldDefinition field)
+        {
+            int offset = field.Offset;
+
+            try
+            {
+                return field.Type switch
+                {
+                    "xsd:BOOL"  => offset < buffer.Length && BitConverter.ToBoolean(buffer, offset),
+                    "xsd:SINT"  => offset < buffer.Length ? (sbyte)buffer[offset] : (sbyte)0,
+                    "xsd:USINT" => offset < buffer.Length ? buffer[offset] : (byte)0,
+                    "xsd:INT"   => offset + 1 < buffer.Length ? BitConverter.ToInt16(buffer, offset) : (short)0,
+                    "xsd:UINT"  => offset + 1 < buffer.Length ? BitConverter.ToUInt16(buffer, offset) : (ushort)0,
+                    "xsd:DINT"  => offset + 3 < buffer.Length ? BitConverter.ToInt32(buffer, offset) : 0,
+                    "xsd:UDINT" => offset + 3 < buffer.Length ? BitConverter.ToUInt32(buffer, offset) : 0u,
+                    "xsd:LINT"  => offset + 7 < buffer.Length ? BitConverter.ToInt64(buffer, offset) : 0L,
+                    "xsd:ULINT" => offset + 7 < buffer.Length ? BitConverter.ToUInt64(buffer, offset) : 0UL,
+                    "xsd:REAL"  => offset + 3 < buffer.Length ? BitConverter.ToSingle(buffer, offset) : 0f,
+                    "xsd:LREAL" => offset + 7 < buffer.Length ? BitConverter.ToDouble(buffer, offset) : 0d,
+                    "xsd:STRING" => ExtractPlcString(buffer, offset),
+                    _           => null
+                };
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Extracts a Rockwell STRING from the raw PLC buffer.
+        /// Rockwell STRINGs are stored as a 4-byte little-endian length
+        /// prefix followed by the ASCII character data.
+        /// </summary>
+        private static string ExtractPlcString(byte[] buffer, int offset)
+        {
+            if ((offset + 4) > buffer.Length)
+            {
+                return string.Empty;
+            }
+
+            int length = BitConverter.ToInt32(buffer, offset);
+            if (length <= 0 || ((offset + 4 + length) > buffer.Length))
+            {
+                return string.Empty;
+            }
+
+            return System.Text.Encoding.ASCII.GetString(buffer, offset + 4, length);
         }
     }
 }
