@@ -376,15 +376,7 @@ namespace Opc.Ua.Edge.Translator
             lock (Lock)
             {
                 // check if the asset node already exists
-                INodeBrowser browser = _assetManagement.CreateBrowser(
-                    SystemContext,
-                    null,
-                    null,
-                    false,
-                    BrowseDirection.Forward,
-                    null,
-                    null,
-                    true);
+                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, null, false, BrowseDirection.Forward, null, null, true);
 
                 IReference reference = browser.Next();
                 while ((reference != null) && (reference is NodeStateReference))
@@ -882,14 +874,53 @@ namespace Opc.Ua.Edge.Translator
                     string namespaceURI = opcuaTypeParts[1];
                     if (NamespaceUris.Contains(namespaceURI))
                     {
-                        var dataType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
+                        DataTypeState dataType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as DataTypeState;
 
                         // check if this variable is part of a complex type and we need to load the complex type first and then assign a part of it to the new variable.
                         if (!string.IsNullOrEmpty(property.Value.OpcUaFieldPath))
                         {
-                            if ((dataType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)dataType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
+                            // Check if the type is an ObjectType (not a DataType/StructureDefinition)
+                            BaseObjectTypeState objectType = Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.Value.OpcUaType), Server.NamespaceUris)) as BaseObjectTypeState;
+                            if (objectType != null)
                             {
+                                // Object type path: instantiate the object type once, then map WoT properties to child variables
 
+                                // Check if we already created this object instance for a previous field
+                                BaseObjectState objectInstance;
+                                NodeState childVariable = null;
+                                var existingNode = FindNodeInAddressSpace(new NodeId(variableId, assetNamespaceIndex));
+                                if (existingNode == null)
+                                {
+                                    objectInstance = _nodeFactory.CreateObject(assetFolder, variableName, ParseExpandedNodeId(property.Value.OpcUaType));
+                                    AddPredefinedNode(SystemContext, objectInstance);
+                                }
+                                else
+                                {
+                                    objectInstance = existingNode as BaseObjectState;
+                                }
+
+                                // Instantiate a child variable underneath the object instance
+                                childVariable = InstantiateObjectTypeChild(objectInstance, objectType, assetNamespaceIndex, variableName, property.Value.OpcUaFieldPath, !property.Value.ReadOnly);
+                                if (childVariable != null)
+                                {
+                                    if (!_uaVariables.ContainsKey(variableId))
+                                    {
+                                        if (childVariable is BaseDataVariableState)
+                                        {
+                                            _uaVariables.Add(variableId, childVariable as BaseDataVariableState);
+                                        }
+                                        else
+                                        {
+                                            _uaProperties.Add(variableId, childVariable as PropertyState);
+                                        }
+                                    }
+
+                                    fieldPath = property.Value.OpcUaFieldPath;
+                                }
+                            }
+                            else if ((dataType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)dataType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
+                            {
+                                // Data Structure type path: instantiate a new extension object once, then map WoT properties to fields
                                 NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
                                 if (defaultBinaryEncodingId == null)
                                 {
@@ -907,7 +938,6 @@ namespace Opc.Ua.Edge.Translator
                                     Factory = Server.Factory
                                 });
 
-                                // In the OpcUaFieldPath branch (existing complex type with field path):
                                 foreach (StructureField field in ((StructureDefinition)dataType?.DataTypeDefinition?.Body).Fields)
                                 {
                                     EncodeField(encoder, field, null);
@@ -921,7 +951,7 @@ namespace Opc.Ua.Edge.Translator
 
                                 complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
 
-                                // now add it, if it doesn't already exist
+                                // check if we are creating this variable for the first time, or if it's already been created as part of a previous field mapping for this asset
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
                                     BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
@@ -945,8 +975,7 @@ namespace Opc.Ua.Edge.Translator
                                 NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
                                 if (defaultBinaryEncodingId == null)
                                 {
-                                    throw new InvalidOperationException(
-                                        $"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
+                                    throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
                                 }
 
                                 ExtensionObject complexTypeInstance = new() {
@@ -1037,10 +1066,17 @@ namespace Opc.Ua.Edge.Translator
                 throw new Exception($"No driver installed for base URI: {td.Base}");
             }
 
-            string mappedNodeId = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString();
+            string mappedNodeId;
+            if (_uaVariables.ContainsKey(variableId))
+            {
+                mappedNodeId = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString();
+            }
+            else
+            {
+                mappedNodeId = NodeId.ToExpandedNodeId(_uaProperties[variableId].NodeId, Server.NamespaceUris).ToString();
+            }
 
             AssetTag tag = drv.CreateTag(td, form, assetId, unitId, variableId, mappedNodeId, fieldPath);
-
             _tags[assetId].Add(tag);
         }
 
@@ -1345,12 +1381,14 @@ namespace Opc.Ua.Edge.Translator
                         if (ticks * 1000 % divisorMs == 0)
                         {
                             UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
+                            UpdateUAServerProperty(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
                         }
                     }
                     catch (Exception ex)
                     {
                         // set this tag to zero, update its status and log an error
                         UpdateUAServerVariable(tag, 0, false);
+                        UpdateUAServerProperty(tag, 0, false);
                         Log.Logger.Error(ex.Message, ex);
 
                         // try reconnecting
@@ -1385,7 +1423,10 @@ namespace Opc.Ua.Edge.Translator
 
         private void UpdateUAServerVariable(AssetTag tag, object value, bool connected)
         {
-            BaseDataVariableState variable = _uaVariables[tag.Name];
+            if (!_uaVariables.TryGetValue(tag.Name, out var variable))
+            {
+                return;
+            }
 
             // check for complex type
             if (variable.Value is ExtensionObject oldEo)
@@ -1540,6 +1581,19 @@ namespace Opc.Ua.Edge.Translator
             variable.ClearChangeMasks(SystemContext, true);
         }
 
+        private void UpdateUAServerProperty(AssetTag tag, object value, bool connected)
+        {
+            if (!_uaProperties.TryGetValue(tag.Name, out var property))
+            {
+                return;
+            }
+
+            property.Value = value;
+            property.StatusCode = connected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
+            property.Timestamp = DateTime.UtcNow;
+            property.ClearChangeMasks(SystemContext, true);
+        }
+
         /// <summary>
         /// Encodes a single structure field value for whole-UDT updates.
         /// Used by both AddNodeForWoTForm (initialization) and UpdateUAServerVariable (runtime).
@@ -1586,6 +1640,54 @@ namespace Opc.Ua.Edge.Translator
                     break;
                 default: throw new NotImplementedException("Complex type field data type " + field.DataType.ToString() + " not yet supported!");
             }
+        }
+
+        private NodeState InstantiateObjectTypeChild(BaseObjectState objectInstance, BaseObjectTypeState objectType, ushort namespaceIndex, string parentName, string fieldName, bool writeable)
+        {
+            NodeState childVar = null;
+
+            // Browse the object type for child variables and replicate them on the instance
+            var browser = objectType.CreateBrowser(SystemContext, null, null, true, BrowseDirection.Forward, null, null, true);
+
+            IReference reference = browser.Next();
+            while (reference != null)
+            {
+                // find the target node for this reference
+                NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
+                if (target.DisplayName.Text == fieldName)
+                {
+                    if (reference.ReferenceTypeId == ReferenceTypes.HasComponent)
+                    {
+                        // Create a matching variable under the object instance
+                        childVar = _nodeFactory.CreateVariable(
+                            objectInstance,
+                            $"{parentName}.{fieldName.TrimStart("<").TrimEnd(">")}",
+                            reference.ReferenceTypeId,
+                            namespaceIndex,
+                            writeable);
+                    }
+
+                    if (reference.ReferenceTypeId == ReferenceTypes.HasProperty)
+                    {
+                        // Create a matching property under the object instance
+                        childVar = _nodeFactory.CreateProperty(
+                            objectInstance,
+                            $"{parentName}.{fieldName.TrimStart("<").TrimEnd(">")}",
+                            reference.ReferenceTypeId,
+                            namespaceIndex,
+                            writeable);
+                    }
+                 }
+
+                reference = browser.Next();
+            }
+
+            if (childVar != null)
+            {
+                AddPredefinedNode(SystemContext, childVar);
+            }
+
+            return childVar;
         }
     }
 }

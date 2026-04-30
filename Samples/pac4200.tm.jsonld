@@ -92,6 +92,9 @@
     },
     "VoltageL1-L2": {
       "type": "number",
+      "uav:mapToNodeId": "s=VoltageL1-L2",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+      "uav:mapByFieldPath": "<MeasurementValue>",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -110,6 +113,9 @@
     },
     "VoltageL2-L3": {
       "type": "number",
+      "uav:mapToNodeId": "s=VoltageL2-L3",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+      "uav:mapByFieldPath": "<MeasurementValue>",
       "readOnly": true,
       "observable": true,
       "forms": [
@@ -128,6 +134,9 @@
     },
     "VoltageL3-L1": {
       "type": "number",
+      "uav:mapToNodeId": "s=VoltageL3-L1",
+      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+      "uav:mapByFieldPath": "<MeasurementValue>",
       "readOnly": true,
       "observable": true,
       "forms": [
