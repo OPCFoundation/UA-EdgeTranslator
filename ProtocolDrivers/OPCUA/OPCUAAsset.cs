@@ -642,8 +642,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // Skip the server diagnostics subtree: its instance NodeIds are created per
                 // session/subscription and become invalid (BadNodeIdUnknown) as soon as those
                 // sessions/subscriptions are closed, so persisting them as asset tags is unsafe.
-                if (childNodeId == ObjectIds.Server_ServerDiagnostics
-                    || reference.NodeId.NamespaceUri == "http://opcfoundation.org/UA/Diagnostics")
+                // Also skip the entire Server branch: it exposes diagnostics, redundancy and other
+                // server-managed nodes whose instance NodeIds are created per session/subscription
+                // and/or whose Value attribute is intentionally not implemented on non-redundant
+                // servers (e.g. Server.ServerRedundancy.CurrentServerId / i=11312 returns
+                // BadAttributeIdInvalid). Persisting any of these as asset tags is unsafe and
+                // would raise exceptions every polling cycle.
+                if ((childNodeId == ObjectIds.Server) || (reference.NodeId.NamespaceUri == "http://opcfoundation.org/UA/Diagnostics"))
                 {
                     continue;
                 }
@@ -698,6 +703,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 NodeId dataTypeId = values[0].Value as NodeId;
                 int valueRank = values[1].Value is int rank ? rank : ValueRanks.Scalar;
                 byte accessLevel = values[2].Value is byte access ? access : (byte)0;
+
+                // Skip nodes the server has marked as not readable; otherwise every polling
+                // cycle would throw BadNotReadable on Read.
+                if ((accessLevel & AccessLevels.CurrentRead) != AccessLevels.CurrentRead)
+                {
+                    return null;
+                }
 
                 BuiltInType builtInType = TypeInfo.GetBuiltInType(dataTypeId, _session.TypeTree);
 
