@@ -87,7 +87,6 @@
                         Type = node.WoTType,
                         ReadOnly = node.ReadOnly,
                         Observable = true,
-                        OpcUaNodeId = node.ExpandedNodeId,
                         Forms = [form]
                     };
 

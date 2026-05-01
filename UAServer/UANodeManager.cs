@@ -625,7 +625,14 @@ namespace Opc.Ua.Edge.Translator
                     {
                         foreach (object form in property.Value.Forms)
                         {
-                            AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                            try
+                            {
+                                AddNodeForWoTForm(parent, td, property, form, td.Name, unitId);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Logger.Error(ex.Message, ex);
+                            }
                         }
                     }
                     else

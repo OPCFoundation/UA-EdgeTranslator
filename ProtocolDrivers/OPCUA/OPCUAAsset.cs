@@ -8,8 +8,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
-    using System.IO;
-    using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -44,7 +42,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Connect(string ipAddress, int port)
         {
-            var url = "opc.tcp://" + ipAddress + ":" + port;
+            _endpoint = ipAddress + ":" + port;
+            string url = BuildEndpointUrl(ipAddress, port);
+
             var username = Environment.GetEnvironmentVariable("OPCUA_CLIENT_USERNAME");
             var password = Environment.GetEnvironmentVariable("OPCUA_CLIENT_PASSWORD");
             ConnectSessionAsync(url, username, password).GetAwaiter().GetResult();
@@ -62,6 +62,31 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public string GetRemoteEndpoint()
         {
             return _endpoint;
+        }
+
+        private string BuildEndpointUrl(string ipAddress, int port)
+        {
+            // If the caller already provided a full OPC UA URL, use it as-is.
+            if (!string.IsNullOrEmpty(ipAddress) && ipAddress.Contains("://"))
+            {
+                return ipAddress;
+            }
+
+            // If the caller passed only the scheme portion (e.g. "opc.tcp") because the
+            // endpoint URL was split on ':', or supplied no usable host, fall back to the
+            // last known endpoint.
+            bool noUsableHost = string.IsNullOrWhiteSpace(ipAddress)
+                                || ipAddress.Equals("opc.tcp", StringComparison.OrdinalIgnoreCase);
+
+            if (noUsableHost && !string.IsNullOrEmpty(_endpoint))
+            {
+                return _endpoint;
+            }
+
+            // Plain host[:port] pair.
+            return port > 0
+                ? "opc.tcp://" + ipAddress + ":" + port
+                : "opc.tcp://" + ipAddress;
         }
 
         public object Read(AssetTag tag)
@@ -89,6 +114,38 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     value = Encoding.UTF8.GetString(tagBytes);
                 }
+                else if (tag.Type == "Byte")
+                {
+                    value = tagBytes[0];
+                }
+                else if (tag.Type == "SByte")
+                {
+                    value = (sbyte)tagBytes[0];
+                }
+                else if (tag.Type == "Short" || tag.Type == "Int16")
+                {
+                    value = BitConverter.ToInt16(tagBytes);
+                }
+                else if (tag.Type == "UShort" || tag.Type == "UInt16")
+                {
+                    value = BitConverter.ToUInt16(tagBytes);
+                }
+                else if (tag.Type == "UInteger" || tag.Type == "UInt32")
+                {
+                    value = BitConverter.ToUInt32(tagBytes);
+                }
+                else if (tag.Type == "Long" || tag.Type == "Int64")
+                {
+                    value = BitConverter.ToInt64(tagBytes);
+                }
+                else if (tag.Type == "ULong" || tag.Type == "UInt64")
+                {
+                    value = BitConverter.ToUInt64(tagBytes);
+                }
+                else if (tag.Type == "Double")
+                {
+                    value = BitConverter.ToDouble(tagBytes);
+                }
                 else
                 {
                     throw new ArgumentException("Type not supported by OPC UA.");
@@ -100,29 +157,61 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Write(AssetTag tag, object value)
         {
-            byte[] tagBytes = null;
+            object typedValue;
             if (tag.Type == "Float")
             {
-                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
+                typedValue = float.Parse(value.ToString());
             }
             else if (tag.Type == "Boolean")
             {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
+                typedValue = bool.Parse(value.ToString());
             }
             else if (tag.Type == "Integer")
             {
-                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
+                typedValue = int.Parse(value.ToString());
             }
             else if (tag.Type == "String")
             {
-                tagBytes = Encoding.UTF8.GetBytes(value.ToString());
+                typedValue = value.ToString();
+            }
+            else if (tag.Type == "Byte")
+            {
+                typedValue = byte.Parse(value.ToString());
+            }
+            else if (tag.Type == "SByte")
+            {
+                typedValue = sbyte.Parse(value.ToString());
+            }
+            else if (tag.Type == "Short" || tag.Type == "Int16")
+            {
+                typedValue = short.Parse(value.ToString());
+            }
+            else if (tag.Type == "UShort" || tag.Type == "UInt16")
+            {
+                typedValue = ushort.Parse(value.ToString());
+            }
+            else if (tag.Type == "UInteger" || tag.Type == "UInt32")
+            {
+                typedValue = uint.Parse(value.ToString());
+            }
+            else if (tag.Type == "Long" || tag.Type == "Int64")
+            {
+                typedValue = long.Parse(value.ToString());
+            }
+            else if (tag.Type == "ULong" || tag.Type == "UInt64")
+            {
+                typedValue = ulong.Parse(value.ToString());
+            }
+            else if (tag.Type == "Double")
+            {
+                typedValue = double.Parse(value.ToString());
             }
             else
             {
                 throw new ArgumentException("Type not supported by OPC UA.");
             }
 
-            Write(tag.Address, 0, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+            WriteValue(tag.Address, typedValue).GetAwaiter().GetResult();
         }
 
         private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
@@ -130,67 +219,89 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (_session != null)
             {
                 var nodeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(addressWithinAsset), _session.NamespaceUris);
-                var value = _session.ReadValueAsync(nodeId).GetAwaiter().GetResult();
 
-#pragma warning disable SYSLIB0011
-                BinaryFormatter bf = new();
-                using (MemoryStream ms = new())
+                DataValue value;
+                try
                 {
-                    bf.Serialize(ms, value.Value);
-#pragma warning restore SYSLIB0011
-
-                    return Task.FromResult(ms.ToArray());
+                    value = _session.ReadValueAsync(nodeId).GetAwaiter().GetResult();
                 }
+                catch (Exception ex)
+                {
+                    // The node no longer exists on the server (e.g. ephemeral diagnostics
+                    // nodes whose owning session/subscription has been closed). Treat as
+                    // "no value" rather than failing the whole asset and triggering a reconnect.
+                    Log.Logger.Warning($"Node {nodeId} not readable on server, skipping. ({ex.Message})");
+                    return Task.FromResult(Array.Empty<byte>());
+                }
+
+                if (value?.Value == null)
+                {
+                    return Task.FromResult(Array.Empty<byte>());
+                }
+
+                byte[] bytes = value.Value switch
+                {
+                    float f    => BitConverter.GetBytes(f),
+                    double d   => BitConverter.GetBytes(d),
+                    bool b     => BitConverter.GetBytes(b),
+                    int i      => BitConverter.GetBytes(i),
+                    uint ui    => BitConverter.GetBytes(ui),
+                    short s    => BitConverter.GetBytes(s),
+                    ushort us  => BitConverter.GetBytes(us),
+                    long l     => BitConverter.GetBytes(l),
+                    ulong ul   => BitConverter.GetBytes(ul),
+                    byte by    => new[] { by },
+                    string str => Encoding.UTF8.GetBytes(str),
+                    byte[] arr => arr,
+                    _          => Encoding.UTF8.GetBytes(value.Value.ToString() ?? string.Empty)
+                };
+
+                return Task.FromResult(bytes);
             }
             else
             {
-                return Task.FromResult(new byte[0]);
+                return Task.FromResult(Array.Empty<byte>());
             }
         }
 
-        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
+        private Task WriteValue(string addressWithinAsset, object value)
         {
-            using (MemoryStream memStream = new(values))
+            if (_session == null)
             {
-#pragma warning disable SYSLIB0011
-                BinaryFormatter binForm = new();
-
-                var value = binForm.Deserialize(memStream);
-#pragma warning restore SYSLIB0011
-
-                WriteValue nodeToWrite = new()
-                {
-                    NodeId = new NodeId(addressWithinAsset),
-                    Value = new DataValue(new Variant(value))
-                };
-
-                WriteValueCollection nodesToWrite = new(){ nodeToWrite };
-
-                RequestHeader requestHeader = new()
-                {
-                    ReturnDiagnostics = (uint)DiagnosticsMasks.All
-                };
-
-                WriteResponse response = _session.WriteAsync(
-                    requestHeader,
-                    nodesToWrite,
-                    CancellationToken.None).GetAwaiter().GetResult();
-                ClientBase.ValidateResponse(response.Results, nodesToWrite);
-                ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToWrite);
-
-                if (StatusCode.IsBad(response.Results[0]))
-                {
-                    throw ServiceResultException.Create(response.Results[0], 0, response.DiagnosticInfos, response.ResponseHeader.StringTable);
-                }
-
                 return Task.CompletedTask;
             }
+
+            WriteValue nodeToWrite = new()
+            {
+                NodeId = new NodeId(addressWithinAsset),
+                Value = new DataValue(new Variant(value))
+            };
+
+            WriteValueCollection nodesToWrite = new() { nodeToWrite };
+
+            RequestHeader requestHeader = new()
+            {
+                ReturnDiagnostics = (uint)DiagnosticsMasks.All
+            };
+
+            WriteResponse response = _session.WriteAsync(
+                requestHeader,
+                nodesToWrite,
+                CancellationToken.None).GetAwaiter().GetResult();
+
+            ClientBase.ValidateResponse(response.Results, nodesToWrite);
+            ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToWrite);
+
+            if (StatusCode.IsBad(response.Results[0]))
+            {
+                throw ServiceResultException.Create(response.Results[0], 0, response.DiagnosticInfos, response.ResponseHeader.StringTable);
+            }
+
+            return Task.CompletedTask;
         }
 
         private async Task ConnectSessionAsync(string endpointUrl, string username, string password)
         {
-            _endpoint = endpointUrl;
-
             // check if the required session is already available
             if (_session != null && _session.Endpoint.EndpointUrl == endpointUrl)
             {
@@ -514,9 +625,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             foreach (ReferenceDescription reference in references)
             {
-                if (reference.NodeId == null || reference.NodeId.IsAbsolute)
+                if (reference.NodeId == null)
                 {
-                    // skip references to nodes on other servers
                     continue;
                 }
 
@@ -529,6 +639,24 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 string childPath = string.IsNullOrEmpty(parentPath) ? browseName : parentPath + "." + browseName;
                 NodeId childNodeId = ExpandedNodeId.ToNodeId(reference.NodeId, _session.NamespaceUris);
 
+                // Skip the server diagnostics subtree: its instance NodeIds are created per
+                // session/subscription and become invalid (BadNodeIdUnknown) as soon as those
+                // sessions/subscriptions are closed, so persisting them as asset tags is unsafe.
+                if (childNodeId == ObjectIds.Server_ServerDiagnostics
+                    || reference.NodeId.NamespaceUri == "http://opcfoundation.org/UA/Diagnostics")
+                {
+                    continue;
+                }
+
+                if (childPath.StartsWith("MemoryBuffers"))
+                {
+                    // Skip MemoryBuffers and all their children: these are used for large data transfers and have
+                    // instance NodeIds that become invalid as soon as the transfer is complete, so persisting
+                    // them as asset tags is unsafe.
+                    continue;
+                }
+
+                // Only add variables to the results, but keep recursing through objects since variables can be nested under objects or other variables (e.g. Properties).
                 if (reference.NodeClass == NodeClass.Variable)
                 {
                     BrowsedNode node = BuildBrowsedNode(childNodeId, childPath);
