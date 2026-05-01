@@ -58,7 +58,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 
 Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
-There is also a tool provided (WoTThingModelGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a TwinCAT file, or an Asset Admin Shell file to a WoT Thing Model file.
+There is also a tool provided (WoTThingModelGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
 ## How to build your own Protocol Driver
 
@@ -149,6 +149,158 @@ Once connected, you will see the OPC UA address space with a node called "WoTAss
 In this branch you will find a variable "IPAddress" that was defined in the "SimpleHTTPClient.td.jsonld". The variable is read every 60 seconds, although it probably does not change since it just calls a service on the internet determining your external IP address.
 
 For more details on the Web of Things file format and description see https://www.w3.org/TR/wot-thing-description-2.0/
+
+## Generating WoT Thing Descriptions from PLC Engineering Tools
+
+The `WoTThingModelGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in.
+
+It currently supports input from:
+
+| Vendor / Source | Input file | Produced binding |
+|---|---|---|
+| Beckhoff TwinCAT | `*.tmc` (TwinCAT Module Class) | ADS / `GenericForm` |
+| Rockwell Studio 5000 / RSLogix 5000 | `*.csv` (tag / UDT export) | EtherNet/IP (`EIPForm`) |
+| Generic Modbus point list (Azure IoT format) | `*.csv` | Modbus TCP (`ModbusForm`) |
+| Siemens TIA Portal V18..V21 | `*.ap18` .. `*.ap21` (project file) | S7Comm (`S7Form`) |
+| OPC UA | `*.NodeSet2.xml` | OPC UA (`GenericForm`) |
+| AutomationML | `*.aml` | `GenericForm` |
+| Asset Administration Shell — Asset Interface Description | `*.aas.json` | Modbus or `GenericForm` |
+
+The tool scans its **current working directory**, processes every recognised file it finds, and writes a `<inputName>.tm.jsonld` next to it (Siemens projects emit one file per PLC: `<projectName>_<plcName>.tm.jsonld`).
+
+### Building the tool
+
+`WoTThingModelGenerator` targets `net8.0-windows` / x64 because the Siemens TIA Openness API is x64‑only. The other importers also run on the same build.
+
+```powershell
+cd UA-EdgeTranslator
+dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj -c Release /p:Platform=x64
+```
+
+Run it from any directory containing input files:
+
+```powershell
+cd <folder containing your engineering exports>
+& "<repo>\WoTThingModelGenerator\bin\x64\Release\net8.0-windows\WoTThingModelGenerator.exe"
+```
+
+Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
+
+### Beckhoff (TwinCAT) — exporting a `.tmc` file
+
+1. Open the project in **TwinCAT XAE / Visual Studio**.
+2. In the Solution Explorer, expand the PLC project node.
+3. Right‑click the PLC project → **Properties** → **TMC File** (or **Build → TwinCAT Build → Build TMC File**) — the `*.tmc` is regenerated on every PLC build and lives next to the `*.tsproj` or under `<project>\_Boot\TwinCAT RT (x64)\Plc\`.
+4. Copy that `*.tmc` next to `WoTThingModelGenerator.exe` and run the tool.
+5. The tool emits `<plcName>.tm.jsonld` with one Property per published symbol (those exposed in the ADS data area).
+
+> Only symbols that appear in a TwinCAT data area (`<DataArea>`) are exported. Variables you want to read over ADS must therefore have the `{attribute 'TcLinkTo'}` / publish flag set in TwinCAT.
+
+### Rockwell (Studio 5000 / RSLogix 5000) — exporting a tag CSV
+
+1. Open the controller project in **Studio 5000 Logix Designer** (or RSLogix 5000).
+2. Open the **Tags** editor for the controller / program scope you want to expose.
+3. Use **Tools → Export → Tags and Logic Comments…** and choose **CSV** as the output format. Make sure both **Tags** and **Comments** are included — the tool reads `COMMENT` rows to infer UDT field names.
+4. Drop the resulting `*.csv` next to `WoTThingModelGenerator.exe` and run it.
+5. The tool emits `<csvName>.tm.jsonld` containing one Property per primitive tag and one structured Property per UDT‑typed tag (the field offsets inside the UDT are resolved at runtime by the Rockwell driver).
+
+> The Rockwell driver also implements `BrowseAndGenerateTD`, so you can alternatively let UA Edge Translator browse a connected controller live (no CSV needed) when the controller is reachable on the network.
+
+### Siemens (TIA Portal V18..V21) — using the project file directly
+
+The Siemens importer drives the **TIA Portal Openness** API to walk the project's `PlcSoftware → BlockGroup → DataBlock` hierarchy and emit one Property per leaf interface member of every standard‑access (non‑optimized) data block, including byte and bit offsets.
+
+#### Prerequisites (on the machine that runs the tool)
+
+1. **TIA Portal V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
+2. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
+3. In TIA Portal, on every FB / DB you want to read:
+   - Properties → **Attributes** → uncheck **"Optimized block access"** — without this there are no stable byte offsets and S7Comm classic cannot address individual variables. Optimized blocks are skipped by the importer with a warning.
+4. On the CPU itself:
+   - Properties → **Protection & Security** → **Connection mechanisms** → enable **"Permit access with PUT/GET communication from remote partner"** (this is a runtime requirement for the S7 driver, not for the import).
+
+#### Build configuration
+
+By default the project file references TIA V21 at:
+
+```
+C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\Siemens.Engineering.dll
+```
+
+If you have a different version installed, override the path on the command line:
+
+```powershell
+dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj `
+  -c Release /p:Platform=x64 `
+  /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V20"
+```
+
+The Openness assemblies are referenced from the local TIA install with `<Private>false</Private>` and **never copied** into the output (Siemens forbids redistribution). At runtime the tool resolves them from the same install path; override with the `SIEMENS_TIA_PATH` environment variable if needed.
+
+#### Running it
+
+1. Copy your TIA project file (`MyProject.ap21`) — the project root file, not its enclosing folder — next to `WoTThingModelGenerator.exe`.
+2. Run the tool:
+
+   ```powershell
+   cd WoTThingModelGenerator\bin\x64\Release\net8.0-windows
+   .\WoTThingModelGenerator.exe
+   ```
+
+3. For every PLC in the project, the tool emits `<projectName>_<plcName>.tm.jsonld` containing one Property per leaf data block member, addressed by `S7DBNumber`, `S7Start`, `S7Pos`, `S7Size` and `S7MaxLen`. The PLC's IPv4 address (read from the PROFINET interface) is baked into the `base` field as `s7://<ip>:0:1`.
+
+> Files with extensions `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
+
+## Generating a Thing Description for a Fixed‑Function Asset
+
+Many industrial assets — power meters, drives, gateways, sensors, scanners, RFID readers, soft starters, IO‑Link masters, weighing terminals, etc. — are *fixed‑function*: their data model is hard‑wired by the vendor and shipped as a Modbus / EtherNet/IP / S7 / HTTP register or object map in the user manual. There is no engineering project to export, so the two practical paths to a Thing Description are:
+
+### Option A (preferred): get the Thing Description directly from the vendor
+
+Always check whether the vendor already publishes a machine‑readable description before generating one yourself. In order of preference:
+
+1. A WoT Thing Description (`*.td.jsonld` / `*.tm.jsonld`) on the product page or GitHub.
+2. An **Asset Administration Shell** (AAS) submodel **Asset Interface Description (AID)** package (`*.aas.json`, `*.aasx`). UA Edge Translator's `WoTThingModelGenerator` can convert AID JSON files directly to WoT Thing Models — see the table above.
+3. An **OPC UA companion specification NodeSet2** for the device class (`*.NodeSet2.xml`), e.g. from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). Also supported by `WoTThingModelGenerator`.
+4. A vendor‑provided **register / point list** (CSV, XLSX, EDS for EtherNet/IP, GSDML for PROFINET). For a generic Modbus point list in the Azure IoT format, the tool already imports it directly. For other CSV layouts, a small adapter in `WoTThingModelGenerator` is usually a few minutes' work.
+
+A vendor‑provided file is authoritative, has correct register addresses and scaling factors, and removes the risk of hallucinated fields. It also tends to be re‑usable across every customer of that device.
+
+### Option B: generate the Thing Description from the user manual using an LLM
+
+When no machine‑readable description is available, the asset's **user / reference manual PDF** almost always contains the full register or object map — Modbus tables, EtherNet/IP assembly definitions, OPC UA NodeIds, HTTP endpoints — together with data types, units and scaling factors. A modern multimodal LLM (ChatGPT, Microsoft Copilot, Claude, Gemini, etc.) can read the PDF and emit a WoT Thing Model in one step.
+
+Recommended workflow:
+
+1. Download the official **user manual / reference manual PDF** for your specific firmware revision from the vendor's website. Manuals labelled "Modbus reference", "Communication manual", "EDS file documentation" or similar are best — they contain the register tables you need.
+2. Open a chat session with an LLM that supports file upload (e.g. ChatGPT, Microsoft 365 Copilot, Claude). Upload the PDF as an attachment.
+3. Send the prompt below, replacing the angle‑bracketed values. Treat the prompt as a starting point — for unusual devices you may need to clarify which register table the LLM should focus on (some manuals contain several).
+
+   > You are an industrial connectivity engineer. From the attached user manual for **\<vendor> \<product> \<firmware/rev>** generate a single WoT 1.1 Thing Model JSON document for use with the OPC Foundation UA Edge Translator.
+   >
+   > Use the `<protocol>` binding (one of: `modbus+tcp`, `modbus`, `eip`, `s7`, `http`, `opc.tcp`).
+   >
+   > Requirements:
+   > - Output **only** the JSON, no prose.
+   > - `@context` must be `["https://www.w3.org/2022/wot/td/v1.1"]`.
+   > - `@type` must be `["tm:ThingModel"]`.
+   > - `securityDefinitions` must be `{ "nosec_sc": { "scheme": "nosec" } }` and `security` must be `["nosec_sc"]`.
+   > - `name` = `"{{name}}"`, `base` = `"<protocol>://{{address}}:{{port}}"`, `title` = product name.
+   > - For each variable in the manual's register / object table, emit one entry under `properties` with: `type` (`number`/`integer`/`boolean`/`string`), `readOnly`, `observable: true`, and one form whose binding fields match the protocol.
+   > - For Modbus use `ModbusForm` fields: `href` (e.g. `"40001?quantity=2"`), `op: ["readproperty","observeproperty"]`, `modv:type` (`xsd:float`/`xsd:integer`/`xsd:boolean`/`xsd:string`), `modv:entity` (`HoldingRegister`/`InputRegister`), `modv:pollingTime` (ms), `modv:mostSignificantByte`, `modv:mostSignificantWord`, and `modv:multiplier` if the manual specifies a scaling factor.
+   > - For EtherNet/IP use `EIPForm` fields: `href` (tag name), `op`, `type` (`xsd:REAL`, `xsd:DINT`, …), `pollingTime`.
+   > - For Siemens S7 use `S7Form` fields: `href`, `op`, `s7:target` (`DB`/`MB`/`EB`/`AB`), `s7:dbnumber`, `s7:start`, `s7:pos`, `s7:size`, `s7:maxlen` (for STRING), `type`, `pollingTime`.
+   > - Do **not** invent registers that are not in the manual. If a value in the manual is unclear, omit it rather than guessing.
+   > - Use the original variable / register names from the manual as property keys, replacing spaces with underscores.
+
+4. Save the LLM's response as `<assetName>.tm.jsonld` and **review it manually** against the manual:
+   - Spot‑check a handful of register addresses, data types, byte/word order and scaling factors.
+   - Confirm that read‑only registers are flagged `readOnly: true`.
+   - Trim out anything you don't actually need to expose.
+5. Replace the `{{name}}`, `{{address}}` and `{{port}}` placeholders with the real values for your asset (Eclipse's Edi{td}or WoT-file editor does this automatically for you).
+6. Upload the file to UA Edge Translator using the OPC UA File API exposed under the asset node (or drop it into `/app/settings`) and let the matching protocol driver onboard the asset.
+
+> **Important**: an LLM can misread tables, especially in scanned PDFs, multi‑column layouts or manuals with several variants of the same register map. Always validate the produced Thing Description against the manual and against a live test read from the asset before deploying it to production.
 
 ## Threat Model and Security Considerations
 

@@ -33,6 +33,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("title")]
         public string? Title { get; set; }
 
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Description { get; set; }
+
         [JsonProperty("properties")]
         public Dictionary<string, Property>? Properties { get; set; }
 

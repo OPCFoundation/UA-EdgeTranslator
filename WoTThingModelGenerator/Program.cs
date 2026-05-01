@@ -18,6 +18,8 @@
     {
         static void Main()
         {
+            SiemensTIAImporter.Register();
+
             foreach (string filename in Directory.GetFiles(Directory.GetCurrentDirectory()))
             {
                 if (filename.ToLower().EndsWith(".nodeset2.xml"))
@@ -44,6 +46,14 @@
                 {
                     ImportCSVFromRockwell(filename);
                     ImportCSVFromAzureForModbus(filename);
+                }
+
+                // TIA Portal project files (V18..V21 use ap18..ap21).
+                string lower = filename.ToLower();
+                if (lower.EndsWith(".ap21") || lower.EndsWith(".ap20") ||
+                    lower.EndsWith(".ap19") || lower.EndsWith(".ap18"))
+                {
+                    SiemensTIAImporter.Import(filename);
                 }
             }
         }
