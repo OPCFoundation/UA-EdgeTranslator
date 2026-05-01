@@ -14,6 +14,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Threading;
     using System.Threading.Tasks;
 
+    public class BrowsedNode
+    {
+        public string BrowsePath { get; set; }
+
+        public string ExpandedNodeId { get; set; }
+
+        public TypeEnum WoTType { get; set; }
+
+        public TypeString XsdType { get; set; }
+
+        public bool ReadOnly { get; set; }
+    }
+
     public class OPCUAAsset : IAsset
     {
         private ISession _session = null;
@@ -397,6 +410,240 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             return "Action executed successfully.";
+        }
+
+        /// <summary>
+        /// Exhaustively browses the server's Objects folder and returns every UA Variable
+        /// (which includes UA Properties, since Properties are Variables with a PropertyType
+        /// type definition) found in the address space, with the full dot-notation browse path.
+        /// </summary>
+        public List<BrowsedNode> BrowseObjectsFolder()
+        {
+            List<BrowsedNode> results = new();
+
+            if (_session == null || !_session.Connected)
+            {
+                return results;
+            }
+
+            HashSet<NodeId> visited = new();
+            BrowseRecursive(ObjectIds.ObjectsFolder, string.Empty, results, visited);
+
+            return results;
+        }
+
+        private void BrowseRecursive(NodeId nodeId, string parentPath, List<BrowsedNode> results, HashSet<NodeId> visited)
+        {
+            if (nodeId == null || NodeId.IsNull(nodeId))
+            {
+                return;
+            }
+
+            // protect against cycles in the address space
+            if (!visited.Add(nodeId))
+            {
+                return;
+            }
+
+            BrowseDescription nodeToBrowse = new()
+            {
+                NodeId = nodeId,
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                IncludeSubtypes = true,
+                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
+                ResultMask = (uint)BrowseResultMask.All
+            };
+
+            BrowseDescriptionCollection nodesToBrowse = new() { nodeToBrowse };
+
+            ReferenceDescriptionCollection references = new();
+
+            try
+            {
+                BrowseResponse browseResponse = _session.BrowseAsync(
+                    null,
+                    null,
+                    0u,
+                    nodesToBrowse,
+                    CancellationToken.None).GetAwaiter().GetResult();
+
+                BrowseResultCollection browseResults = browseResponse.Results;
+                if (browseResults == null || browseResults.Count == 0)
+                {
+                    return;
+                }
+
+                ClientBase.ValidateResponse(browseResults, nodesToBrowse);
+                ClientBase.ValidateDiagnosticInfos(browseResponse.DiagnosticInfos, nodesToBrowse);
+
+                if (StatusCode.IsBad(browseResults[0].StatusCode))
+                {
+                    return;
+                }
+
+                references.AddRange(browseResults[0].References);
+
+                // follow continuation points to make sure the browse is exhaustive
+                byte[] continuationPoint = browseResults[0].ContinuationPoint;
+                while (continuationPoint != null && continuationPoint.Length > 0)
+                {
+                    ByteStringCollection continuationPoints = new() { continuationPoint };
+
+                    BrowseNextResponse browseNextResponse = _session.BrowseNextAsync(
+                        null,
+                        false,
+                        continuationPoints,
+                        CancellationToken.None).GetAwaiter().GetResult();
+
+                    BrowseResultCollection nextResults = browseNextResponse.Results;
+                    if (nextResults == null || nextResults.Count == 0 || StatusCode.IsBad(nextResults[0].StatusCode))
+                    {
+                        break;
+                    }
+
+                    references.AddRange(nextResults[0].References);
+                    continuationPoint = nextResults[0].ContinuationPoint;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning($"Failed to browse node {nodeId}: {ex.Message}");
+                return;
+            }
+
+            foreach (ReferenceDescription reference in references)
+            {
+                if (reference.NodeId == null || reference.NodeId.IsAbsolute)
+                {
+                    // skip references to nodes on other servers
+                    continue;
+                }
+
+                string browseName = reference.BrowseName?.Name ?? reference.DisplayName?.Text ?? string.Empty;
+                if (string.IsNullOrEmpty(browseName))
+                {
+                    continue;
+                }
+
+                string childPath = string.IsNullOrEmpty(parentPath) ? browseName : parentPath + "." + browseName;
+                NodeId childNodeId = ExpandedNodeId.ToNodeId(reference.NodeId, _session.NamespaceUris);
+
+                if (reference.NodeClass == NodeClass.Variable)
+                {
+                    BrowsedNode node = BuildBrowsedNode(childNodeId, childPath);
+                    if (node != null)
+                    {
+                        results.Add(node);
+                    }
+                }
+
+                // Variables can themselves have children (e.g. UA Properties), so always recurse.
+                BrowseRecursive(childNodeId, childPath, results, visited);
+            }
+        }
+
+        private BrowsedNode BuildBrowsedNode(NodeId nodeId, string browsePath)
+        {
+            try
+            {
+                ReadValueIdCollection nodesToRead = new()
+                {
+                    new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.DataType },
+                    new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.ValueRank },
+                    new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.AccessLevel }
+                };
+
+                ReadResponse readResponse = _session.ReadAsync(
+                    null,
+                    0,
+                    TimestampsToReturn.Neither,
+                    nodesToRead,
+                    CancellationToken.None).GetAwaiter().GetResult();
+
+                DataValueCollection values = readResponse.Results;
+                if (values == null || values.Count < 3)
+                {
+                    return null;
+                }
+
+                NodeId dataTypeId = values[0].Value as NodeId;
+                int valueRank = values[1].Value is int rank ? rank : ValueRanks.Scalar;
+                byte accessLevel = values[2].Value is byte access ? access : (byte)0;
+
+                BuiltInType builtInType = TypeInfo.GetBuiltInType(dataTypeId, _session.TypeTree);
+
+                MapTypes(builtInType, out TypeEnum wotType, out TypeString xsdType);
+
+                bool writable = (accessLevel & AccessLevels.CurrentWrite) == AccessLevels.CurrentWrite;
+
+                return new BrowsedNode()
+                {
+                    BrowsePath = browsePath,
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(nodeId, _session.NamespaceUris).ToString(),
+                    WoTType = wotType,
+                    XsdType = xsdType,
+                    ReadOnly = !writable
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning($"Failed to read attributes for node {nodeId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static void MapTypes(BuiltInType builtInType, out TypeEnum wotType, out TypeString xsdType)
+        {
+            switch (builtInType)
+            {
+                case BuiltInType.Boolean:
+                    wotType = TypeEnum.Boolean;
+                    xsdType = TypeString.Boolean;
+                    break;
+                case BuiltInType.SByte:
+                case BuiltInType.Byte:
+                    wotType = TypeEnum.Integer;
+                    xsdType = TypeString.Byte;
+                    break;
+                case BuiltInType.Int16:
+                case BuiltInType.UInt16:
+                    wotType = TypeEnum.Integer;
+                    xsdType = TypeString.Short;
+                    break;
+                case BuiltInType.Int32:
+                case BuiltInType.UInt32:
+                case BuiltInType.Int64:
+                case BuiltInType.UInt64:
+                    wotType = TypeEnum.Integer;
+                    xsdType = TypeString.Integer;
+                    break;
+                case BuiltInType.Float:
+                    wotType = TypeEnum.Number;
+                    xsdType = TypeString.Float;
+                    break;
+                case BuiltInType.Double:
+                    wotType = TypeEnum.Number;
+                    xsdType = TypeString.Double;
+                    break;
+                case BuiltInType.String:
+                case BuiltInType.DateTime:
+                case BuiltInType.Guid:
+                case BuiltInType.ByteString:
+                case BuiltInType.XmlElement:
+                case BuiltInType.NodeId:
+                case BuiltInType.ExpandedNodeId:
+                case BuiltInType.QualifiedName:
+                case BuiltInType.LocalizedText:
+                case BuiltInType.StatusCode:
+                    wotType = TypeEnum.String;
+                    xsdType = TypeString.String;
+                    break;
+                default:
+                    wotType = TypeEnum.Object;
+                    xsdType = TypeString.String;
+                    break;
+            }
         }
     }
 }

@@ -39,8 +39,7 @@
 
         public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
         {
-            // TODO: Add support for browsing OPC UA nodes and generating properties/actions
-            return new ThingDescription()
+            ThingDescription td = new()
             {
                 Context = ["https://www.w3.org/2022/wot/td/v1.1"],
                 Id = "urn:" + assetName,
@@ -53,6 +52,58 @@
                 Properties = new Dictionary<string, Property>(),
                 Actions = new Dictionary<string, TDAction>()
             };
+
+            string[] address = assetEndpoint.Split([':', '/']);
+            if ((address.Length != 5) || (address[0] != "opc.tcp"))
+            {
+                throw new Exception("Expected OPC UA server address in the format opc.tcp://ipaddress:port!");
+            }
+
+            OPCUAAsset asset = new();
+            try
+            {
+                asset.Connect(address[3], int.Parse(address[4]));
+
+                List<BrowsedNode> nodes = asset.BrowseObjectsFolder();
+                foreach (BrowsedNode node in nodes)
+                {
+                    if (string.IsNullOrEmpty(node.BrowsePath) || td.Properties.ContainsKey(node.BrowsePath))
+                    {
+                        continue;
+                    }
+
+                    GenericForm form = new()
+                    {
+                        Href = node.ExpandedNodeId,
+                        Op = node.ReadOnly
+                            ? [Op.Readproperty, Op.Observeproperty]
+                            : [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
+                        Type = node.XsdType,
+                        PollingTime = 1000
+                    };
+
+                    Property property = new()
+                    {
+                        Type = node.WoTType,
+                        ReadOnly = node.ReadOnly,
+                        Observable = true,
+                        OpcUaNodeId = node.ExpandedNodeId,
+                        Forms = [form]
+                    };
+
+                    td.Properties.Add(node.BrowsePath, property);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, $"Failed to browse OPC UA server {assetEndpoint}");
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+
+            return td;
         }
 
         public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
