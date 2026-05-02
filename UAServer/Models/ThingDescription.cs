@@ -178,6 +178,18 @@ namespace Opc.Ua.Edge.Translator.Models
         Byte,
 
         [EnumMember(Value = "xsd:timedCommand")]
-        TimedCommand
+        TimedCommand,
+
+        [EnumMember(Value = "xsd:long")]
+        Long,
+
+        [EnumMember(Value = "xsd:unsignedLong")]
+        UnsignedLong,
+
+        [EnumMember(Value = "xsd:dateTime")]
+        DateTime,
+
+        [EnumMember(Value = "xsd:duration")]
+        Duration
     };
 }

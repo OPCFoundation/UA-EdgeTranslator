@@ -46,6 +46,16 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
+
+        // Canonical Siemens type name (BOOL, BYTE, WORD, DWORD, LWORD,
+        // SINT, USINT, INT, UINT, DINT, UDINT, LINT, ULINT, REAL, LREAL,
+        // CHAR, WCHAR, STRING, WSTRING, DATE, TIME, LTIME, TOD, LTOD,
+        // DT, LDT, DTL, S5TIME). Optional — when present, the runtime
+        // dispatches on it; when absent it falls back to the legacy
+        // TypeString-only switch for backward compatibility with
+        // pre-existing Thing Models.
+        [JsonProperty("s7:s7type", NullValueHandling = NullValueHandling.Ignore)]
+        public string? S7S7Type { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

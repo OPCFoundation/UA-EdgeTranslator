@@ -327,14 +327,97 @@ namespace Opc.Ua.Edge.Translator.Tools
             }
 
             (int byteOffset, int bitOffset) = ParseOffset(SafeGetAttribute(member, "Offset"));
-            (TypeString tdType, TypeEnum typeEnum, int sizeBytes, int maxLen) = MapType(dataType);
 
+            // ARRAY[lo..hi] OF T — emit one Property per element.
+            (bool isArray, int low, int high, string elementType) = TryParseArray(dataType);
+            if (isArray)
+            {
+                EmitArray(fullPath, dbNumber, byteOffset, low, high, elementType, dataType, properties);
+                return;
+            }
+
+            EmitScalar(fullPath, dbNumber, byteOffset, bitOffset, dataType, properties);
+        }
+
+        private static void EmitScalar(
+            string fullPath,
+            int dbNumber,
+            int byteOffset,
+            int bitOffset,
+            string dataType,
+            Dictionary<string, Property> properties)
+        {
+            (TypeString tdType, TypeEnum typeEnum, int sizeBytes, int maxLen, string s7TypeName) = MapType(dataType);
             if (sizeBytes == 0)
             {
                 Console.WriteLine($"      {fullPath} ({dataType}) skipped — unsupported S7 type.");
                 return;
             }
 
+            EmitProperty(fullPath, dbNumber, byteOffset, bitOffset, sizeBytes, maxLen, tdType, typeEnum, s7TypeName, dataType, properties);
+        }
+
+        private static void EmitArray(
+            string fullPath,
+            int dbNumber,
+            int byteOffset,
+            int low,
+            int high,
+            string elementType,
+            string originalDataType,
+            Dictionary<string, Property> properties)
+        {
+            (TypeString tdType, TypeEnum typeEnum, int elemSize, int maxLen, string s7TypeName) = MapType(elementType);
+            if (elemSize == 0)
+            {
+                Console.WriteLine($"      {fullPath} ({originalDataType}) skipped — unsupported array element type '{elementType}'.");
+                return;
+            }
+
+            int count = high - low + 1;
+            if (count <= 0)
+            {
+                Console.WriteLine($"      {fullPath} ({originalDataType}) skipped — invalid array bounds [{low}..{high}].");
+                return;
+            }
+
+            bool isBool = string.Equals(s7TypeName, "BOOL", StringComparison.Ordinal);
+
+            for (int i = 0; i < count; i++)
+            {
+                int idx = low + i;
+                int elemByteOffset;
+                int elemBitOffset;
+
+                if (isBool)
+                {
+                    // S7 packs Bool arrays bit-by-bit, byte-by-byte from the array's base.
+                    elemByteOffset = byteOffset + (i / 8);
+                    elemBitOffset = i % 8;
+                }
+                else
+                {
+                    elemByteOffset = byteOffset + (i * elemSize);
+                    elemBitOffset = 0;
+                }
+
+                EmitProperty($"{fullPath}[{idx}]", dbNumber, elemByteOffset, elemBitOffset, elemSize, maxLen, tdType, typeEnum, s7TypeName, elementType, properties);
+            }
+        }
+
+        private static void EmitProperty(
+            string fullPath,
+            int dbNumber,
+            int byteOffset,
+            int bitOffset,
+            int sizeBytes,
+            int maxLen,
+            TypeString tdType,
+            TypeEnum typeEnum,
+            string s7TypeName,
+            string dataType,
+            Dictionary<string, Property> properties)
+        {
             S7Form form = new()
             {
                 Href = $"DB{dbNumber}?{byteOffset}",
@@ -346,6 +429,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                 S7Pos = bitOffset,
                 S7Size = sizeBytes,
                 S7MaxLen = maxLen,
+                S7S7Type = string.IsNullOrEmpty(s7TypeName) ? null : s7TypeName,
                 Type = tdType
             };
 
@@ -357,7 +441,13 @@ namespace Opc.Ua.Edge.Translator.Tools
                 Forms = new object[1] { form }
             };
 
-            string propertyKey = fullPath.Replace('.', '_');
+            // Property keys must be JSON-friendly identifiers — strip array
+            // index brackets so e.g. Foo.Bar[3] becomes Foo_Bar_3.
+            string propertyKey = fullPath
+                .Replace('.', '_')
+                .Replace("[", "_")
+                .Replace("]", string.Empty);
+
             if (!properties.ContainsKey(propertyKey))
             {
                 properties.Add(propertyKey, property);
@@ -399,15 +489,74 @@ namespace Opc.Ua.Edge.Translator.Tools
             return (0, 0);
         }
 
-        private static (TypeString tdType, TypeEnum typeEnum, int sizeBytes, int maxLen) MapType(string s7Type)
+        /// <summary>
+        /// Detects the TIA-style "Array[lo..hi] of ElementType" syntax
+        /// and returns the bounds plus the element type. Multi-dimensional
+        /// arrays (with a comma in the bounds) are not supported and will
+        /// be reported as not-an-array; callers will then skip them.
+        /// </summary>
+        private static (bool isArray, int low, int high, string elementType) TryParseArray(string s7Type)
         {
-            // s7Type can be e.g. "Bool", "Int", "DInt", "Real", "LReal",
-            // "String", "String[80]", "WString[64]", "DTL", "Char", ...
-            // Arrays and UDTs are not addressable as a single S7Form here;
-            // callers should drill into them via Member.Members instead.
             if (string.IsNullOrEmpty(s7Type))
             {
-                return (TypeString.String, TypeEnum.String, 0, 0);
+                return (false, 0, 0, null);
+            }
+
+            string s = s7Type.Trim();
+            if (!s.StartsWith("Array", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, 0, 0, null);
+            }
+
+            int lb = s.IndexOf('[');
+            int rb = s.IndexOf(']', lb + 1);
+            int ofIdx = s.IndexOf(" of ", StringComparison.OrdinalIgnoreCase);
+            if (lb < 0 || rb < 0 || ofIdx < 0 || ofIdx < rb)
+            {
+                return (false, 0, 0, null);
+            }
+
+            string boundsStr = s.Substring(lb + 1, rb - lb - 1);
+            if (boundsStr.IndexOf(',') >= 0)
+            {
+                // Multi-dimensional — leave it to a future iteration.
+                return (false, 0, 0, null);
+            }
+
+            string elementType = s.Substring(ofIdx + 4).Trim();
+
+            int dotdot = boundsStr.IndexOf("..", StringComparison.Ordinal);
+            if (dotdot < 0)
+            {
+                return (false, 0, 0, null);
+            }
+
+            if (!int.TryParse(boundsStr.AsSpan(0, dotdot), out int low))
+            {
+                return (false, 0, 0, null);
+            }
+
+            if (!int.TryParse(boundsStr.AsSpan(dotdot + 2), out int high))
+            {
+                return (false, 0, 0, null);
+            }
+
+            return (true, low, high, elementType);
+        }
+
+        /// <summary>
+        /// Maps a Siemens elementary type name to the corresponding WoT
+        /// TypeString, JSON Schema type, fixed wire size in bytes, max
+        /// declared character length (for STRING/WSTRING/CHAR/WCHAR only)
+        /// and the canonical Siemens type name that the runtime dispatches
+        /// on. Returns sizeBytes = 0 for unsupported types so the caller
+        /// can skip them with a warning.
+        /// </summary>
+        private static (TypeString tdType, TypeEnum typeEnum, int sizeBytes, int maxLen, string s7TypeName) MapType(string s7Type)
+        {
+            if (string.IsNullOrEmpty(s7Type))
+            {
+                return (TypeString.String, TypeEnum.String, 0, 0, string.Empty);
             }
 
             string baseType = s7Type;
@@ -423,37 +572,98 @@ namespace Opc.Ua.Edge.Translator.Tools
                 }
             }
 
-            switch (baseType.Trim().ToUpperInvariant())
+            string canonical = baseType.Trim().ToUpperInvariant();
+            switch (canonical)
             {
+                // ---- bit ------------------------------------------------------
                 case "BOOL":
-                    return (TypeString.Boolean, TypeEnum.Boolean, 1, 0);
+                    return (TypeString.Boolean, TypeEnum.Boolean, 1, 0, "BOOL");
+
+                // ---- 8-bit integers ------------------------------------------
                 case "BYTE":
-                case "SINT":
                 case "USINT":
+                    return (TypeString.Byte, TypeEnum.Integer, 1, 0, canonical);
+                case "SINT":
+                    return (TypeString.Byte, TypeEnum.Integer, 1, 0, "SINT");
+
+                // ---- single characters (NEW: round-tripped as 1/2-char strings)
                 case "CHAR":
-                    return (TypeString.Byte, TypeEnum.Integer, 1, 0);
+                    return (TypeString.String, TypeEnum.String, 1, 1, "CHAR");
+                case "WCHAR":
+                    return (TypeString.String, TypeEnum.String, 2, 1, "WCHAR");
+
+                // ---- 16-bit integers -----------------------------------------
                 case "WORD":
-                case "INT":
                 case "UINT":
-                    return (TypeString.Short, TypeEnum.Integer, 2, 0);
+                    return (TypeString.Short, TypeEnum.Integer, 2, 0, canonical);
+                case "INT":
+                    return (TypeString.Short, TypeEnum.Integer, 2, 0, "INT");
+
+                // ---- 32-bit integers -----------------------------------------
                 case "DWORD":
-                case "DINT":
                 case "UDINT":
-                    return (TypeString.Integer, TypeEnum.Integer, 4, 0);
+                    return (TypeString.Integer, TypeEnum.Integer, 4, 0, canonical);
+                case "DINT":
+                    return (TypeString.Integer, TypeEnum.Integer, 4, 0, "DINT");
+
+                // ---- 64-bit integers (NEW) -----------------------------------
+                case "LWORD":
+                case "ULINT":
+                    return (TypeString.UnsignedLong, TypeEnum.Integer, 8, 0, canonical);
+                case "LINT":
+                    return (TypeString.Long, TypeEnum.Integer, 8, 0, "LINT");
+
+                // ---- floating point ------------------------------------------
                 case "REAL":
-                    return (TypeString.Float, TypeEnum.Number, 4, 0);
+                    return (TypeString.Float, TypeEnum.Number, 4, 0, "REAL");
                 case "LREAL":
-                    return (TypeString.Double, TypeEnum.Number, 8, 0);
+                    return (TypeString.Double, TypeEnum.Number, 8, 0, "LREAL");
+
+                // ---- variable-length strings ---------------------------------
                 case "STRING":
                     if (len <= 0) len = 254;
-                    return (TypeString.String, TypeEnum.String, len + 2, len);
+                    return (TypeString.String, TypeEnum.String, len + 2, len, "STRING");
                 case "WSTRING":
                     if (len <= 0) len = 254;
-                    return (TypeString.String, TypeEnum.String, (len + 2) * 2, len);
+                    // Header is 2 words (4 bytes), payload is len UTF-16 code units (2*len bytes).
+                    return (TypeString.String, TypeEnum.String, 4 + (len * 2), len, "WSTRING");
+
+                // ---- date / time / duration (NEW) ----------------------------
+                case "DATE":
+                    // Days since 1990-01-01, unsigned 16-bit.
+                    return (TypeString.DateTime, TypeEnum.String, 2, 0, "DATE");
+                case "TIME":
+                    // Signed milliseconds, 32-bit.
+                    return (TypeString.Duration, TypeEnum.String, 4, 0, "TIME");
+                case "LTIME":
+                    // Signed nanoseconds, 64-bit.
+                    return (TypeString.Duration, TypeEnum.String, 8, 0, "LTIME");
+                case "S5TIME":
+                    // 16-bit BCD with time-base nibble.
+                    return (TypeString.Duration, TypeEnum.String, 2, 0, "S5TIME");
+                case "TOD":
+                case "TIME_OF_DAY":
+                    // Milliseconds since midnight, unsigned 32-bit.
+                    return (TypeString.DateTime, TypeEnum.String, 4, 0, "TOD");
+                case "LTOD":
+                case "LTIME_OF_DAY":
+                    // Nanoseconds since midnight, unsigned 64-bit.
+                    return (TypeString.DateTime, TypeEnum.String, 8, 0, "LTOD");
+                case "DT":
+                case "DATE_AND_TIME":
+                    // 8-byte BCD: year, month, day, hour, minute, second, msec(hi/lo+dow nibble).
+                    return (TypeString.DateTime, TypeEnum.String, 8, 0, "DT");
+                case "LDT":
+                    // Nanoseconds since 1970-01-01 00:00:00 UTC, signed 64-bit.
+                    return (TypeString.DateTime, TypeEnum.String, 8, 0, "LDT");
                 case "DTL":
-                    return (TypeString.String, TypeEnum.String, 12, 0);
+                    // 12-byte structured: year(WORD) month(BYTE) day(BYTE) dow(BYTE)
+                    //                     hour(BYTE) min(BYTE) sec(BYTE) nanosec(DWORD).
+                    return (TypeString.DateTime, TypeEnum.String, 12, 0, "DTL");
+
+                // ---- everything else (VARIANT, ANY, HW_*, DB_ANY, POINTER…) --
                 default:
-                    return (TypeString.String, TypeEnum.String, 0, 0);
+                    return (TypeString.String, TypeEnum.String, 0, 0, string.Empty);
             }
         }
 #endif
