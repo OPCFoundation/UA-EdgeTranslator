@@ -5,20 +5,6 @@ An standards-based and containerized industrial connectivity edge application tr
 
 UA Edge Translator solves the common "brownfield" use case of connecting disparate industrial assets with many different interfaces and translates their data into an OPC UA information model (ideally to one of the [standardized companion specifications](https://opcfoundation.org/developer-tools/documents/) from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/)), enabling processing of the assets' data either on the edge or in the cloud leveraging a normalized, IEC standard (OPC UA) data format. This accelerates Industrial IoT projects and saves cost since the data doesn't need to be normalized in the cloud and makes use of the OT expertise often only found on-premises. For defining a mapping from the proprietary data format to OPC UA, the Web of Things (WoT) Thing Description schema (JSON-LD-based) is used. Additionally, the mechanism to provide the schema to the UA Edge Translator is also leveraging OPC UA. Therefore, for the first time, OPC UA is used for both the control and data plane for industrial connectivity, while previous solutions only used OPC UA for the data plane and a proprietary REST interface for the control plane.
 
-## Installation
-
-UA Edge Translator is available as a pre-built Docker container (supporting both AMD64 and ARM64 CPUs) directly from GitHub and will run on any Docker- or Kubernetes-enabled edge device. See "Packages" in this repo for details.
-
-## Provisioning
-UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
-
-## Operation
-
-UA Edge Translator can be controlled through the use of just 2 OPC UA methods (and OPC UA file transfer functionality) readily available through the OPC UA server interface built in. The methods are:
-
-* CreateAsset(assetName) - Creates an asset node and an OPC UA File API node below the asset node (which can be used to upload the WoT Thing Description), returning the node ID of the newly created asset node on success.
-* DeleteAsset(assetNodeId) - deletes a configured asset.
-
 ## Supported Southbound Asset Interfaces (Protocol Drivers)
 
 The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
@@ -39,6 +25,10 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Mitsubishi MC Protocol (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
+
+## Installation
+
+UA Edge Translator is available as a pre-built Docker container (supporting both AMD64 and ARM64 CPUs) directly from GitHub and will run on any Docker- or Kubernetes-enabled edge device. See "Packages" in this repo for details.
 
 > **Note**: Since BACNet uses UDP messages, BACNet support is limited to running UA Edge Translator natively or with the --net=host argument within a Docker container!
 
@@ -102,8 +92,16 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
 
-## Developer Quick Start Guide
+## Provisioning
+UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
 
+## Operation
+
+UA Edge Translator can be controlled through the use of just 2 OPC UA methods (and OPC UA file transfer functionality) readily available through the OPC UA server interface built in. The methods are:
+
+* CreateAsset(assetName) - Creates an asset node and an OPC UA File API node below the asset node (which can be used to upload the WoT Thing Description), returning the node ID of the newly created asset node on success.
+* DeleteAsset(assetNodeId) - deletes a configured asset.
+ 
 ## How to build your own Protocol Driver
 
 UA Edge Translator loads protocol drivers as DLLs from the `/app/drivers` folder at runtime.
@@ -166,7 +164,7 @@ It currently supports input from:
 
 The tool scans its **current working directory**, processes every recognised file it finds, and writes a `<inputName>.tm.jsonld` next to it (Siemens projects emit one file per PLC: `<projectName>_<plcName>.tm.jsonld`).
 
-### Building the tool
+### Building the WoTThingModelGenerator Tool
 
 `WoTThingModelGenerator` targets `net8.0-windows` / x64 because the Siemens TIA Openness API is x64‑only. The other importers also run on the same build.
 
@@ -175,7 +173,7 @@ cd UA-EdgeTranslator
 dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj -c Release /p:Platform=x64
 ```
 
-Run it from any directory containing input files:
+Run WoTThingModelGenerator from any directory containing input files:
 
 ```powershell
 cd <folder containing your engineering exports>
@@ -194,7 +192,7 @@ Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the 
 
 > Only symbols that appear in a TwinCAT data area (`<DataArea>`) are exported. Variables you want to read over ADS must therefore have the `{attribute 'TcLinkTo'}` / publish flag set in TwinCAT.
 
-### Rockwell (Studio 5000 / RSLogix 5000) — exporting a tag CSV
+### Rockwell (Studio 5000 / RSLogix 5000) — exporting a tag CSV file
 
 1. Open the controller project in **Studio 5000 Logix Designer** (or RSLogix 5000).
 2. Open the **Tags** editor for the controller / program scope you want to expose.
@@ -208,7 +206,7 @@ Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the 
 
 The Siemens importer drives the **TIA Portal Openness** API to walk the project's `PlcSoftware → BlockGroup → DataBlock` hierarchy and emit one Property per leaf interface member of every standard‑access (non‑optimized) data block, including byte and bit offsets.
 
-#### Prerequisites (on the machine that runs the tool)
+#### Prerequisites (on the machine that runs the WoTThingModelGeneratortool)
 
 1. **TIA Portal V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
 2. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
@@ -235,7 +233,7 @@ dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj `
 
 The Openness assemblies are referenced from the local TIA install with `<Private>false</Private>` and **never copied** into the output (Siemens forbids redistribution). At runtime the tool resolves them from the same install path; override with the `SIEMENS_TIA_PATH` environment variable if needed.
 
-#### Running it
+#### Running the WoTThingModelGenerator tool
 
 1. Copy your **entire** TIA project folder (e.g. the files and folders containing the *.ap21 file) into the folder `<repo root>\WoTThingModelGenerator\bin\x64\Release\net48\`.
 2. Run the tool:
