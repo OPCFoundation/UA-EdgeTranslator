@@ -60,21 +60,6 @@ Other interfaces can easily be added by implementing the IAsset interface (for r
 
 There is also a tool provided (WoTThingModelGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
-## How to build your own Protocol Driver
-
-UA Edge Translator loads protocol drivers as DLLs from the `/app/drivers` folder at runtime. To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
-
-```
-<ItemGroup>
-  <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
-    <Private>true</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-  </ProjectReference>
-</ItemGroup>
-```
-
-Then implement the IProtocolDriver and IAsset interface and publish your project into the `..\..\UAServer\drivers\<yourdrivername>` folder and restart UA Edge Translator to load your new protocol driver.
-
 ## Running UA Edge Translator from a Docker environment
 
 ```
@@ -119,9 +104,11 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 
 ## Developer Quick Start Guide
 
-The following guide will help you get started with adding protocol drivers to UA Edge Translator and onboard your first asset using the httpclient WoT driver. 
+## How to build your own Protocol Driver
 
-This should give you a fast way to get to a state that you can modify with other drivers and WoT files.
+UA Edge Translator loads protocol drivers as DLLs from the `/app/drivers` folder at runtime.
+
+The following will get you to a state you can modify with your own driver and WoT files.
 
 1) Publish the HttpClient driver. This will copy the httpclient.dll and its debug file in the "drivers" folder under "UAServer"
 
@@ -149,6 +136,17 @@ Once connected, you will see the OPC UA address space with a node called "WoTAss
 In this branch you will find a variable "IPAddress" that was defined in the "SimpleHTTPClient.td.jsonld". The variable is read every 60 seconds, although it probably does not change since it just calls a service on the internet determining your external IP address.
 
 For more details on the Web of Things file format and description see https://www.w3.org/TR/wot-thing-description-2.0/
+
+To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
+```
+<ItemGroup>
+  <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
+    <Private>true</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+  </ProjectReference>
+</ItemGroup>
+```
+Then implement the IProtocolDriver and IAsset interface and publish your project into the `..\..\UAServer\drivers\<yourdrivername>` folder and restart UA Edge Translator to load your new protocol driver.
 
 ## Generating WoT Thing Descriptions from PLC Engineering Tools
 
