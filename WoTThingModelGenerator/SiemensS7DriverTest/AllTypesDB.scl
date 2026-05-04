@@ -1,0 +1,74 @@
+// =============================================================================
+//  AllTypesDB.scl  —  one variable per S7 data type that the
+//  SiemensProtocolDriver / WoTThingModelGenerator can map.
+//
+//  IMPORTANT: This DB MUST be created with "Optimized block access" = FALSE
+//  (the {S7_Optimized_Access := 'FALSE'} attribute below enforces this).
+//  S7Comm classic cannot address individual variables inside an optimized DB
+//  and the WoTThingModelGenerator's importer (Siemens.cs → AddDataBlock)
+//  will skip them.
+// =============================================================================
+
+DATA_BLOCK "AllTypesDB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+   STRUCT
+      // ---- 1-byte primitives (mapped to TypeString.Boolean / Byte / String) --
+      Pulse_Bool       : Bool;        // square wave, 50 % duty, 2 s period
+      Pulse_Char       : Char;        // 'H' / 'L', aligned with Pulse_Bool
+      Saw_Byte         : Byte;        // sawtooth 0..255, period 5 s
+      Sine_SInt        : SInt;        // sine -100..+100, period 4 s
+      Saw_USInt        : USInt;       // sawtooth 0..255, period 5 s
+
+      // ---- 2-byte primitives (mapped to TypeString.Short) --------------------
+      Saw_Word         : Word;        // sawtooth 0..65535, period 5 s
+      Sine_Int         : Int;         // sine -1000..+1000, period 4 s
+      Saw_UInt         : UInt;        // sawtooth 0..65535, period 5 s
+      Pulse_WChar      : WChar;       // square wave: 'A' / 'B', 2 s period
+
+      // ---- 4-byte primitives (mapped to TypeString.Integer / Float) ----------
+      Sine_DWord       : DWord;       // sine packed into 32 bits, period 4 s
+      Sine_DInt        : DInt;        // sine -1_000_000..+1_000_000, period 4 s
+      Saw_UDInt        : UDInt;       // sawtooth 0..1_000_000, period 5 s
+      Sine_Real        : Real;        // sine -100.0..+100.0, period 4 s
+      Random_Real      : Real;        // xorshift32-derived -1.0..+1.0
+
+      // ---- 8-byte primitives (mapped to TypeString.Double / Long / ULong) ----
+      Sine_LReal       : LReal;       // sine -100.0..+100.0, period 4 s
+      Sine_LInt        : LInt;        // sine -1.0E12..+1.0E12, period 4 s
+      Saw_ULInt        : ULInt;       // sawtooth 0..1_000_000_000, period 5 s
+      Saw_LWord        : LWord;       // bit-mirror of Saw_ULInt
+
+      // ---- variable-length primitives (mapped to TypeString.String) ----------
+      Pattern_String   : String[80];  // "Tick=<ms>"
+      Pattern_WString  : WString[64]; // "S7DriverTest <tickMs>"
+
+      // ---- date / time / duration (mapped to TypeString.DateTime / Duration) -
+      Now_DTL          : DTL;             // local date/time, refreshed every cycle
+      Now_DT           : Date_And_Time;   // T_CONV from Now_DTL
+      Now_DATE         : Date;            // T_CONV from Now_DTL
+      Now_TOD          : Time_Of_Day;     // T_CONV from Now_DTL
+      Now_LTOD         : LTime_Of_Day;    // T_CONV from Now_DTL
+      Now_LDT          : LDT;             // T_CONV from Now_DTL
+      Sine_TIME        : Time;            // sine -10s..+10s, period 4 s
+      Saw_LTIME        : LTime;           // sawtooth 0..1 s expressed in ns
+      Saw_S5TIME       : S5Time;          // sawtooth 0..9 s, base 10 ms
+
+      // ---- arrays (one Property per element via WalkMember/EmitArray) --------
+      Bits_Array       : Array[0..15] of Bool;  // rotating "1-of-16" bit
+      Sine_IntArray    : Array[0..7]  of Int;   // 8 sines, phase shift π/4
+      Sine_RealArray   : Array[0..3]  of Real;  // 4 sines, different periods
+
+      // ---- helpers (kept inside the same DB so they are observable too) ------
+      PRNG_State       : DWord;       // xorshift32 state
+      Tick_ms          : DInt;        // last value of TIME_TCK() in ms
+   END_STRUCT;
+
+BEGIN
+   Pulse_Bool       := FALSE;
+   Pulse_Char       := 'L';
+   Pulse_WChar      := WCHAR#'A';
+   PRNG_State       := DW#16#A5A5A5A5;
+   Pattern_WString  := WSTRING#'S7DriverTest';
+END_DATA_BLOCK

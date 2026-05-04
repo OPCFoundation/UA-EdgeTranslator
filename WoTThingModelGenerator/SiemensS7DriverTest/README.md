@@ -10,7 +10,7 @@ solution. It exercises **every `TypeString` value** the driver supports
 (`DataBlock`, `Merker`, `IPIProcessInput`, `IPUProcessInput`, `Timer`,
 `Counter`).
 
-All variables change continuously, driven by four pattern generators:
+All variables change continuously, driven by six pattern generators:
 
 | Pattern    | Period | Variables                                                                                         |
 |-----------:|:------:|----------------------------------------------------------------------------------------------------|
@@ -26,11 +26,13 @@ All variables change continuously, driven by four pattern generators:
 %M120.0` and `%QB0 / %QW2 / %QD4` so the M and Q areas are also exercised.
 
 ## 1. Files in this folder
+```
 SiemensS7DriverTest/
 ├── README.md            ← this document
 ├── AllTypesDB.scl       ← DB1 declaration (standard access)
 ├── Main_OB1.scl         ← cyclic OB driving all patterns
 └── Optional_S5Timer.scl ← optional, only needed to test S7Target.Timer / S7Target.Counter
+```
 
 > TIA Portal projects (`*.ap21`) are a binary, proprietary format that cannot
 > be checked into a Git repository as a single file. The recipe below uses
@@ -89,13 +91,10 @@ Steps in TIA Portal:
    (or any S7-1500 CPU with firmware ≥ V2.0; the SCL is independent of the
    article number, but `LDT` / `LTime_Of_Day` need V2.0+).
 3. **Device view** → click the CPU → **Properties**:
-   - **PROFINET interface [X1] → Ethernet addresses** →
-     `IP address = 192.168.0.1`, `Subnet mask = 255.255.255.0`.
-     Add the interface to a new subnet `PN/IE_1`.
    - **Protection & Security → Connection mechanisms** →
      **enable** "Permit access with PUT/GET communication from remote partner".
      Without this the S7Comm classic driver in this repo cannot read or write.
-   - **Protection & Security → Access level** → "Full access (no protection)"
+   - **Protection & Security → Access control** → "Full access (no protection)"
      for testing (raise this for production).
 4. **Compile** the device (Ctrl+B) once to make sure the empty CPU builds.
 
@@ -120,7 +119,7 @@ For each `.scl` file under `SourceFiles/`:
 > will skip the DB (it logs `"layout is Optimized, not Standard"`).
 
 ## 5. Download / simulate
-- **Real CPU**: connect, set the PG/PC interface, **Download to device**.
+- **Real CPU**: connect, set the PG/PC interface, **Download to device** (hardware and software), then set the CPU into run mode.
 - **PLCSIM V21**: in the toolbar click **Start simulation**, then download
   the same way. Use the **SIM table** to drive `%I0.0..%I0.7` / `%IB0` if
   you want non-zero values for `S7Target.IPIProcessInput`.
@@ -129,9 +128,9 @@ After the CPU goes to RUN, every member of `DB1 "AllTypesDB"` changes
 continuously per the matrix in §2.
 
 ## 6. Generate the Thing Model with `WoTThingModelGenerator`
-Same recipe as the repo's main README. With the changes in this branch the
-emitted `*.tm.jsonld` now contains:
+To generate the Thing Model, follow the same steps as the repo's main README.
 
+With the changes in this branch the emitted `*.tm.jsonld` will contain:
 - one Property per **leaf primitive** of `AllTypesDB`,
 - one Property per **array element** (with `s7:start` adjusted per element
   and bit-packed `s7:pos` for `Array of Bool`),
@@ -140,23 +139,28 @@ emitted `*.tm.jsonld` now contains:
   signed nanoseconds for `LTIME`, etc.).
 
 Build & run:
-cd <repo-root> dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj ` -c Release /p:Platform=x64
+cd <repo-root>\WoTThingModelGenerator
+dotnet build . -c Release /p:Platform=x64
 
 ### 5.3 Run the importer against the test project
 Save your TIA project somewhere accessible, e.g. C:\TIAProjects\S7DriverTest_V21\
 The "project file" is the *.ap21 at the project root, NOT the enclosing folder.
-Stage the project file next to the generator binary (the tool processes the
-CWD it was launched from):
+Copy your **entire** TIA project folder (e.g. the files and folders containing the
+*.ap21 file) into the folder `<repo root>\WoTThingModelGenerator\bin\x64\Release\net48\`.
 
-$tool   = "<repo-root>\WoTThingModelGenerator\bin\x64\Release\net8.0-windows" $apFile = "C:\TIAProjects\S7DriverTest_V21\S7DriverTest_V21.ap21"
+Then, from a Windows PowerShell terminal:
+$tool   = "<repo-root>\WoTThingModelGenerator\bin\x64\Release\net48"
+$apFile = "C:\TIAProjects\S7DriverTest_V21\S7DriverTest_V21.ap21"
 Copy-Item $apFile $tool
-cd $tool .\WoTThingModelGenerator.exe
+cd $tool
+.\WoTThingModelGenerator.exe
 
 For every PLC found in the project, the tool writes
 `<projectName>_<plcName>.tm.jsonld` next to the executable, e.g.
 S7DriverTest_V21_PLC_1.tm.jsonld
 
-### 5.4 What you should see in the output
+### 5.4 Validate the Output of the Importer
+What you should see in the $tool directory is a file called `S7DriverTest_V21_PLC_1.tm.jsonld` containing a Thing Model.
 Each leaf member of `AllTypesDB` becomes a `Property` whose `forms[0]` is
 an `S7Form` with the correct `s7:dbnumber`, `s7:start`, `s7:pos`, `s7:size`
 and `type`. A representative excerpt — exact byte/bit offsets are decided

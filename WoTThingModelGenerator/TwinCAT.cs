@@ -3,8 +3,6 @@
     using System.Collections.Generic;
     using System.Xml.Serialization;
 
-#nullable disable
-
     [XmlRoot(ElementName = "TcModuleClass")]
     public class TwinCAT
     {

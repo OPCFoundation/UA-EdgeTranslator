@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#nullable enable
-
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
     using System;
@@ -13,7 +11,8 @@ namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
     /// </summary>
     public abstract class DwellTimeLimitedRegion : Region
     {
-        private DwellTimeSetting? desiredDwellTimeSetting;
+        private DwellTimeSetting desiredDwellTimeSetting;
+
         public DwellTimeSetting DesiredDwellTimeSetting
         {
             get => this.desiredDwellTimeSetting ?? throw new InvalidOperationException("DefaultDwellTimeSetting is null.");

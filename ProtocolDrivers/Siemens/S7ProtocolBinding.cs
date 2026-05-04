@@ -4,15 +4,13 @@ namespace Opc.Ua.Edge.Translator.Models
     using Newtonsoft.Json;
     using System.Runtime.Serialization;
 
-#nullable enable
-
     public class S7Form
     {
         [JsonProperty("href")]
-        public string? Href { get; set; }
+        public string Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[]? Op { get; set; }
+        public Op[] Op { get; set; }
 
         [JsonProperty("s7:rack")]
         public int S7Rack { get; set; }
@@ -42,7 +40,7 @@ namespace Opc.Ua.Edge.Translator.Models
         public S7Target S7Target { get; set; }
 
         [JsonProperty("s7:address")]
-        public string? S7Address { get; set; }
+        public string S7Address { get; set; }
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -55,7 +53,7 @@ namespace Opc.Ua.Edge.Translator.Models
         // TypeString-only switch for backward compatibility with
         // pre-existing Thing Models.
         [JsonProperty("s7:s7type", NullValueHandling = NullValueHandling.Ignore)]
-        public string? S7S7Type { get; set; }
+        public string S7S7Type { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

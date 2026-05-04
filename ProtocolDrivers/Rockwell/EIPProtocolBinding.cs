@@ -4,15 +4,13 @@ namespace Opc.Ua.Edge.Translator.Models
     using Newtonsoft.Json;
     using System.Runtime.Serialization;
 
-#nullable enable
-
     public class EIPForm
     {
         [JsonProperty("href")]
-        public string? Href { get; set; }
+        public string Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[]? Op { get; set; }
+        public Op[] Op { get; set; }
 
         [JsonProperty("type")]
         public EIPTypeString Type { get; set; }
@@ -21,35 +19,35 @@ namespace Opc.Ua.Edge.Translator.Models
         public long PollingTime { get; set; }
 
         [JsonProperty("eip:structureDefinition")]
-        public EIPStructureDefinition? StructureDefinition { get; set; }
+        public EIPStructureDefinition StructureDefinition { get; set; }
     }
 
     public class EIPStructureDefinition
     {
         [JsonProperty("typeName")]
-        public string? TypeName { get; set; }
+        public string TypeName { get; set; }
 
         [JsonProperty("fields")]
-        public EIPFieldDefinition[]? Fields { get; set; }
+        public EIPFieldDefinition[] Fields { get; set; }
     }
 
     public class EIPFieldDefinition
     {
         [JsonProperty("name")]
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
         /// <summary>
         /// For primitive fields: "xsd:DINT", "xsd:REAL", etc.
         /// For nested UDT fields: null (use structureDefinition instead).
         /// </summary>
         [JsonProperty("type")]
-        public string? Type { get; set; }
+        public string Type { get; set; }
 
         [JsonProperty("offset")]
         public int Offset { get; set; }
 
         [JsonProperty("description")]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         /// <summary>
         /// Present when this field is a nested UDT. Contains the full
@@ -57,7 +55,7 @@ namespace Opc.Ua.Edge.Translator.Models
         /// OPC UA StructureType creation.
         /// </summary>
         [JsonProperty("eip:structureDefinition")]
-        public EIPStructureDefinition? StructureDefinition { get; set; }
+        public EIPStructureDefinition StructureDefinition { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

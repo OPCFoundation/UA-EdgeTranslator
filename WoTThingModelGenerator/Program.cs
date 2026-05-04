@@ -1,18 +1,19 @@
 ﻿namespace Opc.Ua.Edge.Translator.Tools
 {
+#if AML_ENGINE
     using Aml.Engine.CAEX;
+#endif
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Export;
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Text.RegularExpressions;
     using System.Xml;
     using System.Xml.Serialization;
     using WoTThingModelGenerator.TwinCAT;
     using Property = Models.Property;
-
-#nullable disable
 
     internal class Program
     {
@@ -27,10 +28,12 @@
                     ImportNodeset2Xml(filename);
                 }
 
+#if AML_ENGINE
                 if (filename.ToLower().EndsWith(".aml"))
                 {
                     ImportAutomationML(filename);
                 }
+#endif
 
                 if (filename.ToLower().EndsWith(".aas.json"))
                 {
@@ -64,11 +67,11 @@
 
             string tdName = Path.GetFileNameWithoutExtension(filename).Replace(" ", "_");
 
-            ThingDescription td = new()
+            ThingDescription td = new ThingDescription()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + tdName,
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",
@@ -92,7 +95,7 @@
                 {
                     string propertName = tokens[4].Replace(" ", "_");
 
-                    ModbusForm form = new()
+                    ModbusForm form = new ModbusForm()
                     {
                         Href = tokens[12],
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
@@ -121,7 +124,7 @@
                         form.Href += "?quantity=1";
                     }
 
-                    Property property = new()
+                    Property property = new Property()
                     {
                         ReadOnly = true,
                         Observable = true,
@@ -145,11 +148,11 @@
         {
             string[] allLines = File.ReadAllLines(filename);
 
-            ThingDescription td = new()
+            ThingDescription td = new ThingDescription()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",
@@ -304,17 +307,17 @@
                 if (IsPrimitiveType(baseTypeName))
                 {
                     // Primitive tag — use EIPForm with EIP-specific type strings
-                    EIPForm form = new() {
+                    EIPForm form = new EIPForm() {
                         Href = propertyName,
-                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
+                        Op = new[] { Op.Readproperty, Op.Observeproperty, Op.Writeproperty },
                         PollingTime = 1000
                     };
 
-                    Property property = new()
+                    Property property = new Property()
                     {
                         ReadOnly = false,
                         Observable = true,
-                        Forms = [form]
+                        Forms = new[] { form }
                     };
 
                     switch (baseTypeName.ToUpper())
@@ -405,19 +408,19 @@
 
                     string assetNamespaceUri = "http://opcfoundation.org/UA/{{name}}/";
 
-                    EIPForm form = new() {
+                    EIPForm form = new EIPForm() {
                         Href = propertyName,
-                        Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
+                        Op = new[] { Op.Readproperty, Op.Observeproperty, Op.Writeproperty },
                         PollingTime = 1000,
                         StructureDefinition = structDef
                     };
 
-                    Property property = new() {
+                    Property property = new Property() {
                         Type = TypeEnum.Object,
                         ReadOnly = false,
                         Observable = true,
                         OpcUaType = $"nsu={assetNamespaceUri};s={baseTypeName}Type",
-                        Forms = [form]
+                        Forms = new[] { form }
                     };
 
                     if (!td.Properties.ContainsKey(propertyName))
@@ -437,7 +440,7 @@
         }
 
         // Known Rockwell primitive / built-in types that should NOT be treated as UDTs.
-        private static readonly HashSet<string> PrimitiveTypes = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> PrimitiveTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "REAL", "LREAL", "DINT", "INT", "SINT", "LINT",
             "BOOL", "STRING", "UDINT", "UINT", "USINT", "ULINT",
@@ -459,7 +462,7 @@
         private static string StripArrayDimension(string datatype)
         {
             int bracketIdx = datatype.IndexOf('[');
-            return bracketIdx >= 0 ? datatype[..bracketIdx] : datatype;
+            return bracketIdx >= 0 ? datatype.Substring(0, bracketIdx) : datatype;
         }
 
         /// <summary>
@@ -467,9 +470,9 @@
         /// </summary>
         private static string StripQuotes(string value)
         {
-            if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+            if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
             {
-                return value[1..^1];
+                return value.Substring(1, value.Length - 2);
             }
 
             return value;
@@ -514,7 +517,7 @@
             if (parts.Length >= 2)
             {
                 // If the last segment is a number, it's a bit index into a DINT
-                if (int.TryParse(parts[^1], out _))
+                if (int.TryParse(parts[parts.Length - 1], out _))
                 {
                     return "DINT";
                 }
@@ -544,7 +547,7 @@
 
             if (!udtFieldsByType.TryGetValue(typeName, out var fields))
             {
-                var stub = new EIPStructureDefinition { TypeName = typeName, Fields = [] };
+                var stub = new EIPStructureDefinition { TypeName = typeName, Fields = new EIPFieldDefinition[0] };
                 udtStructDefs[typeName] = stub;
                 return stub;
             }
@@ -591,12 +594,12 @@
                 }
                 else if (line[i] == ',' && !inQuotes)
                 {
-                    tokens.Add(line[start..i]);
+                    tokens.Add(line.Substring(start, i - start));
                     start = i + 1;
                 }
             }
 
-            tokens.Add(line[start..]);
+            tokens.Add(line.Substring(start));
             return tokens.ToArray();
         }
 
@@ -609,11 +612,11 @@
                 twinCAT = serializer.Deserialize(reader) as TwinCAT;
             }
 
-            ThingDescription td = new()
+            ThingDescription td = new ThingDescription()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",
@@ -627,7 +630,7 @@
             {
                 string propertyName = symbol.Name;
 
-                GenericForm form = new()
+                GenericForm form = new GenericForm()
                 {
                     Href = propertyName + "?" + symbol.BitSize/8,
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
@@ -635,7 +638,7 @@
                     Type = TypeString.Float
                 };
 
-                Property property = new()
+                Property property = new Property()
                 {
                     Type = TypeEnum.Number,
                     ReadOnly = true,
@@ -656,11 +659,11 @@
         {
             AAS_AID aid = JsonConvert.DeserializeObject<AAS_AID>(File.ReadAllText(filename));
 
-            ThingDescription td = new()
+            ThingDescription td = new ThingDescription()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",
@@ -670,7 +673,7 @@
                 Actions = new Dictionary<string, TDAction>()
             };
 
-            Dictionary<string, string> subModelElements = new();
+            Dictionary<string, string> subModelElements = new Dictionary<string, string>();
             if (aid?.SubmodelElements != null)
             {
                 ImportSubmodelElementCollection(aid.Id, aid.SubmodelElements, subModelElements);
@@ -742,7 +745,7 @@
                 object form = null;
                 if (key.Contains(":InterfaceMODBUS_TCP:"))
                 {
-                    ModbusForm modbusForm = new()
+                    ModbusForm modbusForm = new ModbusForm()
                     {
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
                         ModbusEntity = ModbusEntity.HoldingRegister,
@@ -752,14 +755,14 @@
                 }
                 else
                 {
-                    GenericForm genericForm = new()
+                    GenericForm genericForm = new GenericForm()
                     {
                         Op = new Op[2] { Op.Readproperty, Op.Observeproperty }
                     };
                     form = genericForm;
                 }
 
-                Property property = new()
+                Property property = new Property()
                 {
                     Type = TypeEnum.Number,
                     ReadOnly = true,
@@ -803,6 +806,7 @@
             }
         }
 
+#if AML_ENGINE
         private static void ImportAutomationML(string filename)
         {
             CAEXDocument doc = CAEXDocument.LoadFromString(File.ReadAllText(filename));
@@ -866,7 +870,7 @@
                 // for leaf attributes, we generate WoT properties
                 string reference = parent + "_" + attribute.Name;
 
-                GenericForm form = new()
+                GenericForm form = new GenericForm()
                 {
                     Href = reference,
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
@@ -874,7 +878,7 @@
                     PollingTime = 1000
                 };
 
-                Property property = new()
+                Property property = new Property()
                 {
                     Type = TypeEnum.Number,
                     ReadOnly = true,
@@ -888,17 +892,17 @@
                 }
             }
         }
-
+#endif
         // Nodeset2 files can be edited using e.g. the SIEMENS OPC UA Modeling Editor (SiOME)
         // see https://support.industry.siemens.com/cs/document/109755133/siemens-opc-ua-modeling-editor-(siome)-for-implementing-opc-ua-companion-specification
         private static void ImportNodeset2Xml(string filename)
         {
             Stream stream = new FileStream(filename, FileMode.Open);
 
-            ThingDescription td = new() {
+            ThingDescription td = new ThingDescription() {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",
@@ -923,7 +927,7 @@
             {
                 UAVariable variable = (UAVariable)predefinedNode;
 
-                GenericForm form = new()
+                GenericForm form = new GenericForm()
                 {
                     Href = "nsu=" + namespaceUri + ";" + variable.NodeId.Replace("ns=1;", ""),
                     Op = new Op[2] { Op.Readproperty, Op.Observeproperty },
@@ -946,7 +950,7 @@
                     return;
                 }
 
-                Property property = new()
+                Property property = new Property()
                 {
                     Type = TypeEnum.Number,
                     ReadOnly = true,

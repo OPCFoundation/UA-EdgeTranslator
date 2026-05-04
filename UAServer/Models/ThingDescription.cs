@@ -5,42 +5,40 @@ namespace Opc.Ua.Edge.Translator.Models
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
-#nullable enable
-
     public class ThingDescription
     {
         [JsonProperty("@context")]
-        public object[]? Context { get; set; }
+        public object[] Context { get; set; }
 
         [JsonProperty("id")]
-        public string? Id { get; set; }
+        public string Id { get; set; }
 
         [JsonProperty("securityDefinitions")]
-        public SecurityDefinitions? SecurityDefinitions { get; set; }
+        public SecurityDefinitions SecurityDefinitions { get; set; }
 
         [JsonProperty("security")]
-        public string[]? Security { get; set; }
+        public string[] Security { get; set; }
 
         [JsonProperty("@type")]
-        public string[]? Type { get; set; }
+        public string[] Type { get; set; }
 
         [JsonProperty("name")]
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
         [JsonProperty("base")]
-        public string? Base { get; set; }
+        public string Base { get; set; }
 
         [JsonProperty("title")]
-        public string? Title { get; set; }
+        public string Title { get; set; }
 
         [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         [JsonProperty("properties")]
-        public Dictionary<string, Property>? Properties { get; set; }
+        public Dictionary<string, Property> Properties { get; set; }
 
         [JsonProperty("actions")]
-        public Dictionary<string, TDAction>? Actions { get; set; }
+        public Dictionary<string, TDAction> Actions { get; set; }
     }
 
     public class Property
@@ -49,16 +47,16 @@ namespace Opc.Ua.Edge.Translator.Models
         public TypeEnum Type { get; set; }
 
         [JsonProperty("const")]
-        public object? Const { get; set; }
+        public object Const { get; set; }
 
         [JsonProperty("uav:mapToNodeId")]
-        public string? OpcUaNodeId { get; set; }
+        public string OpcUaNodeId { get; set; }
 
         [JsonProperty("uav:mapToType")]
-        public string? OpcUaType { get; set; }
+        public string OpcUaType { get; set; }
 
         [JsonProperty("uav:mapByFieldPath")]
-        public string? OpcUaFieldPath { get; set; }
+        public string OpcUaFieldPath { get; set; }
 
         [JsonProperty("readOnly")]
         public bool ReadOnly { get; set; }
@@ -67,19 +65,19 @@ namespace Opc.Ua.Edge.Translator.Models
         public bool Observable { get; set; }
 
         [JsonProperty("forms")]
-        public object[]? Forms { get; set; }
+        public object[] Forms { get; set; }
     }
 
     public class TDAction
     {
         [JsonProperty("input")]
-        public TDArguments? Input { get; set; }
+        public TDArguments Input { get; set; }
 
         [JsonProperty("output")]
-        public TDArguments? Output { get; set; }
+        public TDArguments Output { get; set; }
 
         [JsonProperty("forms")]
-        public object[]? Forms { get; set; }
+        public object[] Forms { get; set; }
     }
 
     public class TDArguments
@@ -88,19 +86,19 @@ namespace Opc.Ua.Edge.Translator.Models
         public TypeEnum Type { get; set; }
 
         [JsonProperty("properties")]
-        public Dictionary<string, Property>? Properties { get; set; }
+        public Dictionary<string, Property> Properties { get; set; }
 
         [JsonProperty("required")]
-        public string[]? Required { get; set; }
+        public string[] Required { get; set; }
     }
 
     public class GenericForm
     {
         [JsonProperty("href")]
-        public string? Href { get; set; }
+        public string Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[]? Op { get; set; }
+        public Op[] Op { get; set; }
 
         [JsonProperty("type")]
         public TypeString Type { get; set; }
@@ -112,13 +110,13 @@ namespace Opc.Ua.Edge.Translator.Models
     public class SecurityDefinitions
     {
         [JsonProperty("nosec_sc")]
-        public NosecSc? NosecSc { get; set; }
+        public NosecSc NosecSc { get; set; }
     }
 
     public class NosecSc
     {
         [JsonProperty("scheme")]
-        public string? Scheme { get; set; }
+        public string Scheme { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

@@ -224,10 +224,10 @@ The Siemens importer drives the **TIA Portal Openness** API to walk the project'
 By default the project file references TIA V21 at:
 
 ```
-C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\Siemens.Engineering.dll
+C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\net48\Siemens.Engineering.Base.dll
 ```
 
-If you have a different version installed, override the path on the command line:
+If you have a different version installed, e.g. V20, override the path on the command line:
 
 ```powershell
 dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj `
@@ -239,11 +239,11 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 #### Running it
 
-1. Copy your TIA project file (`MyProject.ap21`) — the project root file, not its enclosing folder — next to `WoTThingModelGenerator.exe`.
+1. Copy your **entire** TIA project folder (e.g. the files and folders containing the *.ap21 file) into the folder `<repo root>\WoTThingModelGenerator\bin\x64\Release\net48\`.
 2. Run the tool:
 
    ```powershell
-   cd WoTThingModelGenerator\bin\x64\Release\net8.0-windows
+   cd WoTThingModelGenerator\bin\x64\Release\net48
    .\WoTThingModelGenerator.exe
    ```
 

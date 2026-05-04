@@ -2,9 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFrameworks>net10.0;net48</TargetFrameworks>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
@@ -13,30 +11,79 @@
     Path to a local TIA Portal Openness install. Override on the command line:
       dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V21"
     The default targets the latest installed version (V21).
+
+    In V21 the monolithic Siemens.Engineering.dll was split:
+      - Siemens.Engineering.Base.dll      ← required (TiaPortal, Project, …)
+      - Siemens.Engineering.AddIn.dll     ← optional (only for AddIns)
+      - Siemens.Engineering.Cax.dll       ← optional (CAx import/export)
+      - Siemens.Engineering.Contract.dll  ← optional (AddIn contracts)
+      - Siemens.Engineering.Step7.dll     ← optional (legacy STEP 7 Classic)
+      - Siemens.Engineering.Hmi.dll       ← optional (only with WinCC)
   -->
   <PropertyGroup>
     <SiemensTIAPortalPath Condition="'$(SiemensTIAPortalPath)' == ''">C:\Program Files\Siemens\Automation\Portal V21</SiemensTIAPortalPath>
-    <SiemensEngineeringDll>$(SiemensTIAPortalPath)\PublicAPI\V21\Siemens.Engineering.dll</SiemensEngineeringDll>
-    <SiemensEngineeringHmiDll>$(SiemensTIAPortalPath)\PublicAPI\V21\Siemens.Engineering.Hmi.dll</SiemensEngineeringHmiDll>
+    <SiemensOpennessApiDir>$(SiemensTIAPortalPath)\PublicAPI\V21\net48</SiemensOpennessApiDir>
+
+    <SiemensEngineeringBaseDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Base.dll</SiemensEngineeringBaseDll>
+    <SiemensEngineeringAddInDll>$(SiemensOpennessApiDir)\Siemens.Engineering.AddIn.dll</SiemensEngineeringAddInDll>
+    <SiemensEngineeringCaxDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Cax.dll</SiemensEngineeringCaxDll>
+    <SiemensEngineeringContractDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Contract.dll</SiemensEngineeringContractDll>
+    <SiemensEngineeringStep7Dll>$(SiemensOpennessApiDir)\Siemens.Engineering.Step7.dll</SiemensEngineeringStep7Dll>
+    <SiemensEngineeringHmiDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Hmi.dll</SiemensEngineeringHmiDll>
   </PropertyGroup>
 
   <!--
     The Openness assemblies must NOT be redistributed (Siemens licence). They
-    are referenced from the local TIA install and resolved at runtime by
-    SiemensEngineeringResolver.
+    are referenced from the local TIA install with Private=false and resolved
+    at runtime by the AssemblyResolve hook in Siemens.cs.
   -->
-  <ItemGroup Condition="Exists('$(SiemensEngineeringDll)')">
-    <Reference Include="Siemens.Engineering">
-      <HintPath>$(SiemensEngineeringDll)</HintPath>
+  <ItemGroup Condition="Exists('$(SiemensEngineeringBaseDll)')">
+    <Reference Include="Siemens.Engineering.Base">
+      <HintPath>$(SiemensEngineeringBaseDll)</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Siemens.Engineering.Hmi" Condition="Exists('$(SiemensEngineeringHmiDll)')">
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(SiemensEngineeringAddInDll)')">
+    <Reference Include="Siemens.Engineering.AddIn">
+      <HintPath>$(SiemensEngineeringAddInDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(SiemensEngineeringCaxDll)')">
+    <Reference Include="Siemens.Engineering.Cax">
+      <HintPath>$(SiemensEngineeringCaxDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(SiemensEngineeringContractDll)')">
+    <Reference Include="Siemens.Engineering.Contract">
+      <HintPath>$(SiemensEngineeringContractDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(SiemensEngineeringStep7Dll)')">
+    <Reference Include="Siemens.Engineering.Step7">
+      <HintPath>$(SiemensEngineeringStep7Dll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(SiemensEngineeringHmiDll)')">
+    <Reference Include="Siemens.Engineering.Hmi">
       <HintPath>$(SiemensEngineeringHmiDll)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
-  <PropertyGroup Condition="Exists('$(SiemensEngineeringDll)')">
+  <!--
+    Define SIEMENS_ENGINEERING when the mandatory Base assembly is present;
+    everything else stays optional.
+  -->
+  <PropertyGroup Condition="Exists('$(SiemensEngineeringBaseDll)')">
     <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING</DefineConstants>
   </PropertyGroup>
 
@@ -47,7 +94,7 @@
   </ItemGroup>
 
   <!--
-    The model POCOs live in the net10 production projects. We link them in
+    The model required by this tool live in the net10 production projects. We link them in
     by file so this tool can target net8.0-windows independently.
   -->
   <ItemGroup>
@@ -59,9 +106,7 @@
 
   <ItemGroup>
     <None Remove="AMLSimpleExample.aml" />
-    <None Remove="PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.json" />
     <None Remove="Rockwell_Sample_Tags.csv" />
-    <None Remove="Siemens SENTRON PAC4200.aas.json" />
     <None Remove="Simple PLC.tmc" />
     <None Remove="Station.NodeSet2.xml" />
   </ItemGroup>
@@ -70,13 +115,7 @@
     <Content Include="AMLSimpleExample.aml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="PackUnit_Simulation_V15-PDI-EEm-release_V18_new_PLC.aas.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="Rockwell_Sample_Tags.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Siemens SENTRON PAC4200.aas.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Simple PLC.tmc">
@@ -88,9 +127,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aml.Engine" Version="4.5.2" />
+    <PackageReference Include="Aml.Engine" Version="4.5.2" Condition="'$(TargetFramework)' != 'net48'" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.134" />
   </ItemGroup>
+
+  <!-- Define AML_ENGINE on TFMs where the Aml.Engine NuGet is supported (i.e. not net48). -->
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net48'">
+    <DefineConstants>$(DefineConstants);AML_ENGINE</DefineConstants>
+  </PropertyGroup>
 
 </Project>

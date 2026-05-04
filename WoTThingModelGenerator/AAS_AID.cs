@@ -7,72 +7,72 @@ namespace Opc.Ua.Edge.Translator.Models
     public class AAS_AID
     {
         [JsonProperty("idShort")]
-        public string? IdShort { get; set; }
+        public string IdShort { get; set; }
 
         [JsonProperty("id")]
-        public string? Id { get; set; }
+        public string Id { get; set; }
 
         [JsonProperty("kind")]
-        public string? Kind { get; set; }
+        public string Kind { get; set; }
 
         [JsonProperty("semanticId")]
-        public SemanticId? SemanticId { get; set; }
+        public SemanticId SemanticId { get; set; }
 
         [JsonProperty("description")]
-        public List<Description>? Description { get; set; }
+        public List<Description> Description { get; set; }
 
         [JsonProperty("submodelElements")]
-        public List<SubmodelElement>? SubmodelElements { get; set; }
+        public List<SubmodelElement> SubmodelElements { get; set; }
 
         [JsonProperty("modelType")]
-        public string? ModelType { get; set; }
+        public string ModelType { get; set; }
     }
 
     public class Description
     {
         [JsonProperty("language")]
-        public string? Language { get; set; }
+        public string Language { get; set; }
 
         [JsonProperty("text")]
-        public string? Text { get; set; }
+        public string Text { get; set; }
     }
 
     public class Key
     {
         [JsonProperty("type")]
-        public string? Type { get; set; }
+        public string Type { get; set; }
 
         [JsonProperty("value")]
-        public string? Value { get; set; }
+        public string Value { get; set; }
     }
 
     public class SemanticId
     {
         [JsonProperty("type")]
-        public string? Type { get; set; }
+        public string Type { get; set; }
 
         [JsonProperty("keys")]
-        public List<Key>? Keys { get; set; }
+        public List<Key> Keys { get; set; }
     }
 
     public class SubmodelElement
     {
         [JsonProperty("idShort")]
-        public string? IdShort { get; set; }
+        public string IdShort { get; set; }
 
         [JsonProperty("semanticId")]
-        public SemanticId? SemanticId { get; set; }
+        public SemanticId SemanticId { get; set; }
 
         [JsonProperty("supplementalSemanticIds")]
-        public List<SemanticId>? SupplementalSemanticIds { get; set; }
+        public List<SemanticId> SupplementalSemanticIds { get; set; }
 
         [JsonProperty("value")]
-        public object? Value { get; set; }
+        public object Value { get; set; }
 
         [JsonProperty("valueType")]
-        public string? ValueType { get; set; }
+        public string ValueType { get; set; }
 
         [JsonProperty("modelType")]
-        public string? ModelType { get; set; }
+        public string ModelType { get; set; }
     }
 }

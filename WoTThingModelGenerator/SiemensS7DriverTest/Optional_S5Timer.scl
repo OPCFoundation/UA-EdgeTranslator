@@ -1,0 +1,39 @@
+// =============================================================================
+//  Optional_S5Timer.scl
+//
+//  S7-1500 uses IEC timers / counters (TON, TOF, CTU…) stored in instance DBs
+//  by default, so the legacy S5 timer (T) and counter (C) areas are normally
+//  empty. The SiemensProtocolDriver still supports those areas
+//  (S7Target.Timer = "TM", S7Target.Counter = "CT") and to exercise that path
+//  you can enable a single S5 timer:
+//
+//    1) Project tree  →  PLC  →  Properties  →  System and clock memory:
+//       enable "Permit IEC compatible S5 timers/counters".
+//    2) Generate this block from source and call "S5Timer_FC" once from
+//       OB1's BEGIN section.
+//
+//  Note: this version uses the absolute address %T0 directly, so no PLC
+//  tag named "T_0" is required. If you'd rather keep a symbolic reference,
+//  add a tag T_0 : Timer mapped to %T0 and switch the call back to "T_0".
+// =============================================================================
+
+FUNCTION "S5Timer_FC" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+VAR_TEMP
+   q_done    : Bool;       // timer Q output (TRUE while pulse is active)
+   remaining : S5Time;     // S_PULSE return value = remaining time as S5TIME
+END_VAR
+
+BEGIN
+   // S_PULSE on S7-1500 SCL is a function — its return value is the
+   // remaining time (S5TIME), so we MUST assign it. The binary status is
+   // delivered via the Q OUT parameter.
+   //
+   // S_PULSE.TV is S5TIME, not TIME → use the S5T# literal directly.
+   remaining := S_PULSE(T_NO := %T0,
+                        S    := TRUE,
+                        TV   := S5T#3S,
+                        R    := FALSE,
+                        Q    => q_done);
+END_FUNCTION
