@@ -162,7 +162,7 @@ It currently supports input from:
 | AutomationML | `*.aml` | `GenericForm` |
 | Asset Administration Shell — Asset Interface Description | `*.aas.json` | Modbus or `GenericForm` |
 
-The tool scans its **current working directory**, processes every recognised file it finds, and writes a `<inputName>.tm.jsonld` next to it (Siemens projects emit one file per PLC: `<projectName>_<plcName>.tm.jsonld`).
+The tool scans its **current working directory**, processes every recognised file it finds, and writes a `<inputName>.tm.jsonld` next to it (Siemens projects emit one file per PLC: `<projectName>_<plcName>.td.jsonld`).
 
 ### Building the UA-WoTGenerator Tool
 
@@ -180,7 +180,7 @@ cd <folder containing your engineering exports>
 & "<repo>\UA-WoTGenerator\bin\x64\Release\net8.0-windows\UA-WoTGenerator.exe"
 ```
 
-Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
+Each generated `*.td.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
 
 ### Beckhoff (TwinCAT) — exporting a `.tmc` file
 

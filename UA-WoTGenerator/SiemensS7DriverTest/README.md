@@ -130,7 +130,7 @@ continuously per the matrix in §2.
 ## 6. Generate the Thing Model with `UA-WoTGenerator`
 To generate the Thing Model, follow the same steps as the repo's main README.
 
-With the changes in this branch the emitted `*.tm.jsonld` will contain:
+The emitted `*.td.jsonld` will contain:
 - one Property per **leaf primitive** of `AllTypesDB`,
 - one Property per **array element** (with `s7:start` adjusted per element
   and bit-packed `s7:pos` for `Array of Bool`),
