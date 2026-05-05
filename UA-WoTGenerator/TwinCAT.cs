@@ -1,4 +1,4 @@
-﻿namespace WoTThingModelGenerator.TwinCAT
+﻿namespace UAWoTGenerator.TwinCAT
 {
     using System.Collections.Generic;
     using System.Xml.Serialization;

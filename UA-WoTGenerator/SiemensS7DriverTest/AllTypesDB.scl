@@ -1,11 +1,11 @@
 // =============================================================================
 //  AllTypesDB.scl  —  one variable per S7 data type that the
-//  SiemensProtocolDriver / WoTThingModelGenerator can map.
+//  SiemensProtocolDriver / UA-WoTGenerator can map.
 //
 //  IMPORTANT: This DB MUST be created with "Optimized block access" = FALSE
 //  (the {S7_Optimized_Access := 'FALSE'} attribute below enforces this).
 //  S7Comm classic cannot address individual variables inside an optimized DB
-//  and the WoTThingModelGenerator's importer (Siemens.cs → AddDataBlock)
+//  and the UA-WoTGenerator's importer (Siemens.cs → AddDataBlock)
 //  will skip them.
 // =============================================================================
 

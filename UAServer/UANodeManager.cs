@@ -1580,6 +1580,17 @@ namespace Opc.Ua.Edge.Translator
             }
             else
             {
+                // Convert CLR types that are not OPC UA Variant-compatible.
+                if (value is TimeSpan ts)
+                {
+                    // OPC UA Duration is a Double in milliseconds.
+                    value = ts.TotalMilliseconds;
+                }
+                else if (value is DateTimeOffset dto)
+                {
+                    value = dto.UtcDateTime;
+                }
+
                 variable.Value = value;
             }
 

@@ -350,8 +350,8 @@ MigrationBackup/
 .ionide/
 *.jsonld
 /*.nodeset2.xml
-/WoTThingModelGenerator/Mondelez
-/WoTThingModelGenerator/MCC1_V33_20240810_Tags.csv
+/UA-WoTGenerator/Mondelez
+/UA-WoTGenerator/MCC1_V33_20240810_Tags.csv
 /UAServer/nodesets
 /UAServer/pki
 /UAServer/drivers

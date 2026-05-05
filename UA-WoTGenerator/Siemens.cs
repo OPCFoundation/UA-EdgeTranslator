@@ -5,9 +5,9 @@ namespace Opc.Ua.Edge.Translator.Tools
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Reflection;
-    using Property = Opc.Ua.Edge.Translator.Models.Property;
+    using System.Xml.Linq;
+    using Property = Models.Property;
 
 #if SIEMENS_ENGINEERING
     using Siemens.Engineering;
@@ -15,14 +15,19 @@ namespace Opc.Ua.Edge.Translator.Tools
     using Siemens.Engineering.HW.Features;
     using Siemens.Engineering.SW;
     using Siemens.Engineering.SW.Blocks;
+    using Siemens.Engineering.SW.Types;
+    using System.Linq;
 #endif
-
-#nullable disable
 
     /// <summary>
     /// Imports a TIA Portal project via the Openness API and emits a WoT
-    /// Thing Model containing one Property + S7Form per leaf interface
+    /// Thing Description containing one Property + S7Form per leaf interface
     /// member of every standard-access (non-optimized) data block.
+    ///
+    /// Unlike the Thing Model produced by the other importers, the output
+    /// here is a concrete Thing Description: the PLC's name, IP address,
+    /// rack and slot are baked into the document at import time, so it can
+    /// be consumed directly without a templating step.
     ///
     /// Requires:
     /// - TIA Portal V21 installed locally,
@@ -39,7 +44,7 @@ namespace Opc.Ua.Edge.Translator.Tools
         // Default install root for TIA Portal V21. Override via env var
         // SIEMENS_TIA_PATH if the user installed it elsewhere.
         private const string DefaultTiaPath = @"C:\Program Files\Siemens\Automation\Portal V21";
-        private const string OpennessApiSubPath = @"PublicAPI\V21";
+        private const string OpennessApiSubPath = @"PublicAPI\V21\net48";
 
         public static void Register()
         {
@@ -49,7 +54,7 @@ namespace Opc.Ua.Edge.Translator.Tools
 
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
             {
-                AssemblyName requested = new(args.Name);
+                AssemblyName requested = new AssemblyName(args.Name);
                 if (!requested.Name.StartsWith("Siemens.Engineering", StringComparison.OrdinalIgnoreCase))
                 {
                     return null;
@@ -66,7 +71,7 @@ namespace Opc.Ua.Edge.Translator.Tools
 #if SIEMENS_ENGINEERING
             Console.WriteLine($"Opening TIA Portal project: {filename}");
 
-            using TiaPortal tia = new(TiaPortalMode.WithoutUserInterface);
+            TiaPortal tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
             Project project;
             try
             {
@@ -88,39 +93,43 @@ namespace Opc.Ua.Edge.Translator.Tools
                         continue;
                     }
 
-                    string plcName = plcSoftware.Name;
                     string ipAddress = TryGetIpAddress(device) ?? "{{address}}";
                     (int rack, int slot) = TryGetRackAndSlot(cpuItem);
-                    Console.WriteLine($"  PLC '{plcName}' @ {ipAddress} (rack {rack}, slot {slot})");
+                    Console.WriteLine($"  PLC '{device.Name}.{cpuItem.Name}' @ {ipAddress} (rack {rack}, slot {slot})");
 
-                    ThingDescription td = new()
+                    ThingDescription td = new ThingDescription()
                     {
                         Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
-                        Id = "urn:" + plcName,
+                        Id = "urn:" + device.Name + "." + cpuItem.Name,
                         SecurityDefinitions = new SecurityDefinitions { NosecSc = new NosecSc { Scheme = "nosec" } },
                         Security = new string[1] { "nosec_sc" },
-                        Type = new string[1] { "tm:ThingModel" },
-                        Name = "{{name}}",
+                        Type = new string[1] { "Thing" },
+                        Name = device.Name + "." + cpuItem.Name,
                         Base = $"s7://{ipAddress}:{rack}:{slot}",
-                        Title = plcName,
+                        Title = plcSoftware.Name,
                         Properties = new Dictionary<string, Property>(),
                         Actions = new Dictionary<string, TDAction>()
                     };
 
+                    // Export every PLC type (UDT) exactly once and keep a
+                    // name -> <Sections> catalog so that UDT-typed members
+                    // inside DBs can be expanded inline below.
+                    Dictionary<string, XElement> udtCatalog = BuildUdtCatalog(plcSoftware);
+
                     foreach (DataBlock db in EnumerateDataBlocks(plcSoftware.BlockGroup))
                     {
-                        AddDataBlock(db, td.Properties);
+                        AddDataBlock(db, udtCatalog, td.Properties);
                     }
 
                     if (td.Properties.Count == 0)
                     {
-                        Console.WriteLine($"  No accessible (standard-access) DBs found for '{plcName}', skipping.");
+                        Console.WriteLine($"  No accessible (standard-access) DBs found for '{plcSoftware.Name}', skipping.");
                         continue;
                     }
 
                     string outputPath = Path.Combine(
                         Directory.GetCurrentDirectory(),
-                        Path.GetFileNameWithoutExtension(filename) + "_" + plcName + ".tm.jsonld");
+                        Path.GetFileNameWithoutExtension(filename) + "_" + plcSoftware.Name + ".td.jsonld");
 
                     File.WriteAllText(outputPath, JsonConvert.SerializeObject(td, Formatting.Indented));
                     Console.WriteLine($"  Wrote {td.Properties.Count} properties to {outputPath}");
@@ -129,6 +138,7 @@ namespace Opc.Ua.Edge.Translator.Tools
             finally
             {
                 project.Close();
+                tia.Dispose();
             }
 #else
             Console.WriteLine(
@@ -237,6 +247,13 @@ namespace Opc.Ua.Edge.Translator.Tools
             // The IP address lives on the PROFINET network interface of the
             // CPU's communication module. We probe every device item for a
             // NetworkInterface service and return the first IPv4 address found.
+            //
+            // Note: non-Ethernet interfaces (PROFIBUS DP, MPI, ...) also
+            // surface a NetworkInterface service, but their Node.Address is
+            // a small integer station number (e.g. "2" for a PROFIBUS slave).
+            // On many CPUs those interfaces are enumerated before the
+            // Ethernet one, so we must explicitly require a valid IPv4
+            // address rather than accepting the first non-empty string.
             foreach (DeviceItem item in EnumerateDeviceItems(device))
             {
                 NetworkInterface ni;
@@ -258,7 +275,11 @@ namespace Opc.Ua.Edge.Translator.Tools
                 {
                     object addr = null;
                     try { addr = node.GetAttribute("Address"); } catch { }
-                    if (addr is string s && !string.IsNullOrWhiteSpace(s))
+                    if (addr is string s
+                        && !string.IsNullOrWhiteSpace(s)
+                        && System.Net.IPAddress.TryParse(s, out System.Net.IPAddress parsed)
+                        && parsed.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                        && s.Contains('.'))
                     {
                         return s;
                     }
@@ -287,7 +308,75 @@ namespace Opc.Ua.Edge.Translator.Tools
             }
         }
 
-        private static void AddDataBlock(DataBlock db, Dictionary<string, Property> properties)
+        /// <summary>
+        /// Builds a name -&gt; &lt;Sections&gt; lookup of every PLC user data
+        /// type (UDT) in the project. The export is done once per UDT and
+        /// reused while walking every DB, so the cost is paid up-front.
+        /// </summary>
+        private static Dictionary<string, XElement> BuildUdtCatalog(PlcSoftware plc)
+        {
+            Dictionary<string, XElement> catalog = new Dictionary<string, XElement>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                CollectUdts(plc.TypeGroup, catalog);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Failed to enumerate PLC user types: {ex.Message}");
+            }
+
+            return catalog;
+        }
+
+        private static void CollectUdts(PlcTypeGroup group, Dictionary<string, XElement> catalog)
+        {
+            foreach (PlcType type in group.Types)
+            {
+                XElement sections = ExportTypeSections(type);
+                if (sections != null && !string.IsNullOrEmpty(type.Name))
+                {
+                    catalog[type.Name] = sections;
+                }
+            }
+
+            foreach (PlcTypeUserGroup sub in group.Groups)
+            {
+                CollectUdts(sub, catalog);
+            }
+        }
+
+        private static XElement ExportTypeSections(PlcType type)
+        {
+            string tempFile = Path.Combine(Path.GetTempPath(), "tia_udt_" + Guid.NewGuid().ToString("N") + ".xml");
+            try
+            {
+                type.Export(new FileInfo(tempFile), ExportOptions.WithDefaults);
+                XDocument doc = XDocument.Load(tempFile);
+                return doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "Sections");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"    Failed to export UDT '{type.Name}': {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tempFile))
+                    {
+                        File.Delete(tempFile);
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup; ignore.
+                }
+            }
+        }
+
+        private static void AddDataBlock(DataBlock db, Dictionary<string, XElement> udtCatalog, Dictionary<string, Property> properties)
         {
             // S7-1500 / 1200 default to optimized layout. Without standard
             // (non-optimized) layout the byte/bit offsets are not stable
@@ -303,64 +392,284 @@ namespace Opc.Ua.Edge.Translator.Tools
             int dbNumber = db.Number;
             Console.WriteLine($"    DB '{db.Name}' (#{dbNumber})");
 
-            foreach (Member member in db.Interface.Members)
+            // The live Member objects from db.Interface.Members do not expose
+            // an "Offset" attribute on every Openness version (it raises
+            // EngineeringNotSupportedException for struct containers and for
+            // some leaf members). To stay version-independent we export the
+            // DB to SimaticML and walk its <Sections>/<Member> tree, computing
+            // the byte/bit offsets ourselves using S7 alignment rules — those
+            // are deterministic for standard-access (non-optimized) blocks.
+            string tempFile = Path.Combine(Path.GetTempPath(), "tia_db_" + Guid.NewGuid().ToString("N") + ".xml");
+            try
             {
-                WalkMember(member, db.Name, dbNumber, properties);
+                db.Export(new FileInfo(tempFile), ExportOptions.WithDefaults);
+
+                XDocument doc = XDocument.Load(tempFile);
+
+                XElement sections = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "Sections");
+                if (sections == null)
+                {
+                    Console.WriteLine($"      DB '{db.Name}' has no <Sections> in its export — skipping.");
+                    return;
+                }
+
+                XNamespace ns = sections.GetDefaultNamespace();
+                XElement staticSection = sections.Elements(ns + "Section")
+                    .FirstOrDefault(s => string.Equals((string)s.Attribute("Name"), "Static", StringComparison.OrdinalIgnoreCase));
+                if (staticSection == null)
+                {
+                    Console.WriteLine($"      DB '{db.Name}' has no 'Static' section — skipping.");
+                    return;
+                }
+
+                Cursor cursor = new Cursor();
+                foreach (XElement memberEl in staticSection.Elements(ns + "Member"))
+                {
+                    WalkMemberXml(memberEl, ns, db.Name, dbNumber, ref cursor, udtCatalog, properties);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"      Failed to import DB '{db.Name}': {ex.Message}");
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tempFile))
+                    {
+                        File.Delete(tempFile);
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup; ignore.
+                }
             }
         }
 
-        private static void WalkMember(Member member, string pathPrefix, int dbNumber, Dictionary<string, Property> properties)
+        /// <summary>
+        /// Tracks the current write position inside a DB while walking its
+        /// declared interface. <see cref="Bit"/> is only ever non-zero
+        /// immediately after one or more BOOL members have been emitted —
+        /// every other type forces a re-alignment to a whole byte (and to
+        /// an even byte for any type wider than one byte).
+        /// </summary>
+        private struct Cursor
         {
-            string memberName = member.Name;
-            string fullPath = string.IsNullOrEmpty(pathPrefix) ? memberName : pathPrefix + "." + memberName;
-            string dataType = SafeGetAttribute(member, "DataTypeName") as string ?? string.Empty;
+            public int Byte;
+            public int Bit;
+        }
 
-            // Nested struct / UDT members have their own Members composition.
-            if (member.Members != null && member.Members.Count > 0)
+        private static void AlignToByte(ref Cursor cursor)
+        {
+            if (cursor.Bit != 0)
             {
-                foreach (Member child in member.Members)
+                cursor.Byte++;
+                cursor.Bit = 0;
+            }
+        }
+
+        private static void AlignToWord(ref Cursor cursor)
+        {
+            AlignToByte(ref cursor);
+            if ((cursor.Byte & 1) != 0)
+            {
+                cursor.Byte++;
+            }
+        }
+
+        private static void WalkMemberXml(
+            XElement memberEl,
+            XNamespace ns,
+            string pathPrefix,
+            int dbNumber,
+            ref Cursor cursor,
+            Dictionary<string, XElement> udtCatalog,
+            Dictionary<string, Property> properties)
+        {
+            string memberName = (string)memberEl.Attribute("Name") ?? string.Empty;
+            string dataType = (string)memberEl.Attribute("Datatype") ?? string.Empty;
+            string fullPath = string.IsNullOrEmpty(pathPrefix) ? memberName : pathPrefix + "." + memberName;
+
+            // Inline STRUCTs are expanded as nested <Member> children in the
+            // SimaticML export. UDT references appear with a Datatype of
+            // "MyUdt" or "\"MyUdt\"" and have no children — we expand them
+            // from the UDT catalog instead.
+            List<XElement> children = memberEl.Elements(ns + "Member").ToList();
+            if (children.Count > 0 || string.Equals(dataType, "Struct", StringComparison.OrdinalIgnoreCase))
+            {
+                AlignToWord(ref cursor);
+                foreach (XElement child in children)
                 {
-                    WalkMember(child, fullPath, dbNumber, properties);
+                    WalkMemberXml(child, ns, fullPath, dbNumber, ref cursor, udtCatalog, properties);
                 }
 
+                // Structs are always padded to an even byte boundary.
+                AlignToWord(ref cursor);
                 return;
             }
 
-            (int byteOffset, int bitOffset) = ParseOffset(SafeGetAttribute(member, "Offset"));
-
-            // ARRAY[lo..hi] OF T — emit one Property per element.
             (bool isArray, int low, int high, string elementType) = TryParseArray(dataType);
             if (isArray)
             {
-                EmitArray(fullPath, dbNumber, byteOffset, low, high, elementType, dataType, properties);
+                string udtElement = StripUdtQuotes(elementType);
+                if (udtCatalog != null && udtCatalog.TryGetValue(udtElement, out XElement udtArraySections))
+                {
+                    EmitUdtArray(fullPath, dbNumber, ref cursor, low, high, udtArraySections, udtCatalog, properties);
+                    return;
+                }
+
+                EmitArrayWithCursor(fullPath, dbNumber, ref cursor, low, high, elementType, dataType, properties);
                 return;
             }
 
-            EmitScalar(fullPath, dbNumber, byteOffset, bitOffset, dataType, properties);
+            // Scalar UDT reference — expand inline from the catalog.
+            string udtName = StripUdtQuotes(dataType);
+            if (udtCatalog != null && udtCatalog.TryGetValue(udtName, out XElement udtSections))
+            {
+                EmitUdtInstance(fullPath, dbNumber, ref cursor, udtSections, udtCatalog, properties);
+                return;
+            }
+
+            EmitScalarWithCursor(fullPath, dbNumber, ref cursor, dataType, properties);
         }
 
-        private static void EmitScalar(
+        /// <summary>
+        /// TIA serializes UDT-typed members as <c>"MyUdt"</c> (with the
+        /// quotes embedded in the Datatype attribute). Strip them so the
+        /// name matches the catalog key.
+        /// </summary>
+        private static string StripUdtQuotes(string datatype)
+        {
+            if (string.IsNullOrEmpty(datatype))
+            {
+                return datatype;
+            }
+
+            string s = datatype.Trim();
+            if (s.Length >= 2 && s[0] == '"' && s[s.Length - 1] == '"')
+            {
+                s = s.Substring(1, s.Length - 2);
+            }
+
+            return s;
+        }
+
+        private static void EmitUdtInstance(
             string fullPath,
             int dbNumber,
-            int byteOffset,
-            int bitOffset,
+            ref Cursor cursor,
+            XElement udtSections,
+            Dictionary<string, XElement> udtCatalog,
+            Dictionary<string, Property> properties)
+        {
+            // A UDT instance behaves like an inline STRUCT: align to a word,
+            // walk its "None"/"Static" section's members, then pad to a word.
+            AlignToWord(ref cursor);
+
+            XNamespace ns = udtSections.GetDefaultNamespace();
+            XElement section = udtSections.Elements(ns + "Section")
+                .FirstOrDefault(s =>
+                {
+                    string n = (string)s.Attribute("Name");
+                    return string.Equals(n, "None", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(n, "Static", StringComparison.OrdinalIgnoreCase);
+                })
+                ?? udtSections.Elements(ns + "Section").FirstOrDefault();
+
+            if (section == null)
+            {
+                Console.WriteLine($"      {fullPath}: UDT has no usable <Section> — skipping. Subsequent offsets may be incorrect.");
+                return;
+            }
+
+            foreach (XElement child in section.Elements(ns + "Member"))
+            {
+                WalkMemberXml(child, ns, fullPath, dbNumber, ref cursor, udtCatalog, properties);
+            }
+
+            AlignToWord(ref cursor);
+        }
+
+        private static void EmitUdtArray(
+            string fullPath,
+            int dbNumber,
+            ref Cursor cursor,
+            int low,
+            int high,
+            XElement udtSections,
+            Dictionary<string, XElement> udtCatalog,
+            Dictionary<string, Property> properties)
+        {
+            int count = high - low + 1;
+            if (count <= 0)
+            {
+                Console.WriteLine($"      {fullPath} skipped — invalid UDT array bounds [{low}..{high}].");
+                return;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                int idx = low + i;
+                EmitUdtInstance($"{fullPath}[{idx}]", dbNumber, ref cursor, udtSections, udtCatalog, properties);
+            }
+        }
+
+        private static void EmitScalarWithCursor(
+            string fullPath,
+            int dbNumber,
+            ref Cursor cursor,
             string dataType,
             Dictionary<string, Property> properties)
         {
             (TypeString tdType, TypeEnum typeEnum, int sizeBytes, int maxLen, string s7TypeName) = MapType(dataType);
             if (sizeBytes == 0)
             {
-                Console.WriteLine($"      {fullPath} ({dataType}) skipped — unsupported S7 type.");
+                // We don't know how wide the unsupported type is, so we cannot
+                // safely advance the cursor past it. All subsequent offsets
+                // would be wrong, so abort this branch.
+                Console.WriteLine($"      {fullPath} ({dataType}) skipped — unsupported S7 type. Subsequent offsets in this struct/DB may be incorrect.");
                 return;
+            }
+
+            int byteOffset;
+            int bitOffset;
+
+            if (string.Equals(s7TypeName, "BOOL", StringComparison.Ordinal))
+            {
+                // BOOLs pack bit-by-bit through the current byte; no alignment.
+                byteOffset = cursor.Byte;
+                bitOffset = cursor.Bit;
+                cursor.Bit++;
+                if (cursor.Bit >= 8)
+                {
+                    cursor.Byte++;
+                    cursor.Bit = 0;
+                }
+            }
+            else
+            {
+                // Any non-BOOL leaf re-aligns to a whole byte, and to an even
+                // byte if the type is wider than one byte.
+                AlignToByte(ref cursor);
+                if (sizeBytes >= 2 && (cursor.Byte & 1) != 0)
+                {
+                    cursor.Byte++;
+                }
+
+                byteOffset = cursor.Byte;
+                bitOffset = 0;
+                cursor.Byte += sizeBytes;
             }
 
             EmitProperty(fullPath, dbNumber, byteOffset, bitOffset, sizeBytes, maxLen, tdType, typeEnum, s7TypeName, dataType, properties);
         }
 
-        private static void EmitArray(
+        private static void EmitArrayWithCursor(
             string fullPath,
             int dbNumber,
-            int byteOffset,
+            ref Cursor cursor,
             int low,
             int high,
             string elementType,
@@ -370,7 +679,7 @@ namespace Opc.Ua.Edge.Translator.Tools
             (TypeString tdType, TypeEnum typeEnum, int elemSize, int maxLen, string s7TypeName) = MapType(elementType);
             if (elemSize == 0)
             {
-                Console.WriteLine($"      {fullPath} ({originalDataType}) skipped — unsupported array element type '{elementType}'.");
+                Console.WriteLine($"      {fullPath} ({originalDataType}) skipped — unsupported array element type '{elementType}'. Subsequent offsets in this struct/DB may be incorrect.");
                 return;
             }
 
@@ -383,6 +692,15 @@ namespace Opc.Ua.Edge.Translator.Tools
 
             bool isBool = string.Equals(s7TypeName, "BOOL", StringComparison.Ordinal);
 
+            // Align the array's base address.
+            AlignToByte(ref cursor);
+            if (!isBool && elemSize >= 2 && (cursor.Byte & 1) != 0)
+            {
+                cursor.Byte++;
+            }
+
+            int baseByte = cursor.Byte;
+
             for (int i = 0; i < count; i++)
             {
                 int idx = low + i;
@@ -391,17 +709,27 @@ namespace Opc.Ua.Edge.Translator.Tools
 
                 if (isBool)
                 {
-                    // S7 packs Bool arrays bit-by-bit, byte-by-byte from the array's base.
-                    elemByteOffset = byteOffset + (i / 8);
+                    // BOOL arrays pack bit-by-bit, byte-by-byte from the base.
+                    elemByteOffset = baseByte + (i / 8);
                     elemBitOffset = i % 8;
                 }
                 else
                 {
-                    elemByteOffset = byteOffset + (i * elemSize);
+                    elemByteOffset = baseByte + (i * elemSize);
                     elemBitOffset = 0;
                 }
 
                 EmitProperty($"{fullPath}[{idx}]", dbNumber, elemByteOffset, elemBitOffset, elemSize, maxLen, tdType, typeEnum, s7TypeName, elementType, properties);
+            }
+
+            // Advance past the array and pad to an even byte boundary.
+            cursor.Byte = isBool
+                ? baseByte + ((count + 7) / 8)
+                : baseByte + (count * elemSize);
+            cursor.Bit = 0;
+            if ((cursor.Byte & 1) != 0)
+            {
+                cursor.Byte++;
             }
         }
 
@@ -418,7 +746,7 @@ namespace Opc.Ua.Edge.Translator.Tools
             string dataType,
             Dictionary<string, Property> properties)
         {
-            S7Form form = new()
+            S7Form form = new S7Form()
             {
                 Href = $"DB{dbNumber}?{byteOffset}",
                 Op = new[] { Op.Readproperty, Op.Observeproperty },
@@ -433,7 +761,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                 Type = tdType
             };
 
-            Property property = new()
+            Property property = new Property()
             {
                 Type = typeEnum,
                 ReadOnly = false,
@@ -459,10 +787,23 @@ namespace Opc.Ua.Edge.Translator.Tools
         {
             try
             {
-                return obj.GetAttribute(name);
+                // Avoid raising EngineeringNotSupportedException for attributes
+                // that are not defined for this particular engineering object
+                // (e.g. "Offset" on struct container members, InOut/Temp members,
+                // or members of optimized DBs).
+                foreach (EngineeringAttributeInfo info in obj.GetAttributeInfos())
+                {
+                    if (string.Equals(info.Name, name, StringComparison.Ordinal))
+                    {
+                        return obj.GetAttribute(name);
+                    }
+                }
+
+                return null;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Cannot get attribute {name} on object {obj.ToString()}: " + ex.Message);
                 return null;
             }
         }
@@ -481,8 +822,8 @@ namespace Opc.Ua.Edge.Translator.Tools
                     return (int.TryParse(s, out int b) ? b : 0, 0);
                 }
 
-                _ = int.TryParse(s.AsSpan(0, dot), out int byteOff);
-                _ = int.TryParse(s.AsSpan(dot + 1), out int bitOff);
+                _ = int.TryParse(s.Substring(0, dot), out int byteOff);
+                _ = int.TryParse(s.Substring(dot + 1), out int bitOff);
                 return (byteOff, bitOff);
             }
 
@@ -531,12 +872,12 @@ namespace Opc.Ua.Edge.Translator.Tools
                 return (false, 0, 0, null);
             }
 
-            if (!int.TryParse(boundsStr.AsSpan(0, dotdot), out int low))
+            if (!int.TryParse(boundsStr.Substring(0, dotdot), out int low))
             {
                 return (false, 0, 0, null);
             }
 
-            if (!int.TryParse(boundsStr.AsSpan(dotdot + 2), out int high))
+            if (!int.TryParse(boundsStr.Substring(dotdot + 2), out int high))
             {
                 return (false, 0, 0, null);
             }
@@ -568,7 +909,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                 int close = s7Type.IndexOf(']', bracket);
                 if (close > bracket)
                 {
-                    _ = int.TryParse(s7Type.AsSpan(bracket + 1, close - bracket - 1), out len);
+                    _ = int.TryParse(s7Type.Substring(bracket + 1, close - bracket - 1), out len);
                 }
             }
 

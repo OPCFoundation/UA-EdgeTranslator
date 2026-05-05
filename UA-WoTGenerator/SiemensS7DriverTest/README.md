@@ -3,7 +3,7 @@
 This sample is a self-contained test rig for the
 [`SiemensProtocolDriver`](../../ProtocolDrivers/Siemens/SiemensProtocolDriver.cs)
 and the
-[`SiemensTIAImporter`](../../WoTThingModelGenerator/Siemens.cs) in this
+[`SiemensTIAImporter`](../../UA-WoTGenerator/Siemens.cs) in this
 solution. It exercises **every `TypeString` value** the driver supports
 (`Boolean`, `Byte`, `Short`, `Integer`, `Long`, `UnsignedLong`, `Float`,
 `Double`, `String`, `DateTime`, `Duration`) and **every `S7Target` value**
@@ -41,7 +41,7 @@ SiemensS7DriverTest/
 
 ## 2. Type coverage matrix
 The `AllTypesDB` data block declares one variable per Siemens elementary type
-that the importer (`WoTThingModelGenerator/Siemens.cs::MapType`) and the
+that the importer (`UA-WoTGenerator/Siemens.cs::MapType`) and the
 runtime (`ProtocolDrivers/Siemens/SiemensAsset.cs`) understand. Every
 variable changes value continuously.
 
@@ -115,7 +115,7 @@ For each `.scl` file under `SourceFiles/`:
 > `{ S7_Optimized_Access := 'FALSE' }` pragma in the SCL enforces this, but
 > TIA sometimes silently drops the attribute on first generation. Without
 > standard (non-optimized) layout, S7Comm classic cannot address the
-> individual variables and the importer in `WoTThingModelGenerator/Siemens.cs`
+> individual variables and the importer in `UA-WoTGenerator/Siemens.cs`
 > will skip the DB (it logs `"layout is Optimized, not Standard"`).
 
 ## 5. Download / simulate
@@ -127,7 +127,7 @@ For each `.scl` file under `SourceFiles/`:
 After the CPU goes to RUN, every member of `DB1 "AllTypesDB"` changes
 continuously per the matrix in §2.
 
-## 6. Generate the Thing Model with `WoTThingModelGenerator`
+## 6. Generate the Thing Model with `UA-WoTGenerator`
 To generate the Thing Model, follow the same steps as the repo's main README.
 
 With the changes in this branch the emitted `*.tm.jsonld` will contain:
@@ -139,58 +139,129 @@ With the changes in this branch the emitted `*.tm.jsonld` will contain:
   signed nanoseconds for `LTIME`, etc.).
 
 Build & run:
-cd <repo-root>\WoTThingModelGenerator
+cd <repo-root>\UA-WoTGenerator
 dotnet build . -c Release /p:Platform=x64
 
 ### 5.3 Run the importer against the test project
 Save your TIA project somewhere accessible, e.g. C:\TIAProjects\S7DriverTest_V21\
 The "project file" is the *.ap21 at the project root, NOT the enclosing folder.
 Copy your **entire** TIA project folder (e.g. the files and folders containing the
-*.ap21 file) into the folder `<repo root>\WoTThingModelGenerator\bin\x64\Release\net48\`.
+*.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`.
 
 Then, from a Windows PowerShell terminal:
-$tool   = "<repo-root>\WoTThingModelGenerator\bin\x64\Release\net48"
-$apFile = "C:\TIAProjects\S7DriverTest_V21\S7DriverTest_V21.ap21"
-Copy-Item $apFile $tool
-cd $tool
-.\WoTThingModelGenerator.exe
+cd "<repo-root>\UA-WoTGenerator\bin\x64\Release\net48"
+.\UA-WoTGenerator.exe
 
 For every PLC found in the project, the tool writes
-`<projectName>_<plcName>.tm.jsonld` next to the executable, e.g.
-S7DriverTest_V21_PLC_1.tm.jsonld
+`<projectName>_<plcName>.td.jsonld` next to the executable, e.g.
+S7DriverTest_V21_PLC_1.td.jsonld
 
 ### 5.4 Validate the Output of the Importer
-What you should see in the $tool directory is a file called `S7DriverTest_V21_PLC_1.tm.jsonld` containing a Thing Model.
+What you should see in the $tool directory is a file called `S7DriverTest_V21_PLC_1.td.jsonld` containing a Thing Description.
 Each leaf member of `AllTypesDB` becomes a `Property` whose `forms[0]` is
 an `S7Form` with the correct `s7:dbnumber`, `s7:start`, `s7:pos`, `s7:size`
 and `type`. A representative excerpt — exact byte/bit offsets are decided
-by TIA at compile time and may differ slightly between firmware versions:
-{ "@context": [ "https://www.w3.org/2022/wot/td/v1.1" ], "id": "urn:PLC_1", "@type": [ "tm:ThingModel" ], "title": "PLC_1", "base": "s7://192.168.0.1:0:1", "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } }, "security": [ "nosec_sc" ], "properties": { "Pulse_Bool": { "type": "boolean", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?0", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": 0, "s7:pos": 0, "s7:size": 1, "type": "xsd:boolean" }] }, "Sine_Real": { "type": "number", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<offset>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <offset>, "s7:pos": 0, "s7:size": 4, "type": "xsd:float" }] }, "Pattern_String": { "type": "string", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<offset>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <offset>, "s7:pos": 0, "s7:size": 82, "s7:maxlen": 80, "type": "xsd:string" }] } } }
+by TIA at compile time and may differ slightly between firmware versions.
 
 The console log of the tool also prints, for every member it emitted:
-PLC 'PLC_1' @ 192.168.0.1 (rack 0, slot 1) DB 'AllTypesDB' (#1) AllTypesDB.Pulse_Bool: Bool @ DB1.0.0 (1 B) AllTypesDB.Saw_Byte:   Byte @ DB1.<x>.0 (1 B) AllTypesDB.Sine_Int:   Int  @ DB1.<x>.0 (2 B) AllTypesDB.Sine_Real:  Real @ DB1.<x>.0 (4 B) AllTypesDB.Sine_LReal: LReal @ DB1.<x>.0 (8 B) AllTypesDB.Pattern_String:  String[80]  @ DB1.<x>.0 (82 B) AllTypesDB.Pattern_WString: WString[64] @ DB1.<x>.0 (132 B) AllTypesDB.Now_DTL:    DTL  @ DB1.<x>.0 (12 B) ...
+```
+PLC 'PLC_1' @ 192.168.0.1 (rack 0, slot 1)
+DB 'AllTypesDB' (#1)
+AllTypesDB.Pulse_Bool: Bool @ DB1.0.0 (1 B)
+AllTypesDB.Saw_Byte:   Byte @ DB1.<x>.0 (1 B)
+AllTypesDB.Sine_Int:   Int  @ DB1.<x>.0 (2 B)
+AllTypesDB.Sine_Real:  Real @ DB1.<x>.0 (4 B)
+AllTypesDB.Sine_LReal: LReal @ DB1.<x>.0 (8 B)
+AllTypesDB.Pattern_String:  String[80]  @ DB1.<x>.0 (82 B)
+AllTypesDB.Pattern_WString: WString[64] @ DB1.<x>.0 (132 B)
+AllTypesDB.Now_DTL:    DTL  @ DB1.<x>.0 (12 B)
+...
+```
 
 ### 5.5 Adding the M / I / Q / T / C placeholders manually
 The Openness importer only walks **DataBlocks**. Tags in the M, I, Q, T or C
-areas have to be added by hand to the generated `*.tm.jsonld`. Either:
+areas have to be added by hand to the generated `*.td.jsonld`.
+Copy the snippet below into the generated TD (these match the `%M` / `%Q` addresses written by `Main_OB1`):
+```
+"MB100_Saw_Byte": {
+    "type": "integer",
+    "observable": true,
+    "readOnly": false,
+    "forms": [{
+        "href": "MB100",
+        "op": [ "readproperty", "observeproperty" ],
+        "pollingTime": 1000,
+        "s7:target": "MB",
+        "s7:start": 100,
+        "s7:pos": 0,
+        "s7:size": 1,
+        "type": "xsd:byte"
+    }]
+},
+"MW102_Saw_Word": {
+    "type": "integer",
+    "observable": true,
+    "readOnly": false,
+    "forms": [{
+        "href": "MW102",
+        "op": [ "readproperty", "observeproperty" ],
+        "pollingTime": 1000,
+        "s7:target": "MB",
+        "s7:start": 102,
+        "s7:pos": 0,
+        "s7:size": 2,
+        "type": "xsd:short"
+    }]
+},
+"MD104_Sine_DWord": {
+    "type": "integer",
+    "observable": true,
+    "readOnly": false,
+    "forms": [{
+        "href": "MD104",
+        "op": [ "readproperty", "observeproperty" ],
+        "pollingTime": 1000,
+        "s7:target": "MB",
+        "s7:start": 104,
+        "s7:pos": 0,
+        "s7:size": 4,
+        "type": "xsd:integer"
+    }]
+},
+"M120_0_Pulse_Bool": {
+    "type": "boolean",
+    "observable": true,
+    "readOnly": false,
+    "forms": [{
+        "href": "M120.0",
+        "op": [ "readproperty", "observeproperty" ],
+        "pollingTime": 1000,
+        "s7:target": "MB",
+        "s7:start": 120,
+        "s7:pos": 0,
+        "s7:size": 1,
+        "type": "xsd:boolean"
+    }]
+},
+"QB0_Saw_Byte": {
+    "type": "integer",
+    "observable": true,
+    "readOnly": false,
+    "forms": [{
+        "href": "QB0",
+        "op": [ "readproperty", "observeproperty" ],
+        "pollingTime": 1000,
+        "s7:target": "AB",
+        "s7:start": 0,
+        "s7:pos": 0,
+        "s7:size": 1,
+        "type": "xsd:byte"
+    }]
+}
+...
+```
 
-- run UA Edge Translator's `BrowseAndGenerateTD` against the live CPU — it
-  emits one **sample placeholder** per non-DB area
-  (`SiemensProtocolDriver.BrowseAndGenerateTD`, lines 88–92), or
-- copy the snippets below into the generated TM (these match the `%M` / `%Q`
-  addresses written by `Main_OB1`):
-  "MB100_Saw_Byte": { "type": "integer", "observable": true, "readOnly": false, "forms": [{ "href": "MB100", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "MB", "s7:start": 100, "s7:pos": 0, "s7:size": 1, "type": "xsd:byte" }] }, "MW102_Saw_Word": { "type": "integer", "observable": true, "readOnly": false, "forms": [{ "href": "MW102", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "MB", "s7:start": 102, "s7:pos": 0, "s7:size": 2, "type": "xsd:short" }] }, "MD104_Sine_DWord": { "type": "integer", "observable": true, "readOnly": false, "forms": [{ "href": "MD104", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "MB", "s7:start": 104, "s7:pos": 0, "s7:size": 4, "type": "xsd:integer" }] }, "M120_0_Pulse_Bool": { "type": "boolean", "observable": true, "readOnly": false, "forms": [{ "href": "M120.0", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "MB", "s7:start": 120, "s7:pos": 0, "s7:size": 1, "type": "xsd:boolean" }] }, "QB0_Saw_Byte": { "type": "integer", "observable": true, "readOnly": false, "forms": [{ "href": "QB0", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "AB", "s7:start": 0, "s7:pos": 0, "s7:size": 1, "type": "xsd:byte" }] }
-
-The generator writes `S7DriverTest_V21_PLC_1.tm.jsonld` next to the executable.
-
-### 6.1 Spot-check a few new entries
-  "Sine_LInt": { "type": "integer", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<offset>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <offset>, "s7:pos": 0, "s7:size": 8, "s7:s7type": "LINT", "type": "xsd:long" }] }, "Now_DT": { "type": "string", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<offset>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <offset>, "s7:pos": 0, "s7:size": 8, "s7:s7type": "DT", "type": "xsd:dateTime" }] }, "Bits_Array_3": { "type": "boolean", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<base>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <base>, "s7:pos": 3, "s7:size": 1, "s7:s7type": "BOOL", "type": "xsd:boolean" }] }, "Bits_Array_8": { "type": "boolean", "observable": true, "readOnly": false, "forms": [{ "href": "DB1?<base+1>", "op": [ "readproperty", "observeproperty" ], "pollingTime": 1000, "s7:target": "DB", "s7:dbnumber": 1, "s7:start": <base+1>, "s7:pos": 0, "s7:size": 1, "s7:s7type": "BOOL", "type": "xsd:boolean" }] }
-
-Note how `Bits_Array_8` already crossed the byte boundary (the importer's
-`EmitArray` packs `Bool` arrays bit-by-bit, advancing the byte offset every
-8 elements).
-
-### 6.2 Testing the Write path
+### 6 Testing the Write path
 The Openness importer emits `op: [ "readproperty", "observeproperty" ]` only.
 To exercise `SiemensAsset.Write` (lines 115–151 of `SiemensAsset.cs`), add
 `"writeproperty"` to the `op` array of any property whose target you want to
@@ -198,18 +269,12 @@ write — for example `Pulse_Bool` to drive a single coil, or `Saw_Word` to
 overwrite the sawtooth value (the OB will overwrite it again on the next
 cycle, which is exactly the round-trip you want for a test).
 
-## 7. Wire the Thing Model into UA Edge Translator
-1. Replace the `{{name}}` and `{{address}}` placeholders the importer
-   leaves behind (the `id` and `base` fields). For this sample:
-   - `"name": "S7DriverTest"`
-   - `"base": "s7://192.168.0.1:0:1"`  (already filled in if Openness could
-     read the IP from the PROFINET interface)
-2. Either upload the resulting `*.tm.jsonld` via the **OPC UA File API**
-   exposed under the asset node (after calling the `CreateAsset` method),
-   or copy it into `/app/settings` and restart UA Edge Translator.
-3. Connect with any OPC UA client; you should see one OPC UA variable per
-   property, with the values changing according to the four pattern
-   generators above.
+## 7. Load the Thing Description into UA Edge Translator
+Either upload the resulting `*.td.jsonld` via the **OPC UA File API**
+exposed under the asset node (after calling the `CreateAsset` method),
+or copy it into `/app/settings` and restart UA Edge Translator.
+Then connect with any OPC UA client; you should see one OPC UA variable per
+property, with the values changing according to the four pattern generators above.
 
 ## 8. Troubleshooting checklist
 | Symptom                                                  | Likely cause / fix                                                                 |
@@ -220,4 +285,4 @@ cycle, which is exactly the round-trip you want for a test).
 | Importer logs `No accessible (standard-access) DBs found`| The project was opened correctly but no eligible DB exists. Check the `.ap21` path. |
 | Openness raises `RequestPasswordDelegate not set`        | The TIA project is password-protected; remove the protection or extend `Import`.    |
 | `Could not load Siemens.Engineering`                     | TIA V21 is not at the default path. Set `SIEMENS_TIA_PATH` or pass `/p:SiemensTIAPortalPath=...`. |
-| All M / Q / T / C properties report `0`                  | Expected — they are placeholders. Add the 
+| All M / Q / T / C properties report `0`                  | Expected — they are placeholders. Add them manually (see section 5.5). |

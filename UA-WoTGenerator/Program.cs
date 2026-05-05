@@ -12,7 +12,7 @@
     using System.Text.RegularExpressions;
     using System.Xml;
     using System.Xml.Serialization;
-    using WoTThingModelGenerator.TwinCAT;
+    using UAWoTGenerator.TwinCAT;
     using Property = Models.Property;
 
     internal class Program

@@ -10,18 +10,18 @@ UA Edge Translator solves the common "brownfield" use case of connecting dispara
 The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
 
 * Modbus TCP
-* Modbus RTU (experimental)
+* Modbus RTU
 * OPC UA
 * OPC DA (a.k.a. OPC Classic)
 * HTTP
 * Aveva PI (experimental)
+* Siemens S7 Comm
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)
 * LoRaWAN
 * Matter
 * OCPP (Open Charge Point Protocol) V1.6J
 * OCPP (Open Charge Point Protocol) V2.1 (experimental)
-* Siemens S7Comm (experimental)
 * Mitsubishi MC Protocol (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
@@ -48,7 +48,7 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 
 Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
-There is also a tool provided (WoTThingModelGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
+There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
 ## Running UA Edge Translator from a Docker environment
 
@@ -148,7 +148,7 @@ Then implement the IProtocolDriver and IAsset interface and publish your project
 
 ## Generating WoT Thing Descriptions from PLC Engineering Tools
 
-The `WoTThingModelGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in.
+The `UA-WoTGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in.
 
 It currently supports input from:
 
@@ -164,20 +164,20 @@ It currently supports input from:
 
 The tool scans its **current working directory**, processes every recognised file it finds, and writes a `<inputName>.tm.jsonld` next to it (Siemens projects emit one file per PLC: `<projectName>_<plcName>.tm.jsonld`).
 
-### Building the WoTThingModelGenerator Tool
+### Building the UA-WoTGenerator Tool
 
-`WoTThingModelGenerator` targets `net8.0-windows` / x64 because the Siemens TIA Openness API is x64‑only. The other importers also run on the same build.
+`UA-WoTGenerator` targets `net8.0-windows` / x64 because the Siemens TIA Openness API is x64‑only. The other importers also run on the same build.
 
 ```powershell
 cd UA-EdgeTranslator
-dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj -c Release /p:Platform=x64
+dotnet build UA-WoTGenerator\UA-WoTGenerator.csproj -c Release /p:Platform=x64
 ```
 
-Run WoTThingModelGenerator from any directory containing input files:
+Run UA-WoTGenerator from any directory containing input files:
 
 ```powershell
 cd <folder containing your engineering exports>
-& "<repo>\WoTThingModelGenerator\bin\x64\Release\net8.0-windows\WoTThingModelGenerator.exe"
+& "<repo>\UA-WoTGenerator\bin\x64\Release\net8.0-windows\UA-WoTGenerator.exe"
 ```
 
 Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
@@ -187,7 +187,7 @@ Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the 
 1. Open the project in **TwinCAT XAE / Visual Studio**.
 2. In the Solution Explorer, expand the PLC project node.
 3. Right‑click the PLC project → **Properties** → **TMC File** (or **Build → TwinCAT Build → Build TMC File**) — the `*.tmc` is regenerated on every PLC build and lives next to the `*.tsproj` or under `<project>\_Boot\TwinCAT RT (x64)\Plc\`.
-4. Copy that `*.tmc` next to `WoTThingModelGenerator.exe` and run the tool.
+4. Copy that `*.tmc` next to `UA-WoTGenerator.exe` and run the tool.
 5. The tool emits `<plcName>.tm.jsonld` with one Property per published symbol (those exposed in the ADS data area).
 
 > Only symbols that appear in a TwinCAT data area (`<DataArea>`) are exported. Variables you want to read over ADS must therefore have the `{attribute 'TcLinkTo'}` / publish flag set in TwinCAT.
@@ -197,7 +197,7 @@ Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the 
 1. Open the controller project in **Studio 5000 Logix Designer** (or RSLogix 5000).
 2. Open the **Tags** editor for the controller / program scope you want to expose.
 3. Use **Tools → Export → Tags and Logic Comments…** and choose **CSV** as the output format. Make sure both **Tags** and **Comments** are included — the tool reads `COMMENT` rows to infer UDT field names.
-4. Drop the resulting `*.csv` next to `WoTThingModelGenerator.exe` and run it.
+4. Drop the resulting `*.csv` next to `UA-WoTGenerator.exe` and run it.
 5. The tool emits `<csvName>.tm.jsonld` containing one Property per primitive tag and one structured Property per UDT‑typed tag (the field offsets inside the UDT are resolved at runtime by the Rockwell driver).
 
 > The Rockwell driver also implements `BrowseAndGenerateTD`, so you can alternatively let UA Edge Translator browse a connected controller live (no CSV needed) when the controller is reachable on the network.
@@ -206,7 +206,7 @@ Each generated `*.tm.jsonld` can then be uploaded to UA Edge Translator via the 
 
 The Siemens importer drives the **TIA Portal Openness** API to walk the project's `PlcSoftware → BlockGroup → DataBlock` hierarchy and emit one Property per leaf interface member of every standard‑access (non‑optimized) data block, including byte and bit offsets.
 
-#### Prerequisites (on the machine that runs the WoTThingModelGeneratortool)
+#### Prerequisites (on the machine that runs the UA-WoTGeneratortool)
 
 1. **TIA Portal V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
 2. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
@@ -226,21 +226,21 @@ C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\net48\Siemens.Engin
 If you have a different version installed, e.g. V20, override the path on the command line:
 
 ```powershell
-dotnet build WoTThingModelGenerator\WoTThingModelGenerator.csproj `
+dotnet build UA-WoTGenerator\UA-WoTGenerator.csproj `
   -c Release /p:Platform=x64 `
   /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V20"
 ```
 
 The Openness assemblies are referenced from the local TIA install with `<Private>false</Private>` and **never copied** into the output (Siemens forbids redistribution). At runtime the tool resolves them from the same install path; override with the `SIEMENS_TIA_PATH` environment variable if needed.
 
-#### Running the WoTThingModelGenerator tool
+#### Running the UA-WoTGenerator tool
 
-1. Copy your **entire** TIA project folder (e.g. the files and folders containing the *.ap21 file) into the folder `<repo root>\WoTThingModelGenerator\bin\x64\Release\net48\`.
+1. Copy your **entire** TIA project folder (e.g. the files and folders containing the *.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`.
 2. Run the tool:
 
    ```powershell
-   cd WoTThingModelGenerator\bin\x64\Release\net48
-   .\WoTThingModelGenerator.exe
+   cd UA-WoTGenerator\bin\x64\Release\net48
+   .\UA-WoTGenerator.exe
    ```
 
 3. For every PLC in the project, the tool emits `<projectName>_<plcName>.tm.jsonld` containing one Property per leaf data block member, addressed by `S7DBNumber`, `S7Start`, `S7Pos`, `S7Size` and `S7MaxLen`. The PLC's IPv4 address (read from the PROFINET interface) is baked into the `base` field as `s7://<ip>:0:1`.
@@ -256,9 +256,9 @@ Many industrial assets — power meters, drives, gateways, sensors, scanners, RF
 Always check whether the vendor already publishes a machine‑readable description before generating one yourself. In order of preference:
 
 1. A WoT Thing Description (`*.td.jsonld` / `*.tm.jsonld`) on the product page or GitHub.
-2. An **Asset Administration Shell** (AAS) submodel **Asset Interface Description (AID)** package (`*.aas.json`, `*.aasx`). UA Edge Translator's `WoTThingModelGenerator` can convert AID JSON files directly to WoT Thing Models — see the table above.
-3. An **OPC UA companion specification NodeSet2** for the device class (`*.NodeSet2.xml`), e.g. from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). Also supported by `WoTThingModelGenerator`.
-4. A vendor‑provided **register / point list** (CSV, XLSX, EDS for EtherNet/IP, GSDML for PROFINET). For a generic Modbus point list in the Azure IoT format, the tool already imports it directly. For other CSV layouts, a small adapter in `WoTThingModelGenerator` is usually a few minutes' work.
+2. An **Asset Administration Shell** (AAS) submodel **Asset Interface Description (AID)** package (`*.aas.json`, `*.aasx`). UA Edge Translator's `UA-WoTGenerator` can convert AID JSON files directly to WoT Thing Models — see the table above.
+3. An **OPC UA companion specification NodeSet2** for the device class (`*.NodeSet2.xml`), e.g. from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). Also supported by `UA-WoTGenerator`.
+4. A vendor‑provided **register / point list** (CSV, TMC (XML) for TwinCAT). For a generic Modbus point list in the Azure IoT format, the tool already imports it directly. For other CSV layouts, a small adapter in `UA-WoTGenerator` is usually a few minutes' work.
 
 A vendor‑provided file is authoritative, has correct register addresses and scaling factors, and removes the risk of hallucinated fields. It also tends to be re‑usable across every customer of that device.
 

@@ -38,7 +38,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// duplicate and re-point at the real offset/type/length of the
         /// variable they want. For full symbol-aware import (one Property per
         /// leaf member of every standard-access DB, with the correct byte+bit
-        /// offset, type and length) use WoTThingModelGenerator with TIA
+        /// offset, type and length) use UA-WoTGenerator with TIA
         /// Openness against the engineering project (.ap2x).
         /// </summary>
         public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
@@ -62,7 +62,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     "duplicate and re-point at the real offset, type and length of the variable you " +
                     "want. For full symbol-aware coverage (one Property per leaf member of every " +
                     "standard-access DB, with the correct byte+bit offset, type and length) run " +
-                    "WoTThingModelGenerator against the TIA Portal project (.ap2x) via the bundled " +
+                    "UA-WoTGenerator against the TIA Portal project (.ap2x) via the bundled " +
                     "TIA Openness importer.",
                 Properties = new Dictionary<string, Property>(),
                 Actions = new Dictionary<string, TDAction>()
@@ -82,7 +82,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 Log.Logger.Information(
                     "S7 browse on {ep} produces sample placeholders only. For full symbol coverage " +
-                    "run WoTThingModelGenerator against the TIA project (.ap2x).", assetEndpoint);
+                    "run UA-WoTGenerator against the TIA project (.ap2x).", assetEndpoint);
 
                 EnumerateDataBlocks(asset.S7, td.Properties);
                 AddSampleTag(td.Properties, "M0",  S7Target.Merker,          TypeString.Byte,  TypeEnum.Integer, sizeBytes: 1);
