@@ -157,7 +157,7 @@ It currently supports input from:
 | Beckhoff TwinCAT | `*.tmc` (TwinCAT Module Class) | ADS / `GenericForm` |
 | Rockwell Studio 5000 / RSLogix 5000 | `*.csv` (tag / UDT export) | EtherNet/IP (`EIPForm`) |
 | Generic Modbus point list (Azure IoT format) | `*.csv` | Modbus TCP (`ModbusForm`) |
-| Siemens TIA Portal V18..V21 | `*.ap18` .. `*.ap21` (project file) | S7Comm (`S7Form`) |
+| Siemens TIA Portal V16..V21 | `*.ap16` .. `*.ap21` (project file) | S7Comm (`S7Form`) |
 | OPC UA | `*.NodeSet2.xml` | OPC UA (`GenericForm`) |
 | AutomationML | `*.aml` | `GenericForm` |
 | Asset Administration Shell — Asset Interface Description | `*.aas.json` | Modbus or `GenericForm` |
@@ -208,11 +208,13 @@ The Siemens importer drives the **TIA Portal Openness** API to walk the project'
 
 #### Prerequisites (on the machine that runs the UA-WoTGeneratortool)
 
-1. **TIA Portal V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
-2. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
-3. In TIA Portal, on every FB / DB you want to read:
+1. **TIA Portal V16, V17, V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
+2. Install TIA Portal Openness V16 (setup option in V16).
+3. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
+4. Open the project with V16. V16 Openness will not open projects upgraded to V17+. There is no in-process workaround for that — it's a hard restriction of the Openness API.
+5. For S7-1200 and 1500 PLCs, in TIA Portal, on every FB / DB you want to read:
    - Properties → **Attributes** → uncheck **"Optimized block access"** — without this there are no stable byte offsets and S7Comm classic cannot address individual variables. Optimized blocks are skipped by the importer with a warning.
-4. On the CPU itself:
+6. For S7-1200 and 1500 PLCs, on the CPU itself:
    - Properties → **Protection & Security** → **Connection mechanisms** → enable **"Permit access with PUT/GET communication from remote partner"** (this is a runtime requirement for the S7 driver, not for the import).
 
 #### Build configuration
@@ -245,7 +247,7 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 3. For every PLC in the project, the tool emits `<projectName>_<plcName>.td.jsonld` containing one Property per leaf data block member, addressed by `S7DBNumber`, `S7Start`, `S7Pos`, `S7Size` and `S7MaxLen`. The PLC's IPv4 address (read from the PROFINET interface) is baked into the `base` field as `s7://<ip>:0:1`.
 
-> Files with extensions `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
+> Files with extensions '.ap16', '.ap17',`.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
 
 ## Generating a Thing Description for a Fixed‑Function Asset
 

@@ -30,27 +30,32 @@ namespace Opc.Ua.Edge.Translator.Tools
     /// be consumed directly without a templating step.
     ///
     /// Requires:
-    /// - TIA Portal V21 installed locally,
+    /// - TIA Portal Openness V16 or newer installed locally (V16, V17, V18,
+    ///   V19, V20 and V21 have all been validated against this importer),
     /// - The current Windows user to be a member of the
     ///   "Siemens TIA Openness" group,
-    /// - The project must be runnable in TIA V21 (older projects must be
-    ///   migrated first).
+    /// - The project must open without migration in the installed TIA
+    ///   version (a V16 install can only open V16 projects, etc.).
+    ///
+    /// Both modern S7-1200/1500 and classic S7-300/400 stations are
+    /// supported. Classic stations always use standard-access DBs, so the
+    /// optimized-layout filter is a no-op for them; rack/slot are picked up
+    /// from the CPU's PositionNumber and its parent rack's PositionNumber.
     ///
     /// Optimized blocks are skipped because S7Comm classic cannot address
     /// individual variables inside them.
     /// </summary>
     internal static class SiemensTIAImporter
     {
-        // Default install root for TIA Portal V21. Override via env var
-        // SIEMENS_TIA_PATH if the user installed it elsewhere.
-        private const string DefaultTiaPath = @"C:\Program Files\Siemens\Automation\Portal V21";
-        private const string OpennessApiSubPath = @"PublicAPI\V21\net48";
+        // Root that contains the per-version "Portal V<n>" install folders.
+        // Override the install root entirely via env var SIEMENS_TIA_PATH
+        // (point it at e.g. "C:\Program Files\Siemens\Automation\Portal V16").
+        private const string DefaultSiemensAutomationRoot = @"C:\Program Files\Siemens\Automation";
 
         public static void Register()
         {
 #if SIEMENS_ENGINEERING
-            string tiaRoot = Environment.GetEnvironmentVariable("SIEMENS_TIA_PATH") ?? DefaultTiaPath;
-            string apiDir = Path.Combine(tiaRoot, OpennessApiSubPath);
+            string[] apiDirs = ResolveOpennessApiDirectories();
 
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
             {
@@ -60,11 +65,76 @@ namespace Opc.Ua.Edge.Translator.Tools
                     return null;
                 }
 
-                string candidate = Path.Combine(apiDir, requested.Name + ".dll");
-                return File.Exists(candidate) ? Assembly.LoadFrom(candidate) : null;
+                foreach (string apiDir in apiDirs)
+                {
+                    string candidate = Path.Combine(apiDir, requested.Name + ".dll");
+                    if (File.Exists(candidate))
+                    {
+                        return Assembly.LoadFrom(candidate);
+                    }
+                }
+
+                return null;
             };
 #endif
         }
+
+#if SIEMENS_ENGINEERING
+        /// <summary>
+        /// Returns the candidate Openness PublicAPI folders to probe, in
+        /// preference order. The same binary therefore works against any
+        /// installed TIA version from V16 onwards (V16 ships .NET 4.7.2
+        /// assemblies under PublicAPI\V16, V18+ ship .NET 4.8 assemblies
+        /// under PublicAPI\V<n>\net48).
+        /// </summary>
+        private static string[] ResolveOpennessApiDirectories()
+        {
+            List<string> dirs = new List<string>();
+
+            // 1) Explicit override: a single "Portal V<n>" folder.
+            string overrideRoot = Environment.GetEnvironmentVariable("SIEMENS_TIA_PATH");
+            if (!string.IsNullOrWhiteSpace(overrideRoot) && Directory.Exists(overrideRoot))
+            {
+                AddPublicApiSubdirs(overrideRoot, dirs);
+            }
+
+            // 2) Auto-discover every "Portal V<n>" under the default root.
+            //    Sort descending so newer installs are tried first.
+            if (Directory.Exists(DefaultSiemensAutomationRoot))
+            {
+                string[] portalDirs = Directory.GetDirectories(DefaultSiemensAutomationRoot, "Portal V*");
+                Array.Sort(portalDirs, (a, b) => string.Compare(b, a, StringComparison.OrdinalIgnoreCase));
+                foreach (string portalDir in portalDirs)
+                {
+                    AddPublicApiSubdirs(portalDir, dirs);
+                }
+            }
+
+            return dirs.ToArray();
+        }
+
+        private static void AddPublicApiSubdirs(string portalDir, List<string> dirs)
+        {
+            string publicApi = Path.Combine(portalDir, "PublicAPI");
+            if (!Directory.Exists(publicApi))
+            {
+                return;
+            }
+
+            // V16/V17 layout: PublicAPI\V16\Siemens.Engineering.dll (net472)
+            // V18+    layout: PublicAPI\V18\net48\Siemens.Engineering.dll
+            foreach (string versionDir in Directory.GetDirectories(publicApi, "V*"))
+            {
+                string net48 = Path.Combine(versionDir, "net48");
+                if (Directory.Exists(net48))
+                {
+                    dirs.Add(net48);
+                }
+
+                dirs.Add(versionDir);
+            }
+        }
+#endif
 
         public static void Import(string filename)
         {
