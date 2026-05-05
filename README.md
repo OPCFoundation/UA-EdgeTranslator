@@ -209,9 +209,9 @@ The Siemens importer drives the **TIA Portal Openness** API to walk the project'
 #### Prerequisites (on the machine that runs the UA-WoTGeneratortool)
 
 1. **TIA Portal V16, V17, V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
-2. Install TIA Portal Openness V16 (setup option in V16).
+2. For TIA Portal V16, install TIA Portal Openness (setup option in V16).
 3. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
-4. Open the project with V16. V16 Openness will not open projects upgraded to V17+. There is no in-process workaround for that — it's a hard restriction of the Openness API.
+4. Open your project.
 5. For S7-1200 and 1500 PLCs, in TIA Portal, on every FB / DB you want to read:
    - Properties → **Attributes** → uncheck **"Optimized block access"** — without this there are no stable byte offsets and S7Comm classic cannot address individual variables. Optimized blocks are skipped by the importer with a warning.
 6. For S7-1200 and 1500 PLCs, on the CPU itself:
