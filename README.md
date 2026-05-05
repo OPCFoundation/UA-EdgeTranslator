@@ -202,7 +202,7 @@ Each generated `*.td.jsonld` can then be uploaded to UA Edge Translator via the 
 
 > The Rockwell driver also implements `BrowseAndGenerateTD`, so you can alternatively let UA Edge Translator browse a connected controller live (no CSV needed) when the controller is reachable on the network.
 
-### Siemens (TIA Portal V18..V21) — using the project file directly
+### Siemens (TIA Portal V16..V21) — using the project file directly
 
 The Siemens importer drives the **TIA Portal Openness** API to walk the project's `PlcSoftware → BlockGroup → DataBlock` hierarchy and emit one Property per leaf interface member of every standard‑access (non‑optimized) data block, including byte and bit offsets.
 
