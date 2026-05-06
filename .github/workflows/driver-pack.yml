@@ -68,7 +68,8 @@ jobs:
           dotnet publish ${{ matrix.driver.csproj }} \
             -c Release \
             -o drivers/_driverpack/${{ matrix.driver.name }} \
-            -f net10.0
+            -f net10.0 \
+            /p:PlatformTarget=AnyCPU
 
       - name: Upload staged drivers as artifact (debug aid)
         uses: actions/upload-artifact@v4
