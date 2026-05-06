@@ -86,7 +86,7 @@ kubectl apply -f https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslat
 
 Before applying, review the manifest and consider adjusting the following to suit your environment:
 * The `OPCUA_USERNAME` and `OPCUA_PASSWORD` environment variables (consider using a Kubernetes `Secret` instead of inline values for production).
-* The `hostPath` entries for the `settings`, `pki`, `logs` and `nodesets` volumes — these default to paths under `/mnt/c/K3s/UAEdgeTranslator/` (suitable for K3s on WSL) and should be changed to persistent locations on your nodes (or replaced with `PersistentVolumeClaim`s).
+* The `hostPath` entries for the `settings`, `pki`, `logs` and `nodesets` volumes — these default to paths under `/mnt/c/K3s/UAEdgeTranslator/` (suitable for K3s on WSL) and should be changed to persistent locations on your nodes (or replaced with `PersistentVolumeClaims`).
 * The exposed service ports if you do not need LoRaWAN (5000/5001) or OCPP (19520/19521).
 
 ## Mandatory Environment Variables
