@@ -2,6 +2,31 @@
 # Driver pack image that contains published driver folders under /drivers/<name>.
 # Built by GitHub Actions: artifacts are downloaded into drivers/_driverpack/driverpack-*
 
+# -----------------------------------------------------------------------------
+# Stage 1: build libiec61850.so from source for the target architecture.
+# The prebuilt libiec61850.so shipped in ProtocolDrivers/IEC61850/ is x86_64
+# only, so on linux/arm64 the IEC61850 driver fails to dlopen it. Building from
+# source under buildx (with QEMU for cross-arch) yields a native .so for both
+# linux/amd64 and linux/arm64.
+# -----------------------------------------------------------------------------
+FROM debian:bookworm-slim AS libiec61850-builder
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential cmake git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+ARG LIBIEC61850_VERSION=v1.5.3
+RUN git clone --depth 1 --branch ${LIBIEC61850_VERSION} \
+        https://github.com/mz-automation/libiec61850.git /src/libiec61850
+WORKDIR /src/libiec61850
+RUN make dynlib -j"$(nproc)" \
+    && set -eux; \
+       so="$(find build -maxdepth 1 -name 'libiec61850.so*' -type f | head -n1)"; \
+       test -n "$so"; \
+       cp "$so" /libiec61850.so
+
+# -----------------------------------------------------------------------------
+# Stage 2: assemble the driver pack image.
+# -----------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
 
 # We'll assemble a clean /drivers/<driverName>/ layout in the image.
@@ -24,5 +49,9 @@ RUN set -eux; \
       cp -a "$d/." "/drivers/$name/"; \
     done; \
     rm -rf /tmp/driverpack
+
+# Overwrite the prebuilt (x86_64-only) libiec61850.so with one built for the
+# current target architecture during this multi-arch build.
+COPY --from=libiec61850-builder /libiec61850.so /drivers/iec61850/libiec61850.so
 
 # No ENTRYPOINT/CMD: this is an "artifact image" (driver pack) to be used as a source for copying drivers.
