@@ -11,15 +11,15 @@ EXPOSE 19521
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["UAEdgeTranslator.csproj", "."]
-RUN dotnet restore "./UAEdgeTranslator.csproj"
+RUN dotnet restore "./UAEdgeTranslator.csproj" /p:PlatformTarget=AnyCPU
 COPY . .
 WORKDIR "/src/."
 ARG TARGET_FRAMEWORK=net10.0
-RUN dotnet build "UAEdgeTranslator.csproj" -c Debug -o /app/build -f $TARGET_FRAMEWORK
+RUN dotnet build "UAEdgeTranslator.csproj" -c Debug -o /app/build -f $TARGET_FRAMEWORK /p:PlatformTarget=AnyCPU
 
 FROM build AS publish
 ARG TARGET_FRAMEWORK=net10.0
-RUN dotnet publish "UAEdgeTranslator.csproj" -c Debug -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false
+RUN dotnet publish "UAEdgeTranslator.csproj" -c Debug -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false /p:PlatformTarget=AnyCPU
 
 FROM base AS final
 WORKDIR /app
