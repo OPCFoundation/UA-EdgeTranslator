@@ -78,13 +78,13 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 
 A ready-to-use Kubernetes deployment manifest is provided in this repository: [UA-EdgeTranslator.yaml](UA-EdgeTranslator.yaml). It creates a dedicated `ua-edgetranslator-namespace`, deploys UA Edge Translator with an init container that copies the protocol drivers from the driver-pack image into a shared volume, and exposes the OPC UA, LoRaWAN and OCPP ports via a `LoadBalancer` service.
 
-Apply it to your cluster with:
+Apply it to your cluster directly from this repository with:
 
 ```
-kubectl apply -f UA-EdgeTranslator.yaml
+kubectl apply -f https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslator/main/UA-EdgeTranslator.yaml
 ```
 
-Before applying, review the manifest and adjust the following to suit your environment:
+Before applying, review the manifest and consider adjusting the following to suit your environment:
 * The `OPCUA_USERNAME` and `OPCUA_PASSWORD` environment variables (consider using a Kubernetes `Secret` instead of inline values for production).
 * The `hostPath` entries for the `settings`, `pki`, `logs` and `nodesets` volumes — these default to paths under `/mnt/c/K3s/UAEdgeTranslator/` (suitable for K3s on WSL) and should be changed to persistent locations on your nodes (or replaced with `PersistentVolumeClaim`s).
 * The exposed service ports if you do not need LoRaWAN (5000/5001) or OCPP (19520/19521).
