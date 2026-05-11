@@ -24,7 +24,6 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * OPC UA
 * OPC DA (a.k.a. OPC Classic)
 * HTTP
-* Aveva PI (experimental)
 * Siemens S7 Comm
 * Rockwell CIP (Ethernet/IP)
 * Beckhoff ADS (TwinCAT)
@@ -33,6 +32,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * OCPP (Open Charge Point Protocol) V1.6J
 * OCPP (Open Charge Point Protocol) V2.1 (experimental)
 * Mitsubishi MC Protocol (experimental)
+* Aveva PI (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
 
