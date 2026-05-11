@@ -145,8 +145,7 @@ dotnet build . -c Release /p:Platform=x64
 ### 5.3 Run the importer against the test project
 Save your TIA project somewhere accessible, e.g. C:\TIAProjects\S7DriverTest_V21\
 The "project file" is the *.ap21 at the project root, NOT the enclosing folder.
-Copy your **entire** TIA project folder (e.g. the files and folders containing the
-*.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`.
+Copy the **entire contents** of the TIA project folder (e.g. the files and folders containing the e.g. *.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`, so the path to the project file is `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\<projectName>.ap21`, for example.
 
 Then, from a Windows PowerShell terminal:
 cd "<repo-root>\UA-WoTGenerator\bin\x64\Release\net48"

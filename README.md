@@ -262,7 +262,7 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 #### Running the UA-WoTGenerator tool
 
-1. Copy your **entire** TIA project folder (e.g. the files and folders containing the *.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`.
+1. Copy the **entire contents** of the TIA project folder (e.g. the files and folders containing the e.g. *.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`, so the path to the project file is `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\<projectName>.ap21`, for example.
 2. Run the tool:
 
    ```powershell
