@@ -29,20 +29,38 @@ namespace Opc.Ua.Edge.Translator
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
 
             // create OPC UA client app
+            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
+            App = new ApplicationInstance(Telemetry) {
+                ApplicationType = ApplicationType.ClientAndServer,
+                ConfigSectionName = "Ua.Edge.Translator"
+            };
+
+            await App.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
+
             string appName = "UAEdgeTranslator";
             if (Environment.GetEnvironmentVariable("APP_NAME") != null)
             {
                 appName = Environment.GetEnvironmentVariable("APP_NAME");
             }
 
-            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
-            App = new ApplicationInstance(Telemetry) {
-                ApplicationName = appName,
-                ApplicationType = ApplicationType.ClientAndServer,
-                ConfigSectionName = "Ua.Edge.Translator"
-            };
+            // override ApplicationUri so it matches the configurable application name
+            App.ApplicationConfiguration.ApplicationName = appName;
+            App.ApplicationConfiguration.ApplicationUri = "urn:" + appName;
 
-            await App.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
+            try
+            {
+                App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName = $"CN={appName}, C=US, S=Arizona, O=OPC Foundation";
+            }
+            catch (ArgumentException ex)
+            {
+                Log.Logger.Error(ex.Message + " Please delete the 'pki' folder to allow the generation of new certs.");
+                throw;
+            }
+
+            foreach (var cert in App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificates)
+            {
+                cert.SubjectName = $"CN={appName}, C=US, S=Arizona, O=OPC Foundation";
+            }
 
             await App.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
 
