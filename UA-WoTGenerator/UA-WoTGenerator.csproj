@@ -9,27 +9,51 @@
 
   <!--
     Path to a local TIA Portal Openness install. Override on the command line:
-      dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V21"
-    The default targets the latest installed version (V21).
+      dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V16"
+    The default targets V21, but V16, V17, V18, V19 and V20 are all
+    supported (the runtime AssemblyResolve hook in Siemens.cs probes every
+    installed Portal V<n> at startup, so the same binary works against any
+    of them once built).
 
-    In V21 the monolithic Siemens.Engineering.dll was split:
-      - Siemens.Engineering.Base.dll      ← required (TiaPortal, Project, …)
-      - Siemens.Engineering.AddIn.dll     ← optional (only for AddIns)
-      - Siemens.Engineering.Cax.dll       ← optional (CAx import/export)
-      - Siemens.Engineering.Contract.dll  ← optional (AddIn contracts)
-      - Siemens.Engineering.Step7.dll     ← optional (legacy STEP 7 Classic)
-      - Siemens.Engineering.Hmi.dll       ← optional (only with WinCC)
+    Two assembly layouts exist in the wild:
+
+      - V16 .. V20 ship a single monolithic Siemens.Engineering.dll under
+        PublicAPI\V<n>          (V16/V17, .NET 4.7.2) or
+        PublicAPI\V<n>\net48    (V18+, .NET 4.8).
+
+      - V21 split that DLL into several assemblies. This importer needs
+        only two of them:
+          * Siemens.Engineering.Base.dll   ← TiaPortal, Project, Device,
+                                             DeviceItem, IEngineeringObject,
+                                             ExportOptions, NetworkInterface,
+                                             Node, SoftwareContainer
+          * Siemens.Engineering.Step7.dll  ← PlcSoftware, DataBlock,
+                                             PlcBlock(User)Group, PlcType,
+                                             PlcType(User)Group (formerly
+                                             under Siemens.Engineering.SW.*).
+        The remaining V21 assemblies (AddIn, Hmi/WinCC, Safety,
+        TeamcenterGateway, …) are intentionally not referenced because
+        this tool doesn't use them.
+
+    If either layout pulls in a sibling assembly transitively at runtime,
+    the AssemblyResolve hook in Siemens.cs will load it from the same
+    PublicAPI folder.
   -->
   <PropertyGroup>
     <SiemensTIAPortalPath Condition="'$(SiemensTIAPortalPath)' == ''">C:\Program Files\Siemens\Automation\Portal V21</SiemensTIAPortalPath>
-    <SiemensOpennessApiDir>$(SiemensTIAPortalPath)\PublicAPI\V21\net48</SiemensOpennessApiDir>
 
+    <!-- Derive "V21" (or "V16", "V17", …) from "...\Portal V21" so the
+         PublicAPI sub-folder follows automatically. -->
+    <SiemensTIAPortalVersion Condition="'$(SiemensTIAPortalVersion)' == ''">$([System.IO.Path]::GetFileName('$(SiemensTIAPortalPath)').Replace('Portal ', ''))</SiemensTIAPortalVersion>
+
+    <!-- Prefer the net48 sub-folder (V18+). Fall back to the version folder
+         itself for V16/V17, which only ships net472 binaries. -->
+    <SiemensOpennessApiDir Condition="'$(SiemensOpennessApiDir)' == '' and Exists('$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)\net48')">$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)\net48</SiemensOpennessApiDir>
+    <SiemensOpennessApiDir Condition="'$(SiemensOpennessApiDir)' == '' and Exists('$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)')">$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)</SiemensOpennessApiDir>
+
+    <SiemensEngineeringDll>$(SiemensOpennessApiDir)\Siemens.Engineering.dll</SiemensEngineeringDll>
     <SiemensEngineeringBaseDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Base.dll</SiemensEngineeringBaseDll>
-    <SiemensEngineeringAddInDll>$(SiemensOpennessApiDir)\Siemens.Engineering.AddIn.dll</SiemensEngineeringAddInDll>
-    <SiemensEngineeringCaxDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Cax.dll</SiemensEngineeringCaxDll>
-    <SiemensEngineeringContractDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Contract.dll</SiemensEngineeringContractDll>
     <SiemensEngineeringStep7Dll>$(SiemensOpennessApiDir)\Siemens.Engineering.Step7.dll</SiemensEngineeringStep7Dll>
-    <SiemensEngineeringHmiDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Hmi.dll</SiemensEngineeringHmiDll>
   </PropertyGroup>
 
   <!--
@@ -37,53 +61,33 @@
     are referenced from the local TIA install with Private=false and resolved
     at runtime by the AssemblyResolve hook in Siemens.cs.
   -->
-  <ItemGroup Condition="Exists('$(SiemensEngineeringBaseDll)')">
+
+  <!-- V16 .. V20: monolithic Siemens.Engineering.dll. -->
+  <ItemGroup Condition="Exists('$(SiemensEngineeringDll)')">
+    <Reference Include="Siemens.Engineering">
+      <HintPath>$(SiemensEngineeringDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- V21+: Base + Step7 (only added when the monolithic DLL is absent, so
+       we never accidentally pull in two copies of the same types). -->
+  <ItemGroup Condition="!Exists('$(SiemensEngineeringDll)') and Exists('$(SiemensEngineeringBaseDll)')">
     <Reference Include="Siemens.Engineering.Base">
       <HintPath>$(SiemensEngineeringBaseDll)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
-  <ItemGroup Condition="Exists('$(SiemensEngineeringAddInDll)')">
-    <Reference Include="Siemens.Engineering.AddIn">
-      <HintPath>$(SiemensEngineeringAddInDll)</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('$(SiemensEngineeringCaxDll)')">
-    <Reference Include="Siemens.Engineering.Cax">
-      <HintPath>$(SiemensEngineeringCaxDll)</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('$(SiemensEngineeringContractDll)')">
-    <Reference Include="Siemens.Engineering.Contract">
-      <HintPath>$(SiemensEngineeringContractDll)</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('$(SiemensEngineeringStep7Dll)')">
+  <ItemGroup Condition="!Exists('$(SiemensEngineeringDll)') and Exists('$(SiemensEngineeringStep7Dll)')">
     <Reference Include="Siemens.Engineering.Step7">
       <HintPath>$(SiemensEngineeringStep7Dll)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
-  <ItemGroup Condition="Exists('$(SiemensEngineeringHmiDll)')">
-    <Reference Include="Siemens.Engineering.Hmi">
-      <HintPath>$(SiemensEngineeringHmiDll)</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <!--
-    Define SIEMENS_ENGINEERING when the mandatory Base assembly is present;
-    everything else stays optional.
-  -->
-  <PropertyGroup Condition="Exists('$(SiemensEngineeringBaseDll)')">
+  <!-- Define SIEMENS_ENGINEERING when either layout resolved successfully. -->
+  <PropertyGroup Condition="Exists('$(SiemensEngineeringDll)') or (Exists('$(SiemensEngineeringBaseDll)') and Exists('$(SiemensEngineeringStep7Dll)'))">
     <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING</DefineConstants>
   </PropertyGroup>
 

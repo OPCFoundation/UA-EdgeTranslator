@@ -54,7 +54,6 @@ namespace Opc.Ua.Edge.Translator.Tools
 
         public static void Register()
         {
-#if SIEMENS_ENGINEERING
             string[] apiDirs = ResolveOpennessApiDirectories();
 
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
@@ -76,10 +75,8 @@ namespace Opc.Ua.Edge.Translator.Tools
 
                 return null;
             };
-#endif
         }
 
-#if SIEMENS_ENGINEERING
         /// <summary>
         /// Returns the candidate Openness PublicAPI folders to probe, in
         /// preference order. The same binary therefore works against any
@@ -134,7 +131,6 @@ namespace Opc.Ua.Edge.Translator.Tools
                 dirs.Add(versionDir);
             }
         }
-#endif
 
         public static void Import(string filename)
         {
