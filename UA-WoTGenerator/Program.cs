@@ -51,11 +51,12 @@
                     ImportCSVFromAzureForModbus(filename);
                 }
 
-                // TIA Portal project files (V16..V21 use ap16..ap21).
+                // TIA Portal project files (V15.1 uses ap15_1, V16..V21 use ap16..ap21).
                 string lower = filename.ToLower();
                 if (lower.EndsWith(".ap21") || lower.EndsWith(".ap20") ||
                     lower.EndsWith(".ap19") || lower.EndsWith(".ap18") ||
-                    lower.EndsWith(".ap17") || lower.EndsWith(".ap16"))
+                    lower.EndsWith(".ap17") || lower.EndsWith(".ap16") ||
+                    lower.EndsWith(".ap15_1"))
                 {
                     SiemensTIAImporter.Import(filename);
                 }

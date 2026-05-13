@@ -10,15 +10,22 @@
   <!--
     Path to a local TIA Portal Openness install. Override on the command line:
       dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V16"
-    The default targets V21, but V16, V17, V18, V19 and V20 are all
+    The default targets V21, but V15.1, V16, V17, V18, V19 and V20 are all
     supported (the runtime AssemblyResolve hook in Siemens.cs probes every
     installed Portal V<n> at startup, so the same binary works against any
     of them once built).
 
+    Note on the V15.1 install folder: Siemens names it "Portal V15_1" on
+    disk (with an underscore), while the Openness API sub-folder underneath
+    is "PublicAPI\V15.1" (with a dot). The .Replace('_', '.') in
+    SiemensTIAPortalVersion below normalizes the version token so the
+    HintPath lines up with the API folder. Newer versions (V16+) contain
+    no underscore, so the replace is a no-op for them.
+
     Two assembly layouts exist in the wild:
 
-      - V16 .. V20 ship a single monolithic Siemens.Engineering.dll under
-        PublicAPI\V<n>          (V16/V17, .NET 4.7.2) or
+      - V15.1 .. V20 ship a single monolithic Siemens.Engineering.dll under
+        PublicAPI\V<n>          (V15.1/V16/V17, .NET 4.6.2 / 4.7.2) or
         PublicAPI\V<n>\net48    (V18+, .NET 4.8).
 
       - V21 split that DLL into several assemblies. This importer needs
@@ -43,8 +50,11 @@
     <SiemensTIAPortalPath Condition="'$(SiemensTIAPortalPath)' == ''">C:\Program Files\Siemens\Automation\Portal V21</SiemensTIAPortalPath>
 
     <!-- Derive "V21" (or "V16", "V17", …) from "...\Portal V21" so the
-         PublicAPI sub-folder follows automatically. -->
-    <SiemensTIAPortalVersion Condition="'$(SiemensTIAPortalVersion)' == ''">$([System.IO.Path]::GetFileName('$(SiemensTIAPortalPath)').Replace('Portal ', ''))</SiemensTIAPortalVersion>
+         PublicAPI sub-folder follows automatically. V15.1 is the only
+         version where the install folder uses an underscore ("Portal V15_1")
+         while the API folder uses a dot ("PublicAPI\V15.1"); replace _
+         with . to bridge that. The replace is a no-op for V16+. -->
+    <SiemensTIAPortalVersion Condition="'$(SiemensTIAPortalVersion)' == ''">$([System.IO.Path]::GetFileName('$(SiemensTIAPortalPath)').Replace('Portal ', '').Replace('_', '.'))</SiemensTIAPortalVersion>
 
     <!-- Prefer the net48 sub-folder (V18+). Fall back to the version folder
          itself for V16/V17, which only ships net472 binaries. -->

@@ -10,6 +10,16 @@ solution. It exercises **every `TypeString` value** the driver supports
 (`DataBlock`, `Merker`, `IPIProcessInput`, `IPUProcessInput`, `Timer`,
 `Counter`).
 
+> The test project itself targets TIA Portal V21 because the SCL uses
+> S7-1500-specific types (`LDT`, `LTime_Of_Day`, `WString`, etc.) that are
+> not available in older TIA versions. The `SiemensTIAImporter`
+> (`UA-WoTGenerator/Siemens.cs`), however, supports **TIA Portal V15.1
+> through V21** — if you only need to import an older project, point the
+> build at it with `/p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V15_1"`
+> (note the underscore: Siemens uses `Portal V15_1` as the install-folder
+> name, while the API sub-folder underneath is `PublicAPI\V15.1`; the
+> build script bridges the difference automatically).
+
 All variables change continuously, driven by six pattern generators:
 
 | Pattern    | Period | Variables                                                                                         |
@@ -283,5 +293,5 @@ property, with the values changing according to the four pattern generators abov
 | Importer logs `layout is Optimized, not Standard`        | Same as above — the DB must be standard-access.                                     |
 | Importer logs `No accessible (standard-access) DBs found`| The project was opened correctly but no eligible DB exists. Check the `.ap21` path. |
 | Openness raises `RequestPasswordDelegate not set`        | The TIA project is password-protected; remove the protection or extend `Import`.    |
-| `Could not load Siemens.Engineering`                     | TIA V21 is not at the default path. Set `SIEMENS_TIA_PATH` or pass `/p:SiemensTIAPortalPath=...`. |
+| `Could not load Siemens.Engineering`                     | TIA V21 is not at the default path. Set `SIEMENS_TIA_PATH` or pass `/p:SiemensTIAPortalPath=...`. For TIA V15.1 use the `Portal V15_1` folder name (underscore). |
 | All M / Q / T / C properties report `0`                  | Expected — they are placeholders. Add them manually (see section 5.5). |

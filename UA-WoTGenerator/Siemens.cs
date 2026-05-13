@@ -30,8 +30,9 @@ namespace Opc.Ua.Edge.Translator.Tools
     /// be consumed directly without a templating step.
     ///
     /// Requires:
-    /// - TIA Portal Openness V16 or newer installed locally (V16, V17, V18,
-    ///   V19, V20 and V21 have all been validated against this importer),
+    /// - TIA Portal Openness V15.1 or newer installed locally (V15.1, V16,
+    ///   V17, V18, V19, V20 and V21 have all been validated against this
+    ///   importer),
     /// - The current Windows user to be a member of the
     ///   "Siemens TIA Openness" group,
     /// - The project must open without migration in the installed TIA
@@ -49,7 +50,9 @@ namespace Opc.Ua.Edge.Translator.Tools
     {
         // Root that contains the per-version "Portal V<n>" install folders.
         // Override the install root entirely via env var SIEMENS_TIA_PATH
-        // (point it at e.g. "C:\Program Files\Siemens\Automation\Portal V16").
+        // (point it at e.g. "C:\Program Files\Siemens\Automation\Portal V16",
+        // or "...\Portal V15_1" for TIA V15.1 — Siemens uses an underscore
+        // in the V15.1 folder name).
         private const string DefaultSiemensAutomationRoot = @"C:\Program Files\Siemens\Automation";
 
         public static void Register()
@@ -80,9 +83,10 @@ namespace Opc.Ua.Edge.Translator.Tools
         /// <summary>
         /// Returns the candidate Openness PublicAPI folders to probe, in
         /// preference order. The same binary therefore works against any
-        /// installed TIA version from V16 onwards (V16 ships .NET 4.7.2
-        /// assemblies under PublicAPI\V16, V18+ ship .NET 4.8 assemblies
-        /// under PublicAPI\V<n>\net48).
+        /// installed TIA version from V15.1 onwards (V15.1 ships .NET
+        /// 4.6.2 assemblies and V16/V17 ship .NET 4.7.2 assemblies under
+        /// PublicAPI\V&lt;n&gt;, V18+ ship .NET 4.8 assemblies under
+        /// PublicAPI\V&lt;n&gt;\net48).
         /// </summary>
         private static string[] ResolveOpennessApiDirectories()
         {
@@ -118,8 +122,8 @@ namespace Opc.Ua.Edge.Translator.Tools
                 return;
             }
 
-            // V16/V17 layout: PublicAPI\V16\Siemens.Engineering.dll (net472)
-            // V18+    layout: PublicAPI\V18\net48\Siemens.Engineering.dll
+            // V15.1/V16/V17 layout: PublicAPI\V<n>\Siemens.Engineering.dll (net462/net472)
+            // V18+        layout: PublicAPI\V<n>\net48\Siemens.Engineering.dll
             foreach (string versionDir in Directory.GetDirectories(publicApi, "V*"))
             {
                 string net48 = Path.Combine(versionDir, "net48");

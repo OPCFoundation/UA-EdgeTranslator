@@ -182,7 +182,7 @@ It currently supports input from:
 | Beckhoff TwinCAT | `*.tmc` (TwinCAT Module Class) | ADS / `GenericForm` |
 | Rockwell Studio 5000 / RSLogix 5000 | `*.csv` (tag / UDT export) | EtherNet/IP (`EIPForm`) |
 | Generic Modbus point list (Azure IoT format) | `*.csv` | Modbus TCP (`ModbusForm`) |
-| Siemens TIA Portal V16..V21 | `*.ap16` .. `*.ap21` (project file) | S7Comm (`S7Form`) |
+| Siemens TIA Portal V15.1..V21 | `*.ap15_1`, `*.ap16` .. `*.ap21` (project file) | S7Comm (`S7Form`) |
 | OPC UA | `*.NodeSet2.xml` | OPC UA (`GenericForm`) |
 | AutomationML | `*.aml` | `GenericForm` |
 | Asset Administration Shell — Asset Interface Description | `*.aas.json` | Modbus or `GenericForm` |
@@ -227,20 +227,22 @@ Each generated `*.td.jsonld` can then be uploaded to UA Edge Translator via the 
 
 > The Rockwell driver also implements `BrowseAndGenerateTD`, so you can alternatively let UA Edge Translator browse a connected controller live (no CSV needed) when the controller is reachable on the network.
 
-### Siemens (TIA Portal V16..V21) — using the project file directly
+### Siemens (TIA Portal V15.1..V21) — using the project file directly
 
 The Siemens importer drives the **TIA Portal Openness** API to walk the project's `PlcSoftware → BlockGroup → DataBlock` hierarchy and emit one Property per leaf interface member of every standard‑access (non‑optimized) data block, including byte and bit offsets.
 
 #### Prerequisites (on the machine that runs the UA-WoTGeneratortool)
 
-1. **TIA Portal V16, V17, V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
-2. For TIA Portal V16, install TIA Portal Openness (setup option in V16).
+1. **TIA Portal V15.1, V16, V17, V18, V19, V20 or V21** installed locally. The project must be openable in that TIA version (older STEP 7 Classic projects must be migrated into TIA first).
+2. For TIA Portal V15.1 / V16, install TIA Portal Openness (setup option in V15.1 / V16). V17+ ships Openness with the base install.
 3. The current Windows user must be a member of the local **`Siemens TIA Openness`** group. Add the user (e.g. via `lusrmgr.msc`) and sign out / in.
 4. Open your project.
 5. For S7-1200 and 1500 PLCs, in TIA Portal, on every FB / DB you want to read:
    - Properties → **Attributes** → uncheck **"Optimized block access"** — without this there are no stable byte offsets and S7Comm classic cannot address individual variables. Optimized blocks are skipped by the importer with a warning.
 6. For S7-1200 and 1500 PLCs, on the CPU itself:
    - Properties → **Protection & Security** → **Connection mechanisms** → enable **"Permit access with PUT/GET communication from remote partner"** (this is a runtime requirement for the S7 driver, not for the import).
+
+> Siemens names the V15.1 install folder `Portal V15_1` (with an underscore) but the API sub-folder underneath is `PublicAPI\V15.1` (with a dot). The build script normalizes the underscore to a dot automatically; pass `/p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V15_1"` if you need to target V15.1 explicitly.
 
 #### Build configuration
 
@@ -258,6 +260,14 @@ dotnet build UA-WoTGenerator\UA-WoTGenerator.csproj `
   /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V20"
 ```
 
+For V15.1 (note the underscore in the install-folder name), use:
+
+```powershell
+dotnet build UA-WoTGenerator\UA-WoTGenerator.csproj `
+  -c Release /p:Platform=x64 `
+  /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V15_1"
+```
+
 The Openness assemblies are referenced from the local TIA install with `<Private>false</Private>` and **never copied** into the output (Siemens forbids redistribution). At runtime the tool resolves them from the same install path; override with the `SIEMENS_TIA_PATH` environment variable if needed.
 
 #### Running the UA-WoTGenerator tool
@@ -272,7 +282,7 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 3. For every PLC in the project, the tool emits `<projectName>_<plcName>.td.jsonld` containing one Property per leaf data block member, addressed by `S7DBNumber`, `S7Start`, `S7Pos`, `S7Size` and `S7MaxLen`. The PLC's IPv4 address (read from the PROFINET interface) is baked into the `base` field as `s7://<ip>:0:1`.
 
-> Files with extensions '.ap16', '.ap17',`.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
+> Files with extensions `.ap15_1`, `.ap16`, `.ap17`, `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
 
 ## Generating a Thing Description for a Fixed‑Function Asset
 
