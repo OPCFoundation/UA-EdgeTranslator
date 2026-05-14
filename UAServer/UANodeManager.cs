@@ -1,4 +1,3 @@
-
 namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
@@ -152,7 +151,7 @@ namespace Opc.Ua.Edge.Translator
                 catch (Exception ex)
                 {
                     // skip this file, but log an error
-                    Log.Logger.Error(ex.Message, ex);
+                    Log.Logger.Error(ex, "Failed to load WoT file: {FileName}", file);
                 }
             }
         }
@@ -242,7 +241,7 @@ namespace Opc.Ua.Edge.Translator
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error(ex.Message, ex);
+                    Log.Logger.Error(ex, "Failed to load namespace from Thing Description: {Namespace}", ns);
                 }
             }
         }
@@ -323,7 +322,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                     catch (Exception ex)
                     {
-                        Log.Logger.Error(ex.Message, ex);
+                        Log.Logger.Error(ex, "Failed to add predefined node: {NodeId}", predefinedNodes[i]?.NodeId);
                     }
                 }
 
@@ -511,7 +510,7 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (Exception ex)
             {
-                Log.Logger.Error(ex.Message, ex);
+                Log.Logger.Error(ex, "Failed to discover assets");
                 return new ServiceResult(StatusCodes.BadTimeout, ex);
             }
 
@@ -631,7 +630,7 @@ namespace Opc.Ua.Edge.Translator
                             }
                             catch (Exception ex)
                             {
-                                Log.Logger.Error(ex.Message, ex);
+                                Log.Logger.Error(ex, "Failed to add node for WoT form: {PropertyKey}", property.Key);
                             }
                         }
                     }
@@ -821,7 +820,7 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
                             }
-                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
+                            else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.ByteString);
                             }
@@ -1216,7 +1215,7 @@ namespace Opc.Ua.Edge.Translator
                         }
                         catch (Exception ex)
                         {
-                            Log.Logger.Error(ex.Message, ex);
+                            Log.Logger.Error(ex, "Failed to read value for tag: {TagName}", tag.Name);
 
                             return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
                         }
@@ -1252,13 +1251,6 @@ namespace Opc.Ua.Edge.Translator
                     return ServiceResult.Good;
                 }
 
-                if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
-                {
-                    statusCode = StatusCodes.Good;
-
-                    return ServiceResult.Good;
-                }
-
                 if (node.DisplayName.Text == "License")
                 {
                     // validate license key provided
@@ -1274,9 +1266,9 @@ namespace Opc.Ua.Edge.Translator
                         return new ServiceResult(StatusCodes.BadInvalidArgument, "Invalid license key!");
                     }
 
-                    _uaVariables["License"].Value = value;
-                    _uaVariables["License"].Timestamp = DateTime.UtcNow;
-                    _uaVariables["License"].ClearChangeMasks(SystemContext, true);
+                    _uaProperties["License"].Value = value;
+                    _uaProperties["License"].Timestamp = DateTime.UtcNow;
+                    _uaProperties["License"].ClearChangeMasks(SystemContext, true);
                     statusCode = StatusCodes.Good;
 
                     return ServiceResult.Good;
@@ -1324,7 +1316,7 @@ namespace Opc.Ua.Edge.Translator
                         }
                         catch (Exception ex)
                         {
-                            Log.Logger.Error(ex.Message, ex);
+                            Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
 
                             return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
                         }
@@ -1346,7 +1338,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     return new ServiceResult(StatusCodes.Uncertain, new Ua.LocalizedText("no result"));
                 }
-                else if (result.ToLower() == "ok" || result.ToLower() == "success")
+                else if (result.ToLowerInvariant() == "ok" || result.ToLowerInvariant() == "success")
                 {
                     return new ServiceResult(StatusCodes.Good, new Ua.LocalizedText("success"));
                 }
@@ -1357,7 +1349,7 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (Exception ex)
             {
-                Log.Logger.Error(ex.Message, ex);
+                Log.Logger.Error(ex, "Failed to execute action on asset: {AssetId}", method.Parent.BrowseName.Name);
                 return new ServiceResult(ex);
             }
         }
@@ -1396,12 +1388,12 @@ namespace Opc.Ua.Edge.Translator
                         // set this tag to zero, update its status and log an error
                         UpdateUAServerVariable(tag, 0, false);
                         UpdateUAServerProperty(tag, 0, false);
-                        Log.Logger.Error(ex.Message, ex);
+                        Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", tag.Name, assetId);
 
                         // try reconnecting
                         try
                         {
-                            Log.Logger.Error("Trying to reconnect to asset " + assetId);
+                            Log.Logger.Information("Trying to reconnect to asset {AssetId}", assetId);
                             string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
                             if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
                             {
@@ -1674,12 +1666,15 @@ namespace Opc.Ua.Edge.Translator
                 NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
                 if (target.DisplayName.Text == fieldName)
                 {
+                    // Remove angle brackets from field name if present
+                    string cleanFieldName = fieldName.Trim('<', '>');
+                    
                     if (reference.ReferenceTypeId == ReferenceTypes.HasComponent)
                     {
                         // Create a matching variable under the object instance
                         childVar = _nodeFactory.CreateVariable(
                             objectInstance,
-                            $"{parentName}.{fieldName.TrimStart("<").TrimEnd(">")}",
+                            $"{parentName}.{cleanFieldName}",
                             reference.ReferenceTypeId,
                             namespaceIndex,
                             writeable);
@@ -1690,7 +1685,7 @@ namespace Opc.Ua.Edge.Translator
                         // Create a matching property under the object instance
                         childVar = _nodeFactory.CreateProperty(
                             objectInstance,
-                            $"{parentName}.{fieldName.TrimStart("<").TrimEnd(">")}",
+                            $"{parentName}.{cleanFieldName}",
                             reference.ReferenceTypeId,
                             namespaceIndex,
                             writeable);

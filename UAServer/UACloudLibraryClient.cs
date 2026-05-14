@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Edge.Translator
+﻿namespace Opc.Ua.Edge.Translator
 {
     using Newtonsoft.Json;
     using Opc.Ua.Cloud.Library.Models;
@@ -125,7 +124,7 @@ namespace Opc.Ua.Edge.Translator
                     }
                     catch (Exception ex)
                     {
-                        Log.Logger.Error("Could not download nodeset " + namespaceUrl + ": " + ex.Message);
+                        Log.Logger.Error(ex, "Could not download nodeset: {NamespaceUrl}", namespaceUrl);
                         return string.Empty;
                     }
                 }

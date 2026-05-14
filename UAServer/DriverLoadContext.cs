@@ -56,7 +56,7 @@
                         {
                             IProtocolDriver driver = (IProtocolDriver)Activator.CreateInstance(dt)!;
                             Program.Drivers.Register(driver);
-                            Log.Logger.Information($"Loaded protocol driver: {driver.Scheme} ({dt.FullName})");
+                            Log.Logger.Information("Loaded protocol driver: {DriverScheme} ({DriverType})", driver.Scheme, dt.FullName);
                         }
                     }
                     catch (BadImageFormatException)
@@ -65,7 +65,7 @@
                     }
                     catch (Exception ex)
                     {
-                        Log.Logger.Error(ex, $"Failed to load protocol driver {pluginDir}");
+                        Log.Logger.Error(ex, "Failed to load protocol driver from: {PluginDirectory}", pluginDir);
                     }
                 }
             }

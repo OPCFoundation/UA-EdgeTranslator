@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Edge.Translator
+﻿namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Cloud;
@@ -37,11 +36,7 @@ namespace Opc.Ua.Edge.Translator
 
             await App.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
 
-            string appName = "UAEdgeTranslator";
-            if (Environment.GetEnvironmentVariable("APP_NAME") != null)
-            {
-                appName = Environment.GetEnvironmentVariable("APP_NAME");
-            }
+            string appName = Environment.GetEnvironmentVariable("APP_NAME") ?? "UAEdgeTranslator";
 
             // override ApplicationUri so it matches the configurable application name
             App.ApplicationConfiguration.ApplicationName = appName;
@@ -53,7 +48,7 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (ArgumentException ex)
             {
-                Log.Logger.Error(ex.Message + " Please delete the 'pki' folder to allow the generation of new certs.");
+                Log.Logger.Error(ex, "Certificate subject name error. Please delete the 'pki' folder to allow the generation of new certs.");
                 throw;
             }
 

@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Edge.Translator
+﻿namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Export;
@@ -198,10 +197,16 @@ namespace Opc.Ua.Edge.Translator
                     return StatusCodes.BadInvalidState;
                 }
 
-                if (data != null && data.Length > 0)
+                if (length > 0)
                 {
-                    byte[] buffer = new byte[data.Length];
-                    handle.Stream.Read(data, 0, data.Length);
+                    byte[] buffer = new byte[length];
+                    int bytesRead = handle.Stream.Read(buffer, 0, length);
+                    
+                    // Return only the bytes actually read
+                    if (bytesRead < length)
+                    {
+                        Array.Resize(ref buffer, bytesRead);
+                    }
                     data = buffer;
                 }
                 else
@@ -310,7 +315,7 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (Exception ex)
             {
-                Log.Logger.Error(ex.Message, ex);
+                Log.Logger.Error(ex, "Failed to process file close and update for file: {FileName}", _file.Parent.DisplayName.Text);
                 return new ServiceResult(StatusCodes.BadDecodingError, ex);
             }
             finally
