@@ -8,7 +8,6 @@
     using System;
     using System.IO;
     using System.Linq;
-    using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -146,38 +145,25 @@
             if (provisioningMode)
             {
                 // No issuer cert on disk yet — accept everything during initial setup
+                // so a GDS can push the first issuer/trust list.
                 Log.Logger.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", e.Certificate?.Subject);
                 e.Accept = true;
                 return;
             }
 
-            if (e.Certificate == null)
-            {
-                return;
-            }
-
-            // Post-provisioning: accept only if the cert was signed by a CA
-            // that the GDS explicitly pushed into our issuer store. Subject DN
-            // comparisons are case-insensitive and culture-invariant to avoid
-            // false negatives caused by attribute casing differences.
-            foreach (string certFile in Directory.EnumerateFiles(issuerCertsDir))
-            {
-                try
-                {
-                    using var issuerCert = X509CertificateLoader.LoadCertificateFromFile(certFile);
-                    if (string.Equals(e.Certificate.Issuer, issuerCert.Subject, StringComparison.OrdinalIgnoreCase))
-                    {
-                        Log.Logger.Information("Accepting certificate signed by provisioned CA: [{Subject}], Issuer: [{Issuer}]",
-                            e.Certificate.Subject, issuerCert.Subject);
-                        e.Accept = true;
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex, "Could not read issuer cert file: {File}", certFile);
-                }
-            }
+            // Once provisioning is complete, defer to the SDK's Part 12 validator,
+            // which already validates against the on-disk Trusted/Issuer stores
+            // and their CRLs (pushed and persisted by the GDS at
+            // pki/trusted/{certs,crl} and pki/issuer/{certs,crl}).
+            //
+            // Do NOT auto-accept untrusted client certs here just because they
+            // chain to something in pki/issuer/certs — clients must be explicitly
+            // trusted (either listed in pki/trusted/certs, or issued by a CA in
+            // the trusted store), and revocation must be honoured via the GDS
+            // CRLs the SDK already consumes.
+            Log.Logger.Warning(
+                "Rejecting untrusted client certificate [{Subject}] (Issuer: [{Issuer}]). Trust the certificate via the GDS or by copying it from pki/rejected/certs to pki/trusted/certs.",
+                e.Certificate?.Subject, e.Certificate?.Issuer);
         }
     }
 }
