@@ -70,6 +70,14 @@
                 Directory.CreateDirectory(issuerPath);
             }
 
+            // surface provisioning-mode state on startup so operators are aware that
+            // the server will auto-accept untrusted client certificates until an
+            // issuer certificate has been pushed by a GDS.
+            if (!Directory.EnumerateFiles(issuerPath).Any())
+            {
+                Log.Logger.Warning("UA Edge Translator is starting in PROVISIONING MODE: no issuer certificates were found in '{IssuerPath}'. Untrusted client certificates will be auto-accepted until a GDS pushes an issuer certificate.", issuerPath);
+            }
+
             // load protocol drivers
             DriverLoadContext.LoadProtocolDrivers();
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
@@ -77,8 +85,52 @@
             // start the server
             await App.StartAsync(new UAServer()).ConfigureAwait(false);
 
-            Log.Logger.Information("UA Edge Translator is running.");
-            await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
+            Log.Logger.Information("UA Edge Translator is running. Press Ctrl+C to shut down.");
+
+            // graceful shutdown on SIGINT / SIGTERM so resources (drivers, file managers,
+            // telemetry, logs) get a chance to flush before the process exits.
+            using var shutdownCts = new CancellationTokenSource();
+
+            Console.CancelKeyPress += (_, eventArgs) =>
+            {
+                eventArgs.Cancel = true;
+                Log.Logger.Information("Shutdown signal received, stopping UA Edge Translator...");
+                shutdownCts.Cancel();
+            };
+
+            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            {
+                if (!shutdownCts.IsCancellationRequested)
+                {
+                    Log.Logger.Information("Process exit signal received, stopping UA Edge Translator...");
+                    shutdownCts.Cancel();
+                }
+            };
+
+            try
+            {
+                await Task.Delay(Timeout.Infinite, shutdownCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // expected on graceful shutdown
+            }
+            finally
+            {
+                try
+                {
+                    if (App != null)
+                    {
+                        await App.StopAsync().ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex, "Error while stopping the OPC UA application.");
+                }
+
+                Telemetry?.Dispose();
+            }
         }
 
         private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)
@@ -99,27 +151,31 @@
                 return;
             }
 
-            // Post-provisioning: accept only if the cert was signed by a CA
-            // that the GDS explicitly pushed into our issuer store
-            if (e.Certificate != null)
+            if (e.Certificate == null)
             {
-                foreach (string certFile in Directory.EnumerateFiles(issuerCertsDir))
+                return;
+            }
+
+            // Post-provisioning: accept only if the cert was signed by a CA
+            // that the GDS explicitly pushed into our issuer store. Subject DN
+            // comparisons are case-insensitive and culture-invariant to avoid
+            // false negatives caused by attribute casing differences.
+            foreach (string certFile in Directory.EnumerateFiles(issuerCertsDir))
+            {
+                try
                 {
-                    try
+                    using var issuerCert = X509CertificateLoader.LoadCertificateFromFile(certFile);
+                    if (string.Equals(e.Certificate.Issuer, issuerCert.Subject, StringComparison.OrdinalIgnoreCase))
                     {
-                        using var issuerCert = X509CertificateLoader.LoadCertificateFromFile(certFile);
-                        if (e.Certificate.Issuer == issuerCert.Subject)
-                        {
-                            Log.Logger.Information("Accepting certificate signed by provisioned CA: [{Subject}], Issuer: [{Issuer}]",
-                                e.Certificate.Subject, issuerCert.Subject);
-                            e.Accept = true;
-                            return;
-                        }
+                        Log.Logger.Information("Accepting certificate signed by provisioned CA: [{Subject}], Issuer: [{Issuer}]",
+                            e.Certificate.Subject, issuerCert.Subject);
+                        e.Accept = true;
+                        return;
                     }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Error(ex, "Could not read issuer cert file: {File}", certFile);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex, "Could not read issuer cert file: {File}", certFile);
                 }
             }
         }

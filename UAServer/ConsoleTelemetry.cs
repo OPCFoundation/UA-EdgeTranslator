@@ -40,6 +40,16 @@ namespace Opc.Ua.Cloud
 {
     public class ConsoleTelemetry : ITelemetryContext, IDisposable
     {
+        // Cap individual log files at 50 MB. Combined with rollOnFileSizeLimit
+        // below, the sink rolls to a new numbered segment (e.g. "...-20250115_001.log")
+        // when the cap is hit, so log entries are not dropped between daily rollovers.
+        private const long _logFileSizeLimitBytes = 50L * 1024 * 1024;
+
+        // Single shared Meter instance — creating a new Meter per call would
+        // leak meters and cause registered instruments to be orphaned after
+        // the first GC, breaking any external metrics consumer.
+        private readonly Meter _meter = new("UA cloud app", "1.0.0");
+
         public ConsoleTelemetry(Action<ILoggingBuilder> configure = null)
         {
             string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
@@ -57,7 +67,9 @@ namespace Opc.Ua.Cloud
                 .WriteTo.File(
                     path: "logs/ua-edgetranslator-.log",
                     rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
+                    retainedFileCountLimit: 30,
+                    fileSizeLimitBytes: _logFileSizeLimitBytes,
+                    rollOnFileSizeLimit: true,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
 
@@ -73,13 +85,13 @@ namespace Opc.Ua.Cloud
 
         public ILoggerFactory LoggerFactory { get; internal set; }
 
-        public Meter CreateMeter() => new("UA cloud app", "1.0.0");
+        public Meter CreateMeter() => _meter;
 
         public ActivitySource ActivitySource { get; } = new("UA cloud app", "1.0.0");
 
         public void Dispose()
         {
-            CreateMeter().Dispose();
+            _meter.Dispose();
             ActivitySource.Dispose();
             LoggerFactory?.Dispose();
             Log.CloseAndFlush();

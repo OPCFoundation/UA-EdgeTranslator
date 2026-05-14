@@ -54,7 +54,26 @@
                         var driverTypes = asm.GetTypes().Where(t => !t.IsAbstract && typeof(IProtocolDriver).IsAssignableFrom(t));
                         foreach (var dt in driverTypes)
                         {
-                            IProtocolDriver driver = (IProtocolDriver)Activator.CreateInstance(dt)!;
+                            // Use a clear error path when a driver type lacks a public parameterless
+                            // constructor or fails to materialize as IProtocolDriver, instead of letting
+                            // a NullReferenceException bubble up from Activator.CreateInstance(...)!.
+                            object instance;
+                            try
+                            {
+                                instance = Activator.CreateInstance(dt);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Logger.Error(ex, "Could not instantiate protocol driver type {DriverType}", dt.FullName);
+                                continue;
+                            }
+
+                            if (instance is not IProtocolDriver driver)
+                            {
+                                Log.Logger.Error("Protocol driver type {DriverType} does not implement IProtocolDriver or has no public parameterless constructor.", dt.FullName);
+                                continue;
+                            }
+
                             Program.Drivers.Register(driver);
                             Log.Logger.Information("Loaded protocol driver: {DriverScheme} ({DriverType})", driver.Scheme, dt.FullName);
                         }

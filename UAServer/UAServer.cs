@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Security.Cryptography;
     using System.Text;
 
     public partial class UAServer : ReverseConnectServer
@@ -75,15 +76,28 @@ namespace Opc.Ua.Edge.Translator
 
             string configuredUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
             string configuredPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
-            if (!string.IsNullOrEmpty(configuredUsername)
-             && !string.IsNullOrEmpty(configuredPassword)
-             && (userName == configuredUsername)
-             && (password == configuredPassword))
+            if (string.IsNullOrEmpty(configuredUsername) || string.IsNullOrEmpty(configuredPassword))
+            {
+                Log.Logger.Warning("Authentication rejected: OPCUA_USERNAME / OPCUA_PASSWORD environment variables are not configured.");
+                throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
+            }
+
+            // Constant-time comparison over SHA-256 hashes to avoid leaking
+            // username/password length or content via timing side channels.
+            if (FixedTimeEqualsHashed(userName, configuredUsername)
+             && FixedTimeEqualsHashed(password, configuredPassword))
             {
                 return new SystemConfigurationIdentity(new UserIdentity(userNameToken));
             }
 
             throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
+        }
+
+        private static bool FixedTimeEqualsHashed(string left, string right)
+        {
+            byte[] leftHash = SHA256.HashData(Encoding.UTF8.GetBytes(left ?? string.Empty));
+            byte[] rightHash = SHA256.HashData(Encoding.UTF8.GetBytes(right ?? string.Empty));
+            return CryptographicOperations.FixedTimeEquals(leftHash, rightHash);
         }
     }
 }

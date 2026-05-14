@@ -21,6 +21,24 @@
 
         private const uint _cWoTAssetManagement = 31;
 
+        // Per-handle upload size cap. Defaults to 5 MB but can be overridden via the
+        // WOT_MAX_FILE_BYTES environment variable to support very large nodesets.
+        private const int _defaultMaxFileBytes = 5 * 1024 * 1024;
+        private static readonly int _maxFileBytes = ResolveMaxFileBytes();
+
+        private static int ResolveMaxFileBytes()
+        {
+            string raw = Environment.GetEnvironmentVariable("WOT_MAX_FILE_BYTES");
+            if (!string.IsNullOrEmpty(raw)
+             && int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int parsed)
+             && parsed > 0)
+            {
+                return parsed;
+            }
+
+            return _defaultMaxFileBytes;
+        }
+
         private class Handle
         {
             public NodeId SessionId;
@@ -34,7 +52,7 @@
             _nodeManager = nodeManager;
             _file = file;
             _file.Size.Value = 0;
-            if (_file.MaxByteStringLength != null) _file.LastModifiedTime.Value = DateTime.MinValue;
+            if (_file.LastModifiedTime != null) _file.LastModifiedTime.Value = DateTime.MinValue;
             _file.Writable.Value = false;
             _file.UserWritable.Value = false;
             _file.OpenCount.Value = 0;
@@ -236,6 +254,15 @@
 
                 if (data != null && data.Length > 0)
                 {
+                    // enforce a per-handle upload cap to prevent unbounded
+                    // memory growth via repeated chunked Write() calls.
+                    long projected = handle.Stream.Length + data.Length;
+                    if (projected > _maxFileBytes)
+                    {
+                        Log.Logger.Warning("Rejecting WoT file upload: size {Projected} exceeds configured cap {Cap} bytes.", projected, _maxFileBytes);
+                        return new ServiceResult(StatusCodes.BadOutOfMemory, $"Upload exceeds maximum allowed size of {_maxFileBytes} bytes.");
+                    }
+
                     handle.Stream.Write(data, 0, data.Length);
                 }
             }

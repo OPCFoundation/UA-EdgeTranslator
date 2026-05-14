@@ -478,17 +478,13 @@ namespace Opc.Ua.Edge.Translator
                     _assets.Remove(assetName);
                 }
 
-                int i = 0;
-                while (i < _uaVariables.Count)
+                string keyPrefix = assetName + ":";
+                List<string> keysToRemove = _uaVariables.Keys
+                    .Where(k => k.StartsWith(keyPrefix, StringComparison.Ordinal))
+                    .ToList();
+                foreach (string key in keysToRemove)
                 {
-                    if (_uaVariables.Keys.ToArray()[i].StartsWith(assetName + ":"))
-                    {
-                        _uaVariables.Remove(_uaVariables.Keys.ToArray()[i]);
-                    }
-                    else
-                    {
-                        i++;
-                    }
+                    _uaVariables.Remove(key);
                 }
 
                 RaiseModelChangedEvent(asset.NodeId, ModelChangeStructureVerbMask.NodeDeleted);
@@ -568,7 +564,7 @@ namespace Opc.Ua.Edge.Translator
 
             string ipAddress = inputArguments[0].ToString();
 
-            Ping pingSender = new Ping();
+            using Ping pingSender = new Ping();
 
             PingReply reply = pingSender.Send(ipAddress);
             if (reply.Status == IPStatus.Success)
@@ -938,7 +934,7 @@ namespace Opc.Ua.Edge.Translator
                                     TypeId = defaultBinaryEncodingId
                                 };
 
-                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
+                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
                                 {
                                     NamespaceUris = Server.NamespaceUris,
                                     Factory = Server.Factory
@@ -988,7 +984,7 @@ namespace Opc.Ua.Edge.Translator
                                     TypeId = defaultBinaryEncodingId
                                 };
 
-                                BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
+                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
                                     NamespaceUris = Server.NamespaceUris,
                                     Factory = Server.Factory
                                 });
@@ -1181,7 +1177,8 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (node.DisplayName.Text == "MemoryWorkingSet(MB)")
                 {
-                    value = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+                    using Process currentProcess = Process.GetCurrentProcess();
+                    value = currentProcess.WorkingSet64 / (1024 * 1024);
                     timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
 
@@ -1254,15 +1251,26 @@ namespace Opc.Ua.Edge.Translator
                 if (node.DisplayName.Text == "License")
                 {
                     // validate license key provided
-                    if (string.IsNullOrEmpty(value.ToString()))
+                    if (value == null || string.IsNullOrEmpty(value.ToString()))
                     {
                         return new ServiceResult(StatusCodes.BadInvalidArgument, "License key cannot be empty!");
                     }
 
-                    if (value.ToString() != "themajiclicensekey")
+                    // The expected license key must be supplied out-of-band via the LICENSE_KEY
+                    // environment variable. If it is not configured the server refuses the write
+                    // rather than falling back to a hard-coded value.
+                    string expectedLicenseKey = Environment.GetEnvironmentVariable("LICENSE_KEY");
+                    if (string.IsNullOrEmpty(expectedLicenseKey))
                     {
-                        // in a commercial product, you would validate the license key here using some algorithm
-                        // and only when the key is valid switch out of provisioning mode
+                        Log.Logger.Warning("License write rejected: LICENSE_KEY environment variable is not configured on the server.");
+                        return new ServiceResult(StatusCodes.BadNotSupported, "License validation is not configured on this server.");
+                    }
+
+                    byte[] providedBytes = Encoding.UTF8.GetBytes(value.ToString());
+                    byte[] expectedBytes = Encoding.UTF8.GetBytes(expectedLicenseKey);
+                    if (providedBytes.Length != expectedBytes.Length
+                     || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes))
+                    {
                         return new ServiceResult(StatusCodes.BadInvalidArgument, "Invalid license key!");
                     }
 
@@ -1270,6 +1278,9 @@ namespace Opc.Ua.Edge.Translator
                     _uaProperties["License"].Timestamp = DateTime.UtcNow;
                     _uaProperties["License"].ClearChangeMasks(SystemContext, true);
                     statusCode = StatusCodes.Good;
+
+                    // TODO: In a commercial product, you would validate the license key here using some algorithm
+                    // and only when the key is valid switch out of provisioning mode
 
                     return ServiceResult.Good;
                 }
@@ -1379,8 +1390,12 @@ namespace Opc.Ua.Edge.Translator
                         int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
                         if (ticks * 1000 % divisorMs == 0)
                         {
-                            UpdateUAServerVariable(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
-                            UpdateUAServerProperty(tag, _assets[assetId].Read(tag), _assets[assetId].IsConnected);
+                            // read the tag once per poll cycle and reuse the value
+                            // for both variable and property updates to halve asset I/O.
+                            object value = _assets[assetId].Read(tag);
+                            bool connected = _assets[assetId].IsConnected;
+                            UpdateUAServerVariable(tag, value, connected);
+                            UpdateUAServerProperty(tag, value, connected);
                         }
                     }
                     catch (Exception ex)
@@ -1443,7 +1458,7 @@ namespace Opc.Ua.Edge.Translator
                     // Whole-UDT update: driver returns decoded field values
                     if (value is Dictionary<string, object> fieldValues)
                     {
-                        var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry)
+                        using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry)
                         {
                             NamespaceUris = Server.NamespaceUris,
                             Factory = Server.Factory
@@ -1463,12 +1478,12 @@ namespace Opc.Ua.Edge.Translator
                     // Single-field update: decode all existing values, overwrite the
                     // matching field, and re-encode the entire structure.
                     var oldBody = oldEo.Body as byte[];
-                    var decoder = new BinaryDecoder(oldBody, new ServiceMessageContext(Program.Telemetry) {
+                    using var decoder = new BinaryDecoder(oldBody, new ServiceMessageContext(Program.Telemetry) {
                         NamespaceUris = Server.NamespaceUris,
                         Factory = Server.Factory
                     });
 
-                    var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry) {
+                    using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry) {
                         NamespaceUris = Server.NamespaceUris,
                         Factory = Server.Factory
                     });
@@ -1668,7 +1683,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     // Remove angle brackets from field name if present
                     string cleanFieldName = fieldName.Trim('<', '>');
-                    
+
                     if (reference.ReferenceTypeId == ReferenceTypes.HasComponent)
                     {
                         // Create a matching variable under the object instance
