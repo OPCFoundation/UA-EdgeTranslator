@@ -36,6 +36,10 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * BACNet (experimental)
 * IEC61850 (experimental)
 
+Other southbound asset interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
+
+There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
+
 ## Installation
 
 UA Edge Translator is available as a pre-built Docker container (supporting both AMD64 and ARM64 CPUs) directly from GitHub and will run on any Docker- or Kubernetes-enabled edge device. See "Packages" in this repo for details.
@@ -57,10 +61,6 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 > **Note**: The Modbus RTU interface requires access to a serial port on the host system. When running UA Edge Translator in a Docker container, make sure to map the serial port device into the container using the --device argument, e.g. `-v /dev/ttyUSB1:/dev/ttyUSB1`.
 
 > **Note**: Avoid `--privileged` in production deployments — it disables the user namespace, capability set, and seccomp/AppArmor confinement that the rest of the hardening relies on.
-
-Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
-
-There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
 ## Running UA Edge Translator from a Docker environment
 
