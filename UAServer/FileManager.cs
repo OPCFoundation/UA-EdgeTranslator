@@ -342,8 +342,11 @@
             }
             catch (Exception ex)
             {
+                // Log full exception server-side, return only a generic status to
+                // the OPC UA client to avoid leaking internal exception text or
+                // stack traces over the wire.
                 Log.Logger.Error(ex, "Failed to process file close and update for file: {FileName}", _file.Parent.DisplayName.Text);
-                return new ServiceResult(StatusCodes.BadDecodingError, ex);
+                return new ServiceResult(StatusCodes.BadDecodingError);
             }
             finally
             {

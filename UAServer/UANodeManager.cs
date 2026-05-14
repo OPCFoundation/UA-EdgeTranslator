@@ -9,6 +9,7 @@ namespace Opc.Ua.Edge.Translator
     using Opc.Ua.Server;
     using Serilog;
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
@@ -22,19 +23,28 @@ namespace Opc.Ua.Edge.Translator
     {
         private uint _lastUsedId = 0;
 
-        private bool _shutdown = false;
+        // Polling tasks are fire-and-forget; this CTS is the single source of truth
+        // for "server is shutting down, exit gracefully" and lets us cancel the per-tag
+        // sleep without waiting up to a full second for the next iteration.
+        private readonly CancellationTokenSource _shutdownCts = new();
 
         private readonly NodeFactory _nodeFactory;
 
         private BaseObjectState _assetManagement;
 
-        private readonly Dictionary<string, BaseDataVariableState> _uaVariables = new();
+        // The four dictionaries below are mutated from OPC UA service threads
+        // (CreateAsset / DeleteAsset / OnWriteValue) and concurrently read by the
+        // per-asset polling tasks. Plain Dictionary<> is not safe for that pattern
+        // — a concurrent CreateAsset would throw InvalidOperationException inside
+        // the polling foreach. ConcurrentDictionary makes reads, writes and
+        // enumeration safe by design.
+        private readonly ConcurrentDictionary<string, BaseDataVariableState> _uaVariables = new();
 
-        private readonly Dictionary<string, PropertyState> _uaProperties = new();
+        private readonly ConcurrentDictionary<string, PropertyState> _uaProperties = new();
 
-        private readonly Dictionary<string, IAsset> _assets = new();
+        private readonly ConcurrentDictionary<string, IAsset> _assets = new();
 
-        private readonly Dictionary<string, List<AssetTag>> _tags = new();
+        private readonly ConcurrentDictionary<string, List<AssetTag>> _tags = new();
 
         private readonly UACloudLibraryClient _uacloudLibraryClient = new();
 
@@ -83,6 +93,18 @@ namespace Opc.Ua.Edge.Translator
         {
             if (disposing)
             {
+                // Signal all per-asset polling tasks to exit before tearing down
+                // the rest of the address space; otherwise they would race against
+                // the disposed file managers and disposed lock.
+                try
+                {
+                    _shutdownCts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // already disposed — nothing to do
+                }
+
                 lock (Lock)
                 {
                     foreach (FileManager manager in _fileManagers.Values)
@@ -92,6 +114,8 @@ namespace Opc.Ua.Edge.Translator
 
                     _fileManagers.Clear();
                 }
+
+                _shutdownCts.Dispose();
             }
         }
 
@@ -213,7 +237,7 @@ namespace Opc.Ua.Edge.Translator
 
             // create a property for the license key
             PropertyState licenseProperty = _nodeFactory.CreateProperty(configuration, "License", DataTypes.String, WoTConNamespaceIndex, true, string.Empty);
-            _uaProperties.Add("License", licenseProperty);
+            _uaProperties["License"] = licenseProperty;
             AddPredefinedNode(SystemContext, licenseProperty);
 
             // create a variable for the current memory working set
@@ -470,12 +494,12 @@ namespace Opc.Ua.Edge.Translator
 
                 if (_tags.ContainsKey(assetName))
                 {
-                    _tags.Remove(assetName);
+                    _tags.TryRemove(assetName, out _);
                 }
 
                 if (_assets.ContainsKey(assetName))
                 {
-                    _assets.Remove(assetName);
+                    _assets.TryRemove(assetName, out _);
                 }
 
                 string keyPrefix = assetName + ":";
@@ -484,7 +508,7 @@ namespace Opc.Ua.Edge.Translator
                     .ToList();
                 foreach (string key in keysToRemove)
                 {
-                    _uaVariables.Remove(key);
+                    _uaVariables.TryRemove(key, out _);
                 }
 
                 RaiseModelChangedEvent(asset.NodeId, ModelChangeStructureVerbMask.NodeDeleted);
@@ -506,8 +530,10 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (Exception ex)
             {
+                // Log full exception server-side, return only a generic status to
+                // the OPC UA client to avoid leaking internal exception text.
                 Log.Logger.Error(ex, "Failed to discover assets");
-                return new ServiceResult(StatusCodes.BadTimeout, ex);
+                return new ServiceResult(StatusCodes.BadTimeout);
             }
 
             outputArguments[0] = allAddresses.ToArray();
@@ -743,7 +769,7 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 AddPredefinedNode(SystemContext, variable);
-                _uaVariables.Add($"{td.Name}:{property.Key}", variable);
+                _uaVariables.TryAdd($"{td.Name}:{property.Key}", variable);
             }
         }
 
@@ -909,11 +935,11 @@ namespace Opc.Ua.Edge.Translator
                                     {
                                         if (childVariable is BaseDataVariableState)
                                         {
-                                            _uaVariables.Add(variableId, childVariable as BaseDataVariableState);
+                                            _uaVariables[variableId] = childVariable as BaseDataVariableState;
                                         }
                                         else
                                         {
-                                            _uaProperties.Add(variableId, childVariable as PropertyState);
+                                            _uaProperties[variableId] = childVariable as PropertyState;
                                         }
                                     }
 
@@ -957,7 +983,7 @@ namespace Opc.Ua.Edge.Translator
                                 if (!_uaVariables.ContainsKey(variableId))
                                 {
                                     BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
-                                    _uaVariables.Add(variableId, variable);
+                                    _uaVariables[variableId] = variable;
                                     AddPredefinedNode(SystemContext, variable);
                                 }
                             }
@@ -965,7 +991,7 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 // OPC UA type info not found, default to float
                                 BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                                _uaVariables.Add(variableId, variable);
+                                _uaVariables.TryAdd(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
                         }
@@ -997,14 +1023,14 @@ namespace Opc.Ua.Edge.Translator
                                 complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
 
                                 BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
-                                _uaVariables.Add(variableId, variable);
+                                _uaVariables.TryAdd(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
                             else
                             {
                                 // it's an OPC UA built-in type
                                 BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly);
-                                _uaVariables.Add(variableId, variable);
+                                _uaVariables.TryAdd(variableId, variable);
                                 AddPredefinedNode(SystemContext, variable);
                             }
                         }
@@ -1013,7 +1039,7 @@ namespace Opc.Ua.Edge.Translator
                     {
                         // no namespace info, default to float
                         BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                        _uaVariables.Add(variableId, variable);
+                        _uaVariables.TryAdd(variableId, variable);
                         AddPredefinedNode(SystemContext, variable);
                     }
                 }
@@ -1021,7 +1047,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     // can't parse type info, default to float
                     BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                    _uaVariables.Add(variableId, variable);
+                    _uaVariables.TryAdd(variableId, variable);
                     AddPredefinedNode(SystemContext, variable);
                 }
             }
@@ -1029,14 +1055,14 @@ namespace Opc.Ua.Edge.Translator
             {
                 // no type info, default to float
                 BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                _uaVariables.Add(variableId, variable);
+                _uaVariables.TryAdd(variableId, variable);
                 AddPredefinedNode(SystemContext, variable);
             }
 
             // check if we need to create a new asset first
             if (!_tags.ContainsKey(assetId))
             {
-                _tags.Add(assetId, new List<AssetTag>());
+                _tags.GetOrAdd(assetId, _ => new List<AssetTag>());
             }
 
             AddTag(td, form, assetId, unitId, variableId, fieldPath);
@@ -1185,11 +1211,14 @@ namespace Opc.Ua.Edge.Translator
                     return ServiceResult.Good;
                 }
 
+                // Snapshot before enumeration: ConcurrentDictionary protects the
+                // outer enumeration but the inner List<AssetTag> is still mutated
+                // by AddTag(), so copy it once per service call.
                 foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
                 {
                     string assetId = tags.Key;
 
-                    foreach (AssetTag tag in tags.Value)
+                    foreach (AssetTag tag in tags.Value.ToArray())
                     {
                         try
                         {
@@ -1212,9 +1241,12 @@ namespace Opc.Ua.Edge.Translator
                         }
                         catch (Exception ex)
                         {
+                            // Log full exception server-side, return only a generic
+                            // status to the OPC UA client to avoid leaking internal
+                            // exception text or stack traces over the wire.
                             Log.Logger.Error(ex, "Failed to read value for tag: {TagName}", tag.Name);
 
-                            return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
+                            return new ServiceResult(StatusCodes.BadDataUnavailable);
                         }
                     }
                 }
@@ -1301,7 +1333,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string assetId = tags.Key;
 
-                    foreach (AssetTag tag in tags.Value)
+                    foreach (AssetTag tag in tags.Value.ToArray())
                     {
                         try
                         {
@@ -1327,9 +1359,12 @@ namespace Opc.Ua.Edge.Translator
                         }
                         catch (Exception ex)
                         {
+                            // Log full exception server-side, return only a generic
+                            // status to the OPC UA client to avoid leaking internal
+                            // exception text or stack traces over the wire.
                             Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
 
-                            return new ServiceResult(ex, StatusCodes.BadDataUnavailable);
+                            return new ServiceResult(StatusCodes.BadDataUnavailable);
                         }
                     }
                 }
@@ -1360,8 +1395,10 @@ namespace Opc.Ua.Edge.Translator
             }
             catch (Exception ex)
             {
+                // Log full exception server-side, return only a generic status to
+                // the OPC UA client to avoid leaking internal exception text.
                 Log.Logger.Error(ex, "Failed to execute action on asset: {AssetId}", method.Parent.BrowseName.Name);
-                return new ServiceResult(ex);
+                return new ServiceResult(StatusCodes.BadInternalError);
             }
         }
 
@@ -1370,10 +1407,17 @@ namespace Opc.Ua.Edge.Translator
             bool assetDeleted = false;
             uint ticks = 0;
 
-            while (!_shutdown && !assetDeleted)
+            CancellationToken shutdownToken = _shutdownCts.Token;
+
+            while (!shutdownToken.IsCancellationRequested && !assetDeleted)
             {
-                // the smallest polling frequency for an asset is 1 second to avoid unnecessary asset interface load from too frequent polling
-                Thread.Sleep(1000);
+                // the smallest polling frequency for an asset is 1 second to avoid unnecessary asset interface load from too frequent polling.
+                // WaitOne(...) on the cancellation handle lets the polling task exit promptly when the host is shutting down
+                // instead of waiting up to a full second for the next iteration.
+                if (shutdownToken.WaitHandle.WaitOne(1000))
+                {
+                    break;
+                }
 
                 string assetId = (string)assetNameObject;
                 if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
@@ -1382,7 +1426,9 @@ namespace Opc.Ua.Edge.Translator
                     continue;
                 }
 
-                foreach (AssetTag tag in _tags[assetId])
+                // Snapshot the inner list so that a concurrent AddTag()/DeleteAsset()
+                // cannot mutate the collection mid-enumeration.
+                foreach (AssetTag tag in _tags[assetId].ToArray())
                 {
                     try
                     {
