@@ -125,6 +125,55 @@ namespace Opc.Ua.Edge.Translator
             return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
         }
 
+        // Asset names flow into filesystem paths (settings/<name>.jsonld), into
+        // namespace URIs ("http://opcfoundation.org/UA/<name>/"), and become the
+        // dictionary keys for _assets / _tags. A caller-controlled name like
+        // "../etc/passwd" or one containing path separators / NUL would let an
+        // OPC UA client write outside of /app/settings or hijack another asset's
+        // tag-polling state. Reject anything that isn't a small set of safe
+        // characters before we commit it anywhere.
+        private const int _cMaxAssetNameLength = 128;
+
+        private static bool IsSafeAssetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            if (name.Length > _cMaxAssetNameLength)
+            {
+                return false;
+            }
+
+            // Must round-trip through Path.GetFileName unchanged (rejects "..",
+            // path separators on every OS, alternate streams, etc.).
+            if (!string.Equals(Path.GetFileName(name), name, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            foreach (char c in name)
+            {
+                // Allow letters, digits, '.', '_', '-' only. This keeps the value
+                // safe to embed in URIs, file names and OPC UA browse names
+                // without escaping.
+                bool ok = char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-';
+                if (!ok)
+                {
+                    return false;
+                }
+            }
+
+            // Disallow leading dot to avoid Unix hidden files / "..".
+            if (name[0] == '.')
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
         {
             IList<IReference> objectsFolderReferences = null;
@@ -164,6 +213,12 @@ namespace Opc.Ua.Edge.Translator
                 {
                     string contents = System.IO.File.ReadAllText(file);
                     string fileName = Path.GetFileNameWithoutExtension(file);
+
+                    if (!IsSafeAssetName(fileName))
+                    {
+                        Log.Logger.Warning("Skipping WoT file with unsafe name: {File}", file);
+                        continue;
+                    }
 
                     if (!CreateAssetNode(fileName, out NodeState assetNode))
                     {
@@ -374,12 +429,14 @@ namespace Opc.Ua.Edge.Translator
 
         public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
+            string assetName = inputArguments[0]?.ToString();
+            if (!IsSafeAssetName(assetName))
             {
+                Log.Logger.Warning("Rejecting CreateAsset: invalid asset name [{AssetName}]", assetName);
                 return StatusCodes.BadInvalidArgument;
             }
 
-            bool success = CreateAssetNode(inputArguments[0].ToString(), out NodeState assetNode);
+            bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
                 return new ServiceResult(StatusCodes.BadBrowseNameDuplicated, new Opc.Ua.LocalizedText(assetNode.NodeId.ToString()));
@@ -549,6 +606,12 @@ namespace Opc.Ua.Edge.Translator
             }
 
             string assetName = inputArguments[0].ToString();
+            if (!IsSafeAssetName(assetName))
+            {
+                Log.Logger.Warning("Rejecting CreateAssetForEndpoint: invalid asset name [{AssetName}]", assetName);
+                return StatusCodes.BadInvalidArgument;
+            }
+
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
@@ -617,6 +680,17 @@ namespace Opc.Ua.Edge.Translator
         {
             // parse WoT TD file contents
             ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents.Trim('\uFEFF')); // strip BOM, if present
+
+            // td.Name is caller-controlled (parsed from uploaded JSON-LD) and
+            // is later used to build a namespace URI, the _assets / _tags
+            // dictionary keys, and the file path written by
+            // OnCreateAssetForEndpoint. Reject path-traversal attempts up front
+            // so we never touch the filesystem with an unsafe value.
+            if (td == null || !IsSafeAssetName(td.Name))
+            {
+                Log.Logger.Warning("Rejecting WoT onboarding: invalid Thing Description name [{Name}]", td?.Name);
+                throw new ServiceResultException(StatusCodes.BadInvalidArgument, "Invalid Thing Description name.");
+            }
 
             await LoadNamespacesFromThingDescriptionAsync(td).ConfigureAwait(false);
 

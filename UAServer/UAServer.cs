@@ -74,11 +74,14 @@ namespace Opc.Ua.Edge.Translator
                     "Security token is not a valid username token. An empty password is not accepted.");
             }
 
-            string configuredUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
-            string configuredPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
+            string configuredUsername = Program.OpcUaUsername;
+            string configuredPassword = Program.OpcUaPassword;
             if (string.IsNullOrEmpty(configuredUsername) || string.IsNullOrEmpty(configuredPassword))
             {
-                Log.Logger.Warning("Authentication rejected: OPCUA_USERNAME / OPCUA_PASSWORD environment variables are not configured.");
+                // Should be impossible — Program.ValidateRequiredEnvironment is
+                // called before the OPC UA stack is started — but defend against
+                // the property being cleared at runtime.
+                Log.Logger.Warning("Authentication rejected: OPC UA credentials are not configured.");
                 throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
             }
 

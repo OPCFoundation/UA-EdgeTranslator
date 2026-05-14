@@ -19,8 +19,22 @@
 
         public static ConsoleTelemetry Telemetry { get; private set; } = new();
 
+        // OPCUA_USERNAME / OPCUA_PASSWORD are validated and snapshotted at
+        // startup (see ValidateRequiredEnvironment) so they cannot change at
+        // runtime, and so SessionManager_ImpersonateUser doesn't have to take
+        // an environment-variable read on every login attempt.
+        public static string OpcUaUsername { get; private set; }
+
+        public static string OpcUaPassword { get; private set; }
+
         public static async Task Main()
         {
+            // Validate required configuration BEFORE we start standing up the
+            // OPC UA stack. Missing credentials are an operational mistake, not
+            // a runtime condition — fail fast with a clear message instead of
+            // booting a server that will silently reject every client login.
+            ValidateRequiredEnvironment();
+
             // make sure our directories exist
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "drivers"));
@@ -130,6 +144,24 @@
 
                 Telemetry?.Dispose();
             }
+        }
+
+        private static void ValidateRequiredEnvironment()
+        {
+            string username = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
+            string password = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                const string message =
+                    "OPCUA_USERNAME and OPCUA_PASSWORD environment variables MUST be set. " +
+                    "UA Edge Translator refuses to start without configured credentials.";
+                Log.Logger.Fatal(message);
+                throw new InvalidOperationException(message);
+            }
+
+            OpcUaUsername = username;
+            OpcUaPassword = password;
         }
 
         private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)

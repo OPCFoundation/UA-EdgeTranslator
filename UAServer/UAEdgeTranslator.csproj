@@ -10,7 +10,11 @@
     <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <DockerfileRunArguments>-v /run/dbus:/run/dbus:ro -v /dev/ttyUSB1:/dev/ttyUSB1 --network=host --privileged</DockerfileRunArguments>
+    <!-- F5 / "Docker" launch profile run arguments. We deliberately do NOT
+         pass the privileged flag here. Drivers that need raw hardware access
+         (LoRaWAN serial, Matter BLE, Modbus RTU) should add only the
+         specific device or capability flags they need at deploy time. See README. -->
+    <DockerfileRunArguments>--network=host</DockerfileRunArguments>
     <Platforms>x64;x86</Platforms>
     <PlatformTarget Condition="'$(Platform)' == 'x86'">x86</PlatformTarget>
     <PlatformTarget Condition="'$(Platform)' != 'x86'">x64</PlatformTarget>

@@ -48,13 +48,15 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 
 > **Note**: The OCPP Central System is available on port 19520 (not secure) and on port 19521 (secure), which needs to be mapped to the Docker host for access.
 
-> **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --network=host argument as well as with the -v /run/dbus:/run/dbus:ro argument within a Docker container! Also, if you are using the BlueZ stack on Linux, make sure that experimental features are enabled since Matter uses some Bluetooth features that are not enabled by default in this stack.
+> **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --network=host argument as well as with the `-v /run/dbus:/run/dbus:ro` argument and, depending on your Linux distro, `--cap-add=NET_ADMIN`, within a Docker container! Also, if you are using the BlueZ stack on Linux, make sure that experimental features are enabled since Matter uses some Bluetooth features that are not enabled by default in this stack.
 
 > **Note**: OPC DA (OLE for Process Control Data Access) is a legacy protocol that relies on COM/DCOM and its support is limited to running UA Edge Translator natively on Windows on x86 CPUs and the OPC DA server must be located on the same machine as UA Edge Translator (i.e. no DCOM support).
 
 > **Note**: For testing the Matter asset interface, you will also need to create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, the setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://zxing.org/w/decode.jspx).
 
-> **Note**: The Modbus RTU interface requires access to a serial port on the host system. When running UA Edge Translator in a Docker container, make sure to map the serial port device into the container using the --device argument, e.g. -v /dev/ttyUSB1:/dev/ttyUSB1 and run the container with the --privileged argument.
+> **Note**: The Modbus RTU interface requires access to a serial port on the host system. When running UA Edge Translator in a Docker container, make sure to map the serial port device into the container using the --device argument, e.g. `-v /dev/ttyUSB1:/dev/ttyUSB1`.
+
+> **Note**: Avoid `--privileged` in production deployments — it disables the user namespace, capability set, and seccomp/AppArmor confinement that the rest of the hardening relies on.
 
 Other interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
@@ -101,8 +103,8 @@ Before applying, review the manifest and consider adjusting the following to sui
 
 ## Mandatory Environment Variables
 
-* `OPCUA_USERNAME` - OPC UA username to connect to UA Edge Translator.
-* `OPCUA_PASSWORD` - OPC UA password to connect to UA Edge Translator.
+* `OPCUA_USERNAME` - OPC UA username to connect to UA Edge Translator. **The server refuses to start if this is missing or empty.**
+* `OPCUA_PASSWORD` - OPC UA password to connect to UA Edge Translator. **The server refuses to start if this is missing or empty.**
 
 ## Optional Environment Variables
 
@@ -128,7 +130,18 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods (a
 
 * CreateAsset(assetName) - Creates an asset node and an OPC UA File API node below the asset node (which can be used to upload the WoT Thing Description), returning the node ID of the newly created asset node on success.
 * DeleteAsset(assetNodeId) - deletes a configured asset.
- 
+
+### Asset name rules
+
+Asset names supplied to `CreateAsset` / `CreateAssetForEndpoint`, the `name` field of an uploaded Thing Description, and `*.jsonld` filenames placed in `settings/` must:
+
+* be 1-128 characters long,
+* contain only ASCII letters, digits, `.`, `_` or `-`,
+* not start with `.`, and
+* not contain path separators or relative-path segments (`..`, `/`, `\`, etc.).
+
+Names that don't satisfy these rules are rejected with `BadInvalidArgument` and logged. The restriction prevents a client from writing outside `settings/` or hijacking another asset's polling state through a path-traversal name.
+
 ## How to build your own Protocol Driver
 
 UA Edge Translator loads protocol drivers as DLLs from the `/app/drivers` folder at runtime.
