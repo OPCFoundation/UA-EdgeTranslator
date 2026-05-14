@@ -13,14 +13,12 @@ EXPOSE 5001
 EXPOSE 19520
 EXPOSE 19521
 
-# Create a non-root user that owns the writable runtime folders. Running the
-# server as root would let a compromised protocol driver (loaded as a plain
+# The base image already ships with a non-root `app` user at UID/GID 1000
+# Running the server as root would let a compromised protocol driver (loaded as a plain
 # .NET assembly) trivially escalate inside the container, especially when
 # operators add --privileged for serial / Matter use cases.
-RUN groupadd --system --gid 1000 uaedge \
- && useradd  --system --uid 1000 --gid uaedge --home-dir /app --shell /usr/sbin/nologin uaedge \
- && mkdir -p /app/pki /app/logs /app/settings /app/nodesets /app/drivers \
- && chown -R uaedge:uaedge /app
+RUN mkdir -p /app/pki /app/logs /app/settings /app/nodesets /app/drivers \
+ && chown -R app:app /app
 
 # TCP probe against the OPC UA listener so Docker / Kubernetes can tell the
 # difference between "process running" and "OPC UA endpoint accepting
@@ -46,6 +44,6 @@ RUN dotnet publish "UAEdgeTranslator.csproj" --no-restore -c $BUILD_CONFIGURATIO
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish --chown=uaedge:uaedge /app/publish .
-USER uaedge
+COPY --from=publish --chown=app:app /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "UAEdgeTranslator.dll"]
