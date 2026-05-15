@@ -152,7 +152,7 @@ namespace Opc.Ua.Edge.Translator
         // characters before we commit it anywhere.
         private const int _cMaxAssetNameLength = 128;
 
-        private static bool IsSafeAssetName(string name)
+        private bool IsSafeAssetName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -1699,7 +1699,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private static void ScheduleNextReconnect(ReconnectState state)
+        private void ScheduleNextReconnect(ReconnectState state)
         {
             state.ConsecutiveFailures++;
             int backoffMs = Math.Min(_reconnectMaxBackoffMs, state.CurrentBackoffMs);
@@ -1895,7 +1895,7 @@ namespace Opc.Ua.Edge.Translator
         /// Encodes a single structure field value for whole-UDT updates.
         /// Used by both AddNodeForWoTForm (initialization) and UpdateUAServerVariable (runtime).
         /// </summary>
-        private static void EncodeField(BinaryEncoder encoder, StructureField field, object value)
+        private void EncodeField(BinaryEncoder encoder, StructureField field, object value)
         {
             switch ((uint)field.DataType.Identifier)
             {

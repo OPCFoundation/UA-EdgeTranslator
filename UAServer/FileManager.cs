@@ -24,7 +24,7 @@
         // Per-handle upload size cap. Defaults to 5 MB but can be overridden via the
         // WOT_MAX_FILE_BYTES environment variable to support very large nodesets.
         private const int _defaultMaxFileBytes = 5 * 1024 * 1024;
-        private static readonly int _maxFileBytes = ResolveMaxFileBytes();
+        private readonly int _maxFileBytes = ResolveMaxFileBytes();
 
         private static int ResolveMaxFileBytes()
         {
@@ -81,7 +81,7 @@
             }
         }
 
-        private static NodeId GetSessionId(ISystemContext context)
+        private NodeId GetSessionId(ISystemContext context)
         {
             if (context is ServerSystemContext serverContext)
             {
@@ -367,7 +367,7 @@
         // Reject any character that is not legal in a file name on the host OS,
         // and explicitly strip path separators / parent-directory tokens so a
         // crafted ModelUri or DisplayName cannot escape the intended folder.
-        private static string SanitizeFileName(string raw)
+        private string SanitizeFileName(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
             {
@@ -389,7 +389,7 @@
         // Write to a temp file in the same directory, flush to disk, then
         // atomically replace the destination so a crash mid-write can never
         // leave the on-disk nodeset/asset in a half-written / corrupt state.
-        private static void AtomicWriteAllText(string targetPath, string contents)
+        private void AtomicWriteAllText(string targetPath, string contents)
         {
             string directory = Path.GetDirectoryName(targetPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))

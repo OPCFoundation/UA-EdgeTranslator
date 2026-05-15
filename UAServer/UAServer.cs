@@ -96,7 +96,7 @@ namespace Opc.Ua.Edge.Translator
             throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
         }
 
-        private static bool FixedTimeEqualsHashed(string left, string right)
+        private bool FixedTimeEqualsHashed(string left, string right)
         {
             byte[] leftHash = SHA256.HashData(Encoding.UTF8.GetBytes(left ?? string.Empty));
             byte[] rightHash = SHA256.HashData(Encoding.UTF8.GetBytes(right ?? string.Empty));

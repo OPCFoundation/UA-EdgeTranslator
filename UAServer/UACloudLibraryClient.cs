@@ -122,7 +122,7 @@
             }
         }
 
-        private static bool TryParseVersion(string raw, out Version version)
+        private bool TryParseVersion(string raw, out Version version)
         {
             version = null;
             if (string.IsNullOrWhiteSpace(raw))
