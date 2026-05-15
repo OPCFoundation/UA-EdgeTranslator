@@ -82,7 +82,7 @@ docker volume create translator_drivers
 docker run --rm -v translator_drivers:/out ghcr.io/opcfoundation/ua-edgetranslator-drivers:main /bin/sh -c 'cp -a /drivers/. /out/'
 
 # 3) Run UA Edge Translator with the drivers volume mounted to /app/drivers
-docker run -d --name ua-edge-translator -v translator_drivers:/app/drivers -p 4840:4840 ghcr.io/opcfoundation/ua-edgetranslator:main
+docker run -d --name ua-edge-translator -v translator_drivers:/app/drivers -e OPCUA_USERNAME="REPLACE_ME" -e OPCUA_PASSWORD="REPLACE_ME" -p 4840:4840 ghcr.io/opcfoundation/ua-edgetranslator:main
 ```
 
 In addition, the following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
@@ -171,8 +171,8 @@ The following will get you to a state you can modify with your own driver and Wo
 
 You can change these credentials in the launchSettings.json file under "Properties" of the UAEdgeTranslator project:
 ```
-"OPCUA_USERNAME": "myUsername",
-"OPCUA_PASSWORD": "myPassword",
+"OPCUA_USERNAME": "REPLACE_ME",
+"OPCUA_PASSWORD": "REPLACE_ME",
 ```
 
 To test your setup before provisioning the UAEdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
