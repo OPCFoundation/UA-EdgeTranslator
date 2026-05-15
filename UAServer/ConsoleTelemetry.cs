@@ -57,13 +57,13 @@ namespace Opc.Ua.Cloud
         public Counter<long> TagReads { get; }
 
         public Counter<long> TagReadErrors { get; }
-        
+
         public Counter<long> TagWrites { get; }
-        
+
         public Counter<long> TagWriteErrors { get; }
-        
+
         public Counter<long> AssetReconnects { get; }
-        
+
         public Counter<long> AssetReconnectFailures { get; }
 
         public ConsoleTelemetry(Action<ILoggingBuilder> configure = null)

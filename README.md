@@ -120,6 +120,9 @@ Before applying, review the manifest and consider adjusting the following to sui
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
 * `LICENSE_KEY` - Activation key required by the OPC UA `License` write method. If unset, license activation requests are rejected with `BadNotSupported`. The configured value is compared in constant time against the value written by the OPC UA client.
 * `WOT_MAX_FILE_BYTES` - Maximum size (in bytes) accepted per upload through the OPC UA File API (WoT Thing Descriptions and nodeset uploads). Defaults to `5242880` (5 MB). Uploads exceeding the cap are rejected with `BadOutOfMemory` so a malicious or misconfigured client cannot exhaust server memory.
+* `DRIVER_ALLOWLIST_OIDC_ISSUER` - Fulcio OIDC issuer the driver allow-list signing certificate must come from. Defaults to `https://token.actions.githubusercontent.com`. See [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest).
+* `DRIVER_ALLOWLIST_OIDC_REPO` - GitHub `owner/repo` whose `.github/workflows/driver-pack.yml` is allowed to sign the driver allow-list manifest. Defaults to `OPCFoundation/UA-EdgeTranslator`. The loader accepts both `refs/heads/main` and `refs/tags/v*` runs of that workflow file. Override this when you publish your own driver pack from a fork.
+* `DRIVER_ALLOWLIST_OFFLINE_MODE` - Set to `allow-hash-only` to permit hash-only enforcement of the driver allow-list when the Sigstore bundle is missing or cannot be verified (intended for air-gapped deployments). Unset by default, meaning the loader is **fail-closed** and refuses to load any driver if the manifest is not signed and verified.
 
 ## Provisioning
 UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
@@ -188,19 +191,39 @@ Then implement the IProtocolDriver and IAsset interface and publish your project
 
 ## Protocol driver allow-list (trust manifest)
 
-Protocol drivers are loaded as in-process .NET assemblies and therefore run with the same privileges as UA Edge Translator itself. To prevent an attacker (or a misconfigured deployment) from dropping an arbitrary DLL into `/app/drivers` and having it executed, the loader supports an **opt-in SHA-256 allow-list manifest**.
+Protocol drivers are loaded as in-process .NET assemblies and therefore run with the same privileges as UA Edge Translator itself. To prevent an attacker (or a misconfigured deployment) from dropping an arbitrary DLL into `/app/drivers` and having it executed, the loader supports an **opt-in SHA-256 allow-list manifest** that is itself **signed with [Sigstore](https://www.sigstore.dev/) (cosign keyless)** and verified at startup against the GitHub Actions identity that produced the driver pack.
+
+### Trust model
+
+The driver-pack image ships two files next to the drivers:
+
+| Path | Purpose |
+|---|---|
+| `/drivers/drivers.allowlist.json` | SHA-256 hashes of every `*.dll` we are willing to load. |
+| `/drivers/drivers.allowlist.sigstore.json` | cosign keyless Sigstore bundle that signs the manifest above. |
+
+On startup, `DriverLoadContext` first verifies the bundle, pins the signing identity to the GitHub Actions workflow that produced the driver pack, and only **then** uses the manifest to decide which DLLs to load. If the bundle is missing or fails verification the loader is **fail-closed** (no drivers are loaded) unless the operator explicitly opts in to a hash-only fallback for air-gapped deployments.
 
 ### Behavior
 
-On startup, `DriverLoadContext.LoadProtocolDrivers()` looks for `drivers/drivers.allowlist.json`:
+| Manifest | Bundle | Behavior |
+|---|---|---|
+| **Missing** | n/a | Loads every `*.dll` under `drivers/**` (legacy mode, backwards compatible). A warning is written on every startup recommending that the manifest be added. |
+| **Present**, signature **verified** against the pinned identity | present + valid | SHA-256 enforcement using the manifest. Refused DLLs are logged with their offending path and computed hash. |
+| **Present**, **bundle missing** or **signature/identity mismatch** | — | Refuses to load **any** protocol driver. Set `DRIVER_ALLOWLIST_OFFLINE_MODE=allow-hash-only` to downgrade to hash-only enforcement (with a loud warning) for air-gapped sites. |
+| **Present but empty / unparseable** | n/a | Refuses to load **any** protocol driver and logs an error. UA Edge Translator continues to start, but no southbound assets will work until the manifest is fixed. |
 
-| Manifest state | Loader behavior |
-|---|---|
-| **Missing** | Loads every `*.dll` under `drivers/**` (legacy mode, backwards compatible). A warning is written to the log on every startup recommending that the manifest be added. |
-| **Present and valid** | Computes the SHA-256 of every candidate `*.dll` under `drivers/**` and loads only those whose hash is listed. Refused DLLs are logged with the offending path and computed hash. |
-| **Present but empty / unparseable** | Refuses to load *any* protocol driver and logs an error. UA Edge Translator continues to start, but no southbound assets will work until the manifest is fixed. |
+For production / enterprise deployments the signed manifest is mandatory — without it there is no trust boundary between the host and a third-party driver.
 
-For production / enterprise deployments the manifest is mandatory — without it there is no trust boundary between the host and a third-party driver.
+### Configuration
+
+The signing identity defaults to the OPC Foundation driver-pack workflow. Override the defaults via environment variables when you publish your own driver pack from a fork:
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `DRIVER_ALLOWLIST_OIDC_ISSUER` | `https://token.actions.githubusercontent.com` | Fulcio OIDC issuer the signing certificate must come from. |
+| `DRIVER_ALLOWLIST_OIDC_REPO` | `OPCFoundation/UA-EdgeTranslator` | GitHub `owner/repo` whose `.github/workflows/driver-pack.yml` is allowed to sign the manifest. The loader accepts both `refs/heads/main` and `refs/tags/v*` runs of that workflow file. |
+| `DRIVER_ALLOWLIST_OFFLINE_MODE` | _unset_ (fail-closed) | Set to `allow-hash-only` to permit hash-only enforcement when the Sigstore bundle is missing or cannot be verified (air-gapped deployments). The loader logs a loud warning when this fallback is taken. |
 
 ### Manifest format
 
@@ -220,7 +243,7 @@ Notes:
 * The `name` field is for human readability only — matching is done **by hash**, not by file name, so renaming a DLL does not bypass the check.
 * Hashes are uppercase hexadecimal SHA-256 of the raw DLL bytes; case is ignored when matching.
 * **Every** `*.dll` in a driver folder is hashed before the loader decides what to do with it, so transitive managed dependencies and native pInvoke DLLs that ship alongside a driver must both be listed. Files that are not `*.dll` (`.so`, `.pdb`, config, etc.) are not enumerated and do not need an entry.
-* The manifest itself does not need to be listed.
+* Neither the manifest nor its `.sigstore.json` bundle need to be listed.
 
 ### Generating the manifest
 
@@ -236,15 +259,16 @@ Or from `bash` on Linux:
 sha256sum drivers/Modbus/Modbus.dll
 ```
 
-The published driver-pack image (`ghcr.io/opcfoundation/ua-edgetranslator-drivers:main`) **ships its own `/drivers/drivers.allowlist.json`** that covers every DLL in every built-in driver folder. The manifest is generated by `.github/workflows/driver-pack.yml` from the exact bytes that get baked into the image and includes the source commit SHA. If you only use the built-in drivers, you do not need to generate anything yourself — just mount the driver-pack contents (manifest included) into `/app/drivers`.
+The published driver-pack image (`ghcr.io/opcfoundation/ua-edgetranslator-drivers:main`) **ships its own `/drivers/drivers.allowlist.json` and `/drivers/drivers.allowlist.sigstore.json`** that cover every DLL in every built-in driver folder. Both are produced by `.github/workflows/driver-pack.yml` from the exact bytes that get baked into the image; the bundle is created by `cosign sign-blob --bundle` using the workflow's GitHub Actions OIDC identity (no long-lived signing keys). If you only use the built-in drivers, you do not need to generate or sign anything yourself — just mount the driver-pack contents (manifest **and** bundle) into `/app/drivers`.
 
-If you ship your own driver alongside the built-in ones, append its entries to a copy of the shipped manifest (or merge with `jq`); the loader will refuse to load any DLL that is not listed, so an unmerged manifest will silently disable your additional driver.
+If you ship your own driver alongside the built-in ones, you must produce your own signed manifest covering both your DLLs and the built-in ones, and point `DRIVER_ALLOWLIST_OIDC_REPO` (and optionally `DRIVER_ALLOWLIST_OIDC_ISSUER`) at the workflow that signs it. Otherwise the loader will refuse to honour an unsigned manifest in fail-closed mode, or ignore your additional driver in `allow-hash-only` mode.
 
 ### Verifying enforcement
 
 When the manifest is enforced you will see one of the following on startup:
 
 ```
+Protocol driver allow-list /app/drivers/drivers.allowlist.json verified against Sigstore bundle /app/drivers/drivers.allowlist.sigstore.json (signer: issuer=..., san=...).
 Protocol driver allow-list loaded from /app/drivers/drivers.allowlist.json with N entries; only matching SHA-256 hashes will be loaded.
 ```
 

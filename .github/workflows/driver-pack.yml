@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -162,11 +163,33 @@ jobs:
           echo "Generated $manifest with $(grep -c '"sha256"' "$manifest") entries:"
           cat "$manifest"
 
+      # Sign the allow-list manifest with cosign keyless (Fulcio short-lived
+      # cert + Rekor inclusion proof) and emit a Sigstore bundle. The runtime
+      # loader (DriverLoadContext.TryVerifyManifestBundle) reads this bundle
+      # next to the manifest and refuses to honour the allow-list unless the
+      # bundle verifies AND the signing identity matches the GitHub Actions
+      # workflow identity for this repository.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.10.1
+
+      - name: Sign driver allow-list manifest (cosign keyless)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          cosign sign-blob \
+            --bundle drivers/drivers.allowlist.sigstore.json \
+            drivers/drivers.allowlist.json
+          echo "Sigstore bundle:"
+          ls -l drivers/drivers.allowlist.sigstore.json
+
       - name: Upload driver allow-list manifest
         uses: actions/upload-artifact@v4
         with:
           name: drivers-allowlist
-          path: drivers/drivers.allowlist.json
+          path: |
+            drivers/drivers.allowlist.json
+            drivers/drivers.allowlist.sigstore.json
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

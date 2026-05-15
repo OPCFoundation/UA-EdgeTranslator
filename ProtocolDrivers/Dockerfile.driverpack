@@ -60,4 +60,12 @@ COPY --from=libiec61850-builder /libiec61850.so /drivers/iec61850/libiec61850.so
 # is not listed, so the manifest must be in sync with the DLLs we just copied.
 COPY drivers/drivers.allowlist.json /drivers/drivers.allowlist.json
 
+# Ship the cosign-keyless Sigstore bundle that signs the manifest. The runtime
+# loader (DriverLoadContext.TryVerifyManifestBundle) verifies this bundle with
+# the Sigstore .NET client and pins the signing identity to the GitHub Actions
+# workflow that produced the driver pack. Without a matching bundle the loader
+# refuses to trust the allow-list (fail-closed), unless the operator opts into
+# DRIVER_ALLOWLIST_OFFLINE_MODE=allow-hash-only for air-gapped deployments.
+COPY drivers/drivers.allowlist.sigstore.json /drivers/drivers.allowlist.sigstore.json
+
 # No ENTRYPOINT/CMD: this is an "artifact image" (driver pack) to be used as a source for copying drivers.
