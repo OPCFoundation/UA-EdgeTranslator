@@ -141,9 +141,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aml.Engine" Version="4.5.2" Condition="'$(TargetFramework)' != 'net48'" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.134" />
+    <PackageReference Include="Aml.Engine" Condition="'$(TargetFramework)' != 'net48'" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" />
   </ItemGroup>
 
   <!-- Define AML_ENGINE on TFMs where the Aml.Engine NuGet is supported (i.e. not net48). -->

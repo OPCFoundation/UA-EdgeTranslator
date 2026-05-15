@@ -1,0 +1,44 @@
+version: 2
+updates:
+  # NuGet packages: a single update root works because all versions live in
+  # Directory.Packages.props after the central package management migration.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "nuget"
+    groups:
+      opc-ua:
+        patterns:
+          - "OPCFoundation.NetStandard.Opc.Ua*"
+      serilog:
+        patterns:
+          - "Serilog*"
+
+  # GitHub Actions used by every workflow under .github/workflows/.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Base images for the published container.
+  - package-ecosystem: "docker"
+    directory: "/UAServer"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+  - package-ecosystem: "docker"
+    directory: "/ProtocolDrivers"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"

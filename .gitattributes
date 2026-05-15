@@ -1,0 +1,45 @@
+# Default: let git auto-detect text vs binary, normalize to LF in the index.
+* text=auto eol=lf
+
+# Source code -> always LF
+*.cs       text eol=lf diff=csharp
+*.csproj   text eol=lf
+*.props    text eol=lf
+*.targets  text eol=lf
+*.sln      text eol=lf
+*.json     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.md       text eol=lf
+*.xml      text eol=lf
+*.editorconfig text eol=lf
+*.gitignore    text eol=lf
+*.gitattributes text eol=lf
+
+# Windows-only artefacts -> CRLF
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+*.ps1      text eol=lf
+Dockerfile text eol=lf
+*.sh       text eol=lf
+
+# Binary assets
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.pdf      binary
+*.zip      binary
+*.dll      binary
+*.pdb      binary
+*.exe      binary
+*.snk      binary
+*.pfx      binary
+
+# OPC UA / engineering payloads — treat as text but never normalize
+*.NodeSet2.xml text eol=lf
+*.aml      text eol=lf
+*.tmc      text eol=lf
+*.csv      text eol=lf
+*.jsonld   text eol=lf

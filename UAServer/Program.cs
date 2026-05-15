@@ -8,6 +8,8 @@
     using System;
     using System.IO;
     using System.Linq;
+    using System.Reflection;
+    using System.Runtime.InteropServices;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -34,6 +36,8 @@
             // a runtime condition — fail fast with a clear message instead of
             // booting a server that will silently reject every client login.
             ValidateRequiredEnvironment();
+
+            LogStartupVersion();
 
             // make sure our directories exist
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
@@ -162,6 +166,25 @@
 
             OpcUaUsername = username;
             OpcUaPassword = password;
+        }
+
+        private static void LogStartupVersion()
+        {
+            // Log the build identity and the runtime/OS at startup so that
+            // operators can correlate a deployed container against a specific
+            // commit/release without having to exec into it.
+            var asm = typeof(Program).Assembly;
+            string informationalVersion =
+                asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? asm.GetName().Version?.ToString()
+                ?? "unknown";
+
+            Log.Logger.Information(
+                "UA Edge Translator starting. Version={Version}, Runtime={Runtime}, OS={OS}, Architecture={Arch}",
+                informationalVersion,
+                RuntimeInformation.FrameworkDescription,
+                RuntimeInformation.OSDescription,
+                RuntimeInformation.OSArchitecture);
         }
 
         private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)

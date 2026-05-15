@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Sharp7" Version="1.1.84" />
+    <PackageReference Include="Sharp7" />
   </ItemGroup>
 
   <ItemGroup>

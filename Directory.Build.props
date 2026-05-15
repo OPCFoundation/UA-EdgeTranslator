@@ -1,0 +1,20 @@
+<Project>
+	<!--
+	Repo-wide MSBuild defaults. Kept intentionally minimal so it cannot break
+	individual project files. We stamp shared assembly metadata here so the
+	running container/binary can be traced back to a release, and we enforce a
+	"warnings are errors" policy so latent issues fail the build instead of
+	being lost in CI logs.
+	-->
+	<PropertyGroup>
+	<Company>OPC Foundation</Company>
+	<Authors>OPC Foundation</Authors>
+	<Product>UA Edge Translator</Product>
+	<Copyright>Copyright (c) OPC Foundation</Copyright>
+	<RepositoryUrl>https://github.com/OPCFoundation/UA-EdgeTranslator</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
+
+	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	</PropertyGroup>
+</Project>

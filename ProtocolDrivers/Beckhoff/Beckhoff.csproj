@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Viscon.Communication.Ads" Version="0.2.0" />
+    <PackageReference Include="Viscon.Communication.Ads" />
   </ItemGroup>
 
   <ItemGroup>
