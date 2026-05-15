@@ -100,31 +100,40 @@ namespace Opc.Ua.Edge.Translator.Tests
         [Fact]
         public void AtomicWriteAllText_cleans_up_temp_file_when_destination_replace_fails()
         {
-            // Force File.Replace / File.Move to fail by holding a write-lock on the
-            // destination file: on Windows this prevents the atomic swap and the
-            // catch branch must delete the temp file before re-throwing.
+            // Force the rename step inside AtomicWriteAllText to fail in a
+            // cross-platform way: point the target at an *existing directory*.
+            // The helper:
+            //   1. ensures the parent dir exists,
+            //   2. creates the .tmp.<guid> file successfully,
+            //   3. takes the !File.Exists(target) branch (File.Exists returns
+            //      false for directories) and calls File.Move(tempPath, target),
+            //   4. which throws IOException on both Windows and Linux because
+            //      the destination path is occupied by a directory — exercising
+            //      the catch branch that deletes the temp file before rethrow.
+            //
+            // The previous version relied on FileShare.None to lock the
+            // destination, which only blocks concurrent .NET handles on
+            // Windows; on Linux file locking is advisory and File.Replace
+            // succeeded, so no exception was thrown and the assertion failed.
             using TestWorkingDirectory tmp = new();
             FileManager fm = NewBareFileManager();
 
-            string target = Path.Combine(tmp.Path, "locked.txt");
-            File.WriteAllText(target, "old");
+            string target = Path.Combine(tmp.Path, "occupied-by-dir");
+            Directory.CreateDirectory(target);
 
-            // Open the destination with FileShare.None to provoke the failure.
-            using (FileStream lockedStream = new(target, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-            {
-                MethodInfo write = _sut.GetMethod("AtomicWriteAllText", BindingFlags.NonPublic | BindingFlags.Instance);
+            MethodInfo write = _sut.GetMethod("AtomicWriteAllText", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                TargetInvocationException tie = Assert.Throws<TargetInvocationException>(
-                    () => write.Invoke(fm, new object[] { target, "new" }));
+            TargetInvocationException tie = Assert.Throws<TargetInvocationException>(
+                () => write.Invoke(fm, new object[] { target, "new" }));
 
-                Assert.NotNull(tie.InnerException);
-            }
+            Assert.NotNull(tie.InnerException);
 
-            // The destination retains its previous contents (the swap never happened)
-            // and the temp file must have been cleaned up by the catch branch.
-            Assert.Equal("old", File.ReadAllText(target));
+            // The catch branch must have removed the temp file before re-throwing.
             string[] leftovers = Directory.GetFiles(tmp.Path, "*.tmp.*");
             Assert.Empty(leftovers);
+
+            // The directory at the target path should still be intact.
+            Assert.True(Directory.Exists(target));
         }
 
         [Fact]
