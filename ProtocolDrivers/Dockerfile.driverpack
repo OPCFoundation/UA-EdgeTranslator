@@ -54,4 +54,10 @@ RUN set -eux; \
 # current target architecture during this multi-arch build.
 COPY --from=libiec61850-builder /libiec61850.so /drivers/iec61850/libiec61850.so
 
+# Ship the SHA-256 allow-list manifest produced by the GitHub workflow next to
+# the drivers. UA Edge Translator's DriverLoadContext.LoadProtocolDrivers reads
+# /drivers/drivers.allowlist.json and refuses to load any *.dll whose SHA-256
+# is not listed, so the manifest must be in sync with the DLLs we just copied.
+COPY drivers/drivers.allowlist.json /drivers/drivers.allowlist.json
+
 # No ENTRYPOINT/CMD: this is an "artifact image" (driver pack) to be used as a source for copying drivers.

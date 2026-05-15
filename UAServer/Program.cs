@@ -102,7 +102,7 @@
             // start the server
             await App.StartAsync(new UAServer()).ConfigureAwait(false);
 
-            Log.Logger.Information("UA Edge Translator is running. Press Ctrl+C to shut down.");
+            Log.Logger.Information("UA Edge Translator is running.");
 
             // graceful shutdown on SIGINT / SIGTERM so resources (drivers, file managers,
             // telemetry, logs) get a chance to flush before the process exits.
