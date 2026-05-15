@@ -104,6 +104,38 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.Throws<System.ArgumentNullException>(() => driver.CreateAndConnectAsset(null, out _));
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void CreateAndConnectAsset_rejects_missing_base_uri(string baseUri)
+        {
+            MockProtocolDriver driver = new();
+            ThingDescription td = new() { Base = baseUri, Name = "x", Title = "x", Id = "urn:x" };
+
+            Assert.Throws<System.ArgumentException>(() => driver.CreateAndConnectAsset(td, out _));
+        }
+
+        [Fact]
+        public void CreateAndConnectAsset_rejects_relative_base_uri()
+        {
+            MockProtocolDriver driver = new();
+            ThingDescription td = new() { Base = "not-a-uri", Name = "x", Title = "x", Id = "urn:x" };
+
+            Assert.Throws<System.ArgumentException>(() => driver.CreateAndConnectAsset(td, out _));
+        }
+
+        [Fact]
+        public void CreateTag_throws_when_form_payload_cannot_be_deserialized_as_MockForm()
+        {
+            MockProtocolDriver driver = new();
+            ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/1");
+
+            // A JSON literal "null" deserializes to null MockForm and triggers the validation throw.
+            Assert.Throws<System.ArgumentException>(() =>
+                driver.CreateTag(td, "null", "device1", 1, "tag", "ns=2;s=t", string.Empty));
+        }
+
         [Fact]
         public void CreateTag_round_trips_form_payload_into_AssetTag()
         {

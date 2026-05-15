@@ -74,5 +74,46 @@ namespace Opc.Ua.Edge.Translator.Tests
             // double-dispose must not throw — Meter.Dispose() and Log.CloseAndFlush() are idempotent.
             telemetry.Dispose();
         }
+
+        [Fact]
+        public void CurrentDomain_UnhandledException_handler_logs_without_throwing()
+        {
+            using TestWorkingDirectory tmp = new();
+            using ConsoleTelemetry telemetry = new();
+
+            System.Reflection.MethodInfo handler = typeof(ConsoleTelemetry).GetMethod(
+                "CurrentDomain_UnhandledException",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(handler);
+
+            System.UnhandledExceptionEventArgs args = new(new System.InvalidOperationException("boom"), isTerminating: false);
+            handler.Invoke(telemetry, new object[] { this, args });
+        }
+
+        [Fact]
+        public void Unobserved_TaskException_handler_logs_without_throwing()
+        {
+            using TestWorkingDirectory tmp = new();
+            using ConsoleTelemetry telemetry = new();
+
+            System.Reflection.MethodInfo handler = typeof(ConsoleTelemetry).GetMethod(
+                "Unobserved_TaskException",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(handler);
+
+            // Build a faulted task and observe its exception, then create the
+            // event args manually so we don't crash the test process if the
+            // handler doesn't mark the exception observed.
+            System.Threading.Tasks.Task faulted = System.Threading.Tasks.Task.FromException(new System.InvalidOperationException("boom"));
+            System.AggregateException ex = faulted.Exception;
+            System.Threading.Tasks.UnobservedTaskExceptionEventArgs args =
+                (System.Threading.Tasks.UnobservedTaskExceptionEventArgs)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(
+                    typeof(System.Threading.Tasks.UnobservedTaskExceptionEventArgs));
+            typeof(System.Threading.Tasks.UnobservedTaskExceptionEventArgs)
+                .GetField("m_exception", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.SetValue(args, ex);
+
+            handler.Invoke(telemetry, new object[] { this, args });
+        }
     }
 }
