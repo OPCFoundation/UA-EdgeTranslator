@@ -15,9 +15,16 @@
 
     public class UACloudLibraryClient
     {
-        private readonly HttpClient _client = new HttpClient();
+        private static readonly TimeSpan _httpTimeout = TimeSpan.FromSeconds(30);
+
+        private readonly HttpClient _client = new HttpClient { Timeout = _httpTimeout };
 
         private readonly Dictionary<string, Tuple<string, string>> _namespacesInCloudLibrary = new();
+
+        // Cache of (namespaceUrl -> nodeset XML) so repeated DownloadNodesetAsync
+        // calls during onboarding don't re-scan every file under nodesets/ on disk
+        // for every dependency lookup.
+        private readonly Dictionary<string, string> _nodesetCache = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly SemaphoreSlim _loginLock = new SemaphoreSlim(1, 1);
 
@@ -62,7 +69,28 @@
             string address = _uaCloudLibraryUrl + "infomodel/namespaces";
             using HttpRequestMessage request = new(HttpMethod.Get, address) { Headers = { Authorization = _authHeader } };
             using HttpResponseMessage response = await _client.SendAsync(request).ConfigureAwait(false);
-            string[] identifiers = JsonConvert.DeserializeObject<string[]>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Logger.Error(
+                    "Cloud Library namespace listing failed with HTTP {StatusCode} ({ReasonPhrase}). URL: {Url}",
+                    (int)response.StatusCode,
+                    response.ReasonPhrase,
+                    address);
+                return;
+            }
+
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            string[] identifiers;
+            try
+            {
+                identifiers = JsonConvert.DeserializeObject<string[]>(body);
+            }
+            catch (JsonException ex)
+            {
+                Log.Logger.Error(ex, "Cloud Library returned a malformed namespace listing.");
+                return;
+            }
 
             if (identifiers != null)
             {
@@ -115,6 +143,18 @@
                 return string.Empty;
             }
 
+            // Fast-path: serve from in-memory cache before doing any I/O. The
+            // onboarding workflow walks every namespace dependency at least
+            // once, so without this each dependency would re-scan every file
+            // under nodesets/.
+            lock (_nodesetCache)
+            {
+                if (_nodesetCache.TryGetValue(namespaceUrl, out string cached))
+                {
+                    return cached;
+                }
+            }
+
             if (_namespacesInCloudLibrary.Count == 0)
             {
                 await _loginLock.WaitAsync().ConfigureAwait(false);
@@ -148,7 +188,27 @@
                         using HttpRequestMessage request = new(HttpMethod.Get, address) { Headers = { Authorization = _authHeader } };
                         using HttpResponseMessage response = await _client.SendAsync(request).ConfigureAwait(false);
 
-                        UANameSpace nameSpace = JsonConvert.DeserializeObject<UANameSpace>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            Log.Logger.Error(
+                                "Cloud Library download failed with HTTP {StatusCode} ({ReasonPhrase}). Namespace: {NamespaceUrl}",
+                                (int)response.StatusCode,
+                                response.ReasonPhrase,
+                                namespaceUrl);
+                            return string.Empty;
+                        }
+
+                        string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        UANameSpace nameSpace;
+                        try
+                        {
+                            nameSpace = JsonConvert.DeserializeObject<UANameSpace>(body);
+                        }
+                        catch (JsonException ex)
+                        {
+                            Log.Logger.Error(ex, "Cloud Library returned a malformed nodeset payload for {NamespaceUrl}.", namespaceUrl);
+                            return string.Empty;
+                        }
 
                         if (!string.IsNullOrEmpty(nameSpace?.Nodeset?.NodesetXml))
                         {
@@ -157,6 +217,12 @@
                             filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", fileName + ".nodeset2.xml");
                             await File.WriteAllTextAsync(filePath, nameSpace.Nodeset.NodesetXml).ConfigureAwait(false);
                             Log.Logger.Information("Downloaded nodeset {NamespaceUrl} from cloud library.", namespaceUrl);
+
+                            lock (_nodesetCache)
+                            {
+                                _nodesetCache[namespaceUrl] = nameSpace.Nodeset.NodesetXml;
+                            }
+
                             return nameSpace.Nodeset.NodesetXml;
                         }
                         else
@@ -180,6 +246,12 @@
             else
             {
                 Log.Logger.Information("Nodeset {NamespaceUrl} already downloaded.", namespaceUrl);
+
+                lock (_nodesetCache)
+                {
+                    _nodesetCache[namespaceUrl] = nodesetXml;
+                }
+
                 return nodesetXml;
             }
         }
@@ -192,10 +264,17 @@
                 return string.Empty;
             }
 
-            foreach (string file in Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")))
+            string nodesetsDir = Path.Combine(Directory.GetCurrentDirectory(), "nodesets");
+            if (!Directory.Exists(nodesetsDir))
             {
-                using (Stream stream = new FileStream(file, FileMode.Open))
+                return string.Empty;
+            }
+
+            foreach (string file in Directory.GetFiles(nodesetsDir))
+            {
+                try
                 {
+                    using FileStream stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
                     UANodeSet nodeSet = UANodeSet.Read(stream);
                     if ((nodeSet.Models != null) && (nodeSet.Models.Length > 0))
                     {
@@ -207,6 +286,13 @@
                             }
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    // Skip non-nodeset files (or corrupted ones) instead of
+                    // tearing down the whole onboarding pipeline because of a
+                    // single bad file in the directory.
+                    Log.Logger.Warning(ex, "Could not parse nodeset candidate file {File}; skipping.", file);
                 }
             }
 

@@ -55,7 +55,11 @@
 
   <ServerConfiguration>
     <BaseAddresses>
-      <ua:String>opc.tcp://localhost:4840/UA/UAEdgeTranslator</ua:String>
+      <!-- Binding to 0.0.0.0 ensures the server is reachable from outside
+           the container/host. The hostname advertised in EndpointDescriptions
+           is taken from ApplicationUri / DNS, not from this string. Override
+           this entry if the deployment needs to bind to a single NIC. -->
+      <ua:String>opc.tcp://0.0.0.0:4840/UA/UAEdgeTranslator</ua:String>
     </BaseAddresses>
 
     <SecurityPolicies>
@@ -147,7 +151,9 @@
       <ua:String>PFX</ua:String>
       <ua:String>PEM</ua:String>
     </SupportedPrivateKeyFormats>
-    <MaxTrustListSize>0</MaxTrustListSize>
+    <!-- 5 MiB cap on TrustList writes pushed by the GDS so a hostile or
+         misconfigured GDS cannot exhaust disk via an unbounded trust list. -->
+    <MaxTrustListSize>5242880</MaxTrustListSize>
     <MultiCastDnsEnabled>false</MultiCastDnsEnabled>
 
     <!--

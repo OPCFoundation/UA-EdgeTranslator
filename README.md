@@ -186,6 +186,78 @@ To build your own protocol driver, create a new .NET10 Class Library project and
 ```
 Then implement the IProtocolDriver and IAsset interface and publish your project into the `..\..\UAServer\drivers\<yourdrivername>` folder and restart UA Edge Translator to load your new protocol driver.
 
+## Protocol driver allow-list (trust manifest)
+
+Protocol drivers are loaded as in-process .NET assemblies and therefore run with the same privileges as UA Edge Translator itself. To prevent an attacker (or a misconfigured deployment) from dropping an arbitrary DLL into `/app/drivers` and having it executed, the loader supports an **opt-in SHA-256 allow-list manifest**.
+
+### Behavior
+
+On startup, `DriverLoadContext.LoadProtocolDrivers()` looks for `drivers/drivers.allowlist.json`:
+
+| Manifest state | Loader behavior |
+|---|---|
+| **Missing** | Loads every `*.dll` under `drivers/**` (legacy mode, backwards compatible). A warning is written to the log on every startup recommending that the manifest be added. |
+| **Present and valid** | Computes the SHA-256 of every candidate `*.dll` under `drivers/**` and loads only those whose hash is listed. Refused DLLs are logged with the offending path and computed hash. |
+| **Present but empty / unparseable** | Refuses to load *any* protocol driver and logs an error. UA Edge Translator continues to start, but no southbound assets will work until the manifest is fixed. |
+
+For production / enterprise deployments the manifest is mandatory — without it there is no trust boundary between the host and a third-party driver.
+
+### Manifest format
+
+The file is a small JSON document at `drivers/drivers.allowlist.json` (UTF-8, no BOM):
+
+```json
+{
+  "allowed": [
+    { "name": "Modbus.dll",       "sha256": "9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08" },
+    { "name": "Siemens.dll",      "sha256": "2C26B46B68FFC68FF99B453C1D30413413422D706483BFA0F98A5E886266E7AE" },
+    { "name": "RockwellEIP.dll",  "sha256": "FCDE2B2EDBA56BF408601FB721FE9B5C338D10EE429EA04FAE5511B68FBF8FB9" }
+  ]
+}
+```
+
+Notes:
+* The `name` field is for human readability only — matching is done **by hash**, not by file name, so renaming a DLL does not bypass the check.
+* Hashes are uppercase hexadecimal SHA-256 of the raw DLL bytes; case is ignored when matching.
+* Native / `pInvoke` DLLs that ship alongside a managed driver do not need to be listed — they are not loaded as managed assemblies (a `BadImageFormatException` is silently ignored). Only managed assemblies that contain `IProtocolDriver` types must be listed.
+* The manifest itself does not need to be listed.
+
+### Generating the manifest
+
+To compute the SHA-256 of a driver from PowerShell:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\drivers\Modbus\Modbus.dll | Select-Object Hash
+```
+
+Or from `bash` on Linux:
+
+```bash
+sha256sum drivers/Modbus/Modbus.dll
+```
+
+The driver-pack image (`ghcr.io/opcfoundation/ua-edgetranslator-drivers:main`) does not currently ship a manifest — operators are expected to generate one for the exact set of driver versions they have approved for their site, store it in source control alongside their deployment manifests, and mount it into `/app/drivers/drivers.allowlist.json` together with the drivers themselves.
+
+### Verifying enforcement
+
+When the manifest is enforced you will see one of the following on startup:
+
+```
+Protocol driver allow-list loaded from /app/drivers/drivers.allowlist.json with N entries; only matching SHA-256 hashes will be loaded.
+```
+
+and, for any DLL that does not match:
+
+```
+Refusing to load protocol driver assembly /app/drivers/Foo/Foo.dll: SHA-256 <hash> not in allow-list (/app/drivers/drivers.allowlist.json).
+```
+
+If the manifest is missing you will instead see:
+
+```
+Protocol driver allow-list /app/drivers/drivers.allowlist.json not found; loading every *.dll under /app/drivers. Production deployments should ship a signed allow-list manifest — see README.
+```
+
 ## Generating WoT Thing Descriptions from PLC Engineering Tools
 
 The `UA-WoTGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in.

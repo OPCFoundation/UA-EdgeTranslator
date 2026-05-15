@@ -6,6 +6,29 @@ spec:
   finalizers:
   - kubernetes
 ---
+# OPC UA credentials must be supplied out-of-band — never commit real
+# values into source control. Provision the secret with:
+#
+#   kubectl -n ua-edgetranslator-namespace create secret generic ua-edgetranslator-credentials \
+#       --from-literal=OPCUA_USERNAME='<username>' \
+#       --from-literal=OPCUA_PASSWORD='<password>'
+#
+# Optionally add a UACL{Username,Password,URL} key for cloud library access
+# and a LICENSE_KEY entry once licensing is enabled. The values below are
+# placeholders only and MUST be replaced before applying this manifest in
+# any environment outside of an isolated dev cluster.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ua-edgetranslator-credentials
+  namespace: ua-edgetranslator-namespace
+type: Opaque
+stringData:
+  # Replace these placeholders or, preferably, delete this Secret block
+  # and provision the secret separately via `kubectl create secret`.
+  OPCUA_USERNAME: "REPLACE_ME"
+  OPCUA_PASSWORD: "REPLACE_ME"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,11 +46,24 @@ spec:
     spec:
       nodeSelector:
         "kubernetes.io/os": linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
       - name: ua-edgetranslator-drivers
         image: ghcr.io/opcfoundation/ua-edgetranslator-drivers:main
         imagePullPolicy: Always
         command: ["/bin/sh", "-c", "cp -a /drivers/. /app/drivers/"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
         volumeMounts:
         - name: "drivers"
           mountPath: "/app/drivers"
@@ -35,17 +71,48 @@ spec:
       - name: ua-edgetranslator
         image: ghcr.io/opcfoundation/ua-edgetranslator:main
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: OPCUA_USERNAME
-          value: "myUsername"
+          valueFrom:
+            secretKeyRef:
+              name: ua-edgetranslator-credentials
+              key: OPCUA_USERNAME
         - name: OPCUA_PASSWORD
-          value: "myPassword"
+          valueFrom:
+            secretKeyRef:
+              name: ua-edgetranslator-credentials
+              key: OPCUA_PASSWORD
         ports:
         - containerPort: 4840
         - containerPort: 5000
         - containerPort: 5001
         - containerPort: 19520
         - containerPort: 19521
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        livenessProbe:
+          tcpSocket:
+            port: 4840
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 4840
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
         volumeMounts:
         - name: "settings"
           mountPath: "/app/settings"

@@ -50,6 +50,22 @@ namespace Opc.Ua.Cloud
         // the first GC, breaking any external metrics consumer.
         private readonly Meter _meter = new("UA cloud app", "1.0.0");
 
+        // Hot-path instruments. These are exposed publicly so the rest of
+        // the host (UANodeManager etc.) can record per-tag and per-asset
+        // events without each component having to re-create its own meter
+        // and risk publishing to multiple meter names.
+        public Counter<long> TagReads { get; }
+
+        public Counter<long> TagReadErrors { get; }
+        
+        public Counter<long> TagWrites { get; }
+        
+        public Counter<long> TagWriteErrors { get; }
+        
+        public Counter<long> AssetReconnects { get; }
+        
+        public Counter<long> AssetReconnectFailures { get; }
+
         public ConsoleTelemetry(Action<ILoggingBuilder> configure = null)
         {
             string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
@@ -78,6 +94,16 @@ namespace Opc.Ua.Cloud
                 builder.SetMinimumLevel(LogLevel.Information);
                 configure?.Invoke(builder);
             }).AddSerilog(Log.Logger);
+
+            // Register instruments AFTER the meter is constructed so a metrics
+            // listener (OTel, Prometheus, etc.) sees them as soon as the host
+            // attaches to the meter name.
+            TagReads = _meter.CreateCounter<long>("uaedge.tag.reads", description: "Number of southbound tag reads attempted.");
+            TagReadErrors = _meter.CreateCounter<long>("uaedge.tag.read_errors", description: "Number of southbound tag reads that failed.");
+            TagWrites = _meter.CreateCounter<long>("uaedge.tag.writes", description: "Number of southbound tag writes attempted.");
+            TagWriteErrors = _meter.CreateCounter<long>("uaedge.tag.write_errors", description: "Number of southbound tag writes that failed.");
+            AssetReconnects = _meter.CreateCounter<long>("uaedge.asset.reconnects", description: "Number of asset reconnect attempts initiated.");
+            AssetReconnectFailures = _meter.CreateCounter<long>("uaedge.asset.reconnect_failures", description: "Number of asset reconnect attempts that did not restore connectivity.");
 
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += Unobserved_TaskException;

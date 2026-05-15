@@ -316,7 +316,9 @@
                         }
                     }
 
-                    File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "nodesets", filename + ".nodeset2.xml"), contents);
+                    string nodesetsDir = Path.Combine(Directory.GetCurrentDirectory(), "nodesets");
+                    string targetPath = Path.Combine(nodesetsDir, SanitizeFileName(filename) + ".nodeset2.xml");
+                    AtomicWriteAllText(targetPath, contents);
                 }
                 else
                 {
@@ -325,7 +327,11 @@
                     {
                         // the user closed the file transfer without content: Try to load contents locally instead
                         writeContent = false;
-                        contents = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"));
+                        string fallbackPath = Path.Combine(
+                            Directory.GetCurrentDirectory(),
+                            "settings",
+                            SanitizeFileName(_file.Parent.DisplayName.Text) + ".jsonld");
+                        contents = File.ReadAllText(fallbackPath);
                     }
 
                     _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents).GetAwaiter().GetResult();
@@ -334,7 +340,11 @@
 
                     if (writeContent)
                     {
-                        File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", _file.Parent.DisplayName.Text + ".jsonld"), contents);
+                        string settingsPath = Path.Combine(
+                            Directory.GetCurrentDirectory(),
+                            "settings",
+                            SanitizeFileName(_file.Parent.DisplayName.Text) + ".jsonld");
+                        AtomicWriteAllText(settingsPath, contents);
                     }
                 }
 
@@ -351,6 +361,78 @@
             finally
             {
                 handle.Stream.Dispose();
+            }
+        }
+
+        // Reject any character that is not legal in a file name on the host OS,
+        // and explicitly strip path separators / parent-directory tokens so a
+        // crafted ModelUri or DisplayName cannot escape the intended folder.
+        private static string SanitizeFileName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return "unnamed";
+            }
+
+            string trimmed = raw.Replace("..", "_");
+            char[] invalid = Path.GetInvalidFileNameChars();
+            StringBuilder sb = new StringBuilder(trimmed.Length);
+            foreach (char c in trimmed)
+            {
+                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
+            }
+
+            string result = sb.ToString().Trim('.', ' ');
+            return string.IsNullOrEmpty(result) ? "unnamed" : result;
+        }
+
+        // Write to a temp file in the same directory, flush to disk, then
+        // atomically replace the destination so a crash mid-write can never
+        // leave the on-disk nodeset/asset in a half-written / corrupt state.
+        private static void AtomicWriteAllText(string targetPath, string contents)
+        {
+            string directory = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            string tempPath = targetPath + ".tmp." + Guid.NewGuid().ToString("N");
+
+            try
+            {
+                using (FileStream fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                using (StreamWriter writer = new StreamWriter(fs, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+                {
+                    writer.Write(contents);
+                    writer.Flush();
+                    fs.Flush(flushToDisk: true);
+                }
+
+                if (File.Exists(targetPath))
+                {
+                    File.Replace(tempPath, targetPath, destinationBackupFileName: null);
+                }
+                else
+                {
+                    File.Move(tempPath, targetPath);
+                }
+            }
+            catch
+            {
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch
+                {
+                    // best-effort cleanup
+                }
+
+                throw;
             }
         }
     }

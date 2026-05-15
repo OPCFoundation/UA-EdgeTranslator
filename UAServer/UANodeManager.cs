@@ -12,9 +12,9 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net.NetworkInformation;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -46,6 +46,12 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly ConcurrentDictionary<string, List<AssetTag>> _tags = new();
 
+        // Reverse index: maps the OPC UA NodeId of a translated tag to its
+        // owning asset and tag, so OnReadValue / OnWriteValue can resolve a
+        // tag in O(1) instead of scanning every (asset, tag) pair on every
+        // service call.
+        private readonly ConcurrentDictionary<NodeId, (string AssetId, AssetTag Tag)> _tagIndex = new();
+
         private readonly UACloudLibraryClient _uacloudLibraryClient = new();
 
         private readonly Dictionary<NodeId, FileManager> _fileManagers = new();
@@ -61,6 +67,18 @@ namespace Opc.Ua.Edge.Translator
         private const uint _cIWoTAssetType = 42;
         private const uint _cWoTAssetFileType = 110;
         private const uint _cWoTAssetConfigurationType = 105;
+
+        private const int _reconnectInitialBackoffMs = 1000;
+        private const int _reconnectMaxBackoffMs = 60_000;
+
+        private sealed class ReconnectState
+        {
+            public int CurrentBackoffMs;
+            public long NextAttemptTimestamp; // Stopwatch.GetTimestamp() ticks
+            public int ConsecutiveFailures;
+        }
+
+        private readonly ConcurrentDictionary<string, ReconnectState> _reconnectStates = new();
 
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
@@ -559,6 +577,14 @@ namespace Opc.Ua.Edge.Translator
                     _assets.TryRemove(assetName, out _);
                 }
 
+                _reconnectStates.TryRemove(assetName, out _);
+
+                // Drop NodeId -> tag entries for this asset from the reverse index.
+                foreach (var entry in _tagIndex.Where(e => e.Value.AssetId == assetName).ToArray())
+                {
+                    _tagIndex.TryRemove(entry.Key, out _);
+                }
+
                 string keyPrefix = assetName + ":";
                 List<string> keysToRemove = _uaVariables.Keys
                     .Where(k => k.StartsWith(keyPrefix, StringComparison.Ordinal))
@@ -651,27 +677,74 @@ namespace Opc.Ua.Edge.Translator
                 return StatusCodes.BadInvalidArgument;
             }
 
-            string ipAddress = inputArguments[0].ToString();
+            string endpoint = inputArguments[0].ToString().Trim();
 
-            using Ping pingSender = new Ping();
+            // Use a TCP probe instead of ICMP. Ping requires CAP_NET_RAW which
+            // is not granted to a non-root container by default, so the SDK's
+            // hardened image cannot raise raw sockets and would always fail
+            // the test. TCP probes also reflect the actual reachability of
+            // the OPC UA / Modbus / EIP / S7 service the operator wants to
+            // talk to, not just the host's ICMP responder.
+            string host = endpoint;
+            int port = 0;
 
-            PingReply reply = pingSender.Send(ipAddress);
-            if (reply.Status == IPStatus.Success)
+            // accept "host", "host:port", "scheme://host:port[/path]"
+            if (Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
             {
-                Log.Logger.Information($"Ping to {ipAddress} successful. Roundtrip time: {reply.RoundtripTime} ms.");
-
-                outputArguments[0] = true;
-                outputArguments[1] = $"Ping to {ipAddress} successful. Roundtrip time: {reply.RoundtripTime} ms.";
-
-                return ServiceResult.Good;
+                host = uri.Host;
+                port = uri.IsDefaultPort ? 0 : uri.Port;
             }
             else
             {
-                Log.Logger.Warning($"Ping to {ipAddress} failed: {reply.Status}");
+                int colon = endpoint.LastIndexOf(':');
+                if (colon > 0 && colon < endpoint.Length - 1
+                    && int.TryParse(endpoint[(colon + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedPort)
+                    && parsedPort > 0 && parsedPort <= 65535)
+                {
+                    host = endpoint[..colon];
+                    port = parsedPort;
+                }
+            }
 
+            if (port <= 0)
+            {
                 outputArguments[0] = false;
-                outputArguments[1] = $"Ping to {ipAddress} failed: {reply.Status}";
+                outputArguments[1] = $"Connection test to '{endpoint}' rejected: a TCP port is required (e.g. '{endpoint}:4840').";
+                Log.Logger.Warning("ConnectionTest rejected: missing port in endpoint {Endpoint}", endpoint);
+                return StatusCodes.BadInvalidArgument;
+            }
 
+            const int probeTimeoutMs = 3000;
+            Stopwatch sw = Stopwatch.StartNew();
+
+            try
+            {
+                using var tcp = new System.Net.Sockets.TcpClient();
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token);
+                cts.CancelAfter(probeTimeoutMs);
+
+                tcp.ConnectAsync(host, port, cts.Token).AsTask().GetAwaiter().GetResult();
+
+                sw.Stop();
+                Log.Logger.Information("TCP probe to {Host}:{Port} successful in {Elapsed} ms.", host, port, sw.ElapsedMilliseconds);
+                outputArguments[0] = true;
+                outputArguments[1] = $"TCP probe to {host}:{port} successful. Roundtrip time: {sw.ElapsedMilliseconds} ms.";
+                return ServiceResult.Good;
+            }
+            catch (OperationCanceledException)
+            {
+                sw.Stop();
+                Log.Logger.Warning("TCP probe to {Host}:{Port} timed out after {Elapsed} ms.", host, port, sw.ElapsedMilliseconds);
+                outputArguments[0] = false;
+                outputArguments[1] = $"TCP probe to {host}:{port} timed out after {sw.ElapsedMilliseconds} ms.";
+                return StatusCodes.BadNotFound;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                Log.Logger.Warning(ex, "TCP probe to {Host}:{Port} failed.", host, port);
+                outputArguments[0] = false;
+                outputArguments[1] = $"TCP probe to {host}:{port} failed: {ex.GetType().Name}.";
                 return StatusCodes.BadNotFound;
             }
         }
@@ -1168,18 +1241,24 @@ namespace Opc.Ua.Edge.Translator
                 throw new Exception($"No driver installed for base URI: {td.Base}");
             }
 
-            string mappedNodeId;
-            if (_uaVariables.ContainsKey(variableId))
+            NodeId mappedNodeId;
+            if (_uaVariables.TryGetValue(variableId, out BaseDataVariableState mappedVar))
             {
-                mappedNodeId = NodeId.ToExpandedNodeId(_uaVariables[variableId].NodeId, Server.NamespaceUris).ToString();
+                mappedNodeId = mappedVar.NodeId;
             }
             else
             {
-                mappedNodeId = NodeId.ToExpandedNodeId(_uaProperties[variableId].NodeId, Server.NamespaceUris).ToString();
+                mappedNodeId = _uaProperties[variableId].NodeId;
             }
 
-            AssetTag tag = drv.CreateTag(td, form, assetId, unitId, variableId, mappedNodeId, fieldPath);
+            string mappedExpandedNodeId = NodeId.ToExpandedNodeId(mappedNodeId, Server.NamespaceUris).ToString();
+
+            AssetTag tag = drv.CreateTag(td, form, assetId, unitId, variableId, mappedExpandedNodeId, fieldPath);
             _tags[assetId].Add(tag);
+
+            // Maintain the NodeId -> (asset, tag) reverse index so OnReadValue /
+            // OnWriteValue can resolve tags in O(1).
+            _tagIndex[mappedNodeId] = (assetId, tag);
         }
 
         private void AssetConnectionTest(ThingDescription td, out byte unitId)
@@ -1287,41 +1366,34 @@ namespace Opc.Ua.Edge.Translator
 
                 // Snapshot before enumeration: ConcurrentDictionary protects the
                 // outer enumeration but the inner List<AssetTag> is still mutated
-                // by AddTag(), so copy it once per service call.
-                foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+                // by AddTag(), so resolving the tag via the reverse NodeId index
+                // is both O(1) AND avoids holding any reference to the list.
+                if (_tagIndex.TryGetValue(variable.NodeId, out var indexed))
                 {
-                    string assetId = tags.Key;
+                    string assetId = indexed.AssetId;
+                    AssetTag tag = indexed.Tag;
 
-                    foreach (AssetTag tag in tags.Value.ToArray())
+                    try
                     {
-                        try
+                        if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
                         {
-                            if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
-                            {
-                                value = _uaVariables[tag.Name].Value;
-                                timestamp = _uaVariables[tag.Name].Timestamp;
-
-                                if (_assets[assetId].IsConnected)
-                                {
-                                    statusCode = StatusCodes.Good;
-                                }
-                                else
-                                {
-                                    statusCode = StatusCodes.BadDataUnavailable;
-                                }
-
-                                return ServiceResult.Good;
-                            }
+                            value = cached.Value;
+                            timestamp = cached.Timestamp;
                         }
-                        catch (Exception ex)
-                        {
-                            // Log full exception server-side, return only a generic
-                            // status to the OPC UA client to avoid leaking internal
-                            // exception text or stack traces over the wire.
-                            Log.Logger.Error(ex, "Failed to read value for tag: {TagName}", tag.Name);
 
-                            return new ServiceResult(StatusCodes.BadDataUnavailable);
-                        }
+                        statusCode = (_assets.TryGetValue(assetId, out IAsset asset) && asset.IsConnected)
+                            ? StatusCodes.Good
+                            : StatusCodes.BadDataUnavailable;
+
+                        return ServiceResult.Good;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log full exception server-side, return only a generic
+                        // status to the OPC UA client to avoid leaking internal
+                        // exception text or stack traces over the wire.
+                        Log.Logger.Error(ex, "Failed to read value for tag: {TagName}", tag.Name);
+                        return new ServiceResult(StatusCodes.BadDataUnavailable);
                     }
                 }
             }
@@ -1402,44 +1474,42 @@ namespace Opc.Ua.Edge.Translator
                     return ServiceResult.Good;
                 }
 
-                // find the tag that matches the variable node ID
-                foreach (KeyValuePair<string, List<AssetTag>> tags in _tags)
+                // Resolve the tag in O(1) via the reverse NodeId index instead
+                // of scanning every (asset, tag) pair on every write.
+                if (_tagIndex.TryGetValue(variable.NodeId, out var indexed))
                 {
-                    string assetId = tags.Key;
+                    string assetId = indexed.AssetId;
+                    AssetTag tag = indexed.Tag;
 
-                    foreach (AssetTag tag in tags.Value.ToArray())
+                    try
                     {
-                        try
+                        if (!_assets.TryGetValue(assetId, out IAsset asset))
                         {
-                            if (tag.MappedUAExpandedNodeID.ToString() == NodeId.ToExpandedNodeId(variable.NodeId, context.NamespaceUris).ToString())
-                            {
-                                _assets[assetId].Write(tag, value);
-
-                                _uaVariables[tag.Name].Value = value;
-                                _uaVariables[tag.Name].Timestamp = DateTime.UtcNow;
-                                _uaVariables[tag.Name].ClearChangeMasks(SystemContext, true);
-
-                                if (_assets[assetId].IsConnected)
-                                {
-                                    statusCode = StatusCodes.Good;
-                                }
-                                else
-                                {
-                                    statusCode = StatusCodes.BadDataUnavailable;
-                                }
-
-                                return ServiceResult.Good;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log full exception server-side, return only a generic
-                            // status to the OPC UA client to avoid leaking internal
-                            // exception text or stack traces over the wire.
-                            Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
-
+                            Program.Telemetry.TagWriteErrors.Add(1);
                             return new ServiceResult(StatusCodes.BadDataUnavailable);
                         }
+
+                        Program.Telemetry.TagWrites.Add(1);
+                        asset.Write(tag, value);
+
+                        if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
+                        {
+                            cached.Value = value;
+                            cached.Timestamp = DateTime.UtcNow;
+                            cached.ClearChangeMasks(SystemContext, true);
+                        }
+
+                        statusCode = asset.IsConnected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
+                        return ServiceResult.Good;
+                    }
+                    catch (Exception ex)
+                    {
+                        Program.Telemetry.TagWriteErrors.Add(1);
+                        // Log full exception server-side, return only a generic
+                        // status to the OPC UA client to avoid leaking internal
+                        // exception text or stack traces over the wire.
+                        Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
+                        return new ServiceResult(StatusCodes.BadDataUnavailable);
                     }
                 }
             }
@@ -1476,83 +1546,165 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        // Per-asset reconnect state. We back off exponentially on consecutive
+        // failures (1 s -> 2 -> 4 -> 8 -> … -> capped at _reconnectMaxBackoffMs)
+        // and skip the asset's poll cycles until the next attempt is due.
         private void ReadAssetTags(object assetNameObject)
         {
-            bool assetDeleted = false;
-            uint ticks = 0;
-
+            string assetId = (string)assetNameObject;
             CancellationToken shutdownToken = _shutdownCts.Token;
 
-            while (!shutdownToken.IsCancellationRequested && !assetDeleted)
+            // Stopwatch is monotonic and won't drift / overflow the way the
+            // previous "uint ticks" did (~49 days). All polling decisions are
+            // made against elapsed milliseconds since the loop started.
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            long lastTickMs = -1;
+
+            while (!shutdownToken.IsCancellationRequested)
             {
-                // the smallest polling frequency for an asset is 1 second to avoid unnecessary asset interface load from too frequent polling.
-                // WaitOne(...) on the cancellation handle lets the polling task exit promptly when the host is shutting down
-                // instead of waiting up to a full second for the next iteration.
+                // 1 second is the minimum supported polling interval.
+                // WaitOne(...) on the cancellation handle lets the polling task
+                // exit promptly when the host is shutting down instead of
+                // waiting up to a full second for the next iteration.
                 if (shutdownToken.WaitHandle.WaitOne(1000))
                 {
                     break;
                 }
 
-                string assetId = (string)assetNameObject;
-                if (string.IsNullOrEmpty(assetId) || !_tags.ContainsKey(assetId) || !_assets.ContainsKey(assetId))
+                if (string.IsNullOrEmpty(assetId)
+                    || !_tags.TryGetValue(assetId, out List<AssetTag> assetTags)
+                    || !_assets.TryGetValue(assetId, out IAsset asset))
                 {
-                    assetDeleted = true;
+                    // asset was deleted while we were polling — exit gracefully
+                    return;
+                }
+
+                long nowMs = stopwatch.ElapsedMilliseconds;
+                if (nowMs == lastTickMs)
+                {
                     continue;
                 }
 
+                lastTickMs = nowMs;
+
                 // Snapshot the inner list so that a concurrent AddTag()/DeleteAsset()
                 // cannot mutate the collection mid-enumeration.
-                foreach (AssetTag tag in _tags[assetId].ToArray())
+                foreach (AssetTag tag in assetTags.ToArray())
                 {
                     try
                     {
                         int effectivePollingIntervalMs = tag.PollingInterval <= 0 ? 1000 : tag.PollingInterval;
-                        int divisorMs = Math.Max(1000, (effectivePollingIntervalMs / 1000) * 1000);
-                        if (ticks * 1000 % divisorMs == 0)
+                        if (nowMs % effectivePollingIntervalMs >= 1000)
                         {
-                            // read the tag once per poll cycle and reuse the value
-                            // for both variable and property updates to halve asset I/O.
-                            object value = _assets[assetId].Read(tag);
-                            bool connected = _assets[assetId].IsConnected;
-                            UpdateUAServerVariable(tag, value, connected);
-                            UpdateUAServerProperty(tag, value, connected);
+                            // not on a poll boundary for this tag this second
+                            continue;
                         }
+
+                        if (!IsReconnectAttemptDue(assetId))
+                        {
+                            // we are inside a backoff window — surface BadDataUnavailable but don't hammer the asset
+                            UpdateUAServerVariable(tag, 0, false);
+                            UpdateUAServerProperty(tag, 0, false);
+                            continue;
+                        }
+
+                        // read the tag once per poll cycle and reuse the value
+                        // for both variable and property updates to halve asset I/O.
+                        Program.Telemetry.TagReads.Add(1);
+                        object value = asset.Read(tag);
+                        bool connected = asset.IsConnected;
+                        UpdateUAServerVariable(tag, value, connected);
+                        UpdateUAServerProperty(tag, value, connected);
+
+                        // success — clear reconnect backoff
+                        ResetReconnectState(assetId);
                     }
                     catch (Exception ex)
                     {
-                        // set this tag to zero, update its status and log an error
+                        Program.Telemetry.TagReadErrors.Add(1);
                         UpdateUAServerVariable(tag, 0, false);
                         UpdateUAServerProperty(tag, 0, false);
                         Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", tag.Name, assetId);
 
-                        // try reconnecting
-                        try
-                        {
-                            Log.Logger.Information("Trying to reconnect to asset {AssetId}", assetId);
-                            string[] remoteEndpoint = _assets[assetId].GetRemoteEndpoint().Split(':');
-                            if ((remoteEndpoint.Length > 0) && !string.IsNullOrEmpty(remoteEndpoint[0]))
-                            {
-                                _assets[assetId].Disconnect();
-
-                                if ((remoteEndpoint.Length > 1) && !string.IsNullOrEmpty(remoteEndpoint[1]))
-                                {
-                                    _assets[assetId].Connect(remoteEndpoint[0], int.Parse(remoteEndpoint[1]));
-                                }
-                                else
-                                {
-                                    _assets[assetId].Connect(remoteEndpoint[0], 0);
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            // do nothing
-                        }
+                        TryReconnect(assetId, asset);
                     }
                 }
-
-                ticks++;
             }
+        }
+
+        private bool IsReconnectAttemptDue(string assetId)
+        {
+            if (!_reconnectStates.TryGetValue(assetId, out ReconnectState state))
+            {
+                return true;
+            }
+
+            return Stopwatch.GetTimestamp() >= state.NextAttemptTimestamp;
+        }
+
+        private void ResetReconnectState(string assetId)
+        {
+            _reconnectStates.TryRemove(assetId, out _);
+        }
+
+        private void TryReconnect(string assetId, IAsset asset)
+        {
+            ReconnectState state = _reconnectStates.AddOrUpdate(
+                assetId,
+                _ => new ReconnectState { CurrentBackoffMs = _reconnectInitialBackoffMs, ConsecutiveFailures = 0 },
+                (_, existing) => existing);
+
+            try
+            {
+                Program.Telemetry.AssetReconnects.Add(1);
+                Log.Logger.Information("Trying to reconnect to asset {AssetId} (attempt {Attempt})", assetId, state.ConsecutiveFailures + 1);
+
+                string remoteEndpoint = asset.GetRemoteEndpoint();
+                string[] endpointParts = remoteEndpoint?.Split(':');
+                if (endpointParts == null || endpointParts.Length == 0 || string.IsNullOrEmpty(endpointParts[0]))
+                {
+                    Log.Logger.Warning("Asset {AssetId} returned an empty remote endpoint; skipping reconnect.", assetId);
+                    ScheduleNextReconnect(state);
+                    return;
+                }
+
+                asset.Disconnect();
+
+                int port = 0;
+                if (endpointParts.Length > 1
+                    && !string.IsNullOrEmpty(endpointParts[1])
+                    && !int.TryParse(endpointParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out port))
+                {
+                    Log.Logger.Warning("Asset {AssetId} reported a non-integer port [{Port}]; defaulting to 0.", assetId, endpointParts[1]);
+                    port = 0;
+                }
+
+                asset.Connect(endpointParts[0], port);
+
+                if (asset.IsConnected)
+                {
+                    Log.Logger.Information("Reconnected to asset {AssetId}.", assetId);
+                    ResetReconnectState(assetId);
+                    return;
+                }
+
+                Program.Telemetry.AssetReconnectFailures.Add(1);
+                ScheduleNextReconnect(state);
+            }
+            catch (Exception ex)
+            {
+                Program.Telemetry.AssetReconnectFailures.Add(1);
+                Log.Logger.Warning(ex, "Reconnect attempt for asset {AssetId} failed.", assetId);
+                ScheduleNextReconnect(state);
+            }
+        }
+
+        private static void ScheduleNextReconnect(ReconnectState state)
+        {
+            state.ConsecutiveFailures++;
+            int backoffMs = Math.Min(_reconnectMaxBackoffMs, state.CurrentBackoffMs);
+            state.NextAttemptTimestamp = Stopwatch.GetTimestamp() + (long)(backoffMs * (Stopwatch.Frequency / 1000.0));
+            state.CurrentBackoffMs = Math.Min(_reconnectMaxBackoffMs, state.CurrentBackoffMs * 2);
         }
 
         private void UpdateUAServerVariable(AssetTag tag, object value, bool connected)
