@@ -54,6 +54,42 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+      # hostPath volumes are NOT subject to the pod-level fsGroup, so when a
+      # node-side directory is wiped (or first created), kubelet recreates it
+      # as root:root mode 0755 and the non-root `app` user (UID 1000) inside
+      # the main container cannot write into /app/pki, /app/logs, etc.
+      # Symptom: "UnauthorizedAccessException: Access to the path
+      # '/app/pki/own' is denied." during certificate generation at startup.
+      # This init container runs as root (with only the capabilities chown
+      # actually needs) to fix ownership before the main container starts.
+      - name: fix-hostpath-perms
+        image: busybox:1.36
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "chown -R 1000:1000 /app/settings /app/pki /app/logs /app/nodesets"]
+        securityContext:
+          # Override the pod-level runAsNonRoot/runAsUser=1000 so we can chown
+          # files that are currently owned by root.
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - CHOWN
+            - FOWNER
+            - DAC_OVERRIDE
+        volumeMounts:
+        - name: "settings"
+          mountPath: "/app/settings"
+        - name: "pki"
+          mountPath: "/app/pki"
+        - name: "logs"
+          mountPath: "/app/logs"
+        - name: "nodesets"
+          mountPath: "/app/nodesets"
       - name: ua-edgetranslator-drivers
         image: ghcr.io/opcfoundation/ua-edgetranslator-drivers:main
         imagePullPolicy: Always
