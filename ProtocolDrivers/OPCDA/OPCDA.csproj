@@ -15,6 +15,13 @@
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
       <SetTargetFramework>TargetFramework=net10.0-windows</SetTargetFramework>
+      <!-- OPCDA wraps a 32-bit DCOM/COM OPC Classic stack and is therefore
+           PlatformTarget=x86. The C# compiler emits CS8012 if it sees an
+           x64-marked reference from an x86-marked project, so force the inner
+           UAServer build to also produce an x86 assembly. UAServer's csproj
+           already declares <Platforms>x64;x86</Platforms> and conditionally
+           sets PlatformTarget=x86 when Platform=x86. -->
+      <SetPlatform>Platform=x86</SetPlatform>
       <GlobalPropertiesToRemove>RuntimeIdentifier</GlobalPropertiesToRemove>
     </ProjectReference>
   </ItemGroup>

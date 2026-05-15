@@ -4,12 +4,23 @@ VisualStudioVersion = 18.2.11415.280
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{28C9D48D-859A-4F4C-AD74-BF380A944330}"
 	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.gitattributes = .gitattributes
 		.gitignore = .gitignore
+		.github\workflows\ci.yml = .github\workflows\ci.yml
+		.github\CODEOWNERS = .github\CODEOWNERS
+		.github\workflows\codeql.yml = .github\workflows\codeql.yml
+		CONTRIBUTING.md = CONTRIBUTING.md
+		.github\dependabot.yml = .github\dependabot.yml
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
 		.github\workflows\docker-publish.yml = .github\workflows\docker-publish.yml
 		ProtocolDrivers\Dockerfile.driverpack = ProtocolDrivers\Dockerfile.driverpack
 		.github\workflows\driver-pack.yml = .github\workflows\driver-pack.yml
+		global.json = global.json
 		LICENSE = LICENSE
 		README.md = README.md
+		SECURITY.md = SECURITY.md
 		UA-EdgeTranslator.yaml = UA-EdgeTranslator.yaml
 	EndProjectSection
 EndProject
