@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.0
+        uses: actions/checkout@v5
 
       # GHCR (and the OCI spec in general) requires lowercase image names. The
       # owner/repo path "OPCFoundation/UA-EdgeTranslator" contains uppercase
