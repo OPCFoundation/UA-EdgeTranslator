@@ -198,11 +198,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # GHCR (and the OCI spec in general) requires lowercase image names.
+      # ${{ github.repository }} preserves the original casing, so for
+      # OPCFoundation/UA-EdgeTranslator we must lowercase before passing the
+      # name to docker/metadata-action and any tool that consumes the image
+      # reference directly.
+      - name: Compute lowercase image name
+        id: imagename
+        run: |
+          set -euo pipefail
+          name="${{ env.IMAGE_NAME }}"
+          echo "value=${name,,}" >> "$GITHUB_OUTPUT"
+
       - name: Extract Docker metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag

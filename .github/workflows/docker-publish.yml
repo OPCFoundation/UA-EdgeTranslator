@@ -36,6 +36,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4.2.0
 
+      # GHCR (and the OCI spec in general) requires lowercase image names. The
+      # owner/repo path "OPCFoundation/UA-EdgeTranslator" contains uppercase
+      # characters, so any tool that consumes the image reference directly
+      # (syft / sbom-action / cosign) needs the lowercased form to avoid
+      # "could not parse reference" errors. docker/metadata-action lowercases
+      # internally, but downstream steps that reference the image by name must
+      # do the same.
+      - name: Compute lowercase image name
+        id: imagename
+        run: |
+          set -euo pipefail
+          name="${{ env.IMAGE_NAME }}"
+          echo "value=${name,,}" >> "$GITHUB_OUTPUT"
+
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
@@ -52,7 +66,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.5.1
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.2.0
@@ -101,7 +115,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          image: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}@${{ steps.build.outputs.digest }}
           format: cyclonedx-json
           output-file: sbom.cdx.json
           upload-artifact: true
