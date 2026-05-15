@@ -334,7 +334,9 @@
                         contents = File.ReadAllText(fallbackPath);
                     }
 
-                    _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents).GetAwaiter().GetResult();
+                    // OPC UA FileType Close callback is synchronous by contract; bridge through AsyncBridge
+                    // so we never block on a captured SynchronizationContext during onboarding.
+                    AsyncBridge.RunSync(() => _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents));
 
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 

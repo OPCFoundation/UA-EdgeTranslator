@@ -2,6 +2,7 @@
 {
     using Newtonsoft.Json;
     using Opc.Ua;
+    using Opc.Ua.Edge.Translator;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
@@ -21,9 +22,13 @@
             // connect to an OPC UA Global Discovery Server
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")))
             {
-                var client = DiscoveryClient.CreateAsync(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")), Program.Telemetry).GetAwaiter().GetResult();
+                // IProtocolDriver.Discover is synchronous by contract, but DiscoveryClient is async-only.
+                // Bridge through AsyncBridge so any captured SynchronizationContext on the calling thread
+                // can never deadlock the discovery sequence.
+                var client = AsyncBridge.RunSync(() =>
+                    DiscoveryClient.CreateAsync(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")), Program.Telemetry));
 
-                var servers = client.FindServersAsync(null).GetAwaiter().GetResult();
+                var servers = AsyncBridge.RunSync(() => client.FindServersAsync(null));
                 foreach (var server in servers)
                 {
                     Log.Logger.Information($"Server: {server.ApplicationName}");

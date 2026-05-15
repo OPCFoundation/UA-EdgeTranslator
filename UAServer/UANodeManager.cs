@@ -204,16 +204,18 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            // Async methods internally acquire Lock where needed
-            // Holding Lock here while blocking would deadlock with AddNamespace's lock(Lock) on the continuation thread
-            AddNodesetAsync(_cWotCon).GetAwaiter().GetResult();
+            // Async methods internally acquire Lock where needed.
+            // Holding Lock here while blocking would deadlock with AddNamespace's lock(Lock) on the continuation thread.
+            // AsyncBridge.RunSync offloads the await onto the thread pool with no captured SynchronizationContext,
+            // which is the only safe way to bridge async work into this synchronous SDK override.
+            AsyncBridge.RunSync(() => AddNodesetAsync(_cWotCon));
 
             lock (Lock)
             {
                 AddNodesForAssetManagement();
             }
 
-            LoadLocalWoTFilesAsync().GetAwaiter().GetResult();
+            AsyncBridge.RunSync(LoadLocalWoTFilesAsync);
 
             lock (Lock)
             {
@@ -660,7 +662,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
 
-                OnboardAssetFromWoTFileAsync(assetNode, contents).GetAwaiter().GetResult();
+                AsyncBridge.RunSync(() => OnboardAssetFromWoTFileAsync(assetNode, contents));
 
                 System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
 
@@ -723,7 +725,7 @@ namespace Opc.Ua.Edge.Translator
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token);
                 cts.CancelAfter(probeTimeoutMs);
 
-                tcp.ConnectAsync(host, port, cts.Token).AsTask().GetAwaiter().GetResult();
+                AsyncBridge.RunSync(() => tcp.ConnectAsync(host, port, cts.Token).AsTask());
 
                 sw.Stop();
                 Log.Logger.Information("TCP probe to {Host}:{Port} successful in {Elapsed} ms.", host, port, sw.ElapsedMilliseconds);
