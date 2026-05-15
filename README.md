@@ -165,17 +165,17 @@ The following will get you to a state you can modify with your own driver and Wo
 
 2) Copy the WoT File "SimpleHTTPClient.td.jsonld" in the "settings" folder under "UAServer"
 
-3) Load the UAEdgeTranslator project and run it.
+3) Load the UA-EdgeTranslator project and run it.
 
-4) Connect to the opc server of the UAEdgeTranslator using your favorite OPC UA Client (i.e. UAExpert). The default credentials are "myUsername" and "myPassword". 
+4) Connect to the opc server of the UA-EdgeTranslator using your favorite OPC UA Client (i.e. UAExpert).
 
-You can change these credentials in the launchSettings.json file under "Properties" of the UAEdgeTranslator project:
+You must specify the credentials to connect to UA-EdgeTranslator in the launchSettings.json file under "Properties" of the UA-EdgeTranslator project:
 ```
 "OPCUA_USERNAME": "REPLACE_ME",
 "OPCUA_PASSWORD": "REPLACE_ME",
 ```
 
-To test your setup before provisioning the UAEdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
+To test your setup before provisioning the UA-EdgeTranslator with the proper certificates you can also set this in the launchSettings.json:
 ```
 "IGNORE_PROVISIONING_MODE": "1"
 ```
@@ -188,7 +188,7 @@ In this branch you will find a variable "IPAddress" that was defined in the "Sim
 
 For more details on the Web of Things file format and description see https://www.w3.org/TR/wot-thing-description-2.0/
 
-To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UaEdgeTranslator, making sure that only the protocol driver DLL is published:
+To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UA-EdgeTranslator, making sure that only the protocol driver DLL is published:
 ```
 <ItemGroup>
   <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">

@@ -177,7 +177,17 @@ jobs:
           COSIGN_YES: "true"
         run: |
           set -euo pipefail
+          # --new-bundle-format is REQUIRED. The Sigstore .NET client used by
+          # UA Edge Translator (DriverLoadContext.TryVerifyManifestBundle) only
+          # understands the new Sigstore protobuf bundle (with a top-level
+          # `verificationMaterial` field). Without this flag cosign 2.x writes
+          # the legacy "cosign-bundle" envelope (base64Signature/cert/rekorBundle)
+          # and the runtime fails with:
+          #   "Bundle has no verification material."
+          # which surfaces as "Protocol driver allow-list … failed signature
+          # verification; refusing to load ANY protocol driver."
           cosign sign-blob \
+            --new-bundle-format \
             --bundle drivers/drivers.allowlist.sigstore.json \
             drivers/drivers.allowlist.json
           echo "Sigstore bundle:"
