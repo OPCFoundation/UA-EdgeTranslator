@@ -48,41 +48,14 @@
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
-            // Always delegate the host assembly to the default load context so the
-            // plugin sees the SAME IProtocolDriver type the host registered.
+            // prevent loading a second copy of the host assembly into the plugin context
             if (string.Equals(assemblyName.Name, _hostAssemblyName, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
 
-            // If the host has already loaded this assembly (e.g. Opc.Ua.Types,
-            // Opc.Ua.Core, Newtonsoft.Json, Serilog, ...), reuse it. Drivers ship
-            // with <ExcludeAssets>runtime</ExcludeAssets> on the host project
-            // reference so their *.deps.json deliberately does NOT list these
-            // transitive OPC UA assemblies; without this fallback the
-            // AssemblyDependencyResolver returns null and the runtime fails with
-            // "Could not load file or assembly 'Opc.Ua.Types, Version=1.5.378.0...'"
-            // when GetTypes() walks the driver's metadata.
-            Assembly shared = TryLoadFromDefaultContext(assemblyName);
-            if (shared != null)
-            {
-                return shared;
-            }
-
             string path = _resolver.ResolveAssemblyToPath(assemblyName);
             return path != null ? LoadFromAssemblyPath(path) : null;
-        }
-
-        private static Assembly TryLoadFromDefaultContext(AssemblyName assemblyName)
-        {
-            try
-            {
-                return Default.LoadFromAssemblyName(assemblyName);
-            }
-            catch
-            {
-                return null;
-            }
         }
 
 
@@ -122,28 +95,7 @@
                         var alc = new DriverLoadContext(dll);
                         var asm = alc.LoadFromAssemblyPath(dll);
 
-                        Type[] allTypes;
-                        try
-                        {
-                            allTypes = asm.GetTypes();
-                        }
-                        catch (ReflectionTypeLoadException rtle)
-                        {
-                            // Log every loader error so missing transitive
-                            // dependencies are visible, then continue with the
-                            // types that DID load — the IProtocolDriver entry
-                            // type may still be among them.
-                            foreach (var le in rtle.LoaderExceptions ?? Array.Empty<Exception>())
-                            {
-                                if (le != null)
-                                {
-                                    Log.Logger.Warning(le, "Type load warning while inspecting protocol driver assembly {Dll}", dll);
-                                }
-                            }
-                            allTypes = (rtle.Types ?? Array.Empty<Type>()).Where(t => t != null).ToArray();
-                        }
-
-                        var driverTypes = allTypes.Where(t => !t.IsAbstract && typeof(IProtocolDriver).IsAssignableFrom(t));
+                        var driverTypes = asm.GetTypes().Where(t => !t.IsAbstract && typeof(IProtocolDriver).IsAssignableFrom(t));
                         foreach (var dt in driverTypes)
                         {
                             // Use a clear error path when a driver type lacks a public parameterless
