@@ -31,10 +31,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION
 ARG INFORMATIONAL_VERSION=local-dev
 WORKDIR /src
-COPY ["UAEdgeTranslator.csproj", "."]
-RUN dotnet restore "./UAEdgeTranslator.csproj" /p:PlatformTarget=AnyCPU
+
+# Copy the repo-root MSBuild infrastructure that NuGet restore needs under
+# central package management: Directory.Packages.props pins every version,
+# Directory.Build.props enforces shared policy (TreatWarningsAsErrors etc.),
+# and global.json pins the .NET SDK channel. Without these the restore fails
+# with NU1015 ("PackageReference items do not have a version specified").
+COPY ["Directory.Packages.props", "Directory.Build.props", "global.json", "./"]
+COPY ["UAServer/UAEdgeTranslator.csproj", "UAServer/"]
+RUN dotnet restore "UAServer/UAEdgeTranslator.csproj" /p:PlatformTarget=AnyCPU
 COPY . .
-WORKDIR "/src/."
+WORKDIR "/src/UAServer"
 ARG TARGET_FRAMEWORK=net10.0
 RUN dotnet build "UAEdgeTranslator.csproj" -c $BUILD_CONFIGURATION -o /app/build -f $TARGET_FRAMEWORK /p:PlatformTarget=AnyCPU /p:InformationalVersion=$INFORMATIONAL_VERSION
 

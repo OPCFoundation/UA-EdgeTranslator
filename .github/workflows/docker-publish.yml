@@ -65,7 +65,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: ./UAServer
+          context: .
+          file: UAServer/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}

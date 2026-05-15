@@ -9,7 +9,12 @@
     <StartupObject></StartupObject>
     <PackageId>UAEdgeTranslator</PackageId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <DockerfileContext>.</DockerfileContext>
+    <!-- Build context is the repo root because the Dockerfile copies the
+         repo-root MSBuild infrastructure (Directory.Packages.props,
+         Directory.Build.props, global.json) that NuGet restore needs under
+         central package management. -->
+    <DockerfileContext>..</DockerfileContext>
+    <DockerfileFile>Dockerfile</DockerfileFile>
     <!-- F5 / "Docker" launch profile run arguments. We deliberately do NOT
          pass the privileged flag here. Drivers that need raw hardware access
          (LoRaWAN serial, Matter BLE, Modbus RTU) should add only the
