@@ -49,5 +49,11 @@
 	<PackageVersion Include="TitaniumAS.Opc.Client.NetCore" Version="1.0.2.1" />
 	<PackageVersion Include="libplctag" Version="1.5.2" />
 	<PackageVersion Include="Sharp7" Version="1.1.84" />
-  </ItemGroup>
+
+	<!-- Test infrastructure -->
+	<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+	<PackageVersion Include="xunit" Version="2.9.3" />
+	<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+	<PackageVersion Include="coverlet.collector" Version="10.0.0" />
+	</ItemGroup>
 </Project>

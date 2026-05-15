@@ -41,3 +41,14 @@ jobs:
 
       - name: Build
         run: dotnet build UAEdgeTranslator.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: '**/TestResults/*.trx'
+          if-no-files-found: warn
