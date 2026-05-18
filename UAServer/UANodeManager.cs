@@ -192,6 +192,46 @@ namespace Opc.Ua.Edge.Translator
             return true;
         }
 
+        /// <summary>
+        /// Returns a string that is guaranteed to satisfy
+        /// <see cref="IsSafeAssetName"/>: every disallowed character is
+        /// replaced with '_', a leading dot is prefixed with '_', empty /
+        /// whitespace input falls back to "Asset", and over-long names are
+        /// truncated. Used for the local-file load path where the asset name
+        /// is derived from a file on the trusted server disk; the OPC UA
+        /// upload path still rejects unsafe names outright.
+        /// </summary>
+        private static string SanitizeAssetName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return "Asset";
+            }
+
+            char[] chars = raw.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                char c = chars[i];
+                if (!(char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-'))
+                {
+                    chars[i] = '_';
+                }
+            }
+
+            string sanitized = new string(chars);
+            if (sanitized[0] == '.')
+            {
+                sanitized = "_" + sanitized;
+            }
+
+            if (sanitized.Length > _cMaxAssetNameLength)
+            {
+                sanitized = sanitized.Substring(0, _cMaxAssetNameLength);
+            }
+
+            return sanitized;
+        }
+
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
         {
             IList<IReference> objectsFolderReferences = null;
@@ -234,13 +274,17 @@ namespace Opc.Ua.Edge.Translator
                     string contents = System.IO.File.ReadAllText(file);
                     string fileName = Path.GetFileNameWithoutExtension(file);
 
-                    if (!IsSafeAssetName(fileName))
+                    // Files in the local settings directory live on the trusted
+                    // server disk, so sanitize the asset name instead of
+                    // skipping the file. The OPC UA upload path still rejects
+                    // unsafe names outright via IsSafeAssetName.
+                    string assetName = SanitizeAssetName(fileName);
+                    if (!string.Equals(assetName, fileName, StringComparison.Ordinal))
                     {
-                        Log.Logger.Warning("Skipping WoT file with unsafe name: {File}", file);
-                        continue;
+                        Log.Logger.Warning("Sanitized WoT file name [{Original}] -> [{Sanitized}] for {File}", fileName, assetName, file);
                     }
 
-                    if (!CreateAssetNode(fileName, out NodeState assetNode))
+                    if (!CreateAssetNode(assetName, out NodeState assetNode))
                     {
                         throw new Exception("Asset already exists");
                     }

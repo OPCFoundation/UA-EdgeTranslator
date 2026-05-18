@@ -2,7 +2,7 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1"
   ],
-  "id": "urn:S7-1500/ET200MP station_2.PLC_2",
+  "id": "urn:S7-1500_ET200MP_station_2.PLC_2",
   "securityDefinitions": {
     "nosec_sc": {
       "scheme": "nosec"
@@ -14,8 +14,8 @@
   "@type": [
     "Thing"
   ],
-  "name": "S7-1500/ET200MP station_2.PLC_2",
-  "base": "s7://192.168.178.2:0:1",
+  "name": "S7-1500_ET200MP_station_2.PLC_2",
+  "base": "s7://192.168.178.2:0",
   "title": "PLC_2",
   "properties": {
     "AllTypesDB_Pulse_Bool": {

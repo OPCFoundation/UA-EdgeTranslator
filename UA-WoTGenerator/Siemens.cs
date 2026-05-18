@@ -167,15 +167,35 @@ namespace Opc.Ua.Edge.Translator.Tools
                     (int rack, int slot) = TryGetRackAndSlot(cpuItem);
                     Console.WriteLine($"  PLC '{device.Name}.{cpuItem.Name}' @ {ipAddress} (rack {rack}, slot {slot})");
 
+                    // The UA Edge Translator's IsSafeAssetName accepts only
+                    // letters, digits, '.', '_' and '-' (and rejects a leading
+                    // dot). TIA device names commonly contain '/' (e.g.
+                    // "S7-1500/ET200MP station_1") and spaces, both of which
+                    // would cause the generated TD to be silently skipped by
+                    // UANodeManager.LoadLocalWoTFilesAsync. Sanitize once and
+                    // reuse for Id, Name and the output file name.
+                    string assetName = SanitizeAssetName(device.Name + "." + cpuItem.Name);
+
+                    // S7Comm base URL: only emit the rack component. TIA's
+                    // CPU PositionNumber (typically 1 for an S7-1500) is the
+                    // *engineering* rack slot and is NOT the same as Sharp7's
+                    // "slot" connection parameter (which feeds the TSAP and
+                    // is 0 for S7-1200/1500). SiemensProtocolDriver.ParseEndpoint
+                    // therefore treats "s7://ip:n" as (rack 0, slot n), which
+                    // matches what Sharp7 expects when n = 0. Baking a third
+                    // ":slot" component would mis-route the connection, so the
+                    // generator only emits "s7://ip:{rack}".
+                    string baseUrl = $"s7://{ipAddress}:{rack}";
+
                     ThingDescription td = new ThingDescription()
                     {
                         Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
-                        Id = "urn:" + device.Name + "." + cpuItem.Name,
+                        Id = "urn:" + assetName,
                         SecurityDefinitions = new SecurityDefinitions { NosecSc = new NosecSc { Scheme = "nosec" } },
                         Security = new string[1] { "nosec_sc" },
                         Type = new string[1] { "Thing" },
-                        Name = device.Name + "." + cpuItem.Name,
-                        Base = $"s7://{ipAddress}:{rack}:{slot}",
+                        Name = assetName,
+                        Base = baseUrl,
                         Title = plcSoftware.Name,
                         Properties = new Dictionary<string, Property>(),
                         Actions = new Dictionary<string, TDAction>()
@@ -199,7 +219,7 @@ namespace Opc.Ua.Edge.Translator.Tools
 
                     string outputPath = Path.Combine(
                         Directory.GetCurrentDirectory(),
-                        Path.GetFileNameWithoutExtension(filename) + "_" + plcSoftware.Name + ".td.jsonld");
+                        SanitizeAssetName(Path.GetFileNameWithoutExtension(filename) + "_" + plcSoftware.Name) + ".td.jsonld");
 
                     File.WriteAllText(outputPath, JsonConvert.SerializeObject(td, Formatting.Indented));
                     Console.WriteLine($"  Wrote {td.Properties.Count} properties to {outputPath}");
@@ -286,6 +306,39 @@ namespace Opc.Ua.Edge.Translator.Tools
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Replaces every character that the UA Edge Translator's
+        /// IsSafeAssetName check would reject (anything outside letters,
+        /// digits, '.', '_' and '-') with '_', and prefixes a leading dot
+        /// with '_' so the result is also a valid Unix file name. Empty
+        /// input falls back to "Asset".
+        /// </summary>
+        private static string SanitizeAssetName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return "Asset";
+            }
+
+            char[] chars = raw.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                char c = chars[i];
+                if (!(char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-'))
+                {
+                    chars[i] = '_';
+                }
+            }
+
+            string sanitized = new string(chars);
+            if (sanitized[0] == '.')
+            {
+                sanitized = "_" + sanitized;
+            }
+
+            return sanitized;
         }
 
         private static IEnumerable<DeviceItem> EnumerateDeviceItems(Device device)
