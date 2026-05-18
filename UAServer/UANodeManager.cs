@@ -1662,8 +1662,20 @@ namespace Opc.Ua.Edge.Translator
                         UpdateUAServerVariable(tag, value, connected);
                         UpdateUAServerProperty(tag, value, connected);
 
-                        // success — clear reconnect backoff
-                        ResetReconnectState(assetId);
+                        if (connected)
+                        {
+                            // success — clear reconnect backoff
+                            ResetReconnectState(assetId);
+                        }
+                        else
+                        {
+                            // Drivers that report failure by returning null/false
+                            // (rather than throwing) would otherwise leave the
+                            // asset stuck "disconnected forever". Drive the same
+                            // backoff/reconnect cycle the catch block uses.
+                            Program.Telemetry.TagReadErrors.Add(1);
+                            TryReconnect(assetId, asset);
+                        }
                     }
                     catch (Exception ex)
                     {

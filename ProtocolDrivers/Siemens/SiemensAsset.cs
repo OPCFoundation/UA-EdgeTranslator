@@ -17,16 +17,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public S7Client S7 = null;
 
         private string _endpoint = string.Empty;
+        private int _rack = 0;
+        private int _slot = 1;
 
         public bool IsConnected { get; private set; } = false;
 
         /// <summary>
         /// Connects to the PLC. Sharp7 always uses ISO‑on‑TCP port 102, so the
-        /// "port" parameter from the URL is interpreted as the CPU slot.
+        /// "port" parameter from the URL is interpreted as the CPU slot. Rack
+        /// defaults to whatever was last seen (0 on the very first call).
         /// </summary>
         public void Connect(string ipAddress, int slot)
         {
-            Connect(ipAddress, rack: 0, slot: slot);
+            Connect(ipAddress, rack: _rack, slot: slot);
         }
 
         public void Connect(string ipAddress, int rack, int slot)
@@ -34,6 +37,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             try
             {
                 _endpoint = ipAddress;
+                _rack = rack;
+                _slot = slot;
 
                 S7 = new S7Client();
 
@@ -52,7 +57,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             catch (Exception ex)
             {
-                Log.Logger.Error(ex.Message, ex);
+                Log.Logger.Error(ex, "Siemens S7 connect failed for {ip} (rack {rack}, slot {slot})", ipAddress, rack, slot);
             }
         }
 
@@ -67,9 +72,21 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             IsConnected = false;
         }
 
+        /// <summary>
+        /// Returned in "ip:slot" form so the generic reconnect path in
+        /// UANodeManager (which splits "host:port" and feeds the second token
+        /// into IAsset.Connect(ip, port)) preserves the CPU slot. Sharp7 fixes
+        /// the TCP port to 102 internally, so the second token is reused as
+        /// the slot — matching the single-arg Connect overload above.
+        /// </summary>
         public string GetRemoteEndpoint()
         {
-            return _endpoint;
+            if (string.IsNullOrEmpty(_endpoint))
+            {
+                return _endpoint;
+            }
+
+            return string.Concat(_endpoint, ":", _slot.ToString(CultureInfo.InvariantCulture));
         }
 
         public object Read(AssetTag tag)
