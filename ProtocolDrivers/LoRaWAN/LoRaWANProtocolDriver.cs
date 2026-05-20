@@ -85,7 +85,7 @@
                     Type = lorawanForm.Type.ToString(),
                     IsBigEndian = lorawanForm.MostSignificantByte || lorawanForm.MostSignificantWord,
                     SwapPerWord = lorawanForm.MostSignificantWord,
-                    Multiplier = lorawanForm.Multiplier ?? 1.0f,
+                    Multiplier = lorawanForm.Multiplier == null ? 1.0f : (float)lorawanForm.Multiplier,
                     BitMask = lorawanForm.BitMask,
                     MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                     MappedUAFieldPath = mappedUAFieldPath

@@ -37,7 +37,7 @@
     </RejectedCertificateStore>
     <AutoAcceptUntrustedCertificates>false</AutoAcceptUntrustedCertificates>
     <RejectSHA1SignedCertificates>true</RejectSHA1SignedCertificates>
-    <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
+    <MinimumCertificateKeySize>2048</MinimumCertificateKeySize>
   </SecurityConfiguration>
 
   <TransportConfigurations/>
@@ -55,10 +55,28 @@
 
   <ServerConfiguration>
     <BaseAddresses>
-      <ua:String>opc.tcp://localhost:4840/UA/UAEdgeTranslator</ua:String>
+      <!-- Binding to 0.0.0.0 ensures the server is reachable from outside
+           the container/host. The hostname advertised in EndpointDescriptions
+           is taken from ApplicationUri / DNS, not from this string. Override
+           this entry if the deployment needs to bind to a single NIC. -->
+      <ua:String>opc.tcp://0.0.0.0:4840/UA/UAEdgeTranslator</ua:String>
     </BaseAddresses>
 
     <SecurityPolicies>
+      <!-- Modern policies (preferred). Aes*_Sha256_RsaPss/RsaOaep are the
+           OPC Foundation-recommended Profiles for new deployments. -->
+      <ServerSecurityPolicy>
+        <SecurityMode>SignAndEncrypt_3</SecurityMode>
+        <SecurityPolicyUri>http://opcfoundation.org/UA/SecurityPolicy#Aes256_Sha256_RsaPss</SecurityPolicyUri>
+      </ServerSecurityPolicy>
+      <ServerSecurityPolicy>
+        <SecurityMode>SignAndEncrypt_3</SecurityMode>
+        <SecurityPolicyUri>http://opcfoundation.org/UA/SecurityPolicy#Aes128_Sha256_RsaOaep</SecurityPolicyUri>
+      </ServerSecurityPolicy>
+      <!-- Transition policy: kept for backwards-compatibility with older
+           clients only. Basic256Sha256 has been classified as deprecated by
+           the OPC Foundation in 2022; remove this entry once all clients
+           support the Aes* policies above. -->
       <ServerSecurityPolicy>
         <SecurityMode>SignAndEncrypt_3</SecurityMode>
         <SecurityPolicyUri>http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256</SecurityPolicyUri>
@@ -133,7 +151,9 @@
       <ua:String>PFX</ua:String>
       <ua:String>PEM</ua:String>
     </SupportedPrivateKeyFormats>
-    <MaxTrustListSize>0</MaxTrustListSize>
+    <!-- 5 MiB cap on TrustList writes pushed by the GDS so a hostile or
+         misconfigured GDS cannot exhaust disk via an unbounded trust list. -->
+    <MaxTrustListSize>5242880</MaxTrustListSize>
     <MultiCastDnsEnabled>false</MultiCastDnsEnabled>
 
     <!--

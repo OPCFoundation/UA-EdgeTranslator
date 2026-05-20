@@ -4,15 +4,13 @@ namespace Opc.Ua.Edge.Translator.Models
     using Newtonsoft.Json;
     using System.Runtime.Serialization;
 
-#nullable enable
-
     public class ModbusForm
     {
         [JsonProperty("href")]
-        public string? Href { get; set; }
+        public string Href { get; set; }
 
         [JsonProperty("op")]
-        public Op[]? Op { get; set; }
+        public Op[] Op { get; set; }
 
         [JsonProperty("modv:type")]
         public TypeString ModbusType { get; set; }
@@ -27,10 +25,10 @@ namespace Opc.Ua.Edge.Translator.Models
         public bool MostSignificantWord { get; set; } // big endian on a per word basis
 
         [JsonProperty("modv:pollingTime")]
-        public long ModbusPollingTime { get; set; }
+        public long PollingTime { get; set; }
 
         [JsonProperty("modv:multiplier")]
-        public float? ModbusMultiplier { get; set; }
+        public float? Multiplier { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

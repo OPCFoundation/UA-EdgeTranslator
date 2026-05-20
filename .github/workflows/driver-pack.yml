@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -50,13 +51,17 @@ jobs:
             csproj: ProtocolDrivers/Siemens/Siemens.csproj
           - name: http
             csproj: ProtocolDrivers/HTTPClient/HTTPClient.csproj
+          - name: avevapi
+            csproj: ProtocolDrivers/AvevaPI/PIClient.csproj
+          - name: redfish
+            csproj: ProtocolDrivers/Redfish/Redfish.csproj
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
@@ -66,39 +71,162 @@ jobs:
           dotnet publish ${{ matrix.driver.csproj }} \
             -c Release \
             -o drivers/_driverpack/${{ matrix.driver.name }} \
-            -f net10.0
+            -f net10.0 \
+            /p:PlatformTarget=AnyCPU
 
       - name: Upload staged drivers as artifact (debug aid)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
+        with:
+          name: driverpack-${{ matrix.driver.name }}
+          path: drivers/_driverpack/${{ matrix.driver.name }}
+
+  build-windows-drivers:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        driver:
+          - name: opcda
+            csproj: ProtocolDrivers/OPCDA/OPCDA.csproj
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish driver (self-contained folder with deps)
+        run: |
+          New-Item -ItemType Directory -Force -Path drivers/_driverpack/${{ matrix.driver.name }}
+          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows -r win-x86
+
+      - name: Upload staged drivers as artifact (debug aid)
+        uses: actions/upload-artifact@v7
         with:
           name: driverpack-${{ matrix.driver.name }}
           path: drivers/_driverpack/${{ matrix.driver.name }}
 
   assemble-image:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [build-and-push, build-windows-drivers]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download staged drivers artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: drivers/_driverpack
 
+      # Generate the SHA-256 allow-list manifest that the UA Edge Translator
+      # loader (DriverLoadContext.LoadProtocolDrivers) consumes from
+      # /drivers/drivers.allowlist.json. Every managed *.dll inside the driver
+      # pack is hashed: the loader hashes each *.dll on disk and refuses to
+      # load any DLL whose SHA-256 is not in this manifest. Hashes are
+      # uppercase hex (matches Convert.ToHexString output on the loader side).
+      - name: Generate driver allow-list manifest
+        run: |
+          set -euo pipefail
+          mkdir -p drivers
+          manifest=drivers/drivers.allowlist.json
+          {
+            echo '{'
+            echo '  "generated": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",'
+            echo '  "commit": "${{ github.sha }}",'
+            echo '  "ref": "${{ github.ref_name }}",'
+            echo '  "allowed": ['
+            first=1
+            while IFS= read -r -d '' dll; do
+              name=$(basename "$dll")
+              # driver name is the artifact folder under _driverpack, with the
+              # "driverpack-" prefix stripped — same flattening rule the
+              # Dockerfile applies when staging /drivers/<name>/.
+              rel=${dll#drivers/_driverpack/}
+              top=${rel%%/*}
+              driver=${top#driverpack-}
+              hash=$(sha256sum "$dll" | awk '{print toupper($1)}')
+              if [ $first -eq 1 ]; then
+                first=0
+              else
+                echo ','
+              fi
+              printf '    { "driver": "%s", "name": "%s", "sha256": "%s" }' \
+                "$driver" "$name" "$hash"
+            done < <(find drivers/_driverpack -type f -name '*.dll' -print0 | sort -z)
+            echo
+            echo '  ]'
+            echo '}'
+          } > "$manifest"
+          echo "Generated $manifest with $(grep -c '"sha256"' "$manifest") entries:"
+          cat "$manifest"
+
+      # Sign the allow-list manifest with cosign keyless (Fulcio short-lived
+      # cert + Rekor inclusion proof) and emit a Sigstore bundle. The runtime
+      # loader (DriverLoadContext.TryVerifyManifestBundle) reads this bundle
+      # next to the manifest and refuses to honour the allow-list unless the
+      # bundle verifies AND the signing identity matches the GitHub Actions
+      # workflow identity for this repository.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Sign driver allow-list manifest (cosign keyless)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          # --new-bundle-format is REQUIRED. The Sigstore .NET client used by
+          # UA Edge Translator (DriverLoadContext.TryVerifyManifestBundle) only
+          # understands the new Sigstore protobuf bundle (with a top-level
+          # `verificationMaterial` field). Without this flag cosign 2.x writes
+          # the legacy "cosign-bundle" envelope (base64Signature/cert/rekorBundle)
+          # and the runtime fails with:
+          #   "Bundle has no verification material."
+          # which surfaces as "Protocol driver allow-list … failed signature
+          # verification; refusing to load ANY protocol driver."
+          cosign sign-blob \
+            --new-bundle-format \
+            --bundle drivers/drivers.allowlist.sigstore.json \
+            drivers/drivers.allowlist.json
+          echo "Sigstore bundle:"
+          ls -l drivers/drivers.allowlist.sigstore.json
+
+      - name: Upload driver allow-list manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: drivers-allowlist
+          path: |
+            drivers/drivers.allowlist.json
+            drivers/drivers.allowlist.sigstore.json
+
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # GHCR (and the OCI spec in general) requires lowercase image names.
+      # ${{ github.repository }} preserves the original casing, so for
+      # OPCFoundation/UA-EdgeTranslator we must lowercase before passing the
+      # name to docker/metadata-action and any tool that consumes the image
+      # reference directly.
+      - name: Compute lowercase image name
+        id: imagename
+        run: |
+          set -euo pipefail
+          name="${{ env.IMAGE_NAME }}"
+          echo "value=${name,,}" >> "$GITHUB_OUTPUT"
+
       - name: Extract Docker metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -109,7 +237,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push driver pack image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ProtocolDrivers/Dockerfile.driverpack

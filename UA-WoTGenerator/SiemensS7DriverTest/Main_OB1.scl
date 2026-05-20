@@ -1,0 +1,199 @@
+// =============================================================================
+//  Main_OB1.scl  —  cyclic Main OB. Drives all "AllTypesDB" members with
+//  sine / sawtooth / square wave / random patterns, and mirrors a subset to
+//  the M and Q areas so every S7Target enum value is exercised:
+//
+//      S7Target.DataBlock        →  "AllTypesDB" members
+//      S7Target.Merker           →  %MB100 / %MW102 / %MD104 / %M120.0
+//      S7Target.IPUProcessInput  →  %QB0 / %QW2 / %QD4         (outputs / PA)
+//      S7Target.IPIProcessInput  →  %IB0 / %I0.0..7            (inputs  / PE,
+//                                                              fed by PLCSIM)
+//      S7Target.Timer / Counter  →  see optional S5 timer block at the bottom
+// =============================================================================
+
+ORGANIZATION_BLOCK "Main"
+TITLE     = "Main Program Sweep (Cycle)"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+VAR_TEMP
+   tickMs    : DInt;
+   tickRem   : DInt;
+   t_s       : Real;
+   pi2       : Real;
+   sinPhase  : Real;
+   sinVal    : Real;
+   sinValL   : LReal;
+   sawNum    : DInt;
+   sawDen    : DInt;
+   prng      : DWord;
+   k         : Int;
+   rdErr     : Int;        // RD_LOC_T_S return value (0 = success)
+END_VAR
+
+BEGIN
+   // -------------------------------------------------------------------------
+   // 1) Time base — milliseconds since PLC start.
+   // -------------------------------------------------------------------------
+   tickMs := TIME_TO_DINT(TIME_TCK());
+   "AllTypesDB".Tick_ms := tickMs;
+   t_s   := DINT_TO_REAL(tickMs) / 1000.0;
+   pi2   := 6.2831853;
+
+   // -------------------------------------------------------------------------
+   // 2) SINE WAVE patterns — period 4 s, amplitudes scaled per type.
+   // -------------------------------------------------------------------------
+   sinPhase := pi2 * t_s / 4.0;
+   sinVal   := SIN(sinPhase);
+   sinValL  := REAL_TO_LREAL(sinVal);
+
+   "AllTypesDB".Sine_Real  := 100.0 * sinVal;
+   "AllTypesDB".Sine_LReal := REAL_TO_LREAL(100.0 * sinVal);
+   "AllTypesDB".Sine_Int   := REAL_TO_INT (1000.0    * sinVal);
+   "AllTypesDB".Sine_SInt  := REAL_TO_SINT( 100.0    * sinVal);
+   "AllTypesDB".Sine_DInt  := REAL_TO_DINT(1.0E6 * sinVal);
+   "AllTypesDB".Sine_DWord := DINT_TO_DWORD(REAL_TO_DINT(1.0E6 * sinVal));
+
+   // 64-bit sine — needs LREAL precision because REAL only carries 7 digits.
+   "AllTypesDB".Sine_LInt  := LREAL_TO_LINT(1.0E12 * sinValL);
+
+   // TIME (signed ms): sine ±10 000 ms (±10 s).
+   "AllTypesDB".Sine_TIME  := DINT_TO_TIME(REAL_TO_DINT(10000.0 * sinVal));
+
+   // -------------------------------------------------------------------------
+   // 3) SAWTOOTH patterns — period 5 s, ramp 0 → max → wraparound.
+   // -------------------------------------------------------------------------
+   sawDen := 5000;                       // ms in one period
+   sawNum := tickMs MOD sawDen;          // 0 .. 4999
+
+   "AllTypesDB".Saw_Byte  := DINT_TO_BYTE ( sawNum *      255 / sawDen );
+   "AllTypesDB".Saw_USInt := DINT_TO_USINT( sawNum *      255 / sawDen );
+   "AllTypesDB".Saw_Word  := DINT_TO_WORD ( sawNum *    65535 / sawDen );
+   "AllTypesDB".Saw_UInt  := DINT_TO_UINT ( sawNum *    65535 / sawDen );
+   "AllTypesDB".Saw_UDInt := DINT_TO_UDINT( sawNum *  DINT#1000000 / sawDen );
+
+   // 64-bit sawtooth — ULINT 0..1_000_000_000, then bit-mirror into LWORD.
+   "AllTypesDB".Saw_ULInt := DINT_TO_ULINT(sawNum * 200000);
+   "AllTypesDB".Saw_LWord := ULINT_TO_LWORD("AllTypesDB".Saw_ULInt);
+
+   // LTIME: 0..1 s expressed in nanoseconds. 5 000 ticks * 200 000 ns = 1 ms.
+   "AllTypesDB".Saw_LTIME := LINT_TO_LTIME(DINT_TO_LINT(sawNum) * 200000);
+
+   // S5TIME: 0..9 s with the smallest time base (10 ms units, max 9 990 ms).
+   "AllTypesDB".Saw_S5TIME := TIME_TO_S5TIME(DINT_TO_TIME((sawNum * 9000) / sawDen));
+
+   // -------------------------------------------------------------------------
+   // 4) SQUARE WAVE patterns — period 2 s, 50 % duty.
+   // -------------------------------------------------------------------------
+   tickRem := tickMs MOD 2000;
+   IF tickRem < 1000 THEN
+      "AllTypesDB".Pulse_Bool  := TRUE;
+      "AllTypesDB".Pulse_Char  := 'H';
+      "AllTypesDB".Pulse_WChar := WCHAR#'A';
+   ELSE
+      "AllTypesDB".Pulse_Bool  := FALSE;
+      "AllTypesDB".Pulse_Char  := 'L';
+      "AllTypesDB".Pulse_WChar := WCHAR#'B';
+   END_IF;
+
+   // -------------------------------------------------------------------------
+   // 5) RANDOM pattern — xorshift32 PRNG, state lives in the DB.
+   //    Random_Real distribution: -1.0 .. +1.0.
+   //
+   //    We feed REAL only with the lower 16 bits of the PRNG state. UINT
+   //    fits losslessly into REAL's 24-bit mantissa, so no accuracy or
+   //    sign-loss warning is raised by TIA's static analyzer.
+   // -------------------------------------------------------------------------
+   prng := "AllTypesDB".PRNG_State;
+   prng := prng XOR SHL(IN := prng, N := 13);
+   prng := prng XOR SHR(IN := prng, N := 17);
+   prng := prng XOR SHL(IN := prng, N :=  5);
+   "AllTypesDB".PRNG_State  := prng;
+
+   "AllTypesDB".Random_Real := UINT_TO_REAL(WORD_TO_UINT(DWORD_TO_WORD(prng)))
+                               / 32768.0 - 1.0;
+
+   // -------------------------------------------------------------------------
+   // 6) Variable-length string patterns.
+   // -------------------------------------------------------------------------
+   "AllTypesDB".Pattern_String  := CONCAT(IN1 := 'Tick=',
+                                          IN2 := DINT_TO_STRING(tickMs));
+
+   "AllTypesDB".Pattern_WString := WSTRING#'S7DriverTest';
+
+   // -------------------------------------------------------------------------
+   // 7) Date / time / duration — read once into Now_DTL, then derive every
+   //    other date/time member from it.
+   //    SCL has explicit DTL_TO_<X> converters for DT / DATE / TOD; for
+   //    LTOD and LDT we compute the value from the DTL members because no
+   //    direct conversion exists.
+   // -------------------------------------------------------------------------
+   rdErr := RD_LOC_T(OUT => "AllTypesDB".Now_DTL);
+
+   // Direct, type-named converters (positional, not named formals).
+   "AllTypesDB".Now_DT   := DTL_TO_DT  ("AllTypesDB".Now_DTL);
+   "AllTypesDB".Now_DATE := DTL_TO_DATE("AllTypesDB".Now_DTL);
+   "AllTypesDB".Now_TOD  := DTL_TO_TOD ("AllTypesDB".Now_DTL);
+
+   // LTOD = nanoseconds since midnight. Build from Now_DTL members.
+   "AllTypesDB".Now_LTOD := ULINT_TO_LTOD(
+        USINT_TO_ULINT("AllTypesDB".Now_DTL.HOUR)   * ULINT#3600000000000
+      + USINT_TO_ULINT("AllTypesDB".Now_DTL.MINUTE) *   ULINT#60000000000
+      + USINT_TO_ULINT("AllTypesDB".Now_DTL.SECOND) *    ULINT#1000000000
+      + UDINT_TO_ULINT("AllTypesDB".Now_DTL.NANOSECOND));
+
+   // LDT = signed nanoseconds since 1970-01-01 00:00:00 UTC. The 100-ns
+   // ticks math is awkward in SCL, so we just animate it as a monotonic
+   // counter starting at the (constant) Unix epoch of the project upload
+   // moment. The driver decodes it as an ISO-8601 timestamp either way.
+   "AllTypesDB".Now_LDT := LINT_TO_LDT(
+        LINT#1700000000000000000             // arbitrary 2023-11-14 base
+      + DINT_TO_LINT(tickMs) * LINT#1000000  // + tickMs converted to ns
+   );
+
+   // -------------------------------------------------------------------------
+   // 8) Array animations — one element per loop iteration.
+   //
+   //    Bits_Array     : a single TRUE bit rotates through positions 0..15
+   //                     every 100 ms (1.6 s for a full rotation).
+   //    Sine_IntArray  : 8 sines with a π/4 phase shift between elements
+   //                     so neighbouring elements visibly trail each other.
+   //    Sine_RealArray : 4 sines whose periods are 2 s, 3 s, 4 s, 5 s so the
+   //                     array reads like a Lissajous projection over time.
+   // -------------------------------------------------------------------------
+   FOR k := 0 TO 15 DO
+      "AllTypesDB".Bits_Array[k] := ( ((tickMs / 100) MOD 16) = INT_TO_DINT(k) );
+   END_FOR;
+
+   FOR k := 0 TO 7 DO
+      "AllTypesDB".Sine_IntArray[k] :=
+         REAL_TO_INT(1000.0 * SIN(sinPhase + INT_TO_REAL(k) * 0.7853981));
+   END_FOR;
+
+   FOR k := 0 TO 3 DO
+      "AllTypesDB".Sine_RealArray[k] :=
+         100.0 * SIN(pi2 * t_s / (2.0 + INT_TO_REAL(k)));
+   END_FOR;
+
+   // -------------------------------------------------------------------------
+   // 9) Mirror to non-DB areas so every S7Target enum value is exercised.
+   //    Absolute %M / %Q addresses work without a separate PLC-tag table.
+   // -------------------------------------------------------------------------
+
+   // --- Merker (S7Target.Merker, "MB"/"MW"/"MD") ----------------------------
+   %MB100  := "AllTypesDB".Saw_Byte;
+   %MW102  := "AllTypesDB".Saw_Word;
+   %MD104  := "AllTypesDB".Sine_DWord;
+   %M120.0 := "AllTypesDB".Pulse_Bool;
+
+   // --- Process Outputs / PA (S7Target.IPUProcessInput, "AB") ---------------
+   %QB0 := "AllTypesDB".Saw_Byte;
+   %QW2 := "AllTypesDB".Saw_Word;
+   %QD4 := "AllTypesDB".Sine_DWord;
+
+   // --- Process Inputs / PE (S7Target.IPIProcessInput, "EB") ----------------
+   //     Inputs are read-only from the PLC side. To give the driver something
+   //     deterministic to read, run the project under PLCSIM (V21) and toggle
+   //     %I0.0..%I0.7 / %IB0 from the PLCSIM SIM-table — the driver will see
+   //     the changes via S7Target.IPIProcessInput.
+END_ORGANIZATION_BLOCK

@@ -1,0 +1,520 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "uav": "https://www.w3.org/2019/wot/opcua",
+      "opas": "https://www.opengroup.org/o-pas/v2.1"
+    }
+  ],
+  "id": "urn:opas:pp:dcn-01",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "Redfish-DCN-01",
+  "base": "redfish://bmc-01.example.com",
+  "title": "O-PAS Physical Platform (DCN) via DMTF Redfish",
+  "description": "Sample Thing Description for an O-PAS Standard, 2nd Edition Part 7 (Physical Platform) Distributed Control Node (DCN) managed out-of-band via DMTF Redfish (DSP0266). Properties expose the conformance attributes referenced by PP profiles PP-002 / PP-003 - i.e. the Base Platform Requirements Facet (PP-F-003: CRQ-P7-001 Cybersecurity, CRQ-P7-005 Clock Stability, CRQ-P7-010 Secure Boot/UEFI), the Regulatory Control Device Facet (PP-F-002: CRQ-P7-007 Non-Volatile Storage, CRQ-P7-008 No Batteries) and the Network Hardware Facet (PP-F-004: CRQ-P7-004 / CRQ-P7-012..014 Ethernet ports). The Redfish service exposes /redfish/v1/Systems, /redfish/v1/Managers and /redfish/v1/Chassis; the address of each form is the Redfish resource path followed by a '#' and an RFC 6901 JSON Pointer that selects the individual field.",
+  "properties": {
+    "PowerState": {
+      "title": "PowerState",
+      "description": "ComputerSystem PowerState reported by the PP's baseboard management controller.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/PowerState",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "BootProgress": {
+      "title": "BootProgress",
+      "description": "Last reported boot stage of the PP firmware (UEFI/POST/OS handoff).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/BootProgress/LastState",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 10000
+        }
+      ]
+    },
+    "Manufacturer": {
+      "title": "Manufacturer",
+      "description": "Vendor of the PP hardware (DCN supplier).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/Manufacturer",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "Model": {
+      "title": "Model",
+      "description": "Hardware model designator for the PP.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/Model",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "SerialNumber": {
+      "title": "SerialNumber",
+      "description": "Serial number of the PP - used for asset tracking and OPC UA Server DiagnosticsType.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/SerialNumber",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "BiosVersion": {
+      "title": "BiosVersion",
+      "description": "UEFI / system firmware revision of the PP (input to CRQ-P7-001 and CRQ-P7-010 conformance auditing).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/BiosVersion",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "SecureBootEnable": {
+      "title": "SecureBootEnable",
+      "description": "O-PAS CRQ-P7-010 conformance signal: the PP shall support secure boot as defined by the UEFI specification, Version 2.3.1 or newer. True when SecureBoot is enabled in the PP's UEFI firmware.",
+      "type": "boolean",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/SecureBoot#/SecureBootEnable",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 30000
+        }
+      ]
+    },
+    "SecureBootCurrentBoot": {
+      "title": "SecureBootCurrentBoot",
+      "description": "Reports whether the current boot was launched as a verified Secure Boot (Enabled / Disabled). Complements CRQ-P7-010.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/SecureBoot#/SecureBootCurrentBoot",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 30000
+        }
+      ]
+    },
+    "TpmPresent": {
+      "title": "TpmPresent",
+      "description": "Presence of a Trusted Platform Module (TPM 2.0) used to anchor CRQ-P7-001 cybersecurity (ANSI/ISA-62443-4-2 SL2 dependency called out in O-PAS Part 7 Appendix A.6).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1#/TrustedModules/0/Status/State",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "ManagerFirmwareVersion": {
+      "title": "ManagerFirmwareVersion",
+      "description": "Firmware version of the BMC (PP-F-003 management plane). Used to audit field-replaceable firmware against an approved list.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1#/FirmwareVersion",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "ManagerDateTime": {
+      "title": "ManagerDateTime",
+      "description": "Current wall-clock time of the PP's BMC, ISO 8601 with offset. Pairs with NtpEnabled / NtpServers to evaluate O-PAS CRQ-P7-005 Clock Stability (+/- 0.5 ms from MTS for 10 s after MTS loss).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1#/DateTime",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:dateTime",
+          "pollingTime": 1000
+        }
+      ]
+    },
+    "NtpEnabled": {
+      "title": "NtpEnabled",
+      "description": "Whether NTP time synchronization is enabled on the PP. O-PAS Part 7 Section 2.2 lists NTP, IEEE 1588-2008 and IEEE 802.1AS-PTP as acceptable MTS distribution protocols.",
+      "type": "boolean",
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1/NetworkProtocol#/NTP/ProtocolEnabled",
+          "op": [
+            "readproperty",
+            "observeproperty",
+            "writeproperty"
+          ],
+          "type": "xsd:boolean",
+          "pollingTime": 30000
+        }
+      ]
+    },
+    "NtpServers": {
+      "title": "NtpServers",
+      "description": "List of NTP servers used by the PP to track the Master Time Source (MTS).",
+      "type": "string",
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1/NetworkProtocol#/NTP/NTPServers",
+          "op": [
+            "readproperty",
+            "observeproperty",
+            "writeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "ManagerHealth": {
+      "title": "ManagerHealth",
+      "description": "Overall health rollup of the BMC (OK / Warning / Critical), as reported via Redfish Status.Health.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1#/Status/Health",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "ChassisHealth": {
+      "title": "ChassisHealth",
+      "description": "Overall hardware health of the PP enclosure (chassis-level rollup).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Chassis/1#/Status/Health",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "ChassisType": {
+      "title": "ChassisType",
+      "description": "Enclosure form factor reported by Redfish (e.g. RackMount, StandAlone, Module, Card). Maps to the PP enclosure options described in O-PAS Part 7 Appendix A.2 (rack-room, Smart Junction Box, standalone PP).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Chassis/1#/ChassisType",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "IntakeTemperatureCelsius": {
+      "title": "IntakeTemperatureCelsius",
+      "description": "Inlet air temperature for the PP enclosure. Reference for the environmental envelopes in O-PAS Part 7 Appendix A.2 (e.g. rack-room 55 deg C to -20 deg C, SJB 65 deg C with sunshade).",
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Chassis/1/Thermal#/Temperatures/0/ReadingCelsius",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "PowerInputWatts": {
+      "title": "PowerInputWatts",
+      "description": "Total input power drawn by the PP. Useful for trending the 100-250 VAC / 24 VDC feeds referenced in O-PAS Part 7 Appendix A.2.",
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Chassis/1/Power#/PowerControl/0/PowerConsumedWatts",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:float",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "PrimaryStorageHealth": {
+      "title": "PrimaryStorageHealth",
+      "description": "Health of the primary non-volatile storage device (CRQ-P7-007). O-PAS CRQ-P7-008 additionally requires that this storage shall not depend on a battery.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/Storage/1#/Status/Health",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 30000
+        }
+      ]
+    },
+    "PrimaryStorageMediaType": {
+      "title": "PrimaryStorageMediaType",
+      "description": "Reported media type (SSD / HDD / NVMe) of the boot drive. SSD/NVMe satisfies CRQ-P7-007 'no moving parts' guidance from O-PAS Part 7 Section 3.1.",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/Storage/1/Drives/0#/MediaType",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 60000
+        }
+      ]
+    },
+    "EthernetPort1LinkStatus": {
+      "title": "EthernetPort1LinkStatus",
+      "description": "Link status of the first Ethernet interface (PP-F-004 / CRQ-P7-012 'at least one Ethernet port' - mapped to NET-101/NET-102 software profiles in O-PAS Part 4).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/EthernetInterfaces/1#/LinkStatus",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "EthernetPort1SpeedMbps": {
+      "title": "EthernetPort1SpeedMbps",
+      "description": "Negotiated link speed of the first Ethernet interface in Mbps. Used to verify CRQ-P7-004 (auto-negotiation from at least 100 Mbps).",
+      "type": "integer",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/EthernetInterfaces/1#/SpeedMbps",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:integer",
+          "pollingTime": 10000
+        }
+      ]
+    },
+    "EthernetPort2LinkStatus": {
+      "title": "EthernetPort2LinkStatus",
+      "description": "Link status of the second Ethernet interface (PP-F-004 / CRQ-P7-013 'two or more Ethernet ports' - mapped to NET-103/NET-104 software profiles).",
+      "type": "string",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/EthernetInterfaces/2#/LinkStatus",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 5000
+        }
+      ]
+    },
+    "IndicatorLED": {
+      "title": "IndicatorLED",
+      "description": "Writable chassis indicator LED. Demonstrates a Redfish PATCH (Off / Lit / Blinking) and is convenient for proving end-to-end control plane plumbing during commissioning.",
+      "type": "string",
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/redfish/v1/Chassis/1#/IndicatorLED",
+          "op": [
+            "readproperty",
+            "observeproperty",
+            "writeproperty"
+          ],
+          "type": "xsd:string",
+          "pollingTime": 30000
+        }
+      ]
+    }
+  },
+  "actions": {
+    "Reset": {
+      "title": "Reset",
+      "description": "Redfish ComputerSystem.Reset action. ResetType is a Redfish enumeration; commonly used values are 'On', 'GracefulShutdown', 'GracefulRestart', 'ForceOff', 'ForceRestart' and 'PowerCycle'.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ResetType": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "Result": {
+            "type": "string"
+          }
+        }
+      },
+      "forms": [
+        {
+          "href": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+          "op": null,
+          "type": "xsd:string",
+          "pollingTime": 0
+        }
+      ]
+    },
+    "ManagerReset": {
+      "title": "ManagerReset",
+      "description": "Reset the PP's baseboard management controller (BMC). Typically used after a firmware update.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ResetType": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "Result": {
+            "type": "string"
+          }
+        }
+      },
+      "forms": [
+        {
+          "href": "/redfish/v1/Managers/1/Actions/Manager.Reset",
+          "op": null,
+          "type": "xsd:string",
+          "pollingTime": 0
+        }
+      ]
+    }
+  }
+}

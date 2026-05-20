@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#nullable enable
-
 namespace LoRaWan.NetworkServer.BasicsStation
 {
     using Microsoft.AspNetCore.Builder;
@@ -61,7 +59,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
             }
         }
 
-        internal static void ConfigureHttpsSettings(ClientCertificateValidatorService? clientCertificateValidatorService,
+        internal static void ConfigureHttpsSettings(ClientCertificateValidatorService clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
             X509Certificate2 opcuaCert = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;

@@ -70,11 +70,11 @@
                 Address = modbusForm.Href,
                 UnitID = unitId,
                 Type = modbusForm.ModbusType.ToString(),
-                PollingInterval = (int)modbusForm.ModbusPollingTime,
+                PollingInterval = (int)modbusForm.PollingTime,
                 Entity = modbusForm.ModbusEntity.ToString(),
                 IsBigEndian = modbusForm.MostSignificantByte || modbusForm.MostSignificantWord,
                 SwapPerWord = modbusForm.MostSignificantWord,
-                Multiplier = modbusForm.ModbusMultiplier == null ? 1.0f : (float)modbusForm.ModbusMultiplier,
+                Multiplier = modbusForm.Multiplier == null ? 1.0f : (float)modbusForm.Multiplier,
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };

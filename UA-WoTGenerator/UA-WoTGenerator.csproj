@@ -1,0 +1,154 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0;net48</TargetFrameworks>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <!--
+    Path to a local TIA Portal Openness install. Override on the command line:
+      dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V16"
+    The default targets V21, but V15.1, V16, V17, V18, V19 and V20 are all
+    supported (the runtime AssemblyResolve hook in Siemens.cs probes every
+    installed Portal V<n> at startup, so the same binary works against any
+    of them once built).
+
+    Note on the V15.1 install folder: Siemens names it "Portal V15_1" on
+    disk (with an underscore), while the Openness API sub-folder underneath
+    is "PublicAPI\V15.1" (with a dot). The .Replace('_', '.') in
+    SiemensTIAPortalVersion below normalizes the version token so the
+    HintPath lines up with the API folder. Newer versions (V16+) contain
+    no underscore, so the replace is a no-op for them.
+
+    Two assembly layouts exist in the wild:
+
+      - V15.1 .. V20 ship a single monolithic Siemens.Engineering.dll under
+        PublicAPI\V<n>          (V15.1/V16/V17, .NET 4.6.2 / 4.7.2) or
+        PublicAPI\V<n>\net48    (V18+, .NET 4.8).
+
+      - V21 split that DLL into several assemblies. This importer needs
+        only two of them:
+          * Siemens.Engineering.Base.dll   ← TiaPortal, Project, Device,
+                                             DeviceItem, IEngineeringObject,
+                                             ExportOptions, NetworkInterface,
+                                             Node, SoftwareContainer
+          * Siemens.Engineering.Step7.dll  ← PlcSoftware, DataBlock,
+                                             PlcBlock(User)Group, PlcType,
+                                             PlcType(User)Group (formerly
+                                             under Siemens.Engineering.SW.*).
+        The remaining V21 assemblies (AddIn, Hmi/WinCC, Safety,
+        TeamcenterGateway, …) are intentionally not referenced because
+        this tool doesn't use them.
+
+    If either layout pulls in a sibling assembly transitively at runtime,
+    the AssemblyResolve hook in Siemens.cs will load it from the same
+    PublicAPI folder.
+  -->
+  <PropertyGroup>
+    <SiemensTIAPortalPath Condition="'$(SiemensTIAPortalPath)' == ''">C:\Program Files\Siemens\Automation\Portal V21</SiemensTIAPortalPath>
+
+    <!-- Derive "V21" (or "V16", "V17", …) from "...\Portal V21" so the
+         PublicAPI sub-folder follows automatically. V15.1 is the only
+         version where the install folder uses an underscore ("Portal V15_1")
+         while the API folder uses a dot ("PublicAPI\V15.1"); replace _
+         with . to bridge that. The replace is a no-op for V16+. -->
+    <SiemensTIAPortalVersion Condition="'$(SiemensTIAPortalVersion)' == ''">$([System.IO.Path]::GetFileName('$(SiemensTIAPortalPath)').Replace('Portal ', '').Replace('_', '.'))</SiemensTIAPortalVersion>
+
+    <!-- Prefer the net48 sub-folder (V18+). Fall back to the version folder
+         itself for V16/V17, which only ships net472 binaries. -->
+    <SiemensOpennessApiDir Condition="'$(SiemensOpennessApiDir)' == '' and Exists('$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)\net48')">$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)\net48</SiemensOpennessApiDir>
+    <SiemensOpennessApiDir Condition="'$(SiemensOpennessApiDir)' == '' and Exists('$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)')">$(SiemensTIAPortalPath)\PublicAPI\$(SiemensTIAPortalVersion)</SiemensOpennessApiDir>
+
+    <SiemensEngineeringDll>$(SiemensOpennessApiDir)\Siemens.Engineering.dll</SiemensEngineeringDll>
+    <SiemensEngineeringBaseDll>$(SiemensOpennessApiDir)\Siemens.Engineering.Base.dll</SiemensEngineeringBaseDll>
+    <SiemensEngineeringStep7Dll>$(SiemensOpennessApiDir)\Siemens.Engineering.Step7.dll</SiemensEngineeringStep7Dll>
+  </PropertyGroup>
+
+  <!--
+    The Openness assemblies must NOT be redistributed (Siemens licence). They
+    are referenced from the local TIA install with Private=false and resolved
+    at runtime by the AssemblyResolve hook in Siemens.cs.
+  -->
+
+  <!-- V16 .. V20: monolithic Siemens.Engineering.dll. -->
+  <ItemGroup Condition="Exists('$(SiemensEngineeringDll)')">
+    <Reference Include="Siemens.Engineering">
+      <HintPath>$(SiemensEngineeringDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- V21+: Base + Step7 (only added when the monolithic DLL is absent, so
+       we never accidentally pull in two copies of the same types). -->
+  <ItemGroup Condition="!Exists('$(SiemensEngineeringDll)') and Exists('$(SiemensEngineeringBaseDll)')">
+    <Reference Include="Siemens.Engineering.Base">
+      <HintPath>$(SiemensEngineeringBaseDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="!Exists('$(SiemensEngineeringDll)') and Exists('$(SiemensEngineeringStep7Dll)')">
+    <Reference Include="Siemens.Engineering.Step7">
+      <HintPath>$(SiemensEngineeringStep7Dll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Define SIEMENS_ENGINEERING when either layout resolved successfully. -->
+  <PropertyGroup Condition="Exists('$(SiemensEngineeringDll)') or (Exists('$(SiemensEngineeringBaseDll)') and Exists('$(SiemensEngineeringStep7Dll)'))">
+    <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Properties\**" />
+    <EmbeddedResource Remove="Properties\**" />
+    <None Remove="Properties\**" />
+  </ItemGroup>
+
+  <!--
+    The model required by this tool live in the net10 production projects. We link them in
+    by file so this tool can target net8.0-windows independently.
+  -->
+  <ItemGroup>
+    <Compile Include="..\UAServer\Models\ThingDescription.cs" Link="Models\ThingDescription.cs" />
+    <Compile Include="..\ProtocolDrivers\ModbusTCP\ModbusProtocolBinding.cs" Link="Models\ModbusProtocolBinding.cs" />
+    <Compile Include="..\ProtocolDrivers\Rockwell\EIPProtocolBinding.cs" Link="Models\EIPProtocolBinding.cs" />
+    <Compile Include="..\ProtocolDrivers\Siemens\S7ProtocolBinding.cs" Link="Models\S7ProtocolBinding.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="AMLSimpleExample.aml" />
+    <None Remove="Rockwell_Sample_Tags.csv" />
+    <None Remove="Simple PLC.tmc" />
+    <None Remove="Station.NodeSet2.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="AMLSimpleExample.aml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Rockwell_Sample_Tags.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Simple PLC.tmc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Station.NodeSet2.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aml.Engine" Condition="'$(TargetFramework)' != 'net48'" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" />
+  </ItemGroup>
+
+  <!-- Define AML_ENGINE on TFMs where the Aml.Engine NuGet is supported (i.e. not net48). -->
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net48'">
+    <DefineConstants>$(DefineConstants);AML_ENGINE</DefineConstants>
+  </PropertyGroup>
+
+</Project>

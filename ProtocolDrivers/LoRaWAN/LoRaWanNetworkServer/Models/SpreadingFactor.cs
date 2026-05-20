@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#pragma warning disable CA1008 // Enums should have zero value (use nullables instead)
-
 namespace LoRaWan
 {
     /// <summary>

@@ -3,14 +3,13 @@
 
 namespace LoRaWANContainer.LoRaWan.NetworkServer.Models
 {
+    using global::LoRaWan;
+    using Org.BouncyCastle.Crypto.Engines;
+    using Org.BouncyCastle.Crypto.Parameters;
     using System;
     using System.Buffers.Binary;
     using System.Collections.Generic;
     using System.Linq;
-    using global::LoRaWan;
-    using Microsoft.Extensions.Logging;
-    using Org.BouncyCastle.Crypto.Engines;
-    using Org.BouncyCastle.Crypto.Parameters;
 
     /// <summary>
     /// the body of an Uplink (normal) message.

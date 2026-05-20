@@ -6,8 +6,6 @@
 // Changes to this file will be lost if the code is re-generated.
 //------------------------------------------------------------------------------
 
-#nullable enable
-
 namespace LoRaWan
 {
     using System;
@@ -58,7 +56,7 @@ namespace LoRaWan
             }
         }
 
-        public string ToString(string? format, IFormatProvider? formatProvider) => Eui.Format(this.value, format);
+        public string ToString(string format, IFormatProvider formatProvider) => Eui.Format(this.value, format);
 
         public string ToHex() => ToHex(null);
         public string ToHex(LetterCase letterCase) => ToHex(null, letterCase);
@@ -111,7 +109,7 @@ namespace LoRaWan
             }
         }
 
-        public string ToString(string? format, IFormatProvider? formatProvider) => Eui.Format(this.value, format);
+        public string ToString(string format, IFormatProvider formatProvider) => Eui.Format(this.value, format);
 
         public string ToHex() => ToHex(null);
         public string ToHex(LetterCase letterCase) => ToHex(null, letterCase);
@@ -164,7 +162,7 @@ namespace LoRaWan
             }
         }
 
-        public string ToString(string? format, IFormatProvider? formatProvider) => Eui.Format(this.value, format);
+        public string ToString(string format, IFormatProvider formatProvider) => Eui.Format(this.value, format);
 
         public string ToHex() => ToHex(null);
         public string ToHex(LetterCase letterCase) => ToHex(null, letterCase);

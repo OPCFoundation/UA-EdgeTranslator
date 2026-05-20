@@ -1,0 +1,11 @@
+# Code owners for UA Edge Translator
+#
+# The first matching pattern wins. A path with no rule has no required reviewer.
+# GitHub auto-requests review from every owner listed for a matching path.
+#
+# Examples:
+#   *                         @barnstee @muenchris @randy-armstrong
+#   /UAServer/                @barnstee
+#   /ProtocolDrivers/Matter/  @muenchris
+
+* @barnstee @muenchris @randy-armstrong

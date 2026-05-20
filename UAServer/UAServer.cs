@@ -3,8 +3,11 @@ namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Server;
+    using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Security.Cryptography;
+    using System.Text;
 
     public partial class UAServer : ReverseConnectServer
     {
@@ -40,14 +43,14 @@ namespace Opc.Ua.Edge.Translator
             server.SessionManager.ImpersonateUser += new ImpersonateEventHandler(SessionManager_ImpersonateUser);
         }
 
-        private void SessionManager_ImpersonateUser(Session session, ImpersonateEventArgs args)
+        private void SessionManager_ImpersonateUser(ISession session, ImpersonateEventArgs args)
         {
             UserNameIdentityToken userNameToken = args.NewIdentity as UserNameIdentityToken;
             if (userNameToken != null)
             {
                 args.Identity = VerifyPassword(userNameToken);
 
-                Utils.LogInfo(Utils.TraceMasks.Security, "Username Token Accepted: {0}", args.Identity?.DisplayName);
+                Log.Logger.Information("Username Token Accepted: {0}", args.Identity?.DisplayName);
                 return;
             }
 
@@ -58,7 +61,7 @@ namespace Opc.Ua.Edge.Translator
         private IUserIdentity VerifyPassword(UserNameIdentityToken userNameToken)
         {
             string userName = userNameToken.UserName;
-            string password = userNameToken.DecryptedPassword;
+            string password = Encoding.UTF8.GetString(userNameToken.DecryptedPassword);
             if (string.IsNullOrEmpty(userName))
             {
                 throw ServiceResultException.Create(StatusCodes.BadIdentityTokenInvalid,
@@ -71,29 +74,33 @@ namespace Opc.Ua.Edge.Translator
                     "Security token is not a valid username token. An empty password is not accepted.");
             }
 
-            string configuredUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
-            string configuredPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
-            if (!string.IsNullOrEmpty(configuredUsername)
-             && !string.IsNullOrEmpty(configuredPassword)
-             && (userName == configuredUsername)
-             && (password == configuredPassword))
+            string configuredUsername = Program.OpcUaUsername;
+            string configuredPassword = Program.OpcUaPassword;
+            if (string.IsNullOrEmpty(configuredUsername) || string.IsNullOrEmpty(configuredPassword))
+            {
+                // Should be impossible — Program.ValidateRequiredEnvironment is
+                // called before the OPC UA stack is started — but defend against
+                // the property being cleared at runtime.
+                Log.Logger.Warning("Authentication rejected: OPC UA credentials are not configured.");
+                throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
+            }
+
+            // Constant-time comparison over SHA-256 hashes to avoid leaking
+            // username/password length or content via timing side channels.
+            if (FixedTimeEqualsHashed(userName, configuredUsername)
+             && FixedTimeEqualsHashed(password, configuredPassword))
             {
                 return new SystemConfigurationIdentity(new UserIdentity(userNameToken));
             }
 
-            // construct translation object with default text.
-            TranslationInfo info = new TranslationInfo(
-                "InvalidPassword",
-                "en-US",
-                "Invalid username or password.",
-                userName);
+            throw new ServiceResultException(StatusCodes.BadUserAccessDenied, userName);
+        }
 
-            // create an exception with a vendor defined sub-code.
-            throw new ServiceResultException(new ServiceResult(
-                StatusCodes.BadUserAccessDenied,
-                "InvalidPassword",
-                LoadServerProperties().ProductUri,
-                new LocalizedText(info)));
+        private bool FixedTimeEqualsHashed(string left, string right)
+        {
+            byte[] leftHash = SHA256.HashData(Encoding.UTF8.GetBytes(left ?? string.Empty));
+            byte[] rightHash = SHA256.HashData(Encoding.UTF8.GetBytes(right ?? string.Empty));
+            return CryptographicOperations.FixedTimeEquals(leftHash, rightHash);
         }
     }
 }

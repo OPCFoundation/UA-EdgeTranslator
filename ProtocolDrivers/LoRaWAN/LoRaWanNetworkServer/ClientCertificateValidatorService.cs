@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#nullable enable
-
 namespace LoRaWan.NetworkServer.BasicsStation
 {
     using Microsoft.Extensions.Logging;
@@ -16,7 +14,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
     internal sealed partial class ClientCertificateValidatorService(ILogger<ClientCertificateValidatorService> logger)
     {
-        public Task<bool> ValidateAsync(X509Certificate2 certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors, CancellationToken token)
+        public Task<bool> ValidateAsync(X509Certificate2 certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors, CancellationToken token)
         {
             ArgumentNullException.ThrowIfNull(certificate);
             ArgumentNullException.ThrowIfNull(chain);

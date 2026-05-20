@@ -1,13 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0;net10.0-windows10.0.26100.0</TargetFrameworks>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
-    <PackageReference Include="Linux.Bluetooth" Version="5.67.1" />
+    <PackageReference Include="Makaretu.Dns.Multicast.New" />
+    <PackageReference Include="Linux.Bluetooth" />
+    <PackageReference Include="Portable.BouncyCastle" />
+    <PackageReference Include="Tmds.DBus" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,16 +29,32 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # required for cosign keyless signing via Sigstore + GitHub OIDC
+      id-token: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.0
+        uses: actions/checkout@v6
+
+      # GHCR (and the OCI spec in general) requires lowercase image names. The
+      # owner/repo path "OPCFoundation/UA-EdgeTranslator" contains uppercase
+      # characters, so any tool that consumes the image reference directly
+      # (syft / sbom-action / cosign) needs the lowercased form to avoid
+      # "could not parse reference" errors. docker/metadata-action lowercases
+      # internally, but downstream steps that reference the image by name must
+      # do the same.
+      - name: Compute lowercase image name
+        id: imagename
+        run: |
+          set -euo pipefail
+          name="${{ env.IMAGE_NAME }}"
+          echo "value=${name,,}" >> "$GITHUB_OUTPUT"
 
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3.3.0
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -48,23 +64,73 @@ jobs:
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5.5.1
+        uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.2.0
+        uses: docker/setup-qemu-action@v4.0.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.6.1
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6.7.0
+        id: build
+        uses: docker/build-push-action@v7
         with:
-          context: ./UAServer
+          context: .
+          file: UAServer/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: TARGET_FRAMEWORK=net10.0
+          provenance: true
+          sbom: true
+          build-args: |
+            TARGET_FRAMEWORK=net10.0
+            BUILD_CONFIGURATION=Release
+            INFORMATIONAL_VERSION=${{ github.ref_name }}+${{ github.sha }}
+
+      # Sign the published image keylessly via cosign + GitHub OIDC.
+      # Skipped on PRs because nothing was pushed.
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Sign the published image
+        if: github.event_name != 'pull_request'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for tag in $TAGS; do
+            cosign sign --yes "${tag}@${DIGEST}"
+          done
+
+      # Generate a CycloneDX SBOM from the published image and attach it as a
+      # cosign attestation so consumers can verify what's inside.
+      - name: Generate SBOM (syft)
+        if: github.event_name != 'pull_request'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ steps.imagename.outputs.value }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          upload-artifact: true
+          upload-release-assets: false
+
+      - name: Attest SBOM with cosign
+        if: github.event_name != 'pull_request'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for tag in $TAGS; do
+            cosign attest --yes \
+              --predicate sbom.cdx.json \
+              --type cyclonedx \
+              "${tag}@${DIGEST}"
+          done

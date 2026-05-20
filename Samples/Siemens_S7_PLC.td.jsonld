@@ -1,0 +1,1878 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:S7-1500_ET200MP_station_2.PLC_2",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "name": "S7-1500_ET200MP_station_2.PLC_2",
+  "base": "s7://192.168.178.2:0",
+  "title": "PLC_2",
+  "properties": {
+    "AllTypesDB_Pulse_Bool": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?0",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 0,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Pulse_Char": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?1",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 1,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 1,
+          "type": "xsd:string",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "CHAR"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_Byte": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 2,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:byte",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BYTE"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_SInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?3",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 3,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:byte",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "SINT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_USInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?4",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 4,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:byte",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "USINT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_Word": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?6",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 6,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "WORD"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_Int": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?8",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 8,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_UInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?10",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 10,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "UINT"
+        }
+      ]
+    },
+    "AllTypesDB_Pulse_WChar": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?12",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 12,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 1,
+          "type": "xsd:string",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "WCHAR"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_DWord": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?14",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 14,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:integer",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DWORD"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_DInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?18",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 18,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:integer",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DINT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_UDInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?22",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 22,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:integer",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "UDINT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_Real": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?26",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 26,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_Random_Real": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?30",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 30,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_LReal": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?34",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 34,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:double",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LREAL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_LInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?42",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 42,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:long",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LINT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_ULInt": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?50",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 50,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:unsignedLong",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "ULINT"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_LWord": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?58",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 58,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:unsignedLong",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LWORD"
+        }
+      ]
+    },
+    "AllTypesDB_Pattern_String": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?66",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 66,
+          "s7:size": 82,
+          "s7:pos": 0,
+          "s7:maxlen": 80,
+          "type": "xsd:string",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "STRING"
+        }
+      ]
+    },
+    "AllTypesDB_Pattern_WString": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?148",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 148,
+          "s7:size": 132,
+          "s7:pos": 0,
+          "s7:maxlen": 64,
+          "type": "xsd:string",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "WSTRING"
+        }
+      ]
+    },
+    "AllTypesDB_Now_DTL": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?280",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 280,
+          "s7:size": 12,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DTL"
+        }
+      ]
+    },
+    "AllTypesDB_Now_DT": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?292",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 292,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DT"
+        }
+      ]
+    },
+    "AllTypesDB_Now_DATE": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?300",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 300,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DATE"
+        }
+      ]
+    },
+    "AllTypesDB_Now_TOD": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?302",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 302,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "TOD"
+        }
+      ]
+    },
+    "AllTypesDB_Now_LTOD": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?306",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 306,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LTOD"
+        }
+      ]
+    },
+    "AllTypesDB_Now_LDT": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?314",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 314,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:dateTime",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LDT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_TIME": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?322",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 322,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:duration",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "TIME"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_LTIME": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?326",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 326,
+          "s7:size": 8,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:duration",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "LTIME"
+        }
+      ]
+    },
+    "AllTypesDB_Saw_S5TIME": {
+      "type": "string",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?334",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 334,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:duration",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "S5TIME"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_0": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_1": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 1,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_2": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 2,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_3": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 3,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_4": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 4,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_5": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 5,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_6": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 6,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_7": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?336",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 336,
+          "s7:size": 1,
+          "s7:pos": 7,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_8": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_9": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 1,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_10": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 2,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_11": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 3,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_12": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 4,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_13": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 5,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_14": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 6,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Bits_Array_15": {
+      "type": "boolean",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?337",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 337,
+          "s7:size": 1,
+          "s7:pos": 7,
+          "s7:maxlen": 0,
+          "type": "xsd:boolean",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "BOOL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_0": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?338",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 338,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_1": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?340",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 340,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_2": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?342",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 342,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_3": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?344",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 344,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_4": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?346",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 346,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_5": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?348",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 348,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_6": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?350",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 350,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_IntArray_7": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?352",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 352,
+          "s7:size": 2,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:short",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "INT"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_RealArray_0": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?354",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 354,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_RealArray_1": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?358",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 358,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_RealArray_2": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?362",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 362,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_Sine_RealArray_3": {
+      "type": "number",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?366",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 366,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:float",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "REAL"
+        }
+      ]
+    },
+    "AllTypesDB_PRNG_State": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?370",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 370,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:integer",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DWORD"
+        }
+      ]
+    },
+    "AllTypesDB_Tick_ms": {
+      "type": "integer",
+      "const": null,
+      "uav:mapToNodeId": null,
+      "uav:mapToType": null,
+      "uav:mapByFieldPath": null,
+      "readOnly": false,
+      "observable": true,
+      "forms": [
+        {
+          "href": "DB1?374",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "s7:rack": 0,
+          "s7:slot": 0,
+          "s7:dbnumber": 1,
+          "s7:start": 374,
+          "s7:size": 4,
+          "s7:pos": 0,
+          "s7:maxlen": 0,
+          "type": "xsd:integer",
+          "s7:target": "DB",
+          "s7:address": null,
+          "pollingTime": 1000,
+          "s7:s7type": "DINT"
+        }
+      ]
+    },
+    "MB100_Saw_Byte": {
+      "type": "integer",
+      "observable": true,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "MB100",
+          "op": [ "readproperty", "observeproperty" ],
+          "pollingTime": 1000,
+          "s7:target": "MB",
+          "s7:start": 100,
+          "s7:pos": 0,
+          "s7:size": 1,
+          "type": "xsd:byte"
+        }
+      ]
+    },
+    "MW102_Saw_Word": {
+      "type": "integer",
+      "observable": true,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "MW102",
+          "op": [ "readproperty", "observeproperty" ],
+          "pollingTime": 1000,
+          "s7:target": "MB",
+          "s7:start": 102,
+          "s7:pos": 0,
+          "s7:size": 2,
+          "type": "xsd:short"
+        }
+      ]
+    },
+    "MD104_Sine_DWord": {
+      "type": "integer",
+      "observable": true,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "MD104",
+          "op": [ "readproperty", "observeproperty" ],
+          "pollingTime": 1000,
+          "s7:target": "MB",
+          "s7:start": 104,
+          "s7:pos": 0,
+          "s7:size": 4,
+          "type": "xsd:integer"
+        }
+      ]
+    },
+    "M120_0_Pulse_Bool": {
+      "type": "boolean",
+      "observable": true,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "M120.0",
+          "op": [ "readproperty", "observeproperty" ],
+          "pollingTime": 1000,
+          "s7:target": "MB",
+          "s7:start": 120,
+          "s7:pos": 0,
+          "s7:size": 1,
+          "type": "xsd:boolean"
+        }
+      ]
+    },
+    "QB0_Saw_Byte": {
+      "type": "integer",
+      "observable": true,
+      "readOnly": false,
+      "forms": [
+        {
+          "href": "QB0",
+          "op": [ "readproperty", "observeproperty" ],
+          "pollingTime": 1000,
+          "s7:target": "AB",
+          "s7:start": 0,
+          "s7:pos": 0,
+          "s7:size": 1,
+          "type": "xsd:byte"
+        }
+      ]
+    }
+  },
+  "actions": {}
+}
