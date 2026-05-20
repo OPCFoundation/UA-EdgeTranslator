@@ -45,6 +45,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Aveva PI (experimental)
 * BACNet (experimental)
 * IEC61850 (experimental)
+* DMTF Redfish (experimental)
 
 Other southbound asset interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
@@ -133,6 +134,8 @@ Before applying, review the manifest and consider adjusting the following to sui
 * `DRIVER_ALLOWLIST_OIDC_ISSUER` - Fulcio OIDC issuer the driver allow-list signing certificate must come from. Defaults to `https://token.actions.githubusercontent.com`. See [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest).
 * `DRIVER_ALLOWLIST_OIDC_REPO` - GitHub `owner/repo` whose `.github/workflows/driver-pack.yml` is allowed to sign the driver allow-list manifest. Defaults to `OPCFoundation/UA-EdgeTranslator`. The loader accepts both `refs/heads/main` and `refs/tags/v*` runs of that workflow file. Override this when you publish your own driver pack from a fork.
 * `DRIVER_ALLOWLIST_OFFLINE_MODE` - Set to `allow-hash-only` to permit hash-only enforcement of the driver allow-list when the Sigstore bundle is missing or cannot be verified (intended for air-gapped deployments). Unset by default, meaning the loader is **fail-closed** and refuses to load any driver if the manifest is not signed and verified.
+* REDFISH_USERNAME - Username for authentication to Redfish assets.
+* REDFISH_PASSWORD - Password for authentication to Redfish assets.
 
 ## Provisioning
 UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.

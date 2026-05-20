@@ -53,6 +53,8 @@ jobs:
             csproj: ProtocolDrivers/HTTPClient/HTTPClient.csproj
           - name: avevapi
             csproj: ProtocolDrivers/AvevaPI/PIClient.csproj
+          - name: redfish
+            csproj: ProtocolDrivers/Redfish/Redfish.csproj
 
     steps:
       - name: Checkout
