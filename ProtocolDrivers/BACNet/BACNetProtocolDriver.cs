@@ -16,12 +16,24 @@
 
         private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false));
 
+        private bool _started = false;
+
         public string WoTBindingUri => "http://www.w3.org/2022/bacnet";
 
         public IEnumerable<string> Discover()
         {
+            // Reset previous discovery results and avoid accumulating handlers
+            // when Discover() is called more than once.
+            _discoverdAssets.Clear();
+            _client.OnIam -= OnIAm;
             _client.OnIam += OnIAm;
-            _client.Start();
+
+            if (!_started)
+            {
+                _client.Start();
+                _started = true;
+            }
+
             _client.WhoIs();
 
             Thread.Sleep(10000);
@@ -31,7 +43,10 @@
 
         private void OnIAm(BacnetClient sender, BacnetAddress adr, uint deviceId, uint maxAPDU, BacnetSegmentations segmentation, ushort vendorId)
         {
-            var newAddress = "bacnet://" + adr.ToString() + ":" + 0xBAC0.ToString();
+            // BacnetAddress.ToString() already contains the IP and port (e.g. "192.168.1.5:47808").
+            // Include the BACnet device instance so the resulting URI uniquely identifies the device
+            // and matches the format expected by CreateAndConnectAsset (bacnet://host[:port]/deviceId).
+            var newAddress = "bacnet://" + adr.ToString() + "/" + deviceId.ToString();
 
             if (!adr.IsMyRouter(adr) && !_discoverdAssets.Contains(newAddress))
             {
@@ -58,17 +73,30 @@
 
         public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
         {
-            unitId = 1;
-
-            string[] address = td.Base.Split([':', '/']);
-            if ((address.Length != 5) || (address[0] != "bacnet"))
+            if (td == null)
             {
-                throw new Exception("Expected BACNet device address in the format bacnet://ipaddress/deviceId!");
+                throw new ArgumentNullException(nameof(td));
             }
 
-            // check if we can reach the BACNet asset
+            unitId = 1;
+
+            if (string.IsNullOrWhiteSpace(td.Base)
+                || !Uri.TryCreate(td.Base, UriKind.Absolute, out Uri uri)
+                || !string.Equals(uri.Scheme, "bacnet", StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrWhiteSpace(uri.Host)
+                || string.IsNullOrWhiteSpace(uri.AbsolutePath)
+                || uri.AbsolutePath == "/")
+            {
+                throw new Exception("Expected BACNet device address in the format bacnet://ipaddress[:port]/deviceId!");
+            }
+
+            string deviceId = uri.AbsolutePath.Trim('/');
+            int port = uri.IsDefaultPort ? 0xBAC0 : uri.Port;
+
+            // BACNetAsset.Connect expects "<host>/<deviceId>"; BACnet IP always uses the
+            // UDP port configured on the BacnetClient transport (0xBAC0 by default).
             BACNetAsset asset = new();
-            asset.Connect(address[3] + "/" + address[4], 0);
+            asset.Connect(uri.Host + "/" + deviceId, port);
 
             return asset;
         }
@@ -82,7 +110,16 @@
             string mappedUAExpandedNodeId,
             string mappedUAFieldPath)
         {
+            if (form == null)
+            {
+                throw new ArgumentNullException(nameof(form));
+            }
+
             GenericForm bacnetForm = JsonConvert.DeserializeObject<GenericForm>(form.ToString());
+            if (bacnetForm == null)
+            {
+                throw new ArgumentException("Form payload could not be parsed as a BACNet form.", nameof(form));
+            }
 
             return new AssetTag()
             {
