@@ -14,7 +14,7 @@
 
   <ItemGroup>
 	<!-- OPC UA SDK -->
-	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.134" />
+	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.145" />
 	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.378.134" />
 
 	<!-- Logging -->
