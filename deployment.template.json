@@ -1,0 +1,101 @@
+{
+    "$schema-template": "4.0.0",
+    "_comment": "Azure IoT Edge deployment manifest for UA Edge Translator. Apply with: az iot edge set-modules --hub-name <iot-hub-name> --device-id <iot-edge-device-id> --content ./deployment.template.json",
+    "modulesContent": {
+        "$edgeAgent": {
+            "properties.desired": {
+                "schemaVersion": "1.1",
+                "runtime": {
+                    "type": "docker",
+                    "settings": {
+                        "minDockerVersion": "v1.25",
+                        "loggingOptions": "",
+                        "_comment_registryCredentials": "Public images on ghcr.io do not require credentials. Add an entry here only if you mirror the images into a private registry.",
+                        "registryCredentials": {}
+                    }
+                },
+                "systemModules": {
+                    "edgeAgent": {
+                        "type": "docker",
+                        "settings": {
+                            "image": "mcr.microsoft.com/azureiotedge-agent:1.5",
+                            "createOptions": "{}"
+                        }
+                    },
+                    "edgeHub": {
+                        "type": "docker",
+                        "status": "running",
+                        "restartPolicy": "always",
+                        "settings": {
+                            "image": "mcr.microsoft.com/azureiotedge-hub:1.5",
+                            "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"5671/tcp\":[{\"HostPort\":\"5671\"}],\"8883/tcp\":[{\"HostPort\":\"8883\"}],\"443/tcp\":[{\"HostPort\":\"443\"}]}}}"
+                        }
+                    }
+                },
+                "modules": {
+                    "uaedgetranslatordrivers": {
+                        "version": "1.0",
+                        "type": "docker",
+                        "status": "running",
+                        "restartPolicy": "never",
+                        "startupOrder": 0,
+                        "settings": {
+                            "image": "ghcr.io/opcfoundation/ua-edgetranslator-drivers:main",
+                            "imagePullPolicy": "on-create",
+                            "createOptions": "{\"Entrypoint\":[\"/bin/sh\",\"-c\",\"cp -a /drivers/. /app/drivers/\"],\"HostConfig\":{\"Mounts\":[{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-drivers\",\"Target\":\"/app/drivers\"}]}}"
+                        }
+                    },
+                    "uaedgetranslator": {
+                        "version": "1.0",
+                        "type": "docker",
+                        "status": "running",
+                        "restartPolicy": "always",
+                        "startupOrder": 1,
+                        "env": {
+                            "OPCUA_USERNAME": {
+                                "value": "REPLACE_ME"
+                            },
+                            "OPCUA_PASSWORD": {
+                                "value": "REPLACE_ME"
+                            }
+                        },
+                        "settings": {
+                            "image": "ghcr.io/opcfoundation/ua-edgetranslator:main",
+                            "imagePullPolicy": "on-create",
+                            "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"4840/tcp\":[{\"HostPort\":\"4840\"}],\"5000/tcp\":[{\"HostPort\":\"5000\"}],\"5001/tcp\":[{\"HostPort\":\"5001\"}],\"19520/tcp\":[{\"HostPort\":\"19520\"}],\"19521/tcp\":[{\"HostPort\":\"19521\"}]},\"Mounts\":[{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-drivers\",\"Target\":\"/app/drivers\"},{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-settings\",\"Target\":\"/app/settings\"},{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-pki\",\"Target\":\"/app/pki\"},{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-logs\",\"Target\":\"/app/logs\"},{\"Type\":\"volume\",\"Source\":\"uaedgetranslator-nodesets\",\"Target\":\"/app/nodesets\"}]}}"
+                        }
+                    },
+                    "opcpublisher": {
+                        "version": "1.0",
+                        "type": "docker",
+                        "status": "running",
+                        "restartPolicy": "always",
+                        "startupOrder": 2,
+                        "_comment": "Microsoft OPC Publisher subscribes to the OPC UA server exposed by UA Edge Translator on opc.tcp://uaedgetranslator:4840 and forwards the values to Azure IoT Hub *via* the local edgeHub module (using the IoT Hub SDK ModuleClient, which IoT Edge automatically points at EdgeHubConnectionString). This preserves edgeHub's store-and-forward (offline buffering) behavior — see the 'opcPublisherToIoTHub' route below. Do NOT pass --mqc / --ec / any external broker connection string here unless you intentionally want to bypass edgeHub. Replace --aa with proper certificate management for production. The published-nodes configuration must be placed in the 'opcpublisher-pn' volume as 'publishednodes.json' before the module starts.",
+                        "settings": {
+                            "image": "mcr.microsoft.com/iotedge/opc-publisher:2.9",
+                            "imagePullPolicy": "on-create",
+                            "createOptions": "{\"Hostname\":\"opcpublisher\",\"Cmd\":[\"--pf=/app/pn/publishednodes.json\",\"--aa\",\"--mm=PubSub\",\"--me=Json\",\"--fm=true\",\"--bs=100\",\"--bi=1000\",\"--di=60\"],\"HostConfig\":{\"Mounts\":[{\"Type\":\"volume\",\"Source\":\"opcpublisher-pn\",\"Target\":\"/app/pn\"},{\"Type\":\"volume\",\"Source\":\"opcpublisher-pki\",\"Target\":\"/app/pki\"},{\"Type\":\"volume\",\"Source\":\"opcpublisher-logs\",\"Target\":\"/app/logs\"}]}}"
+                        }
+                    }
+                }
+            }
+        },
+        "$edgeHub": {
+            "properties.desired": {
+                "schemaVersion": "1.1",
+                "routes": {
+                    "opcPublisherToIoTHub": {
+                        "_comment": "Forwards OPC Publisher telemetry from edgeHub to IoT Hub. Because the message goes through edgeHub first, it benefits from edgeHub's on-disk store-and-forward buffer when the upstream link is down (see storeAndForwardConfiguration.timeToLiveSecs below).",
+                        "route": "FROM /messages/modules/opcpublisher/* INTO $upstream",
+                        "priority": 0,
+                        "timeToLiveSecs": 7200
+                    }
+                },
+                "storeAndForwardConfiguration": {
+                    "timeToLiveSecs": 7200
+                }
+            }
+        }
+    }
+}

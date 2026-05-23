@@ -112,6 +112,97 @@ Before applying, review the manifest and consider adjusting the following to sui
 * The `hostPath` entries for the `settings`, `pki`, `logs` and `nodesets` volumes — these default to paths under `/mnt/c/K3s/UAEdgeTranslator/` (suitable for K3s on WSL) and should be changed to persistent locations on your nodes (or replaced with `PersistentVolumeClaims`).
 * The exposed service ports if you do not need LoRaWAN (5000/5001) or OCPP (19520/19521).
 
+## Running UA Edge Translator from Azure IoT Edge/Hub
+
+UA Edge Translator can be deployed to an [Azure IoT Edge](https://learn.microsoft.com/azure/iot-edge/) device managed by an [Azure IoT Hub](https://learn.microsoft.com/azure/iot-hub/). A ready-to-use deployment manifest is provided in this repository: [deployment.template.json](deployment.template.json). It deploys:
+
+* The standard Azure IoT Edge system modules (`$edgeAgent` and `$edgeHub`, both pinned to the 1.5 LTS tag).
+* An `uaedgetranslatordrivers` module that runs once (`restartPolicy: never`) and copies the signed protocol drivers from the `ghcr.io/opcfoundation/ua-edgetranslator-drivers:main` image into a shared Docker named volume.
+* The `uaedgetranslator` module itself, which mounts that shared drivers volume into `/app/drivers` and exposes the OPC UA (4840), LoRaWAN (5000/5001) and OCPP (19520/19521) ports on the host.
+* The Microsoft [OPC Publisher](https://learn.microsoft.com/azure/iot/overview-opc-publisher) module (`mcr.microsoft.com/iotedge/opc-publisher:2.9`), which connects to the OPC UA server exposed by UA Edge Translator at `opc.tcp://uaedgetranslator:4840` and forwards the translated OPC UA telemetry **to the local `$edgeHub` module** (not directly to IoT Hub). `$edgeHub` then routes it upstream via `FROM /messages/modules/opcpublisher/* INTO $upstream` and applies its [store-and-forward](https://learn.microsoft.com/azure/iot-edge/offline-capabilities) buffer (`timeToLiveSecs = 7200`) when the cloud link is down. The manifest does **not** set `--mqc` / `--ec` / any other external broker connection string, so the IoT Hub SDK `ModuleClient` inside OPC Publisher uses the auto-injected `EdgeHubConnectionString` and goes through `edgeHub`.
+
+### Prerequisites
+
+* An [Azure IoT Hub](https://learn.microsoft.com/azure/iot-hub/iot-hub-create-through-portal) instance.
+* An [IoT Edge device](https://learn.microsoft.com/azure/iot-edge/how-to-provision-single-device-linux-symmetric) registered with that IoT Hub and running the [Azure IoT Edge 1.5 LTS](https://learn.microsoft.com/azure/iot-edge/support) runtime on a Linux host (AMD64 or ARM64).
+* The [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) with the [`azure-iot` extension](https://learn.microsoft.com/cli/azure/iot) installed (`az extension add --name azure-iot`).
+
+### Deploy with the Azure CLI
+
+1. Edit [deployment.template.json](deployment.template.json) and replace the `OPCUA_USERNAME` / `OPCUA_PASSWORD` placeholder values with the credentials you want OPC UA clients to use when connecting to UA Edge Translator. For production, store these in [Azure Key Vault](https://learn.microsoft.com/azure/key-vault/) or use the [IoT Edge secret injection pattern](https://learn.microsoft.com/azure/iot-edge/how-to-manage-device-secrets) instead of inlining them in the manifest.
+2. Optionally add any of the [Optional Environment Variables](#optional-environment-variables) (for example `UACLURL`, `LICENSE_KEY` or `WOT_MAX_FILE_BYTES`) to the `env` block of the `uaedgetranslator` module.
+3. Apply the deployment to your IoT Edge device:
+
+```
+az iot edge set-modules `
+  --hub-name <your-iot-hub-name> `
+  --device-id <your-iot-edge-device-id> `
+  --content ./deployment.template.json
+```
+
+4. Verify on the IoT Edge device that all four modules are reported as `running` (note that `uaedgetranslatordrivers` will report as exited / stopped once it has copied the drivers — this is expected because its `restartPolicy` is `never`):
+
+```
+sudo iotedge list
+```
+
+### Deploy from the Azure portal
+
+You can also apply the manifest from the portal:
+
+1. Navigate to your IoT Hub → **Devices** → select your IoT Edge device → **Set Modules**.
+2. Choose **Review + create** → **Load from a JSON file** and pick [deployment.template.json](deployment.template.json).
+3. Update the `OPCUA_USERNAME` / `OPCUA_PASSWORD` environment variables under the `uaedgetranslator` module before submitting.
+
+### Persistent storage on the IoT Edge host
+
+The manifest creates Docker named volumes (`uaedgetranslator-drivers`, `uaedgetranslator-settings`, `uaedgetranslator-pki`, `uaedgetranslator-logs`, `uaedgetranslator-nodesets`, `opcpublisher-pn`, `opcpublisher-pki`, `opcpublisher-logs`) that survive container restarts and module updates. For production deployments, consider the following:
+
+* Replace the named volumes with bind mounts to encrypted folders on the host (e.g. LUKS-encrypted partitions) by adjusting the `Mounts` entries in the `createOptions` field — the `/app/pki` folders (for both UA Edge Translator and OPC Publisher) in particular contain private keys and **must** be protected.
+* Client certificates need to be manually moved from `/app/pki/rejected/certs` to `/app/pki/trusted/certs` inside the container (`docker exec` into the `uaedgetranslator` module) to trust an OPC UA client trying to connect. Because OPC Publisher acts as an OPC UA *client* against UA Edge Translator, its certificate from `opcpublisher-pki/own/certs` must also be copied into UA Edge Translator's trusted store before subscriptions can be established.
+
+### Configuring OPC Publisher
+
+OPC Publisher reads its subscription configuration from `/app/pn/publishednodes.json`. Before applying the manifest, populate the `opcpublisher-pn` volume on the IoT Edge host with a `publishednodes.json` file describing which OPC UA nodes to subscribe to on UA Edge Translator. A minimal example:
+
+```json
+[
+  {
+    "EndpointUrl": "opc.tcp://uaedgetranslator:4840",
+    "UseSecurity": true,
+    "OpcAuthenticationMode": "UsernamePassword",
+    "OpcAuthenticationUsername": "REPLACE_ME",
+    "OpcAuthenticationPassword": "REPLACE_ME",
+    "OpcNodes": [
+      {
+        "Id": "nsu=http://opcfoundation.org/UA/WoTCon/;s=YourAssetVariable",
+        "OpcSamplingInterval": 1000,
+        "OpcPublishingInterval": 1000
+      }
+    ]
+  }
+]
+```
+
+The `EndpointUrl` uses the module's hostname (`uaedgetranslator`) because all IoT Edge modules on the same device share a Docker bridge network and can resolve each other by module name. The credentials must match the `OPCUA_USERNAME` / `OPCUA_PASSWORD` configured for UA Edge Translator. See [OPC Publisher publishednodes.json reference](https://learn.microsoft.com/azure/iot/howto-opc-publisher-configure) for the full schema.
+
+To populate the volume, SSH to the IoT Edge device and run:
+
+```
+sudo docker volume create opcpublisher-pn
+sudo cp publishednodes.json /var/lib/docker/volumes/opcpublisher-pn/_data/publishednodes.json
+sudo chown 1000:1000 /var/lib/docker/volumes/opcpublisher-pn/_data/publishednodes.json
+```
+
+Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes`, `UnpublishNodes`, `GetConfiguredNodesOnEndpoint`, …) so the configuration can be managed from the cloud after the module starts. See [Configure OPC Publisher via IoT Hub direct methods](https://learn.microsoft.com/azure/iot/howto-opc-publisher-direct-methods).
+
+### Notes
+
+* The `uaedgetranslatordrivers` module has `restartPolicy: never` and `startupOrder: 0` so it runs once at deployment time, copies the signed drivers into the shared volume, and then exits cleanly. The `uaedgetranslator` module starts afterwards (`startupOrder: 1`) and consumes the drivers from the same volume. OPC Publisher starts last (`startupOrder: 2`) so the OPC UA endpoint is reachable when it tries to connect.
+* Because the images on `ghcr.io/opcfoundation` and `mcr.microsoft.com` are public, no `registryCredentials` entry is required. If you mirror them into [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/) or another private registry, add the credentials under `$edgeAgent → settings → registryCredentials`.
+* The same caveats that apply to the Docker deployment apply here too — see the notes at the top of the README about BACNet, Matter, Rockwell discovery and Modbus RTU, which all require `--network=host` (which IoT Edge does not expose by default) or device pass-through. To enable host networking for those protocols, add `"NetworkMode": "host"` to the module's `createOptions.HostConfig`.
+* The OPC Publisher command line in the manifest uses `--aa` (auto-accept untrusted certificates) for ease of first-time setup. **Remove `--aa` for production** and instead exchange certificates manually between OPC Publisher (`opcpublisher-pki`) and UA Edge Translator (`uaedgetranslator-pki`).
+
 ## Mandatory Environment Variables
 
 * `OPCUA_USERNAME` - OPC UA username to connect to UA Edge Translator. **The server refuses to start if this is missing or empty.**
