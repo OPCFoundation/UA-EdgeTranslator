@@ -119,7 +119,7 @@ UA Edge Translator can be deployed to an [Azure IoT Edge](https://learn.microsof
 * The standard Azure IoT Edge system modules (`$edgeAgent` and `$edgeHub`, both pinned to the 1.5 LTS tag).
 * An `uaedgetranslatordrivers` module that runs once (`restartPolicy: never`) and copies the signed protocol drivers from the `ghcr.io/opcfoundation/ua-edgetranslator-drivers:main` image into a shared Docker named volume.
 * The `uaedgetranslator` module itself, which mounts that shared drivers volume into `/app/drivers` and exposes the OPC UA (4840), LoRaWAN (5000/5001) and OCPP (19520/19521) ports on the host.
-* The Microsoft [OPC Publisher](https://learn.microsoft.com/azure/iot/overview-opc-publisher) module (`mcr.microsoft.com/iotedge/opc-publisher:2.9`), which connects to the OPC UA server exposed by UA Edge Translator at `opc.tcp://uaedgetranslator:4840` and forwards the translated OPC UA telemetry **to the local `$edgeHub` module** (not directly to IoT Hub). `$edgeHub` then routes it upstream via `FROM /messages/modules/opcpublisher/* INTO $upstream` and applies its [store-and-forward](https://learn.microsoft.com/azure/iot-edge/offline-capabilities) buffer (`timeToLiveSecs = 7200`) when the cloud link is down. The manifest does **not** set `--mqc` / `--ec` / any other external broker connection string, so the IoT Hub SDK `ModuleClient` inside OPC Publisher uses the auto-injected `EdgeHubConnectionString` and goes through `edgeHub`.
+* The Microsoft [OPC Publisher](https://github.com/Azure/Industrial-IoT/blob/release/2.9.16/docs/opc-publisher/readme.md) module (`mcr.microsoft.com/iotedge/opc-publisher:2.9`), which connects to the OPC UA server exposed by UA Edge Translator at `opc.tcp://uaedgetranslator:4840` and forwards the translated OPC UA telemetry **to the local `$edgeHub` module** (not directly to IoT Hub). `$edgeHub` then routes it upstream via `FROM /messages/modules/opcpublisher/* INTO $upstream` and applies its [store-and-forward](https://learn.microsoft.com/azure/iot-edge/offline-capabilities) buffer (`timeToLiveSecs = 7200`) when the cloud link is down. The manifest does **not** set `--mqc` / `--ec` / any other external broker connection string, so the IoT Hub SDK `ModuleClient` inside OPC Publisher uses the auto-injected `EdgeHubConnectionString` and goes through `edgeHub`.
 
 ### Prerequisites
 
@@ -184,7 +184,7 @@ OPC Publisher reads its subscription configuration from `/app/pn/publishednodes.
 ]
 ```
 
-The `EndpointUrl` uses the module's hostname (`uaedgetranslator`) because all IoT Edge modules on the same device share a Docker bridge network and can resolve each other by module name. The credentials must match the `OPCUA_USERNAME` / `OPCUA_PASSWORD` configured for UA Edge Translator. See [OPC Publisher publishednodes.json reference](https://learn.microsoft.com/azure/iot/howto-opc-publisher-configure) for the full schema.
+The `EndpointUrl` uses the module's hostname (`uaedgetranslator`) because all IoT Edge modules on the same device share a Docker bridge network and can resolve each other by module name. The credentials must match the `OPCUA_USERNAME` / `OPCUA_PASSWORD` configured for UA Edge Translator. See the [OPC Publisher configuration schema](https://github.com/Azure/Industrial-IoT/blob/release/2.9.16/docs/opc-publisher/readme.md#configuration-schema) and [`publishednodes.json` reference](https://github.com/Azure/Industrial-IoT/blob/release/2.9.16/docs/opc-publisher/readme.md#configuration-via-configuration-file) for the full schema.
 
 To populate the volume, SSH to the IoT Edge device and run:
 
@@ -194,7 +194,7 @@ sudo cp publishednodes.json /var/lib/docker/volumes/opcpublisher-pn/_data/publis
 sudo chown 1000:1000 /var/lib/docker/volumes/opcpublisher-pn/_data/publishednodes.json
 ```
 
-Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes`, `UnpublishNodes`, `GetConfiguredNodesOnEndpoint`, …) so the configuration can be managed from the cloud after the module starts. See [Configure OPC Publisher via IoT Hub direct methods](https://learn.microsoft.com/azure/iot/howto-opc-publisher-direct-methods).
+Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, `UnpublishNodes_V1`, `GetConfiguredNodesOnEndpoint_V1`, …) so the configuration can be managed from the cloud after the module starts. See the [OPC Publisher direct methods API reference](https://github.com/Azure/Industrial-IoT/blob/release/2.9.16/docs/opc-publisher/directmethods.md) and [command-line options reference](https://github.com/Azure/Industrial-IoT/blob/release/2.9.16/docs/opc-publisher/commandline.md).
 
 ### Notes
 
