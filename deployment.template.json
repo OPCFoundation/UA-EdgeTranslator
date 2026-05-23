@@ -57,6 +57,10 @@
                             },
                             "OPCUA_PASSWORD": {
                                 "value": "REPLACE_ME"
+                            },
+                            "_comment_IGNORE_PROVISIONING_MODE": "OPC Publisher does not support OPC UA GDS Server Push provisioning, so it cannot inject an issuer certificate to take UA Edge Translator out of provisioning mode. Setting IGNORE_PROVISIONING_MODE=1 disables provisioning mode at startup so OPC Publisher can immediately browse and subscribe to the WoT-Connectivity-related OPC UA nodes. Remove this variable if you have another way to provision UA Edge Translator (e.g. manually copying an issuer certificate into /app/pki/issuer/certs).",
+                            "IGNORE_PROVISIONING_MODE": {
+                                "value": "1"
                             }
                         },
                         "settings": {
