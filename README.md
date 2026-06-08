@@ -488,6 +488,18 @@ dotnet build UA-WoTGenerator\UA-WoTGenerator.csproj `
 
 The Openness assemblies are referenced from the local TIA install with `<Private>false</Private>` and **never copied** into the output (Siemens forbids redistribution). At runtime the tool resolves them from the same install path; override with the `SIEMENS_TIA_PATH` environment variable if needed.
 
+#### Password-protected projects (TIA Project User Management)
+
+If the TIA project has **Project User Management** (UMAC) enabled, the importer needs valid credentials to open it — there is no way to remove the password once it has been set. Supply the credentials via environment variables before running the tool:
+
+```powershell
+$env:SIEMENS_TIA_USERNAME = "<user defined in the TIA project>"
+$env:SIEMENS_TIA_PASSWORD = "<password for that user>"
+.\UA-WoTGenerator.exe
+```
+
+When both variables are set the importer opens the project via the Openness `UmacDelegate` overload. When either is empty or missing the importer falls back to the unprotected open and behaves exactly as before, so leaving these variables unset is the right choice for projects without User Management.
+
 #### Running the UA-WoTGenerator tool
 
 1. Copy the **entire contents** of the TIA project folder (e.g. the files and folders containing the e.g. *.ap21 file) into the folder `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\`, so the path to the project file is `<repo root>\UA-WoTGenerator\bin\x64\Release\net48\<projectName>.ap21`, for example.

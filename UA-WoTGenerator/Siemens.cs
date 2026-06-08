@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.Tools
     using System.Collections.Generic;
     using System.IO;
     using System.Reflection;
+    using System.Security;
     using System.Xml.Linq;
     using Property = Models.Property;
 
@@ -141,11 +142,58 @@ namespace Opc.Ua.Edge.Translator.Tools
 #if SIEMENS_ENGINEERING
             Console.WriteLine($"Opening TIA Portal project: {filename}");
 
+            // UMAC (Project User Management) credentials. TIA refuses to open a
+            // project that has the "Project User Management" enabled without
+            // valid credentials, so we read them from the environment instead of
+            // baking them into the binary or putting them on the command line:
+            //
+            //   SIEMENS_TIA_USERNAME = <user defined in the TIA project>
+            //   SIEMENS_TIA_PASSWORD = <password for that user>
+            //
+            // When both are present we open the project via the UmacDelegate
+            // overload; otherwise we fall through to the legacy unprotected
+            // open, preserving today's behaviour for unprotected projects.
+            string umacUser = Environment.GetEnvironmentVariable("SIEMENS_TIA_USERNAME");
+            string umacPassword = Environment.GetEnvironmentVariable("SIEMENS_TIA_PASSWORD");
+            bool useUmac = !string.IsNullOrEmpty(umacUser) && !string.IsNullOrEmpty(umacPassword);
+
             TiaPortal tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
             Project project;
             try
             {
-                project = tia.Projects.Open(new FileInfo(filename));
+                if (useUmac)
+                {
+                    Console.WriteLine($"  Authenticating as TIA user '{umacUser}'.");
+                    using (SecureString securePassword = ToSecureString(umacPassword))
+                    {
+                        project = tia.Projects.Open(new FileInfo(filename), credentials =>
+                        {
+                            // The UmacDelegate is invoked by TIA Openness whenever
+                            // the project has User Management enabled. The caller
+                            // must populate the Name and password on the
+                            // UmacUserCredentials object passed in. The same
+                            // delegate is also invoked for UmacApplicationCredentials
+                            // (auto-logon via project-defined application identifier),
+                            // which we don't support here.
+                            if (credentials is UmacUserCredentials userCreds)
+                            {
+                                userCreds.Name = umacUser;
+                                userCreds.Conceal(securePassword);
+                            }
+                            else
+                            {
+                                Console.WriteLine(
+                                    "  Warning: this TIA project requested credentials of an " +
+                                    $"unexpected type ({credentials?.GetType().FullName}); " +
+                                    "open will likely fail.");
+                            }
+                        });
+                    }
+                }
+                else
+                {
+                    project = tia.Projects.Open(new FileInfo(filename));
+                }
             }
             catch (Exception ex)
             {
@@ -306,6 +354,27 @@ namespace Opc.Ua.Edge.Translator.Tools
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Copies the given clear-text password into a fresh
+        /// <see cref="SecureString"/> so it can be handed to the TIA
+        /// Openness <c>UmacUserCredentials.Conceal</c> API. The caller is
+        /// responsible for disposing the returned instance.
+        /// </summary>
+        private static SecureString ToSecureString(string clearText)
+        {
+            SecureString secure = new SecureString();
+            if (!string.IsNullOrEmpty(clearText))
+            {
+                foreach (char c in clearText)
+                {
+                    secure.AppendChar(c);
+                }
+            }
+
+            secure.MakeReadOnly();
+            return secure;
         }
 
         /// <summary>
