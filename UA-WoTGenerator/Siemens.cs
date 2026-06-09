@@ -142,63 +142,95 @@ namespace Opc.Ua.Edge.Translator.Tools
 #if SIEMENS_ENGINEERING
             Console.WriteLine($"Opening TIA Portal project: {filename}");
 
-            // UMAC (Project User Management) credentials. TIA refuses to open a
-            // project that has the "Project User Management" enabled without
-            // valid credentials, so we read them from the environment instead of
-            // baking them into the binary or putting them on the command line:
+            // Preferred path: attach to an already-running TIA Portal instance
+            // that has this project open. When TIA is launched interactively
+            // and the user has logged in to the (UMAC-protected) project, that
+            // session has already passed authentication; attaching via
+            // TiaPortal.GetProcesses() therefore never triggers the UMAC
+            // callback. This is the only known way to import projects whose
+            // User Management requires types (e.g. UmacUserCredentials) that
+            // are not exposed by older Openness assemblies such as TIA V16.
+            //
+            // Fallback path: if no running TIA process has the project open,
+            // we spin up a headless TIA instance and open the file ourselves.
+            // In that case the UMAC callback IS invoked for protected
+            // projects, and we read the credentials from:
             //
             //   SIEMENS_TIA_USERNAME = <user defined in the TIA project>
             //   SIEMENS_TIA_PASSWORD = <password for that user>
             //
-            // When both are present we open the project via the UmacDelegate
-            // overload; otherwise we fall through to the legacy unprotected
-            // open, preserving today's behaviour for unprotected projects.
+            // Note: the UMAC callback path requires the UmacUserCredentials
+            // type, which only exists in newer Openness builds. If the type
+            // is missing at runtime (e.g. V16), the only working route is to
+            // open the project in TIA first and let this importer attach to
+            // that session.
             string umacUser = Environment.GetEnvironmentVariable("SIEMENS_TIA_USERNAME");
             string umacPassword = Environment.GetEnvironmentVariable("SIEMENS_TIA_PASSWORD");
             bool useUmac = !string.IsNullOrEmpty(umacUser) && !string.IsNullOrEmpty(umacPassword);
 
-            TiaPortal tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
-            Project project;
+            TiaPortal tia = null;
+            Project project = null;
+            bool attachedToExisting = false;
+
             try
             {
-                if (useUmac)
-                {
-                    Console.WriteLine($"  Authenticating as TIA user '{umacUser}'.");
-                    using (SecureString securePassword = ToSecureString(umacPassword))
-                    {
-                        project = tia.Projects.Open(new FileInfo(filename), credentials =>
-                        {
-                            // The UmacDelegate is invoked by TIA Openness whenever
-                            // the project has User Management enabled. The caller
-                            // must populate the Name and password on the
-                            // UmacUserCredentials object passed in. The same
-                            // delegate is also invoked for UmacApplicationCredentials
-                            // (auto-logon via project-defined application identifier),
-                            // which we don't support here.
-                            if (credentials is UmacUserCredentials userCreds)
-                            {
-                                userCreds.Name = umacUser;
-                                userCreds.Conceal(securePassword);
-                            }
-                            else
-                            {
-                                Console.WriteLine(
-                                    "  Warning: this TIA project requested credentials of an " +
-                                    $"unexpected type ({credentials?.GetType().FullName}); " +
-                                    "open will likely fail.");
-                            }
-                        });
-                    }
-                }
-                else
-                {
-                    project = tia.Projects.Open(new FileInfo(filename));
-                }
+                (tia, project) = TryAttachToRunningTia(filename);
+                attachedToExisting = (tia != null && project != null);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to open TIA project '{filename}': {ex.Message}");
-                return;
+                Console.WriteLine(
+                    $"  Could not enumerate running TIA Portal processes ({ex.Message}); " +
+                    "falling back to opening the project headlessly.");
+                tia = null;
+                project = null;
+            }
+
+            if (!attachedToExisting)
+            {
+                tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
+                try
+                {
+                    if (useUmac)
+                    {
+                        Console.WriteLine($"  Authenticating as TIA user '{umacUser}'.");
+                        using (SecureString securePassword = ToSecureString(umacPassword))
+                        {
+                            project = tia.Projects.Open(new FileInfo(filename), credentials =>
+                            {
+                                // The UmacDelegate is invoked by TIA Openness whenever
+                                // the project has User Management enabled. The caller
+                                // must populate the Name and password on the
+                                // UmacUserCredentials object passed in. The same
+                                // delegate is also invoked for UmacApplicationCredentials
+                                // (auto-logon via project-defined application identifier),
+                                // which we don't support here.
+                                if (credentials is UmacUserCredentials userCreds)
+                                {
+                                    userCreds.Name = umacUser;
+                                    userCreds.Conceal(securePassword);
+                                }
+                                else
+                                {
+                                    Console.WriteLine(
+                                        "  Warning: this TIA project requested credentials of an " +
+                                        $"unexpected type ({credentials?.GetType().FullName}); " +
+                                        "open will likely fail.");
+                                }
+                            });
+                        }
+                    }
+                    else
+                    {
+                        project = tia.Projects.Open(new FileInfo(filename));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to open TIA project '{filename}': {ex.Message}");
+                    tia.Dispose();
+                    return;
+                }
             }
 
             try
@@ -275,8 +307,15 @@ namespace Opc.Ua.Edge.Translator.Tools
             }
             finally
             {
-                project.Close();
-                tia.Dispose();
+                // Only tear down the TIA session if we created it. When we
+                // attached to a running TIA instance, the user owns that
+                // session and closing/disposing it here would kill their
+                // editor.
+                if (!attachedToExisting)
+                {
+                    try { project?.Close(); } catch { /* ignore */ }
+                    try { tia?.Dispose(); } catch { /* ignore */ }
+                }
             }
 #else
             Console.WriteLine(
@@ -375,6 +414,139 @@ namespace Opc.Ua.Edge.Translator.Tools
 
             secure.MakeReadOnly();
             return secure;
+        }
+
+        /// <summary>
+        /// Looks for a running TIA Portal instance that already has
+        /// <paramref name="filename"/> open and attaches to it via the
+        /// <c>TiaPortal(TiaPortalProcess)</c> constructor. Returns
+        /// <c>(null, null)</c> when no such instance is found.
+        ///
+        /// Attaching to an interactive TIA session bypasses the UMAC
+        /// callback entirely: the user has already authenticated against
+        /// the project's User Management in the TIA UI, so Openness never
+        /// asks us for credentials. This is the only known workaround for
+        /// older Openness builds (e.g. TIA V16) whose public surface does
+        /// not expose <c>UmacUserCredentials</c>.
+        /// </summary>
+        private static (TiaPortal tia, Project project) TryAttachToRunningTia(string filename)
+        {
+            IList<TiaPortalProcess> processes;
+            try
+            {
+                processes = TiaPortal.GetProcesses();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  TiaPortal.GetProcesses() failed: {ex.Message}");
+                return (null, null);
+            }
+
+            if (processes == null || processes.Count == 0)
+            {
+                return (null, null);
+            }
+
+            string targetFull;
+            try
+            {
+                targetFull = Path.GetFullPath(filename);
+            }
+            catch
+            {
+                targetFull = filename;
+            }
+
+            foreach (TiaPortalProcess tp in processes)
+            {
+                FileInfo openProject = null;
+                try
+                {
+                    openProject = tp.ProjectPath;
+                }
+                catch
+                {
+                    // Some TIA processes (e.g. one with no project loaded)
+                    // throw when ProjectPath is queried. Skip them.
+                    continue;
+                }
+
+                if (openProject == null)
+                {
+                    continue;
+                }
+
+                string openFull;
+                try
+                {
+                    openFull = Path.GetFullPath(openProject.FullName);
+                }
+                catch
+                {
+                    openFull = openProject.FullName;
+                }
+
+                if (!string.Equals(openFull, targetFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Console.WriteLine(
+                    $"  Attaching to running TIA Portal process (PID {tp.Id}) that already has the project open.");
+
+                TiaPortal tia;
+                try
+                {
+                    tia = new TiaPortal(tp);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Failed to attach to TIA process {tp.Id}: {ex.Message}");
+                    continue;
+                }
+
+                Project project = null;
+                try
+                {
+                    foreach (Project p in tia.Projects)
+                    {
+                        FileInfo path = null;
+                        try { path = p.Path; } catch { /* ignore */ }
+                        if (path == null)
+                        {
+                            project = p;
+                            break;
+                        }
+
+                        string pFull;
+                        try { pFull = Path.GetFullPath(path.FullName); }
+                        catch { pFull = path.FullName; }
+
+                        if (string.Equals(pFull, targetFull, StringComparison.OrdinalIgnoreCase))
+                        {
+                            project = p;
+                            break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Failed to enumerate projects in attached TIA: {ex.Message}");
+                }
+
+                if (project == null)
+                {
+                    // The process advertised the path but no matching Project
+                    // surfaced (rare; can happen mid-load). Don't dispose - it
+                    // would close the user's session.
+                    Console.WriteLine("  Attached TIA reported the project open, but no Project instance was found.");
+                    return (null, null);
+                }
+
+                return (tia, project);
+            }
+
+            return (null, null);
         }
 
         /// <summary>

@@ -490,7 +490,29 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 #### Password-protected projects (TIA Project User Management)
 
-If the TIA project has **Project User Management** (UMAC) enabled, the importer needs valid credentials to open it — there is no way to remove the password once it has been set. Supply the credentials via environment variables before running the tool:
+If the TIA project has **Project User Management** (UMAC) enabled, the importer needs valid credentials to open it — there is no way to remove the password once it has been set. Two paths are supported, in this order:
+
+##### Option 1 (recommended): attach to a running TIA Portal session
+
+The importer first calls `TiaPortal.GetProcesses()` and looks for a TIA Portal instance that already has the target project file open. If one is found, it attaches to that session via the `TiaPortal(TiaPortalProcess)` constructor and reuses the already-loaded `Project`. Because the user has already authenticated against UMAC interactively in the TIA UI, Openness **never invokes the credential callback**, so this path works even on Openness builds (e.g. TIA V16) whose public surface does not expose the `UmacUserCredentials` type required by Option 2.
+
+Workflow:
+
+1. Launch TIA Portal interactively.
+2. Open the protected project and log in at the UMAC prompt when TIA asks.
+3. Leave TIA running and start the UA-WoTGenerator tool. Look for this line in the console output:
+
+   ```
+   Attaching to running TIA Portal process (PID …) that already has the project open.
+   ```
+
+4. The importer reuses your authenticated session and does **not** close the project or dispose the TIA instance when it finishes, so your editor session is left intact.
+
+The Windows user running UA-WoTGenerator must still be a member of the **Siemens TIA Openness** group; that requirement is enforced by Siemens at attach time.
+
+##### Option 2: open headlessly with credentials from environment variables
+
+If no running TIA Portal instance has the project open, the importer falls back to launching a headless `TiaPortalMode.WithoutUserInterface` instance and opening the file itself. For UMAC-protected projects, supply the credentials via environment variables before running the tool:
 
 ```powershell
 $env:SIEMENS_TIA_USERNAME = "<user defined in the TIA project>"
@@ -498,7 +520,9 @@ $env:SIEMENS_TIA_PASSWORD = "<password for that user>"
 .\UA-WoTGenerator.exe
 ```
 
-When both variables are set the importer opens the project via the Openness `UmacDelegate` overload. When either is empty or missing the importer falls back to the unprotected open and behaves exactly as before, so leaving these variables unset is the right choice for projects without User Management.
+When both variables are set the importer opens the project via the Openness `UmacDelegate` overload (populating `UmacUserCredentials.Name` and `Conceal(SecureString)`). When either is empty or missing the importer falls back to the unprotected open and behaves exactly as before, so leaving these variables unset is the right choice for projects without User Management.
+
+> **Note:** The headless+UMAC path requires the `UmacUserCredentials` type, which is only exposed by newer Openness builds (observed on V17+). On TIA V16, Option 1 above is the only working route for UMAC-protected projects.
 
 #### Running the UA-WoTGenerator tool
 
