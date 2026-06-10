@@ -160,10 +160,12 @@ namespace Opc.Ua.Edge.Translator.Tools
             //   SIEMENS_TIA_PASSWORD = <password for that user>
             //
             // Note: the UMAC callback path requires the UmacUserCredentials
-            // type, which only exists in newer Openness builds. If the type
-            // is missing at runtime (e.g. V16), the only working route is to
-            // open the project in TIA first and let this importer attach to
-            // that session.
+            // type, which only exists in newer Openness builds (V17+). For
+            // V15.1/V16 the project is compiled without the SIEMENS_ENGINEERING_UMAC
+            // define and the headless open always goes through the unauthenticated
+            // Projects.Open(FileInfo) overload; the only working route for a
+            // UMAC-protected project in that case is to open it in TIA first
+            // and let this importer attach to that session.
             string umacUser = Environment.GetEnvironmentVariable("SIEMENS_TIA_USERNAME");
             string umacPassword = Environment.GetEnvironmentVariable("SIEMENS_TIA_PASSWORD");
             bool useUmac = !string.IsNullOrEmpty(umacUser) && !string.IsNullOrEmpty(umacPassword);
@@ -191,6 +193,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                 tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
                 try
                 {
+#if SIEMENS_ENGINEERING_UMAC
                     if (useUmac)
                     {
                         Console.WriteLine($"  Authenticating as TIA user '{umacUser}'.");
@@ -224,6 +227,19 @@ namespace Opc.Ua.Edge.Translator.Tools
                     {
                         project = tia.Projects.Open(new FileInfo(filename));
                     }
+#else
+                    if (useUmac)
+                    {
+                        Console.WriteLine(
+                            "  SIEMENS_TIA_USERNAME/SIEMENS_TIA_PASSWORD are set, but this build was " +
+                            "compiled against a TIA Openness API older than V17, which does not expose " +
+                            "UmacUserCredentials. Falling back to a non-authenticated open; if the project " +
+                            "has User Management enabled, open it in TIA first so this importer can " +
+                            "attach to that session.");
+                    }
+
+                    project = tia.Projects.Open(new FileInfo(filename));
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -497,7 +513,12 @@ namespace Opc.Ua.Edge.Translator.Tools
                 TiaPortal tia;
                 try
                 {
-                    tia = new TiaPortal(tp);
+                    // TiaPortalProcess.Attach() is the documented and portable
+                    // way to attach to a running TIA Portal session across all
+                    // supported Openness versions (V15.1 .. V21). Some versions
+                    // also expose a public TiaPortal(TiaPortalProcess) constructor,
+                    // but it is not present in V16, so we go through Attach().
+                    tia = tp.Attach();
                 }
                 catch (Exception ex)
                 {

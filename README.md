@@ -494,7 +494,7 @@ If the TIA project has **Project User Management** (UMAC) enabled, the importer 
 
 ##### Option 1 (recommended): attach to a running TIA Portal session
 
-The importer first calls `TiaPortal.GetProcesses()` and looks for a TIA Portal instance that already has the target project file open. If one is found, it attaches to that session via the `TiaPortal(TiaPortalProcess)` constructor and reuses the already-loaded `Project`. Because the user has already authenticated against UMAC interactively in the TIA UI, Openness **never invokes the credential callback**, so this path works even on Openness builds (e.g. TIA V16) whose public surface does not expose the `UmacUserCredentials` type required by Option 2.
+The importer first calls `TiaPortal.GetProcesses()` and looks for a TIA Portal instance that already has the target project file open. If one is found, it attaches to that session via `TiaPortalProcess.Attach()` (the version-portable entry point exposed by every supported Openness build from V15.1 onwards) and reuses the already-loaded `Project`. Because the user has already authenticated against UMAC interactively in the TIA UI, Openness **never invokes the credential callback**, so this path works even on Openness builds (e.g. TIA V15.1 / V16) whose public surface does not expose the `UmacUserCredentials` type required by Option 2.
 
 Workflow:
 
@@ -522,7 +522,7 @@ $env:SIEMENS_TIA_PASSWORD = "<password for that user>"
 
 When both variables are set the importer opens the project via the Openness `UmacDelegate` overload (populating `UmacUserCredentials.Name` and `Conceal(SecureString)`). When either is empty or missing the importer falls back to the unprotected open and behaves exactly as before, so leaving these variables unset is the right choice for projects without User Management.
 
-> **Note:** The headless+UMAC path requires the `UmacUserCredentials` type, which is only exposed by newer Openness builds (observed on V17+). On TIA V16, Option 1 above is the only working route for UMAC-protected projects.
+> **Note:** The headless+UMAC path requires the `UmacUserCredentials` type, which is only exposed by Openness V17 and newer. When the tool is *built* against TIA Portal V15.1 or V16 the MSBuild script omits the `SIEMENS_ENGINEERING_UMAC` define and the headless code path is compiled to call the unauthenticated `Projects.Open(FileInfo)` overload instead; if you then set `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD` the tool will print a warning and ignore them. On TIA V15.1 / V16, Option 1 above is therefore the only working route for UMAC-protected projects — open the project in TIA first, log in, and let the importer attach to that session.
 
 #### Running the UA-WoTGenerator tool
 

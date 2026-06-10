@@ -101,6 +101,18 @@
     <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING</DefineConstants>
   </PropertyGroup>
 
+  <!--
+    UmacUserCredentials (the type used by the headless UMAC login callback in
+    Siemens.cs) was introduced in TIA Openness V17. V15.1 and V16 do not expose
+    it, so building against those older Openness installs would fail with
+    CS0246. Define SIEMENS_ENGINEERING_UMAC only when the resolved Openness
+    install is V17 or newer; for V15.1/V16 the importer falls back to attaching
+    to a TIA Portal session in which the user has already logged in.
+  -->
+  <PropertyGroup Condition="('$(SiemensTIAPortalVersion)' != '') and (!$(SiemensTIAPortalVersion.StartsWith('V15'))) and (!$(SiemensTIAPortalVersion.StartsWith('V16'))) and (Exists('$(SiemensEngineeringDll)') or (Exists('$(SiemensEngineeringBaseDll)') and Exists('$(SiemensEngineeringStep7Dll)')))">
+    <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING_UMAC</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="Properties\**" />
     <EmbeddedResource Remove="Properties\**" />
