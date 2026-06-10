@@ -51,7 +51,7 @@
 	<PackageVersion Include="Sharp7" Version="1.1.84" />
 
 	<!-- Test infrastructure -->
-	<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+	<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
 	<PackageVersion Include="xunit" Version="2.9.3" />
 	<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
 	<PackageVersion Include="coverlet.collector" Version="10.0.1" />
