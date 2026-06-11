@@ -147,9 +147,10 @@ namespace Opc.Ua.Edge.Translator.Tools
             // and the user has logged in to the (UMAC-protected) project, that
             // session has already passed authentication; attaching via
             // TiaPortal.GetProcesses() therefore never triggers the UMAC
-            // callback. This is the only known way to import projects whose
-            // User Management requires types (e.g. UmacUserCredentials) that
-            // are not exposed by older Openness assemblies such as TIA V16.
+            // callback. This is the most reliable route for any UMAC-protected
+            // project, and the only one that works on older Openness builds
+            // (V15.1 / V16) that do not expose a UMAC-aware Projects.Open
+            // overload at all.
             //
             // Fallback path: if no running TIA process has the project open,
             // we spin up a headless TIA instance and open the file ourselves.
@@ -159,13 +160,22 @@ namespace Opc.Ua.Edge.Translator.Tools
             //   SIEMENS_TIA_USERNAME = <user defined in the TIA project>
             //   SIEMENS_TIA_PASSWORD = <password for that user>
             //
-            // Note: the UMAC callback path requires the UmacUserCredentials
-            // type, which only exists in newer Openness builds (V17+). For
-            // V15.1/V16 the project is compiled without the SIEMENS_ENGINEERING_UMAC
-            // define and the headless open always goes through the unauthenticated
-            // Projects.Open(FileInfo) overload; the only working route for a
-            // UMAC-protected project in that case is to open it in TIA first
-            // and let this importer attach to that session.
+            // The UMAC-aware Projects.Open(FileInfo, UmacDelegate) overload
+            // and the credentials object it hands us differ across Openness
+            // versions: V17..V20 used UmacUserCredentials with a
+            // Conceal(SecureString) password setter, while V21+ ships a
+            // unified UmacCredentials class with SetPassword(SecureString)
+            // and a UmacUserType discriminator on a split-assembly layout.
+            // To keep this importer building and running against every
+            // supported version without per-version #if defines (and without
+            // needing the build machine's Openness install to match the
+            // target user's), the overload and the credentials members are
+            // discovered and invoked reflectively in TryOpenProjectWithUmac.
+            // When that helper returns null (V15.1 / V16, no such overload),
+            // we fall back to the unauthenticated Projects.Open(FileInfo);
+            // the only working route for a UMAC-protected project on those
+            // builds is then to open it in TIA first and let this importer
+            // attach to that session.
             string umacUser = Environment.GetEnvironmentVariable("SIEMENS_TIA_USERNAME");
             string umacPassword = Environment.GetEnvironmentVariable("SIEMENS_TIA_PASSWORD");
             bool useUmac = !string.IsNullOrEmpty(umacUser) && !string.IsNullOrEmpty(umacPassword);
@@ -193,53 +203,36 @@ namespace Opc.Ua.Edge.Translator.Tools
                 tia = new TiaPortal(TiaPortalMode.WithoutUserInterface);
                 try
                 {
-#if SIEMENS_ENGINEERING_UMAC
+                    FileInfo projectFile = new FileInfo(filename);
                     if (useUmac)
                     {
                         Console.WriteLine($"  Authenticating as TIA user '{umacUser}'.");
                         using (SecureString securePassword = ToSecureString(umacPassword))
                         {
-                            project = tia.Projects.Open(new FileInfo(filename), credentials =>
+                            project = TryOpenProjectWithUmac(tia, projectFile, umacUser, securePassword);
+                            if (project == null)
                             {
-                                // The UmacDelegate is invoked by TIA Openness whenever
-                                // the project has User Management enabled. The caller
-                                // must populate the Name and password on the
-                                // UmacUserCredentials object passed in. The same
-                                // delegate is also invoked for UmacApplicationCredentials
-                                // (auto-logon via project-defined application identifier),
-                                // which we don't support here.
-                                if (credentials is UmacUserCredentials userCreds)
-                                {
-                                    userCreds.Name = umacUser;
-                                    userCreds.Conceal(securePassword);
-                                }
-                                else
-                                {
-                                    Console.WriteLine(
-                                        "  Warning: this TIA project requested credentials of an " +
-                                        $"unexpected type ({credentials?.GetType().FullName}); " +
-                                        "open will likely fail.");
-                                }
-                            });
+                                // No UMAC-aware Projects.Open(FileInfo, UmacDelegate)
+                                // overload on this Openness build (typically
+                                // TIA V15.1 / V16). Warn and fall back to the
+                                // unauthenticated open; for protected projects
+                                // the only working route is then to open the
+                                // file in TIA first so this importer can
+                                // attach to that session.
+                                Console.WriteLine(
+                                    "  SIEMENS_TIA_USERNAME/SIEMENS_TIA_PASSWORD are set, but the " +
+                                    "resolved TIA Openness build does not expose a UMAC-aware " +
+                                    "Projects.Open overload. Falling back to a non-authenticated " +
+                                    "open; if the project has User Management enabled, open it in " +
+                                    "TIA first so this importer can attach to that session.");
+                                project = tia.Projects.Open(projectFile);
+                            }
                         }
                     }
                     else
                     {
-                        project = tia.Projects.Open(new FileInfo(filename));
+                        project = tia.Projects.Open(projectFile);
                     }
-#else
-                    if (useUmac)
-                    {
-                        Console.WriteLine(
-                            "  SIEMENS_TIA_USERNAME/SIEMENS_TIA_PASSWORD are set, but this build was " +
-                            "compiled against a TIA Openness API older than V17, which does not expose " +
-                            "UmacUserCredentials. Falling back to a non-authenticated open; if the project " +
-                            "has User Management enabled, open it in TIA first so this importer can " +
-                            "attach to that session.");
-                    }
-
-                    project = tia.Projects.Open(new FileInfo(filename));
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -414,8 +407,10 @@ namespace Opc.Ua.Edge.Translator.Tools
         /// <summary>
         /// Copies the given clear-text password into a fresh
         /// <see cref="SecureString"/> so it can be handed to the TIA
-        /// Openness <c>UmacUserCredentials.Conceal</c> API. The caller is
-        /// responsible for disposing the returned instance.
+        /// Openness UMAC password setter — <c>UmacCredentials.SetPassword</c>
+        /// on V21+ or <c>UmacUserCredentials.Conceal</c> on V17..V20 —
+        /// invoked reflectively from <see cref="UmacCallback.Populate"/>.
+        /// The caller is responsible for disposing the returned instance.
         /// </summary>
         private static SecureString ToSecureString(string clearText)
         {
@@ -433,6 +428,142 @@ namespace Opc.Ua.Edge.Translator.Tools
         }
 
         /// <summary>
+        /// Opens a UMAC-protected TIA project via the
+        /// <c>Projects.Open(FileInfo, UmacDelegate)</c> overload, discovered
+        /// and invoked reflectively so the same source builds and runs
+        /// against every Openness version that exposes it (V17..V20 with
+        /// <c>UmacUserCredentials.Conceal</c>, V21+ with
+        /// <c>UmacCredentials.SetPassword</c>).
+        ///
+        /// Returns <c>null</c> when the resolved Openness build has no such
+        /// overload (typically TIA V15.1 / V16). Callers should then fall
+        /// back to the unauthenticated <c>Projects.Open(FileInfo)</c>
+        /// overload.
+        /// </summary>
+        private static Project TryOpenProjectWithUmac(
+            TiaPortal tia, FileInfo projectFile, string umacUser, SecureString securePassword)
+        {
+            object projects = tia.Projects;
+            MethodInfo openWithDelegate = projects.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(m =>
+                {
+                    if (m.Name != "Open")
+                    {
+                        return false;
+                    }
+
+                    ParameterInfo[] ps = m.GetParameters();
+                    return ps.Length == 2
+                        && ps[0].ParameterType == typeof(FileInfo)
+                        && typeof(Delegate).IsAssignableFrom(ps[1].ParameterType);
+                });
+
+            if (openWithDelegate == null)
+            {
+                return null;
+            }
+
+            Type umacDelegateType = openWithDelegate.GetParameters()[1].ParameterType;
+
+            // The CLR allows binding a method whose parameter is 'object' to
+            // a delegate whose parameter is any reference type
+            // (contravariance), so a single UmacCallback.Populate(object)
+            // works regardless of whether the resolved UmacDelegate is
+            // declared with UmacCredentials (V21+) or
+            // UmacUserCredentials / IUmacCredentials (V17..V20).
+            UmacCallback callback = new UmacCallback(umacUser, securePassword);
+            MethodInfo populate = typeof(UmacCallback).GetMethod(
+                nameof(UmacCallback.Populate),
+                BindingFlags.Public | BindingFlags.Instance);
+            Delegate umacDelegate = Delegate.CreateDelegate(umacDelegateType, callback, populate);
+
+            try
+            {
+                return (Project)openWithDelegate.Invoke(
+                    projects, new object[] { projectFile, umacDelegate });
+            }
+            catch (TargetInvocationException tie) when (tie.InnerException != null)
+            {
+                // Unwrap so the original TIA Openness exception surfaces to
+                // the caller's catch in Import().
+                throw tie.InnerException;
+            }
+        }
+
+        /// <summary>
+        /// Reflective populator for the UMAC credentials object that TIA
+        /// Openness hands to <see cref="TryOpenProjectWithUmac"/>'s
+        /// callback. Adapts to the concrete type at runtime so it works
+        /// against every Openness version: V17..V20 expose
+        /// <c>UmacUserCredentials</c> with a <c>Conceal(SecureString)</c>
+        /// password setter; V21+ exposes <c>UmacCredentials</c> with
+        /// <c>SetPassword(SecureString)</c> and a <c>UmacUserType</c>
+        /// discriminator (Project / Global).
+        /// </summary>
+        private sealed class UmacCallback
+        {
+            private readonly string _umacUser;
+            private readonly SecureString _securePassword;
+
+            public UmacCallback(string umacUser, SecureString securePassword)
+            {
+                _umacUser = umacUser;
+                _securePassword = securePassword;
+            }
+
+            public void Populate(object credentials)
+            {
+                if (credentials == null)
+                {
+                    Console.WriteLine(
+                        "  Warning: TIA invoked the UMAC callback without a " +
+                        "credentials object; open will likely fail.");
+                    return;
+                }
+
+                Type credentialsType = credentials.GetType();
+
+                PropertyInfo nameProp = credentialsType.GetProperty(
+                    "Name", BindingFlags.Public | BindingFlags.Instance);
+                MethodInfo passwordSetter =
+                    credentialsType.GetMethod("SetPassword", new[] { typeof(SecureString) })
+                    ?? credentialsType.GetMethod("Conceal", new[] { typeof(SecureString) });
+
+                if (nameProp == null || !nameProp.CanWrite || passwordSetter == null)
+                {
+                    Console.WriteLine(
+                        $"  Warning: UMAC credentials of type {credentialsType.FullName} do not " +
+                        "expose the expected Name and SetPassword/Conceal members; open will " +
+                        "likely fail. (This usually means TIA invoked the callback for an " +
+                        "application / auto-logon user, which this importer does not support.)");
+                    return;
+                }
+
+                nameProp.SetValue(credentials, _umacUser);
+
+                // V21+ added a UmacUserType discriminator. Default it to
+                // "Project" so we authenticate against the project's user
+                // management rather than a global / central UMC server. The
+                // property is absent on V17..V20, so we silently skip it
+                // there.
+                PropertyInfo typeProp = credentialsType.GetProperty(
+                    "Type", BindingFlags.Public | BindingFlags.Instance);
+                if (typeProp != null && typeProp.CanWrite && typeProp.PropertyType.IsEnum)
+                {
+                    string[] names = Enum.GetNames(typeProp.PropertyType);
+                    if (Array.IndexOf(names, "Project") >= 0)
+                    {
+                        typeProp.SetValue(
+                            credentials, Enum.Parse(typeProp.PropertyType, "Project"));
+                    }
+                }
+
+                passwordSetter.Invoke(credentials, new object[] { _securePassword });
+            }
+        }
+
+        /// <summary>
         /// Looks for a running TIA Portal instance that already has
         /// <paramref name="filename"/> open and attaches to it via the
         /// <c>TiaPortal(TiaPortalProcess)</c> constructor. Returns
@@ -442,8 +573,9 @@ namespace Opc.Ua.Edge.Translator.Tools
         /// callback entirely: the user has already authenticated against
         /// the project's User Management in the TIA UI, so Openness never
         /// asks us for credentials. This is the only known workaround for
-        /// older Openness builds (e.g. TIA V16) whose public surface does
-        /// not expose <c>UmacUserCredentials</c>.
+        /// older Openness builds (e.g. TIA V15.1 / V16) that do not expose
+        /// a UMAC-aware <c>Projects.Open(FileInfo, UmacDelegate)</c>
+        /// overload at all.
         /// </summary>
         private static (TiaPortal tia, Project project) TryAttachToRunningTia(string filename)
         {
