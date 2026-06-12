@@ -142,20 +142,32 @@ namespace Opc.Ua.Edge.Translator.Tools
 #if SIEMENS_ENGINEERING
             Console.WriteLine($"Opening TIA Portal project: {filename}");
 
-            // Preferred path: attach to an already-running TIA Portal instance
-            // that has this project open. When TIA is launched interactively
-            // and the user has logged in to the (UMAC-protected) project, that
-            // session has already passed authentication; attaching via
-            // TiaPortal.GetProcesses() therefore never triggers the UMAC
-            // callback. This is the most reliable route for any UMAC-protected
-            // project, and the only one that works on older Openness builds
+            // Precedence: when SIEMENS_TIA_USERNAME / SIEMENS_TIA_PASSWORD are
+            // explicitly set, we skip the attach-to-running-TIA path and go
+            // straight to the headless UMAC-aware open below. TIA Openness has
+            // no API to push UMAC credentials onto an already-attached
+            // interactive session (the UMAC callback fires only from the
+            // Projects.Open(FileInfo, UmacDelegate) overload), so attaching
+            // would silently inherit whatever authentication state the UI
+            // session happens to be in and the supplied credentials would be
+            // ignored.
+            //
+            // Otherwise (no explicit credentials): attach to an already-running
+            // TIA Portal instance that has this project open. When TIA is
+            // launched interactively and the user has logged in to the
+            // (UMAC-protected) project, that session has already passed
+            // authentication; attaching via TiaPortal.GetProcesses() therefore
+            // never triggers the UMAC callback. This is the most reliable
+            // route for any UMAC-protected project when credentials are not
+            // available, and the only one that works on older Openness builds
             // (V15.1 / V16) that do not expose a UMAC-aware Projects.Open
             // overload at all.
             //
-            // Fallback path: if no running TIA process has the project open,
-            // we spin up a headless TIA instance and open the file ourselves.
-            // In that case the UMAC callback IS invoked for protected
-            // projects, and we read the credentials from:
+            // Fallback path: if no running TIA process has the project open
+            // (or explicit credentials were supplied above), we spin up a
+            // headless TIA instance and open the file ourselves. In that case
+            // the UMAC callback IS invoked for protected projects, and we
+            // read the credentials from:
             //
             //   SIEMENS_TIA_USERNAME = <user defined in the TIA project>
             //   SIEMENS_TIA_PASSWORD = <password for that user>
@@ -184,18 +196,27 @@ namespace Opc.Ua.Edge.Translator.Tools
             Project project = null;
             bool attachedToExisting = false;
 
-            try
-            {
-                (tia, project) = TryAttachToRunningTia(filename);
-                attachedToExisting = (tia != null && project != null);
-            }
-            catch (Exception ex)
+            if (useUmac)
             {
                 Console.WriteLine(
-                    $"  Could not enumerate running TIA Portal processes ({ex.Message}); " +
-                    "falling back to opening the project headlessly.");
-                tia = null;
-                project = null;
+                    "  SIEMENS_TIA_USERNAME is set; skipping attach-to-running-TIA so the " +
+                    "supplied UMAC credentials are honored by the headless open.");
+            }
+            else
+            {
+                try
+                {
+                    (tia, project) = TryAttachToRunningTia(filename);
+                    attachedToExisting = (tia != null && project != null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"  Could not enumerate running TIA Portal processes ({ex.Message}); " +
+                        "falling back to opening the project headlessly.");
+                    tia = null;
+                    project = null;
+                }
             }
 
             if (!attachedToExisting)
@@ -242,6 +263,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                 }
             }
 
+            int plcCount = 0;
             try
             {
                 foreach (Device device in project.Devices)
@@ -251,6 +273,8 @@ namespace Opc.Ua.Edge.Translator.Tools
                     {
                         continue;
                     }
+
+                    plcCount++;
 
                     string ipAddress = TryGetIpAddress(device) ?? "{{address}}";
                     (int rack, int slot) = TryGetRackAndSlot(cpuItem);
@@ -325,6 +349,25 @@ namespace Opc.Ua.Edge.Translator.Tools
                     try { project?.Close(); } catch { /* ignore */ }
                     try { tia?.Dispose(); } catch { /* ignore */ }
                 }
+            }
+
+            if (attachedToExisting && plcCount == 0)
+            {
+                // Symptom of a UMAC-protected project that the interactive
+                // TIA user has not logged into: Openness inherits the
+                // unauthenticated UI session, project.Devices enumerates but
+                // exposes no accessible PLC software. There is no Openness
+                // API to push credentials onto an already-attached session,
+                // so the only remedies are interactive login in TIA or a
+                // headless reopen with explicit credentials.
+                Console.WriteLine(
+                    "  Attached to running TIA Portal session, but the project exposes no " +
+                    "accessible PLC software. If this project has User Management enabled, the " +
+                    "interactive TIA user is likely not logged in to it (TIA hides UMAC-protected " +
+                    "nodes from Openness sessions that have not authenticated). Log on via TIA " +
+                    "(Project -> 'Log on'), or close the project in TIA and re-run with " +
+                    "SIEMENS_TIA_USERNAME / SIEMENS_TIA_PASSWORD set so this importer can open " +
+                    "it headlessly with credentials.");
             }
 #else
             Console.WriteLine(

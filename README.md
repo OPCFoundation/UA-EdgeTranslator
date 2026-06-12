@@ -409,7 +409,7 @@ The tool scans its **current working directory**, processes every recognised fil
 
 ### Building the UA-WoTGenerator Tool
 
-`UA-WoTGenerator` targets `net8.0-windows` / x64 because the Siemens TIA Openness API is x64‑only. The other importers also run on the same build.
+`UA-WoTGenerator` multi-targets `net48` (.NET Framework 4.8) and `net10.0`, x64 only. The `net48` build is what loads the Siemens TIA Openness API (Openness is x64-only and ships as .NET Framework assemblies); the `net10.0` build is used by the other importers (AutomationML, Beckhoff TMC, Rockwell CSV, Modbus CSV, OPC UA NodeSet2, AAS).
 
 ```powershell
 cd UA-EdgeTranslator
@@ -420,8 +420,10 @@ Run UA-WoTGenerator from any directory containing input files:
 
 ```powershell
 cd <folder containing your engineering exports>
-& "<repo>\UA-WoTGenerator\bin\x64\Release\net8.0-windows\UA-WoTGenerator.exe"
+& "<repo>\UA-WoTGenerator\bin\x64\Release\net48\UA-WoTGenerator.exe"
 ```
+
+> Use the `net48` output for Siemens TIA projects (Openness requires .NET Framework). Use `net10.0` for the other importers if you prefer a modern runtime.
 
 Each generated `*.td.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
 
@@ -490,17 +492,20 @@ The Openness assemblies are referenced from the local TIA install with `<Private
 
 #### Password-protected projects (TIA Project User Management)
 
-If the TIA project has **Project User Management** (UMAC) enabled, the importer needs valid credentials to open it — there is no way to remove the password once it has been set. Two paths are supported, in this order:
+If the TIA project has **Project User Management** (UMAC) enabled, the importer needs valid credentials to open it — there is no way to remove the password once it has been set. Two paths are supported, and the importer picks one based on whether explicit credentials are supplied:
 
-##### Option 1 (recommended): attach to a running TIA Portal session
+- If `SIEMENS_TIA_USERNAME` and `SIEMENS_TIA_PASSWORD` are both set, the importer goes straight to **Option 2** below and never attempts to attach to a running TIA Portal session. TIA Openness has no API to push UMAC credentials onto an already-attached interactive session (the UMAC callback fires only from the `Projects.Open(FileInfo, UmacDelegate)` overload), so attaching would silently inherit whatever authentication state the UI session happens to be in and the supplied credentials would be ignored.
+- If the environment variables are unset (or empty), the importer first tries **Option 1** (attach), and falls back to **Option 2** without credentials if no running TIA process has the project open. For projects without User Management this is exactly the legacy behavior.
 
-The importer first calls `TiaPortal.GetProcesses()` and looks for a TIA Portal instance that already has the target project file open. If one is found, it attaches to that session via `TiaPortalProcess.Attach()` (the version-portable entry point exposed by every supported Openness build from V15.1 onwards) and reuses the already-loaded `Project`. Because the user has already authenticated against UMAC interactively in the TIA UI, Openness **never invokes the credential callback**, so this path works even on Openness builds (e.g. TIA V15.1 / V16) that don't expose the UMAC-aware `Projects.Open(FileInfo, UmacDelegate)` overload required by Option 2 at all.
+##### Option 1 (recommended when you don't want to script credentials): attach to a running TIA Portal session
+
+The importer calls `TiaPortal.GetProcesses()` and looks for a TIA Portal instance that already has the target project file open. If one is found, it attaches to that session via `TiaPortalProcess.Attach()` (the version-portable entry point exposed by every supported Openness build from V15.1 onwards) and reuses the already-loaded `Project`. Because the user has already authenticated against UMAC interactively in the TIA UI, Openness **never invokes the credential callback**, so this path works even on Openness builds (e.g. TIA V15.1 / V16) that don't expose the UMAC-aware `Projects.Open(FileInfo, UmacDelegate)` overload required by Option 2 at all.
 
 Workflow:
 
 1. Launch TIA Portal interactively.
 2. Open the protected project and log in at the UMAC prompt when TIA asks.
-3. Leave TIA running and start the UA-WoTGenerator tool. Look for this line in the console output:
+3. Leave TIA running and start the UA-WoTGenerator tool (with `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD` **unset**, otherwise the importer will skip attach and go to Option 2). Look for this line in the console output:
 
    ```
    Attaching to running TIA Portal process (PID …) that already has the project open.
@@ -508,11 +513,19 @@ Workflow:
 
 4. The importer reuses your authenticated session and does **not** close the project or dispose the TIA instance when it finishes, so your editor session is left intact.
 
+If you see the message
+
+```
+Attached to running TIA Portal session, but the project exposes no accessible PLC software.
+```
+
+then the interactive TIA user is not logged in to the UMAC-protected project (TIA hides protected nodes from Openness sessions that haven't authenticated). Log on via TIA (Project → 'Log on'), or close the project in TIA and re-run with `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD` set so the importer can open it headlessly with credentials.
+
 The Windows user running UA-WoTGenerator must still be a member of the **Siemens TIA Openness** group; that requirement is enforced by Siemens at attach time.
 
 ##### Option 2: open headlessly with credentials from environment variables
 
-If no running TIA Portal instance has the project open, the importer falls back to launching a headless `TiaPortalMode.WithoutUserInterface` instance and opening the file itself. For UMAC-protected projects, supply the credentials via environment variables before running the tool:
+When `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD` are set, the importer launches a headless `TiaPortalMode.WithoutUserInterface` instance and opens the file itself, passing the credentials through the UMAC callback:
 
 ```powershell
 $env:SIEMENS_TIA_USERNAME = "<user defined in the TIA project>"
@@ -520,9 +533,9 @@ $env:SIEMENS_TIA_PASSWORD = "<password for that user>"
 .\UA-WoTGenerator.exe
 ```
 
-When both variables are set the importer invokes the Openness `UmacDelegate` overload of `Projects.Open` and populates the credentials object handed back to it. Because the credentials API changed between Openness versions (V17..V20 expose `UmacUserCredentials` with `Name` + `Conceal(SecureString)`; V21+ exposes `UmacCredentials` with `Name` + `Type` + `SetPassword(SecureString)` on a split-assembly layout), the importer discovers the overload and its members reflectively at runtime — a single build therefore works against every supported Openness version without per-version build flags. When either variable is empty or missing the importer falls back to the unprotected open and behaves exactly as before, so leaving these variables unset is the right choice for projects without User Management.
+The importer invokes the Openness `UmacDelegate` overload of `Projects.Open` and populates the credentials object handed back to it. Because the credentials API changed between Openness versions (V17..V20 expose `UmacUserCredentials` with `Name` + `Conceal(SecureString)`; V21+ exposes `UmacCredentials` with `Name` + `Type` + `SetPassword(SecureString)` on a split-assembly layout), the importer discovers the overload and its members reflectively at runtime — a single build therefore works against every supported Openness version without per-version build flags. When either variable is empty or missing the importer takes Option 1 above and (if no running TIA has the project open) falls back to the unprotected `Projects.Open(FileInfo)`, so leaving these variables unset is the right choice for projects without User Management.
 
-> **Note:** The UMAC-aware `Projects.Open(FileInfo, UmacDelegate)` overload was introduced in Openness V17 and is not present in V15.1 / V16. Because the importer discovers and invokes that overload reflectively, no per-version build flag is required — the same binary adapts at runtime to whichever Openness version is installed. When the resolved Openness build does not expose the overload (TIA V15.1 / V16) the headless code path prints a warning, ignores `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD`, and falls back to the unauthenticated `Projects.Open(FileInfo)`. On TIA V15.1 / V16, Option 1 above is therefore the only working route for UMAC-protected projects — open the project in TIA first, log in, and let the importer attach to that session.
+> **Note:** The UMAC-aware `Projects.Open(FileInfo, UmacDelegate)` overload was introduced in Openness V17 and is not present in V15.1 / V16. Because the importer discovers and invokes that overload reflectively, no per-version build flag is required — the same binary adapts at runtime to whichever Openness version is installed. When the resolved Openness build does not expose the overload (TIA V15.1 / V16) the headless code path prints a warning, ignores `SIEMENS_TIA_USERNAME` / `SIEMENS_TIA_PASSWORD`, and falls back to the unauthenticated `Projects.Open(FileInfo)`. On TIA V15.1 / V16, Option 1 above is therefore the only working route for UMAC-protected projects — leave the environment variables unset, open the project in TIA first, log in, and let the importer attach to that session.
 
 #### Running the UA-WoTGenerator tool
 
@@ -534,7 +547,7 @@ When both variables are set the importer invokes the Openness `UmacDelegate` ove
    .\UA-WoTGenerator.exe
    ```
 
-3. For every PLC in the project, the tool emits `<projectName>_<plcName>.td.jsonld` containing one Property per leaf data block member, addressed by `S7DBNumber`, `S7Start`, `S7Pos`, `S7Size` and `S7MaxLen`. The PLC's IPv4 address (read from the PROFINET interface) is baked into the `base` field as `s7://<ip>:0:1`.
+3. For every PLC in the project, the tool emits `<projectName>_<plcName>.td.jsonld` containing one Property per leaf data block member, addressed by `s7:dbnumber`, `s7:start`, `s7:pos`, `s7:size` and `s7:maxlen` on the per-property `S7Form`. The PLC's IPv4 address (read from the PROFINET interface) and the CPU's rack are baked into the `base` field as `s7://<ip>:<rack>` (typically `s7://<ip>:0` for S7-1200 / S7-1500, since the runtime `SiemensProtocolDriver` interprets the URL's port component as the rack and assumes slot 0 for those CPUs).
 
 > Files with extensions `.ap15_1`, `.ap16`, `.ap17`, `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
 
