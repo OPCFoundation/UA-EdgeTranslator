@@ -2,6 +2,8 @@
   "profiles": {
     "UAEdgeTranslator": {
       "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "http://localhost:8081",
       "environmentVariables": {
         "OPCUA_USERNAME": "myUsername",
         "OPCUA_PASSWORD": "myPassword",
@@ -12,7 +14,8 @@
     },
     "Docker": {
       "commandName": "Docker",
-      "publishAllPorts": true,
+      "launchBrowser": true,
+      "launchUrl": "http://localhost:8081",
       "environmentVariables": {
         "OPCUA_USERNAME": "myUsername",
         "OPCUA_PASSWORD": "myPassword",
