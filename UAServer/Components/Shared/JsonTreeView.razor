@@ -1,0 +1,177 @@
+@*
+    Recursive, collapsible JSON tree renderer for WoT Thing Description files.
+    Renders Newtonsoft JToken nodes with type-based coloring and expand/collapse.
+*@
+@using System.Globalization
+@using Newtonsoft.Json.Linq
+
+@if (Node is not null)
+{
+    <div class="jtn-node">
+        <div class="jtn-row @(HasChildren ? "is-parent" : null)" style="padding-left: @(Depth * 18 + 8)px;" @onclick="Toggle">
+            @if (HasChildren)
+            {
+                <span class="jtn-caret @(_expanded ? "expanded" : null)">▸</span>
+            }
+            else
+            {
+                <span class="jtn-bullet"></span>
+            }
+
+            <span class="jtn-icon @IconClass">@NodeIcon</span>
+
+            @if (Name is not null)
+            {
+                <span class="jtn-key">@Name</span>
+            }
+
+            @if (HasChildren)
+            {
+                <span class="jtn-badge">@Summary</span>
+            }
+            else
+            {
+                @if (Name is not null)
+                {
+                    <span class="jtn-colon">:</span>
+                }
+                <span class="jtn-value @ValueClass">@ValueText</span>
+            }
+        </div>
+
+        @if (HasChildren && _expanded)
+        {
+            <div class="jtn-children">
+                @if (Node is JObject jObject)
+                {
+                    @foreach (JProperty property in jObject.Properties())
+                    {
+                        <JsonTreeView Node="property.Value" Name="@property.Name" Depth="Depth + 1" />
+                    }
+                }
+                else if (Node is JArray jArray)
+                {
+                    @for (int i = 0; i < jArray.Count; i++)
+                    {
+                        <JsonTreeView Node="jArray[i]" Name="@FormatIndex(i)" Depth="Depth + 1" />
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public JToken Node { get; set; }
+
+    [Parameter] public string Name { get; set; }
+
+    [Parameter] public int Depth { get; set; }
+
+    private bool _expanded = true;
+
+    protected override void OnInitialized() => _expanded = ShouldExpandByDefault();
+
+    // Default view: collapse everything except the top-level WoT interaction
+    // affordance maps (properties / actions / events), which are opened exactly one
+    // level so their individual entries are listed while each entry stays collapsed.
+    private bool ShouldExpandByDefault()
+    {
+        // Root must be open so the top-level nodes (including the affordance maps)
+        // are visible at all.
+        if (Depth == 0)
+        {
+            return true;
+        }
+
+        if (Depth != 1 || Name is null)
+        {
+            return false;
+        }
+
+        return Name.Equals("properties", StringComparison.OrdinalIgnoreCase)
+            || Name.Equals("actions", StringComparison.OrdinalIgnoreCase)
+            || Name.Equals("events", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool HasChildren => (Node is JObject || Node is JArray) && Node.HasValues;
+
+    private void Toggle()
+    {
+        if (HasChildren)
+        {
+            _expanded = !_expanded;
+        }
+    }
+
+    private string Summary => Node switch
+    {
+        JArray array => array.Count == 1 ? "1 item" : $"{array.Count} items",
+        JObject jObject => jObject.Count == 1 ? "1 field" : $"{jObject.Count} fields",
+        _ => string.Empty
+    };
+
+    private string ValueClass => Node.Type switch
+    {
+        JTokenType.String => "jtn-string",
+        JTokenType.Integer => "jtn-number",
+        JTokenType.Float => "jtn-number",
+        JTokenType.Boolean => "jtn-bool",
+        JTokenType.Null => "jtn-null",
+        _ => "jtn-string"
+    };
+
+    private string ValueText
+    {
+        get
+        {
+            if (Node is not JValue value)
+            {
+                return string.Empty;
+            }
+
+            return Node.Type switch
+            {
+                JTokenType.String => Convert.ToString(value.Value, CultureInfo.InvariantCulture) ?? string.Empty,
+                JTokenType.Date => Convert.ToString(value.Value, CultureInfo.InvariantCulture) ?? string.Empty,
+                JTokenType.Boolean => value.Value is bool flag && flag ? "true" : "false",
+                JTokenType.Null => "\u2014",
+                _ => Convert.ToString(value.Value, CultureInfo.InvariantCulture) ?? string.Empty
+            };
+        }
+    }
+
+    private static string FormatIndex(int index) => index.ToString(CultureInfo.InvariantCulture);
+
+    private string IconClass => Node.Type switch
+    {
+        JTokenType.Object => "jtn-ico-object",
+        JTokenType.Array => "jtn-ico-array",
+        _ => ValueClass
+    };
+
+    private MarkupString NodeIcon => (MarkupString)(Node.Type switch
+    {
+        JTokenType.Object => _iconObject,
+        JTokenType.Array => _iconArray,
+        JTokenType.Integer or JTokenType.Float => _iconNumber,
+        JTokenType.Boolean => _iconBool,
+        JTokenType.Null => _iconNull,
+        JTokenType.Date => _iconDate,
+        _ => _iconString
+    });
+
+    private const string _iconObject = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><rect x='2.5' y='2.5' width='11' height='11' rx='2.5'/><path d='M5.5 6.5h5M5.5 9.5h3'/></svg>";
+
+    private const string _iconArray = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='4' cy='4.5' r='0.9'/><circle cx='4' cy='8' r='0.9'/><circle cx='4' cy='11.5' r='0.9'/><path d='M7 4.5h6.5M7 8h6.5M7 11.5h6.5'/></svg>";
+
+    private const string _iconString = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><path d='M4 4.5h8M8 4.5v7M6.5 11.5h3'/></svg>";
+
+    private const string _iconNumber = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6.5 3 5 13M11 3 9.5 13M3.5 6.5h9.5M3 9.5h9.5'/></svg>";
+
+    private const string _iconBool = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='12' height='6' rx='3'/><circle cx='10.5' cy='8' r='1.7' fill='currentColor' stroke='none'/></svg>";
+
+    private const string _iconNull = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='8' cy='8' r='5.5'/><path d='M4.4 4.4 11.6 11.6'/></svg>";
+
+    private const string _iconDate = "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><rect x='2.5' y='3.5' width='11' height='10' rx='2'/><path d='M2.5 6.5h11M5.5 2.5v2M10.5 2.5v2'/></svg>";
+}

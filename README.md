@@ -230,7 +230,7 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 * REDFISH_PASSWORD - Password for authentication to Redfish assets.
 
 ## Provisioning
-UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and access to the WoT-Connectivity-related OPC UA nodes in its address space is restricted. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
+UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and **access to the WoT-Connectivity-related OPC UA nodes and mapped asset tags in its address space is restricted**. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
 
 ## Operation
 
@@ -249,6 +249,46 @@ Asset names supplied to `CreateAsset` / `CreateAssetForEndpoint`, the `name` fie
 * not contain path separators or relative-path segments (`..`, `/`, `\`, etc.).
 
 Names that don't satisfy these rules are rejected with `BadInvalidArgument` and logged. The restriction prevents a client from writing outside `settings/` or hijacking another asset's polling state through a path-traversal name.
+
+## Diagnostics Dashboard (Web UI)
+
+Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight, **read-only web dashboard** for observing a running instance at a glance. It is a Blazor Server application bundled with the server and started automatically, served over HTTP on the **fixed port `8081`**, separately from the OPC UA endpoint (`opc.tcp://<host>:4840`). Pages refresh automatically and always reflect live state — the dashboard never changes configuration (all control is performed through the OPC UA methods described under [Operation](#operation)).
+
+> **Accessing the dashboard:** open `http://localhost:8081`. When running in Docker with the default bridge networking, publish the port by adding `-p 8081:8081` to your `docker run` command; with `--network=host` it is reachable directly on the host. The port is declared via `EXPOSE 8081` in the [Dockerfile](UAServer/Dockerfile).
+>
+> The dashboard is unauthenticated HTTP intended for local/operator diagnostics — do not expose port `8081` directly to untrusted networks.
+
+The sidebar provides five sections:
+
+### Overview (`/`)
+
+A live summary of the host: headline counters for connected vs. configured devices, loaded WoT files, available protocol drivers and current memory usage (working set), together with the application identity (name, Application/Product URIs, version, .NET runtime, host name and uptime) and the configured OPC UA server endpoints. A banner appears while the server is in [provisioning mode](#provisioning).
+
+![UA Edge Translator — Overview page](docs/screenshots/diagnostics-overview.png)
+
+### OPC UA Settings (`/opcua`)
+
+The effective server configuration as resolved by the OPC UA stack: endpoints, enabled security policies and user-token policies, session limits, transport quotas, and security settings (auto-accept untrusted certificates, SHA-1 policy, minimum certificate key size, application certificate subject).
+
+![UA Edge Translator — OPC UA Settings page](docs/screenshots/diagnostics-opcua-settings.png)
+
+### Connected Devices (`/devices`)
+
+The southbound asset connection status — one row per onboarded asset, showing its name, detected protocol, remote endpoint, mapped tag count and a connected/disconnected status pill.
+
+![UA Edge Translator — Connected Devices page](docs/screenshots/diagnostics-devices.png)
+
+### WoT Files (`/wot`)
+
+The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view.
+
+![UA Edge Translator — WoT Files page](docs/screenshots/diagnostics-wot-files.png)
+
+### Certificates (`/certificates`)
+
+The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode.
+
+![UA Edge Translator — Certificates page](docs/screenshots/diagnostics-certificates.png)
 
 ## How to build your own Protocol Driver
 

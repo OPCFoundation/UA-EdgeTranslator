@@ -1,0 +1,142 @@
+@page "/"
+@implements IDisposable
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="Overview" Subtitle="Live status of the UA Edge Translator host" OnRefresh="Reload" />
+
+@if (_data is null)
+{
+    <div class="loading">Loading…</div>
+}
+else
+{
+    @if (_data.ProvisioningMode)
+    {
+        <div class="banner banner-warning">
+            <strong>Provisioning mode</strong> — untrusted client certificates are auto-accepted until an issuer certificate is pushed by a GDS.
+        </div>
+    }
+
+    @if (_data.TagAccessBlocked)
+    {
+        <div class="banner banner-warning">
+            <strong>Asset tag access blocked</strong> — the server is in provisioning mode and <span class="mono">IGNORE_PROVISIONING_MODE</span> is not set, so OPC UA clients cannot read or write any asset tags. Provide an issuer certificate (via GDS push, or drop one into <span class="mono">pki/issuer/certs</span>), or set <span class="mono">IGNORE_PROVISIONING_MODE=1</span> to allow tag access.
+        </div>
+    }
+
+    <div class="stat-grid">
+        <div class="stat">
+            <span class="stat-label">Connected devices</span>
+            <span class="stat-value">@_data.ConnectedDeviceCount<span class="stat-total">/@_data.DeviceCount</span></span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">WoT files</span>
+            <span class="stat-value">@_data.WoTFileCount</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Protocol drivers</span>
+            <span class="stat-value">@_data.DriverCount</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Memory Usage</span>
+            <span class="stat-value">@_data.MemoryWorkingSetMB<span class="stat-unit">MB</span></span>
+        </div>
+    </div>
+
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Application</h2></div>
+            <div class="card-body">
+                <div class="kv-table">
+                    <div class="kv-row"><span class="kv-key">Name</span><span class="kv-value">@_data.ApplicationName</span></div>
+                    <div class="kv-row"><span class="kv-key">Application URI</span><span class="kv-value mono">@_data.ApplicationUri</span></div>
+                    <div class="kv-row"><span class="kv-key">Product URI</span><span class="kv-value mono">@_data.ProductUri</span></div>
+                    <div class="kv-row"><span class="kv-key">Version</span><span class="kv-value">@_data.Version</span></div>
+                    <div class="kv-row"><span class="kv-key">Runtime</span><span class="kv-value">@_data.Runtime</span></div>
+                    <div class="kv-row"><span class="kv-key">Host</span><span class="kv-value">@_data.HostName</span></div>
+                    <div class="kv-row"><span class="kv-key">Uptime</span><span class="kv-value">@Uptime</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Server endpoints</h2></div>
+            <div class="card-body">
+                @if (_data.Endpoints.Count == 0)
+                {
+                    <p class="muted">No endpoints configured.</p>
+                }
+                else
+                {
+                    <ul class="plain-list">
+                        @foreach (var endpoint in _data.Endpoints)
+                        {
+                            <li class="endpoint"><span class="status-dot status-dot-green"></span><span class="mono">@endpoint</span></li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ServerOverview _data;
+    private PeriodicTimer _timer;
+
+    protected override void OnInitialized()
+    {
+        Reload();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        try
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                Reload();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component was disposed between ticks; stop refreshing.
+        }
+    }
+
+    private void Reload() => _data = Diagnostics.GetServerOverview();
+
+    private string Uptime
+    {
+        get
+        {
+            if (_data is null)
+            {
+                return "—";
+            }
+
+            TimeSpan uptime = DateTime.UtcNow - _data.StartTimeUtc;
+            if (uptime < TimeSpan.Zero)
+            {
+                uptime = TimeSpan.Zero;
+            }
+
+            if (uptime.TotalDays >= 1)
+            {
+                return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+            }
+
+            if (uptime.TotalHours >= 1)
+            {
+                return $"{uptime.Hours}h {uptime.Minutes}m";
+            }
+
+            return $"{uptime.Minutes}m {uptime.Seconds}s";
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

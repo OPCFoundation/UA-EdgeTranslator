@@ -7,11 +7,15 @@ ARG BUILD_CONFIGURATION=Debug
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
+
 EXPOSE 4840
 EXPOSE 5000
 EXPOSE 5001
 EXPOSE 19520
 EXPOSE 19521
+
+# Blazor diagnostics dashboard (HTTP), served on a fixed port.
+EXPOSE 8081
 
 # The base image already ships with a non-root `app` user at UID/GID 1000
 # Running the server as root would let a compromised protocol driver (loaded as a plain

@@ -1,0 +1,96 @@
+@page "/devices"
+@implements IDisposable
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="Connected Devices" Subtitle="Southbound asset connection status" OnRefresh="Reload" />
+
+@if (_tagAccessBlocked)
+{
+    <div class="banner banner-warning">
+        <strong>Asset tag access blocked</strong> — the server is in provisioning mode and <span class="mono">IGNORE_PROVISIONING_MODE</span> is not set, so OPC UA clients cannot read or write any asset tags. Provide an issuer certificate, or set <span class="mono">IGNORE_PROVISIONING_MODE=1</span> to allow tag access.
+    </div>
+}
+
+@if (_devices is null)
+{
+    <div class="loading">Loading…</div>
+}
+else if (_devices.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="5" width="14" height="14" rx="2" />
+                <rect x="9" y="9" width="6" height="6" rx="1" />
+                <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+            </svg>
+        </div>
+        <h2>No devices onboarded</h2>
+        <p>Create an asset through the OPC UA WoT-Con interface, or drop a Thing Description into the settings folder.</p>
+    </div>
+}
+else
+{
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Protocol</th>
+                    <th>Endpoint</th>
+                    <th class="num">Tags</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var device in _devices)
+                {
+                    <tr>
+                        <td class="strong">@device.Name</td>
+                        <td><span class="pill pill-blue">@device.Protocol</span></td>
+                        <td class="mono">@(string.IsNullOrEmpty(device.Endpoint) ? "—" : device.Endpoint)</td>
+                        <td class="num">@device.TagCount</td>
+                        <td><StatusPill Status="@(device.IsConnected ? "Connected" : "Disconnected")" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<DeviceStatus> _devices;
+    private bool _tagAccessBlocked;
+    private PeriodicTimer _timer;
+
+    protected override void OnInitialized()
+    {
+        Reload();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        try
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                Reload();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component was disposed between ticks; stop refreshing.
+        }
+    }
+
+    private void Reload()
+    {
+        _devices = Diagnostics.GetConnectedDevices();
+        _tagAccessBlocked = Diagnostics.IsTagAccessBlocked();
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

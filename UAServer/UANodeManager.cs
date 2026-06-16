@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using Opc.Ua;
+    using Opc.Ua.Edge.Translator.Diagnostics;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Export;
@@ -80,9 +81,28 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly ConcurrentDictionary<string, ReconnectState> _reconnectStates = new();
 
+        // The provisioning-mode gate is evaluated at the top of every OnReadValue /
+        // OnWriteValue call. Enumerating the issuer-certs folder on every OPC UA read
+        // and write produces continuous filesystem I/O and allocation churn once a
+        // driver is sampling tags. The underlying state only changes at commissioning
+        // time (issuer certs are added), so the result is cached with a short TTL: the
+        // security semantics are preserved (sub-second staleness) while the per-call
+        // filesystem hit is removed from the hot path.
+        private const int _provisioningModeTtlMs = 1000;
+        private int _provisioningModeCheckedAtTick;
+        private bool _provisioningModeChecked;
+        private volatile bool _provisioningModeCached;
+
+        // Exposes the most recently constructed node manager so the diagnostics
+        // UI can read the live connection state of onboarded assets without
+        // taking a dependency on the OPC UA address space or its locks.
+        public static UANodeManager Instance { get; private set; }
+
         public UANodeManager(IServerInternal server, ApplicationConfiguration configuration)
         : base(server, configuration)
         {
+            Instance = this;
+
             SystemContext.NodeIdFactory = this;
 
             _nodeFactory = new NodeFactory(this);
@@ -141,6 +161,39 @@ namespace Opc.Ua.Edge.Translator
         {
             // for new nodes we create, pick our default namespace
             return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+        }
+
+        // Returns a point-in-time snapshot of every onboarded asset and its
+        // current southbound connection state. Reads are lock-free because the
+        // backing collections are ConcurrentDictionary; any per-asset failure is
+        // swallowed so a single misbehaving driver cannot break the dashboard.
+        public IReadOnlyList<ConnectedAssetInfo> GetConnectedAssets()
+        {
+            List<ConnectedAssetInfo> result = new();
+
+            foreach (KeyValuePair<string, IAsset> entry in _assets)
+            {
+                IAsset asset = entry.Value;
+
+                bool connected = false;
+                string endpoint = string.Empty;
+
+                try
+                {
+                    connected = asset?.IsConnected ?? false;
+                    endpoint = asset?.GetRemoteEndpoint() ?? string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Failed to read diagnostics status for asset {AssetId}", entry.Key);
+                }
+
+                int tagCount = _tags.TryGetValue(entry.Key, out List<AssetTag> tags) ? tags.Count : 0;
+
+                result.Add(new ConnectedAssetInfo(entry.Key, connected, endpoint, tagCount));
+            }
+
+            return result;
         }
 
         // Asset names flow into filesystem paths (settings/<name>.jsonld), into
@@ -599,7 +652,13 @@ namespace Opc.Ua.Edge.Translator
 
                 string assetName = asset.DisplayName.Text;
 
-                _fileManagers.Remove(assetId);
+                // Dispose the FileManager (closes any open upload MemoryStream
+                // handles and clears its handle table) before dropping it;
+                // Remove() alone would leak those streams until finalization.
+                if (_fileManagers.Remove(assetId, out FileManager fileManager))
+                {
+                    fileManager.Dispose();
+                }
 
                 DeleteNode(SystemContext, assetId);
 
@@ -618,9 +677,19 @@ namespace Opc.Ua.Edge.Translator
                     _tags.TryRemove(assetName, out _);
                 }
 
-                if (_assets.ContainsKey(assetName))
+                if (_assets.TryRemove(assetName, out IAsset removedAsset))
                 {
-                    _assets.TryRemove(assetName, out _);
+                    // Release the southbound connection (socket/stream) the driver
+                    // holds. Dropping only the dictionary reference leaks it until
+                    // finalization. Defensive: a faulty driver must not fail delete.
+                    try
+                    {
+                        removedAsset?.Disconnect();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Warning(ex, "Failed to disconnect asset {AssetId} during delete.", assetName);
+                    }
                 }
 
                 _reconnectStates.TryRemove(assetName, out _);
@@ -632,12 +701,24 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 string keyPrefix = assetName + ":";
-                List<string> keysToRemove = _uaVariables.Keys
+                List<string> variableKeysToRemove = _uaVariables.Keys
                     .Where(k => k.StartsWith(keyPrefix, StringComparison.Ordinal))
                     .ToList();
-                foreach (string key in keysToRemove)
+                foreach (string key in variableKeysToRemove)
                 {
                     _uaVariables.TryRemove(key, out _);
+                }
+
+                // _uaProperties is keyed by the same "{assetName}:..." variableId as
+                // _uaVariables. Prune it here too; otherwise every onboarded property
+                // (and the address-space subtree it keeps alive via PropertyState.Parent)
+                // leaks for the process lifetime across asset delete/re-create cycles.
+                List<string> propertyKeysToRemove = _uaProperties.Keys
+                    .Where(k => k.StartsWith(keyPrefix, StringComparison.Ordinal))
+                    .ToList();
+                foreach (string key in propertyKeysToRemove)
+                {
+                    _uaProperties.TryRemove(key, out _);
                 }
 
                 RaiseModelChangedEvent(asset.NodeId, ModelChangeStructureVerbMask.NodeDeleted);
@@ -1352,9 +1433,26 @@ namespace Opc.Ua.Edge.Translator
             return null;
         }
 
+        // Returns whether the server is in provisioning mode (no issuer certificates
+        // present yet). The result is cached for a short TTL so the OPC UA read/write
+        // hot paths do not enumerate the filesystem on every single service call.
+        private bool IsInProvisioningMode()
+        {
+            int now = Environment.TickCount;
+            if (!_provisioningModeChecked || (uint)(now - _provisioningModeCheckedAtTick) >= _provisioningModeTtlMs)
+            {
+                string certsPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
+                _provisioningModeCached = !Directory.Exists(certsPath) || !Directory.EnumerateFiles(certsPath).Any();
+                _provisioningModeCheckedAtTick = now;
+                _provisioningModeChecked = true;
+            }
+
+            return _provisioningModeCached;
+        }
+
         public ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
-            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
+            bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
                 return new ServiceResult(StatusCodes.BadNotReadable, "Access to UA Edge Translator is limited while in provisioning mode!");
@@ -1449,7 +1547,7 @@ namespace Opc.Ua.Edge.Translator
 
         public ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
         {
-            bool provisioningMode = (Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs")).Count() == 0);
+            bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
                 return new ServiceResult(StatusCodes.BadNotWritable, "Access to UA Edge Translator is limited while in provisioning mode!");

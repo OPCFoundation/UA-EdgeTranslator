@@ -1,0 +1,173 @@
+@page "/wot"
+@using Newtonsoft.Json.Linq
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="WoT Files" Subtitle="Loaded Thing Descriptions" OnRefresh="Reload" />
+
+@if (_files is null)
+{
+    <div class="loading">Loading…</div>
+}
+else if (_files.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+            </svg>
+        </div>
+        <h2>No WoT files loaded</h2>
+        <p>Thing Description files placed in the settings folder will appear here.</p>
+    </div>
+}
+else
+{
+    <div class="split">
+        <div class="list-pane">
+            @foreach (var file in _files)
+            {
+                <button type="button" class="list-item @(ReferenceEquals(file, _selected) ? "active" : null)" @onclick="() => Select(file)">
+                    <span class="list-item-title">@DisplayName(file)</span>
+                    <span class="list-item-sub mono">@file.FileName</span>
+                </button>
+            }
+        </div>
+
+        <div class="detail-pane">
+            @if (_selected is null)
+            {
+                <p class="muted">Select a file to view its details.</p>
+            }
+            else
+            {
+                <div class="detail-header">
+                    <h2 class="detail-title">@DisplayName(_selected)</h2>
+                    @if (!string.IsNullOrEmpty(_selected.Base))
+                    {
+                        <span class="pill pill-blue">@Scheme(_selected.Base)</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(_selected.ParseError))
+                {
+                    <div class="banner banner-warning">Could not fully parse this Thing Description: @_selected.ParseError</div>
+                }
+
+                <div class="kv-table">
+                    @if (!string.IsNullOrEmpty(_selected.Name))
+                    {
+                        <div class="kv-row"><span class="kv-key">Name</span><span class="kv-value">@_selected.Name</span></div>
+                    }
+                    @if (!string.IsNullOrEmpty(_selected.Description))
+                    {
+                        <div class="kv-row"><span class="kv-key">Description</span><span class="kv-value">@_selected.Description</span></div>
+                    }
+                    @if (!string.IsNullOrEmpty(_selected.Base))
+                    {
+                        <div class="kv-row"><span class="kv-key">Base</span><span class="kv-value mono">@_selected.Base</span></div>
+                    }
+                    <div class="kv-row"><span class="kv-key">Properties</span><span class="kv-value">@_selected.PropertyCount</span></div>
+                    <div class="kv-row"><span class="kv-key">Actions</span><span class="kv-value">@_selected.ActionCount</span></div>
+                    <div class="kv-row"><span class="kv-key">Size</span><span class="kv-value">@FormatBytes(_selected.SizeBytes)</span></div>
+                    <div class="kv-row"><span class="kv-key">Modified</span><span class="kv-value">@(_selected.LastModifiedUtc.ToString("yyyy-MM-dd HH:mm")) UTC</span></div>
+                </div>
+
+                <div class="code-toolbar">
+                    <span class="code-label">Thing Description (JSON-LD)</span>
+                    <div class="seg">
+                        <button type="button" class="seg-btn @(_showRaw ? null : "active")" @onclick="() => _showRaw = false">Tree</button>
+                        <button type="button" class="seg-btn @(_showRaw ? "active" : null)" @onclick="() => _showRaw = true">Raw</button>
+                    </div>
+                </div>
+
+                @if (!_showRaw && _selectedJson is not null)
+                {
+                    <div class="json-tree">
+                        <JsonTreeView Node="_selectedJson" Depth="0" @key="_selected.FileName" />
+                    </div>
+                }
+                else
+                {
+                    <pre class="code-block"><code>@_selected.PrettyJson</code></pre>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<WoTFileInfo> _files;
+    private WoTFileInfo _selected;
+    private JToken _selectedJson;
+    private bool _showRaw;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload()
+    {
+        _files = Diagnostics.GetWoTFiles();
+
+        if (_selected is not null)
+        {
+            _selected = _files.FirstOrDefault(f => f.FileName == _selected.FileName);
+        }
+
+        _selected ??= _files.FirstOrDefault();
+
+        ParseSelected();
+    }
+
+    private void Select(WoTFileInfo file)
+    {
+        _selected = file;
+        ParseSelected();
+    }
+
+    private void ParseSelected()
+    {
+        _selectedJson = null;
+
+        if (_selected is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _selectedJson = JToken.Parse(_selected.RawJson);
+        }
+        catch (Exception)
+        {
+            // Fall back to the raw text view when the document cannot be parsed.
+            _selectedJson = null;
+        }
+    }
+
+    private static string DisplayName(WoTFileInfo file)
+        => !string.IsNullOrEmpty(file.Title) ? file.Title
+            : !string.IsNullOrEmpty(file.Name) ? file.Name
+                : file.FileName;
+
+    private static string Scheme(string baseUri)
+    {
+        if (string.IsNullOrEmpty(baseUri))
+        {
+            return "unknown";
+        }
+
+        int index = baseUri.IndexOf("://", StringComparison.Ordinal);
+        return index > 0 ? baseUri[..index] : "unknown";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        double kilobytes = bytes / 1024d;
+        return kilobytes < 1024 ? $"{kilobytes:0.#} KB" : $"{kilobytes / 1024d:0.#} MB";
+    }
+}

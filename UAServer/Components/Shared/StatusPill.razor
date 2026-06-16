@@ -1,0 +1,23 @@
+@*
+    Colored status pill. Maps a status string to an Apple-style traffic-light color.
+*@
+<span class="pill @CssClass">
+    <span class="pill-dot"></span>
+    <span>@Display</span>
+</span>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    [Parameter] public string Label { get; set; }
+
+    private string Display => string.IsNullOrEmpty(Label) ? Status : Label;
+
+    private string CssClass => (Status ?? string.Empty).ToLowerInvariant() switch
+    {
+        "connected" or "valid" or "running" or "online" or "good" => "pill-green",
+        "disconnected" or "expired" or "offline" or "error" or "failed" => "pill-red",
+        "expiring soon" or "not yet valid" or "provisioning" or "warning" => "pill-orange",
+        _ => "pill-gray"
+    };
+}

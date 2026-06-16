@@ -1,0 +1,129 @@
+@page "/opcua"
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="OPC UA Settings" Subtitle="Effective server configuration" OnRefresh="Reload" />
+
+@if (_data is null)
+{
+    <div class="loading">Loading…</div>
+}
+else
+{
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Application identity</h2></div>
+            <div class="card-body">
+                <div class="kv-table">
+                    <div class="kv-row"><span class="kv-key">Name</span><span class="kv-value">@_data.ApplicationName</span></div>
+                    <div class="kv-row"><span class="kv-key">Application URI</span><span class="kv-value mono">@_data.ApplicationUri</span></div>
+                    <div class="kv-row"><span class="kv-key">Product URI</span><span class="kv-value mono">@_data.ProductUri</span></div>
+                    <div class="kv-row"><span class="kv-key">Application type</span><span class="kv-value">@_data.ApplicationType</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Server endpoints</h2></div>
+            <div class="card-body">
+                @if (_data.Endpoints.Count == 0)
+                {
+                    <p class="muted">No endpoints configured.</p>
+                }
+                else
+                {
+                    <ul class="plain-list">
+                        @foreach (var endpoint in _data.Endpoints)
+                        {
+                            <li class="endpoint"><span class="status-dot status-dot-green"></span><span class="mono">@endpoint</span></li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="card card-wide">
+            <div class="card-header"><h2 class="card-title">Security policies</h2></div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead><tr><th>Security mode</th><th>Policy</th></tr></thead>
+                    <tbody>
+                        @foreach (var policy in _data.SecurityPolicies)
+                        {
+                            <tr>
+                                <td><span class="pill @ModeClass(policy.Mode)">@policy.Mode</span></td>
+                                <td class="mono">@policy.Policy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="subsection">
+                    <span class="subsection-label">User token policies</span>
+                    <div class="pill-row">
+                        @if (_data.UserTokenPolicies.Count == 0)
+                        {
+                            <span class="muted">None</span>
+                        }
+                        else
+                        {
+                            @foreach (var token in _data.UserTokenPolicies)
+                            {
+                                <span class="pill pill-blue">@token</span>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Session &amp; threading</h2></div>
+            <div class="card-body">
+                <div class="kv-table">
+                    @foreach (var item in _data.SessionLimits)
+                    {
+                        <div class="kv-row"><span class="kv-key">@item.Name</span><span class="kv-value">@item.Value</span></div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Transport quotas</h2></div>
+            <div class="card-body">
+                <div class="kv-table">
+                    @foreach (var item in _data.TransportQuotas)
+                    {
+                        <div class="kv-row"><span class="kv-key">@item.Name</span><span class="kv-value">@item.Value</span></div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Security</h2></div>
+            <div class="card-body">
+                <div class="kv-table">
+                    @foreach (var item in _data.SecuritySettings)
+                    {
+                        <div class="kv-row"><span class="kv-key">@item.Name</span><span class="kv-value mono">@item.Value</span></div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private OpcUaSettingsInfo _data;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload() => _data = Diagnostics.GetOpcUaSettings();
+
+    private static string ModeClass(string mode) => mode switch
+    {
+        "SignAndEncrypt" => "pill-green",
+        "Sign" => "pill-orange",
+        _ => "pill-red"
+    };
+}

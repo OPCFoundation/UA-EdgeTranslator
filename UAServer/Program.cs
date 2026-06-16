@@ -3,6 +3,7 @@
     using Opc.Ua;
     using Opc.Ua.Cloud;
     using Opc.Ua.Configuration;
+    using Opc.Ua.Edge.Translator.Diagnostics;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using Serilog;
     using System;
@@ -124,6 +125,19 @@
                 }
             };
 
+            // Start the Blazor diagnostics dashboard alongside the OPC UA server.
+            // A failure here is non-fatal: the translator must keep running even
+            // if the auxiliary UI cannot bind its HTTP port.
+            DiagnosticsWebHost diagnosticsWebHost = new();
+            try
+            {
+                await diagnosticsWebHost.StartAsync(shutdownCts.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to start the diagnostics UI. The translator will continue running without it.");
+            }
+
             try
             {
                 await Task.Delay(Timeout.Infinite, shutdownCts.Token).ConfigureAwait(false);
@@ -144,6 +158,15 @@
                 catch (Exception ex)
                 {
                     Log.Logger.Error(ex, "Error while stopping the OPC UA application.");
+                }
+
+                try
+                {
+                    await diagnosticsWebHost.StopAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex, "Error while stopping the diagnostics UI.");
                 }
 
                 Telemetry?.Dispose();

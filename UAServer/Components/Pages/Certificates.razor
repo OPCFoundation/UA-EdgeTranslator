@@ -1,0 +1,147 @@
+@page "/certificates"
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="Certificates" Subtitle="OPC UA application certificate & trust lists" OnRefresh="Reload" />
+
+@if (_data is null)
+{
+    <div class="loading">Loading…</div>
+}
+else
+{
+    @if (_data.ProvisioningMode)
+    {
+        <div class="banner banner-warning">
+            <strong>Provisioning mode</strong> — no issuer certificates are present, so untrusted client certificates are auto-accepted until a GDS pushes a trust list.
+        </div>
+    }
+
+    <div class="stat-grid">
+        <div class="stat"><span class="stat-label">Application</span><span class="stat-value">@_data.ApplicationCertificates.Count</span></div>
+        <div class="stat"><span class="stat-label">Trusted peers</span><span class="stat-value">@_data.TrustedCount</span></div>
+        <div class="stat"><span class="stat-label">Issuers</span><span class="stat-value">@_data.IssuerCount</span></div>
+        <div class="stat"><span class="stat-label">Rejected</span><span class="stat-value">@_data.RejectedCount</span></div>
+    </div>
+
+    <h2 class="section-title">Application certificate</h2>
+    @if (_data.ApplicationCertificates.Count == 0)
+    {
+        <div class="card"><div class="card-body"><p class="muted">No application certificate found in <span class="mono">@_data.OwnStorePath</span>.</p></div></div>
+    }
+    else
+    {
+        <div class="card-grid">
+            @foreach (var cert in _data.ApplicationCertificates)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">@CommonName(cert.Subject)</h3>
+                        <StatusPill Status="@cert.Status" />
+                    </div>
+                    <div class="card-body">
+                        <div class="kv-table">
+                            <div class="kv-row"><span class="kv-key">Subject</span><span class="kv-value mono">@cert.Subject</span></div>
+                            <div class="kv-row"><span class="kv-key">Issuer</span><span class="kv-value mono">@cert.Issuer</span></div>
+                            <div class="kv-row"><span class="kv-key">Valid from</span><span class="kv-value">@(cert.NotBefore.ToString("yyyy-MM-dd"))</span></div>
+                            <div class="kv-row"><span class="kv-key">Valid to</span><span class="kv-value">@(cert.NotAfter.ToString("yyyy-MM-dd")) <span class="muted">(@ExpiryText(cert))</span></span></div>
+                            <div class="kv-row"><span class="kv-key">Algorithm</span><span class="kv-value">@cert.SignatureAlgorithm</span></div>
+                            <div class="kv-row"><span class="kv-key">Key size</span><span class="kv-value">@cert.KeySize bit</span></div>
+                            <div class="kv-row"><span class="kv-key">Serial</span><span class="kv-value mono">@cert.SerialNumber</span></div>
+                            <div class="kv-row"><span class="kv-key">Thumbprint</span><span class="kv-value mono">@cert.Thumbprint</span></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <h2 class="section-title">Trusted peer certificates</h2>
+    @if (_data.TrustedCount == 0)
+    {
+        <div class="card"><div class="card-body"><p class="muted">No trusted peer certificates in <span class="mono">@_data.TrustedStorePath</span>.</p></div></div>
+    }
+    else
+    {
+        <div class="card table-card">
+            <table class="data-table">
+                <thead><tr><th>Subject</th><th>Issuer</th><th>Expires</th><th>Status</th></tr></thead>
+                <tbody>
+                    @foreach (var cert in _data.TrustedCertificates)
+                    {
+                        <tr>
+                            <td class="mono">@CommonName(cert.Subject)</td>
+                            <td class="mono">@CommonName(cert.Issuer)</td>
+                            <td>@(cert.NotAfter.ToString("yyyy-MM-dd"))</td>
+                            <td><StatusPill Status="@cert.Status" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_data.TrustedCertificates.Count < _data.TrustedCount)
+            {
+                <p class="muted table-note">Showing @_data.TrustedCertificates.Count of @_data.TrustedCount certificates.</p>
+            }
+        </div>
+    }
+
+    <h2 class="section-title">Issuer certificates</h2>
+    @if (_data.IssuerCount == 0)
+    {
+        <div class="card"><div class="card-body"><p class="muted">No issuer certificates in <span class="mono">@_data.IssuerStorePath</span>.</p></div></div>
+    }
+    else
+    {
+        <div class="card table-card">
+            <table class="data-table">
+                <thead><tr><th>Subject</th><th>Issuer</th><th>Expires</th><th>Status</th></tr></thead>
+                <tbody>
+                    @foreach (var cert in _data.IssuerCertificates)
+                    {
+                        <tr>
+                            <td class="mono">@CommonName(cert.Subject)</td>
+                            <td class="mono">@CommonName(cert.Issuer)</td>
+                            <td>@(cert.NotAfter.ToString("yyyy-MM-dd"))</td>
+                            <td><StatusPill Status="@cert.Status" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_data.IssuerCertificates.Count < _data.IssuerCount)
+            {
+                <p class="muted table-note">Showing @_data.IssuerCertificates.Count of @_data.IssuerCount certificates.</p>
+            }
+        </div>
+    }
+}
+
+@code {
+    private CertificateOverview _data;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload() => _data = Diagnostics.GetCertificateOverview();
+
+    private static string CommonName(string subject)
+    {
+        if (string.IsNullOrEmpty(subject))
+        {
+            return subject;
+        }
+
+        foreach (var part in subject.Split(','))
+        {
+            string trimmed = part.Trim();
+            if (trimmed.StartsWith("CN=", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed[3..];
+            }
+        }
+
+        return subject;
+    }
+
+    private static string ExpiryText(CertificateInfo cert)
+        => cert.DaysUntilExpiry < 0
+            ? $"expired {-cert.DaysUntilExpiry} days ago"
+            : $"in {cert.DaysUntilExpiry} days";
+}

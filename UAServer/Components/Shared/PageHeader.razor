@@ -1,0 +1,35 @@
+@*
+    Reusable page header with an optional refresh button and extra action slot.
+*@
+<div class="page-header">
+    <div class="page-heading">
+        <h1 class="page-title">@Title</h1>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="page-subtitle">@Subtitle</p>
+        }
+    </div>
+    <div class="page-actions">
+        @Actions
+        @if (OnRefresh.HasDelegate)
+        {
+            <button type="button" class="btn-refresh" @onclick="OnRefresh" title="Refresh">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                    <path d="M21 3v6h-6" />
+                </svg>
+                <span>Refresh</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string Subtitle { get; set; }
+
+    [Parameter] public RenderFragment Actions { get; set; }
+
+    [Parameter] public EventCallback OnRefresh { get; set; }
+}

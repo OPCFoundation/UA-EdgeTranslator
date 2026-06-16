@@ -1,0 +1,43 @@
+@*
+    Root HTML document for the diagnostics dashboard. Rendered once per request;
+    interactivity is provided by the Blazor Server runtime (blazor.web.js).
+*@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UA Edge Translator &middot; Diagnostics</title>
+    <base href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="app.css?v=@AssetVersion" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>
+
+@code {
+    // Cache-bust app.css with the build's assembly timestamp so stylesheet edits
+    // are always re-fetched by the browser after a rebuild + restart, instead of
+    // being served from the browser cache against an un-versioned URL.
+    private static readonly string AssetVersion = ResolveAssetVersion();
+
+    private static string ResolveAssetVersion()
+    {
+        try
+        {
+            return System.IO.File.GetLastWriteTimeUtc(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                .Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch
+        {
+            return "1";
+        }
+    }
+}
