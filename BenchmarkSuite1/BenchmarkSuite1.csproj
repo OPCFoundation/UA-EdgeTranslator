@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-windows;net10.0-windows10.0.26100.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <!-- This generated benchmark project pins explicit package versions, which
+         conflicts with the repo-wide central package management. Opt out locally
+         so the BenchmarkDotNet / diagnoser versions above resolve correctly. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.2" />
+    <PackageReference Include="Microsoft.VisualStudio.DiagnosticsHub.BenchmarkDotNetDiagnosers" Version="18.7.37220.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UAServer\UAEdgeTranslator.csproj" />
+  </ItemGroup>
+</Project>
