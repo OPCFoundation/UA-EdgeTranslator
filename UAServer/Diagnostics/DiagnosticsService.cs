@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using Opc.Ua;
+    using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
@@ -182,6 +183,54 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
 
             return result.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Snapshot of the protocol drivers currently registered in
+        /// <see cref="Program.Drivers"/>. Reads are defensive so a single
+        /// misbehaving driver can never throw the page.
+        /// </summary>
+        public IReadOnlyList<ProtocolDriverInfo> GetProtocolDrivers()
+        {
+            List<ProtocolDriverInfo> drivers = new();
+
+            IEnumerable<IProtocolDriver> registered;
+            try
+            {
+                registered = Program.Drivers?.AllDrivers ?? [];
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Debug(ex, "Failed to enumerate protocol drivers.");
+                return drivers;
+            }
+
+            foreach (IProtocolDriver driver in registered)
+            {
+                if (driver is null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    Type type = driver.GetType();
+                    AssemblyName assembly = type.Assembly.GetName();
+
+                    drivers.Add(new ProtocolDriverInfo(
+                        driver.Scheme ?? string.Empty,
+                        driver.WoTBindingUri ?? string.Empty,
+                        type.FullName ?? type.Name,
+                        assembly.Name ?? string.Empty,
+                        assembly.Version?.ToString() ?? string.Empty));
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Failed to describe protocol driver {DriverType}.", driver.GetType().FullName);
+                }
+            }
+
+            return drivers.OrderBy(d => d.Scheme, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         public IReadOnlyList<WoTFileInfo> GetWoTFiles()

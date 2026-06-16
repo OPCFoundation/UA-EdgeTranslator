@@ -9,6 +9,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>Connected device row shown on the Devices page.</summary>
     public sealed record DeviceStatus(string Name, string Protocol, string Endpoint, bool IsConnected, int TagCount);
 
+    /// <summary>A loaded southbound protocol driver shown on the Drivers page.</summary>
+    public sealed record ProtocolDriverInfo(string Scheme, string WoTBindingUri, string TypeName, string Assembly, string Version);
+
     /// <summary>A configured OPC UA server security policy.</summary>
     public sealed record SecurityPolicyInfo(string Mode, string Policy);
 

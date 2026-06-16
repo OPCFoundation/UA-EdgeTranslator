@@ -1,0 +1,57 @@
+@page "/drivers"
+@inject DiagnosticsService Diagnostics
+
+<PageHeader Title="Protocol Drivers" Subtitle="Loaded southbound protocol drivers" OnRefresh="Reload" />
+
+@if (_drivers is null)
+{
+    <div class="loading">Loading…</div>
+}
+else if (_drivers.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+            </svg>
+        </div>
+        <h2>No protocol drivers loaded</h2>
+        <p>Protocol driver assemblies placed in the drivers folder are discovered at startup and will appear here.</p>
+    </div>
+}
+else
+{
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Scheme</th>
+                    <th>WoT Binding</th>
+                    <th>Assembly</th>
+                    <th>Version</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var driver in _drivers)
+                {
+                    <tr>
+                        <td><span class="pill pill-blue">@driver.Scheme</span></td>
+                        <td class="mono">@(string.IsNullOrEmpty(driver.WoTBindingUri) ? "—" : driver.WoTBindingUri)</td>
+                        <td>@driver.Assembly</td>
+                        <td class="mono">@(string.IsNullOrEmpty(driver.Version) ? "—" : driver.Version)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ProtocolDriverInfo> _drivers;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload() => _drivers = Diagnostics.GetProtocolDrivers();
+}

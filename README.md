@@ -279,7 +279,7 @@ Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight,
 >
 > The dashboard is unauthenticated HTTP intended for local/operator diagnostics — do not expose port `8081` directly to untrusted networks.
 
-The UI provides five sections:
+The UI provides the following sections:
 
 ### Overview (`/`)
 
@@ -298,6 +298,12 @@ The effective server configuration as resolved by the OPC UA stack: endpoints, e
 The southbound asset connection status — one row per onboarded asset, showing its name, detected protocol, remote endpoint, mapped tag count and a connected/disconnected status pill.
 
 ![UA Edge Translator — Connected Devices page](docs/screenshots/diagnostics-devices.png)
+
+### Protocol Drivers (`/drivers`)
+
+The loaded southbound protocol drivers — one row per registered driver, showing its URI scheme, WoT binding URI, owning assembly and version. Drivers are discovered as DLLs from the `drivers/` folder at startup.
+
+![UA Edge Translator — Protocol Drivers page](docs/screenshots/diagnostics-protocol-drivers.png)
 
 ### WoT Files (`/wot`)
 
