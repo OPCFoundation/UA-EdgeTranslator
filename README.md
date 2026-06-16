@@ -223,7 +223,7 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 * Because the images on `ghcr.io/opcfoundation` and `mcr.microsoft.com` are public, no `registryCredentials` entry is required. If you mirror them into [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/) or another private registry, add the credentials under `$edgeAgent → settings → registryCredentials`.
 * The same caveats that apply to the Docker deployment apply here too — see the notes at the top of the README about BACNet, Matter, Rockwell discovery and Modbus RTU, which all require `--network=host` (which IoT Edge does not expose by default) or device pass-through. To enable host networking for those protocols, add `"NetworkMode": "host"` to the module's `createOptions.HostConfig`.
 * The OPC Publisher command line in the manifest uses `--aa` (auto-accept untrusted certificates) for ease of first-time setup. **Remove `--aa` for production** and instead exchange certificates manually between OPC Publisher (`opcpublisher-pki`) and UA Edge Translator (`uaedgetranslator-pki`).
-* The manifest sets `IGNORE_PROVISIONING_MODE=1` on the `uaedgetranslator` module because OPC Publisher does **not** support the OPC UA GDS Server Push provisioning mechanism, so it cannot inject an issuer certificate to take UA Edge Translator out of provisioning mode. Without this flag, OPC Publisher would be unable to browse or subscribe to the WoT-Connectivity-related OPC UA nodes. **Remove `IGNORE_PROVISIONING_MODE` for production** if you have another way to provision UA Edge Translator (e.g. manually copying an issuer certificate into the `uaedgetranslator-pki` volume at `issuer/certs`).
+* The manifest sets `IGNORE_PROVISIONING_MODE=1` on the `uaedgetranslator` module because OPC Publisher does **not** support the OPC UA GDS Server Push provisioning mechanism, so it cannot inject an issuer certificate to take UA Edge Translator out of provisioning mode. Without this flag, OPC Publisher would be unable to browse or subscribe to the WoT-Connectivity-related OPC UA nodes. Note that with this flag set, OPC Publisher's client certificate is **not** auto-accepted (see [Provisioning mode, `IGNORE_PROVISIONING_MODE` and client-certificate trust](#provisioning-mode-ignore_provisioning_mode-and-client-certificate-trust)): on first connection it lands in the `uaedgetranslator-pki` `rejected/certs` store and must be trusted once — move it to `trusted/certs` (manually or with the **Trust** button on the [Certificates dashboard](#certificates-certificates)). **Remove `IGNORE_PROVISIONING_MODE` for production** if you have another way to provision UA Edge Translator (e.g. manually copying an issuer certificate into the `uaedgetranslator-pki` volume at `issuer/certs`).
 
 ## Mandatory Environment Variables
 
@@ -239,7 +239,7 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 * `OPCUA_CLIENT_USERNAME` - OPC UA client username to connect to an OPC UA asset.
 * `OPCUA_CLIENT_PASSWORD` - OPC UA client password to connect to an OPC UA asset.
 * `DISABLE_ASSET_CONNECTION_TEST` - Set to `1` to disable the connection test when mapping an asset to OPC UA.
-* `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space.
+* `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space. This also takes manual control of client-certificate trust: while the issuer store is empty, untrusted client certificates are **rejected** (not auto-accepted) and must be trusted manually. See [Provisioning mode, `IGNORE_PROVISIONING_MODE` and client-certificate trust](#provisioning-mode-ignore_provisioning_mode-and-client-certificate-trust).
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
 * `LICENSE_KEY` - Activation key required by the OPC UA `License` write method. If unset, license activation requests are rejected with `BadNotSupported`. The configured value is compared in constant time against the value written by the OPC UA client.
@@ -251,7 +251,25 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 * REDFISH_PASSWORD - Password for authentication to Redfish assets.
 
 ## Provisioning
-UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and **access to the WoT-Connectivity-related OPC UA nodes and mapped asset tags in its address space is restricted**. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-approved by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store, unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
+UA Edge Translator supports provisioning via GDS Server Push functionality as described in part 12 of the OPC UA specification. Until an issuer certificate is provided in the issuer certificate store of UA Edge Translator, it is in provisioning mode and **access to the WoT-Connectivity-related OPC UA nodes and mapped asset tags in its address space is restricted**. An issuer certificate can be provided as part of the GDS Server Push mechanism or by manually copying a certificate into the issuer certificate store found in the /app/pki/issuer/certs directory. During provisioning, all client certificates are auto-accepted by UA Edge Translator, but afterwards they need to be manually trusted by copying them from the rejected certificate store to the trusted certificate store (or with the **Trust** button on the [Certificates dashboard](#certificates-certificates)), unless of course the certificates were already trusted (for example because they were provided by the GDS Server Push mechanism). These stores can also be found in the /app/pki/ folder.
+
+### Understanding provisioning mode, `IGNORE_PROVISIONING_MODE` and client-certificate trust
+
+Two independent inputs determine the server's behaviour: whether the **issuer certificate store** (`pki/issuer/certs`) is empty, and whether the **`IGNORE_PROVISIONING_MODE`** environment variable is set. They control two separate things — **asset-tag access** (whether OPC UA clients can read/write mapped tags) and **untrusted client-certificate handling** (whether a client whose certificate is not yet trusted is accepted or rejected):
+
+| Issuer certs present | `IGNORE_PROVISIONING_MODE` | Asset-tag access | Untrusted client certificates |
+| --- | --- | --- | --- |
+| No (empty store) | unset | **Blocked** (provisioning mode) | **Auto-accepted** so a GDS can push the first issuer/trust list |
+| No (empty store) | set (`1`) | **Allowed** | **Rejected** — auto-accept is suppressed; trust clients manually |
+| Yes | unset | Allowed | Rejected unless trusted (SDK validates against the trusted/issuer stores and their CRLs) |
+| Yes | set (`1`) | Allowed | Rejected unless trusted (same as above) |
+
+Key points:
+
+* Setting `IGNORE_PROVISIONING_MODE=1` means **"I am taking manual control of trust."** It unblocks asset-tag access *and* turns off the provisioning-mode auto-accept of untrusted client certificates, so the server is never simultaneously wide open to every client and serving tags. This is a security hardening change from earlier versions of UA Edge Translator, where the override unblocked tag access while leaving every client auto-accepted.
+* When an untrusted client is rejected, its certificate is placed in `pki/rejected/certs`. Trust it by moving it to `pki/trusted/certs` — either manually, or with the **Trust** button on the [Certificates dashboard](#certificates-certificates). The running server picks up the change on the next connection attempt; no restart is required.
+* Once any issuer certificate is present, untrusted clients are always rejected regardless of the override; trust is then governed by the on-disk trusted/issuer stores and their CRLs (the SDK's Part 12 validation), with `AutoAcceptUntrustedCertificates` left `false` in the configuration (the default).
+
 
 ## Operation
 
@@ -313,7 +331,7 @@ The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `set
 
 ### Certificates (`/certificates`)
 
-The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode.
+The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode. Each rejected certificate has a **Trust** button that moves it from `pki/rejected/certs` to `pki/trusted/certs`, so an untrusted client can be trusted from the dashboard without touching the filesystem; the running server honours the change on the next connection attempt.
 
 ![UA Edge Translator — Certificates page](docs/screenshots/diagnostics-certificates.png)
 

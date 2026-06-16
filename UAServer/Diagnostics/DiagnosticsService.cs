@@ -50,6 +50,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 ConnectedDeviceCount = devices.Count(d => d.IsConnected),
                 WoTFileCount = CountWoTFiles(),
                 ProvisioningMode = provisioning,
+                IgnoreProvisioningMode = IsIgnoreProvisioningModeSet(),
                 TagAccessBlocked = provisioning && !IsIgnoreProvisioningModeSet(),
                 Counters = GetTelemetryCounters()
             };
@@ -320,6 +321,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             return new CertificateOverview
             {
                 ProvisioningMode = IsProvisioningMode(security),
+                IgnoreProvisioningMode = IsIgnoreProvisioningModeSet(),
                 ApplicationCertificates = LoadCertificates(ownCerts, 10),
                 TrustedCertificates = LoadCertificates(trustedCerts, 50),
                 IssuerCertificates = LoadCertificates(issuerCerts, 50),

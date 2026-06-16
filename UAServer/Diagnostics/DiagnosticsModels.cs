@@ -57,6 +57,11 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         public bool ProvisioningMode { get; init; }
 
+        // True when the IGNORE_PROVISIONING_MODE escape hatch is set. It unblocks
+        // asset-tag access AND suppresses provisioning-mode auto-accept of untrusted
+        // client certificates (they are rejected and must be trusted manually).
+        public bool IgnoreProvisioningMode { get; init; }
+
         // True when the server is in provisioning mode AND the IGNORE_PROVISIONING_MODE
         // escape hatch is not set, i.e. OnReadValue / OnWriteValue reject every asset-tag
         // read and write.
@@ -153,6 +158,11 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     public sealed class CertificateOverview
     {
         public bool ProvisioningMode { get; init; }
+
+        // True when IGNORE_PROVISIONING_MODE is set: provisioning auto-accept of
+        // untrusted client certificates is suppressed, so they are rejected and
+        // must be trusted manually.
+        public bool IgnoreProvisioningMode { get; init; }
 
         public IReadOnlyList<CertificateInfo> ApplicationCertificates { get; init; } = [];
 

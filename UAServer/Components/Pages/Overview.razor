@@ -12,9 +12,18 @@ else
 {
     @if (_data.ProvisioningMode)
     {
-        <div class="banner banner-warning">
-            <strong>Provisioning mode</strong> — untrusted client certificates are auto-accepted until an issuer certificate is pushed by a GDS.
-        </div>
+        @if (_data.IgnoreProvisioningMode)
+        {
+            <div class="banner banner-warning">
+                <strong>Provisioning mode ignored</strong> — no issuer certificate is present, but <span class="mono">IGNORE_PROVISIONING_MODE</span> is set, so untrusted client certificates are <strong>rejected</strong> and must be trusted manually on the Certificates page.
+            </div>
+        }
+        else
+        {
+            <div class="banner banner-warning">
+                <strong>Provisioning mode</strong> — untrusted client certificates are auto-accepted until an issuer certificate is pushed by a GDS.
+            </div>
+        }
     }
 
     @if (_data.TagAccessBlocked)

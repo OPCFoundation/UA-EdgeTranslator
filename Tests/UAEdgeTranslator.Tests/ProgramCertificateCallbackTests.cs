@@ -48,13 +48,25 @@ namespace Opc.Ua.Edge.Translator.Tests
             string issuerPath = Path.Combine(tmp.Path, "pki", "issuer", "certs");
             Directory.CreateDirectory(issuerPath);
 
-            CertificateValidator validator = new(new Opc.Ua.Cloud.ConsoleTelemetry());
-            ServiceResultException sre = new(StatusCodes.BadCertificateUntrusted);
-            CertificateValidationEventArgs args = CreateArgs(sre);
+            // Explicitly clear the override so a leaked value from another test (the
+            // process-wide env var is shared) cannot suppress the auto-accept path.
+            string previous = Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE");
+            try
+            {
+                Environment.SetEnvironmentVariable("IGNORE_PROVISIONING_MODE", null);
 
-            InvokeCallback(validator, args);
+                CertificateValidator validator = new(new Opc.Ua.Cloud.ConsoleTelemetry());
+                ServiceResultException sre = new(StatusCodes.BadCertificateUntrusted);
+                CertificateValidationEventArgs args = CreateArgs(sre);
 
-            Assert.True(GetAccept(args));
+                InvokeCallback(validator, args);
+
+                Assert.True(GetAccept(args));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("IGNORE_PROVISIONING_MODE", previous);
+            }
         }
 
         [Fact]
@@ -75,6 +87,37 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             // Once any issuer certs exist the callback must not auto-accept.
             Assert.False(GetAccept(args));
+        }
+
+        [Fact]
+        public void Callback_does_not_auto_accept_in_provisioning_when_ignore_flag_set()
+        {
+            using TestWorkingDirectory tmp = new();
+            EnsureLoggerInitialized();
+
+            // Empty issuer store -> provisioning mode, but IGNORE_PROVISIONING_MODE
+            // is set, so the operator has opted out of auto-accept and untrusted
+            // clients must be rejected (Accept stays false).
+            string issuerPath = Path.Combine(tmp.Path, "pki", "issuer", "certs");
+            Directory.CreateDirectory(issuerPath);
+
+            string previous = Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE");
+            try
+            {
+                Environment.SetEnvironmentVariable("IGNORE_PROVISIONING_MODE", "1");
+
+                CertificateValidator validator = new(new Opc.Ua.Cloud.ConsoleTelemetry());
+                ServiceResultException sre = new(StatusCodes.BadCertificateUntrusted);
+                CertificateValidationEventArgs args = CreateArgs(sre);
+
+                InvokeCallback(validator, args);
+
+                Assert.False(GetAccept(args));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("IGNORE_PROVISIONING_MODE", previous);
+            }
         }
 
         private static void InvokeCallback(CertificateValidator validator, CertificateValidationEventArgs args)

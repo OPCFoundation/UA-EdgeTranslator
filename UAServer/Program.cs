@@ -88,12 +88,19 @@
                 Directory.CreateDirectory(issuerPath);
             }
 
-            // surface provisioning-mode state on startup so operators are aware that
-            // the server will auto-accept untrusted client certificates until an
-            // issuer certificate has been pushed by a GDS.
+            // surface provisioning-mode state on startup so operators are aware of how
+            // untrusted client certificates will be handled until an issuer certificate
+            // is present in the issuer store.
             if (!Directory.EnumerateFiles(issuerPath).Any())
             {
-                Log.Logger.Warning("UA Edge Translator is starting in PROVISIONING MODE: no issuer certificates were found in '{IssuerPath}'. Untrusted client certificates will be auto-accepted until a GDS pushes an issuer certificate.", issuerPath);
+                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
+                {
+                    Log.Logger.Warning("UA Edge Translator is starting with IGNORE_PROVISIONING_MODE set and no issuer certificates in '{IssuerPath}'. Asset-tag access is allowed, but provisioning auto-accept is suppressed: untrusted client certificates are REJECTED and must be trusted manually (via the Certificates dashboard or by copying them from pki/rejected/certs to pki/trusted/certs).", issuerPath);
+                }
+                else
+                {
+                    Log.Logger.Warning("UA Edge Translator is starting in PROVISIONING MODE: no issuer certificates were found in '{IssuerPath}'. Untrusted client certificates will be auto-accepted until a GDS pushes an issuer certificate.", issuerPath);
+                }
             }
 
             // load protocol drivers
@@ -220,7 +227,14 @@
             string issuerCertsDir = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             bool provisioningMode = !Directory.EnumerateFiles(issuerCertsDir).Any();
 
-            if (provisioningMode)
+            // IGNORE_PROVISIONING_MODE is an explicit operator opt-out of provisioning
+            // mode. As well as unblocking tag access (see UANodeManager.OnReadValue), it
+            // means the operator is taking manual control of trust — so we must NOT
+            // auto-accept untrusted clients even though the issuer store is still empty.
+            // Treated as "set" when non-empty, matching the check used elsewhere.
+            bool ignoreProvisioning = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE"));
+
+            if (provisioningMode && !ignoreProvisioning)
             {
                 // No issuer cert on disk yet — accept everything during initial setup
                 // so a GDS can push the first issuer/trust list.
@@ -229,16 +243,29 @@
                 return;
             }
 
-            // Once provisioning is complete, defer to the SDK's Part 12 validator,
-            // which already validates against the on-disk Trusted/Issuer stores
-            // and their CRLs (pushed and persisted by the GDS at
-            // pki/trusted/{certs,crl} and pki/issuer/{certs,crl}).
+            // Reject the untrusted client. We reach here in two cases:
             //
-            // Do NOT auto-accept untrusted client certs here just because they
-            // chain to something in pki/issuer/certs — clients must be explicitly
-            // trusted (either listed in pki/trusted/certs, or issued by a CA in
-            // the trusted store), and revocation must be honoured via the GDS
-            // CRLs the SDK already consumes.
+            //  1. Provisioning is complete (issuer certs present): defer to the SDK's
+            //     Part 12 validator, which already validates against the on-disk
+            //     Trusted/Issuer stores and their CRLs (pushed and persisted by the GDS
+            //     at pki/trusted/{certs,crl} and pki/issuer/{certs,crl}). Do NOT
+            //     auto-accept untrusted client certs just because they chain to
+            //     something in pki/issuer/certs — clients must be explicitly trusted.
+            //
+            //  2. The issuer store is empty but IGNORE_PROVISIONING_MODE is set: the
+            //     operator opted out of provisioning auto-accept and trusts clients
+            //     manually, so an empty issuer store no longer means "accept all".
+            //
+            // In both cases we leave e.Accept untouched (false) and let the SDK reject,
+            // since AutoAcceptUntrustedCertificates is false in the configuration.
+            if (provisioningMode)
+            {
+                Log.Logger.Warning(
+                    "Rejecting untrusted client certificate [{Subject}] (Issuer: [{Issuer}]): IGNORE_PROVISIONING_MODE is set, so provisioning auto-accept is suppressed. Trust the certificate via the Certificates dashboard or by copying it from pki/rejected/certs to pki/trusted/certs.",
+                    e.Certificate?.Subject, e.Certificate?.Issuer);
+                return;
+            }
+
             Log.Logger.Warning(
                 "Rejecting untrusted client certificate [{Subject}] (Issuer: [{Issuer}]). Trust the certificate via the GDS or by copying it from pki/rejected/certs to pki/trusted/certs.",
                 e.Certificate?.Subject, e.Certificate?.Issuer);

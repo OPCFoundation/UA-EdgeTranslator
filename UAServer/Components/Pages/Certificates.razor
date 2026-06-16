@@ -11,9 +11,18 @@ else
 {
     @if (_data.ProvisioningMode)
     {
-        <div class="banner banner-warning">
-            <strong>Provisioning mode</strong> — no issuer certificates are present, so untrusted client certificates are auto-accepted until a GDS pushes a trust list.
-        </div>
+        @if (_data.IgnoreProvisioningMode)
+        {
+            <div class="banner banner-warning">
+                <strong>Provisioning mode ignored</strong> — no issuer certificates are present, but <span class="mono">IGNORE_PROVISIONING_MODE</span> is set, so untrusted client certificates are <strong>rejected</strong>. Use the <strong>Trust</strong> button below to move a rejected certificate into the trusted store.
+            </div>
+        }
+        else
+        {
+            <div class="banner banner-warning">
+                <strong>Provisioning mode</strong> — no issuer certificates are present, so untrusted client certificates are auto-accepted until a GDS pushes a trust list.
+            </div>
+        }
     }
 
     <div class="stat-grid">
