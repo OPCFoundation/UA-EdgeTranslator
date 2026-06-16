@@ -54,27 +54,33 @@ else
                     <div class="kv-row"><span class="kv-key">Version</span><span class="kv-value">@_data.Version</span></div>
                     <div class="kv-row"><span class="kv-key">Runtime</span><span class="kv-value">@_data.Runtime</span></div>
                     <div class="kv-row"><span class="kv-key">Host</span><span class="kv-value">@_data.HostName</span></div>
+                    @if (_data.Endpoints.Count == 0)
+                    {
+                        <div class="kv-row"><span class="kv-key">Server Endpoints</span><span class="kv-value muted">No endpoints configured.</span></div>
+                    }
+                    else
+                    {
+                        @foreach (var endpoint in _data.Endpoints)
+                        {
+                            <div class="kv-row"><span class="kv-key">Server Endpoint</span><span class="kv-value mono">@endpoint</span></div>
+                        }
+                    }
                     <div class="kv-row"><span class="kv-key">Uptime</span><span class="kv-value">@Uptime</span></div>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header"><h2 class="card-title">Server endpoints</h2></div>
+            <div class="card-header"><h2 class="card-title">Southbound telemetry</h2></div>
             <div class="card-body">
-                @if (_data.Endpoints.Count == 0)
-                {
-                    <p class="muted">No endpoints configured.</p>
-                }
-                else
-                {
-                    <ul class="plain-list">
-                        @foreach (var endpoint in _data.Endpoints)
-                        {
-                            <li class="endpoint"><span class="status-dot status-dot-green"></span><span class="mono">@endpoint</span></li>
-                        }
-                    </ul>
-                }
+                <div class="kv-table">
+                    <div class="kv-row"><span class="kv-key">Tag reads</span><span class="kv-value">@_data.Counters.TagReads.ToString("N0")</span></div>
+                    <div class="kv-row"><span class="kv-key">Tag read errors</span><span class="kv-value">@_data.Counters.TagReadErrors.ToString("N0")</span></div>
+                    <div class="kv-row"><span class="kv-key">Tag writes</span><span class="kv-value">@_data.Counters.TagWrites.ToString("N0")</span></div>
+                    <div class="kv-row"><span class="kv-key">Tag write errors</span><span class="kv-value">@_data.Counters.TagWriteErrors.ToString("N0")</span></div>
+                    <div class="kv-row"><span class="kv-key">Asset reconnects</span><span class="kv-value">@_data.Counters.AssetReconnects.ToString("N0")</span></div>
+                    <div class="kv-row"><span class="kv-key">Asset reconnect failures</span><span class="kv-value">@_data.Counters.AssetReconnectFailures.ToString("N0")</span></div>
+                </div>
             </div>
         </div>
     </div>

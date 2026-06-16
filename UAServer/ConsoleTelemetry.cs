@@ -31,6 +31,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
@@ -50,6 +51,17 @@ namespace Opc.Ua.Cloud
         // the first GC, breaking any external metrics consumer.
         private readonly Meter _meter = new("UA cloud app", "1.0.0");
 
+        // In-process listener that observes our own counters so the diagnostics
+        // dashboard can show running totals. Counter<T> is write-only by design,
+        // so the only supported way to read back the accumulated value is to
+        // subscribe to the measurements as they are recorded.
+        private readonly MeterListener _meterListener;
+
+        // Running totals keyed by instrument name, accumulated from the listener
+        // callback. Guarded by a lock on the dictionary so reads from the
+        // dashboard thread never observe a torn or partially-updated value.
+        private readonly Dictionary<string, long> _counterTotals = new();
+
         // Hot-path instruments. These are exposed publicly so the rest of
         // the host (UANodeManager etc.) can record per-tag and per-asset
         // events without each component having to re-create its own meter
@@ -65,6 +77,21 @@ namespace Opc.Ua.Cloud
         public Counter<long> AssetReconnects { get; }
 
         public Counter<long> AssetReconnectFailures { get; }
+
+        // Running totals for the instruments above, accumulated in-process by
+        // _meterListener. Exposed read-only so the diagnostics dashboard can
+        // display cumulative southbound activity since host start.
+        public long TagReadCount => ReadTotal("uaedge.tag.reads");
+
+        public long TagReadErrorCount => ReadTotal("uaedge.tag.read_errors");
+
+        public long TagWriteCount => ReadTotal("uaedge.tag.writes");
+
+        public long TagWriteErrorCount => ReadTotal("uaedge.tag.write_errors");
+
+        public long AssetReconnectCount => ReadTotal("uaedge.asset.reconnects");
+
+        public long AssetReconnectFailureCount => ReadTotal("uaedge.asset.reconnect_failures");
 
         public ConsoleTelemetry(Action<ILoggingBuilder> configure = null)
         {
@@ -105,8 +132,46 @@ namespace Opc.Ua.Cloud
             AssetReconnects = _meter.CreateCounter<long>("uaedge.asset.reconnects", description: "Number of asset reconnect attempts initiated.");
             AssetReconnectFailures = _meter.CreateCounter<long>("uaedge.asset.reconnect_failures", description: "Number of asset reconnect attempts that did not restore connectivity.");
 
+            // Subscribe an in-process listener to our own meter so the running
+            // totals are available to the diagnostics dashboard. Only instruments
+            // published by this exact meter instance are enabled, so we never pick
+            // up unrelated meters living in the same process.
+            _meterListener = new MeterListener
+            {
+                InstrumentPublished = (instrument, listener) =>
+                {
+                    if (ReferenceEquals(instrument.Meter, _meter))
+                    {
+                        listener.EnableMeasurementEvents(instrument);
+                    }
+                }
+            };
+            _meterListener.SetMeasurementEventCallback<long>(OnMeasurementRecorded);
+            _meterListener.Start();
+
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += Unobserved_TaskException;
+        }
+
+        private void OnMeasurementRecorded(
+            Instrument instrument,
+            long measurement,
+            ReadOnlySpan<KeyValuePair<string, object>> tags,
+            object state)
+        {
+            lock (_counterTotals)
+            {
+                _counterTotals.TryGetValue(instrument.Name, out long current);
+                _counterTotals[instrument.Name] = current + measurement;
+            }
+        }
+
+        private long ReadTotal(string instrumentName)
+        {
+            lock (_counterTotals)
+            {
+                return _counterTotals.TryGetValue(instrumentName, out long value) ? value : 0;
+            }
         }
 
         public ILoggerFactory LoggerFactory { get; internal set; }
@@ -117,6 +182,7 @@ namespace Opc.Ua.Cloud
 
         public void Dispose()
         {
+            _meterListener?.Dispose();
             _meter.Dispose();
             ActivitySource.Dispose();
             LoggerFactory?.Dispose();

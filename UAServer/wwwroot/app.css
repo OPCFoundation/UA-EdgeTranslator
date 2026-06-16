@@ -256,6 +256,38 @@ a {
         background: var(--accent-hover);
     }
 
+.btn-trust {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 980px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+
+    .btn-trust:hover {
+        background: var(--accent-hover);
+    }
+
+    .btn-trust:active {
+        transform: scale(0.97);
+    }
+
+    .btn-trust:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+.table-action {
+    text-align: right;
+    white-space: nowrap;
+}
+
 /* ---------- Banners ---------- */
 .banner {
     border-radius: var(--radius-md);
@@ -268,6 +300,12 @@ a {
     background: rgba(255, 159, 10, 0.12);
     color: #92500a;
     border: 1px solid rgba(255, 159, 10, 0.25);
+}
+
+.banner-success {
+    background: rgba(52, 199, 89, 0.12);
+    color: #1c7a3a;
+    border: 1px solid rgba(52, 199, 89, 0.25);
 }
 
 .banner strong {

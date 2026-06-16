@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using Opc.Ua;
+    using Opc.Ua.Cloud;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
@@ -49,7 +50,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 ConnectedDeviceCount = devices.Count(d => d.IsConnected),
                 WoTFileCount = CountWoTFiles(),
                 ProvisioningMode = provisioning,
-                TagAccessBlocked = provisioning && !IsIgnoreProvisioningModeSet()
+                TagAccessBlocked = provisioning && !IsIgnoreProvisioningModeSet(),
+                Counters = GetTelemetryCounters()
             };
 
             try
@@ -65,6 +67,23 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
 
             return overview;
+        }
+
+        private static TelemetryCounters GetTelemetryCounters()
+        {
+            ConsoleTelemetry telemetry = Program.Telemetry;
+            if (telemetry == null)
+            {
+                return new TelemetryCounters(0, 0, 0, 0, 0, 0);
+            }
+
+            return new TelemetryCounters(
+                telemetry.TagReadCount,
+                telemetry.TagReadErrorCount,
+                telemetry.TagWriteCount,
+                telemetry.TagWriteErrorCount,
+                telemetry.AssetReconnectCount,
+                telemetry.AssetReconnectFailureCount);
         }
 
         /// <summary>
@@ -304,6 +323,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 ApplicationCertificates = LoadCertificates(ownCerts, 10),
                 TrustedCertificates = LoadCertificates(trustedCerts, 50),
                 IssuerCertificates = LoadCertificates(issuerCerts, 50),
+                RejectedCertificates = LoadCertificates(rejectedCerts, 50),
                 TrustedCount = CountCertificates(trustedCerts),
                 IssuerCount = CountCertificates(issuerCerts),
                 RejectedCount = CountCertificates(rejectedCerts),
@@ -312,6 +332,88 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 IssuerStorePath = issuerCerts,
                 RejectedStorePath = rejectedCerts
             };
+        }
+
+        /// <summary>
+        /// Moves a certificate from the rejected store into the trusted peer store so
+        /// the matching client is allowed to connect. The certificate is located by its
+        /// thumbprint; only the public certificate file is moved, which is all the
+        /// directory-based trust list requires. The running OPC UA stack re-reads the
+        /// trusted folder on the next validation, so no restart is needed.
+        /// </summary>
+        public TrustCertificateResult TrustRejectedCertificate(string thumbprint)
+        {
+            if (string.IsNullOrWhiteSpace(thumbprint))
+            {
+                return new TrustCertificateResult(false, "No certificate thumbprint was provided.");
+            }
+
+            try
+            {
+                SecurityConfiguration security = Program.App?.ApplicationConfiguration?.SecurityConfiguration;
+                string rejectedCerts = ResolveCertsDirectory(security?.RejectedCertificateStore?.StorePath, "pki/rejected");
+                string trustedCerts = ResolveCertsDirectory(security?.TrustedPeerCertificates?.StorePath, "pki/trusted");
+
+                if (!Directory.Exists(rejectedCerts))
+                {
+                    return new TrustCertificateResult(false, "The rejected certificate store does not exist.");
+                }
+
+                string normalized = thumbprint.Replace(" ", string.Empty).Trim();
+                string sourceFile = FindCertificateFileByThumbprint(rejectedCerts, normalized);
+                if (sourceFile == null)
+                {
+                    return new TrustCertificateResult(false, "The certificate could not be found in the rejected store.");
+                }
+
+                Directory.CreateDirectory(trustedCerts);
+
+                string destFile = Path.Combine(trustedCerts, Path.GetFileName(sourceFile));
+                if (File.Exists(destFile))
+                {
+                    // An entry with the same file name is already trusted; drop the
+                    // rejected copy so it stops showing up as rejected.
+                    File.Delete(sourceFile);
+                    return new TrustCertificateResult(true, "The certificate is already in the trusted store.");
+                }
+
+                File.Move(sourceFile, destFile);
+
+                Log.Logger.Information("Moved rejected certificate {Thumbprint} to the trusted peer store.", normalized);
+                return new TrustCertificateResult(true, "Certificate moved to the trusted store.");
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to trust rejected certificate {Thumbprint}.", thumbprint);
+                return new TrustCertificateResult(false, $"Failed to trust certificate: {ex.Message}");
+            }
+        }
+
+        private static string FindCertificateFileByThumbprint(string certsDirectory, string thumbprint)
+        {
+            foreach (string file in Directory.EnumerateFiles(certsDirectory))
+            {
+                if (!IsCertificateFile(file))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    using X509Certificate2 certificate = LoadCertificate(file);
+                    if (certificate != null
+                        && string.Equals(certificate.Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return file;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Failed to read certificate {File}", file);
+                }
+            }
+
+            return null;
         }
 
         private static IReadOnlyList<string> GetEndpoints(ApplicationConfiguration config)

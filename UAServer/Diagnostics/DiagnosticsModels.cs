@@ -18,6 +18,18 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>A generic name/value row used for tabular settings.</summary>
     public sealed record SettingItem(string Name, string Value);
 
+    /// <summary>Cumulative southbound activity counters since host start.</summary>
+    public sealed record TelemetryCounters(
+        long TagReads,
+        long TagReadErrors,
+        long TagWrites,
+        long TagWriteErrors,
+        long AssetReconnects,
+        long AssetReconnectFailures);
+
+    /// <summary>Outcome of moving a rejected certificate into the trusted store.</summary>
+    public sealed record TrustCertificateResult(bool Success, string Message);
+
     /// <summary>High-level snapshot rendered on the Overview page.</summary>
     public sealed class ServerOverview
     {
@@ -53,6 +65,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         public DateTime StartTimeUtc { get; set; }
 
         public int MemoryWorkingSetMB { get; set; }
+
+        public TelemetryCounters Counters { get; init; } = new(0, 0, 0, 0, 0, 0);
     }
 
     /// <summary>The curated OPC UA configuration shown on the Settings page.</summary>
@@ -145,6 +159,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         public IReadOnlyList<CertificateInfo> TrustedCertificates { get; init; } = [];
 
         public IReadOnlyList<CertificateInfo> IssuerCertificates { get; init; } = [];
+
+        public IReadOnlyList<CertificateInfo> RejectedCertificates { get; init; } = [];
 
         public int TrustedCount { get; init; }
 

@@ -112,14 +112,69 @@ else
             }
         </div>
     }
+
+    <h2 class="section-title">Rejected certificates</h2>
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="banner @(_messageSuccess ? "banner-success" : "banner-warning")">@_message</div>
+    }
+    @if (_data.RejectedCount == 0)
+    {
+        <div class="card"><div class="card-body"><p class="muted">No rejected certificates in <span class="mono">@_data.RejectedStorePath</span>.</p></div></div>
+    }
+    else
+    {
+        <div class="card table-card">
+            <table class="data-table">
+                <thead><tr><th>Subject</th><th>Issuer</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var cert in _data.RejectedCertificates)
+                    {
+                        <tr>
+                            <td class="mono">@CommonName(cert.Subject)</td>
+                            <td class="mono">@CommonName(cert.Issuer)</td>
+                            <td>@(cert.NotAfter.ToString("yyyy-MM-dd"))</td>
+                            <td><StatusPill Status="@cert.Status" /></td>
+                            <td class="table-action">
+                                <button type="button" class="btn-trust" disabled="@_busy" @onclick="() => Trust(cert)" title="Move this certificate to the trusted store">Trust</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_data.RejectedCertificates.Count < _data.RejectedCount)
+            {
+                <p class="muted table-note">Showing @_data.RejectedCertificates.Count of @_data.RejectedCount certificates.</p>
+            }
+        </div>
+    }
 }
 
 @code {
     private CertificateOverview _data;
+    private bool _busy;
+    private string _message;
+    private bool _messageSuccess;
 
     protected override void OnInitialized() => Reload();
 
     private void Reload() => _data = Diagnostics.GetCertificateOverview();
+
+    private void Trust(CertificateInfo cert)
+    {
+        _busy = true;
+        try
+        {
+            TrustCertificateResult result = Diagnostics.TrustRejectedCertificate(cert.Thumbprint);
+            _message = result.Message;
+            _messageSuccess = result.Success;
+        }
+        finally
+        {
+            _busy = false;
+            Reload();
+        }
+    }
 
     private static string CommonName(string subject)
     {

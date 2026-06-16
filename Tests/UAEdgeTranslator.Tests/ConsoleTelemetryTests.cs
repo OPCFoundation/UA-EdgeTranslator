@@ -50,6 +50,28 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void Counter_totals_accumulate_recorded_increments()
+        {
+            using TestWorkingDirectory tmp = new();
+            using ConsoleTelemetry telemetry = new();
+
+            telemetry.TagReads.Add(2);
+            telemetry.TagReads.Add(3);
+            telemetry.TagReadErrors.Add(1);
+            telemetry.TagWrites.Add(4);
+            telemetry.TagWriteErrors.Add(1);
+            telemetry.AssetReconnects.Add(5);
+            telemetry.AssetReconnectFailures.Add(6);
+
+            Assert.Equal(5, telemetry.TagReadCount);
+            Assert.Equal(1, telemetry.TagReadErrorCount);
+            Assert.Equal(4, telemetry.TagWriteCount);
+            Assert.Equal(1, telemetry.TagWriteErrorCount);
+            Assert.Equal(5, telemetry.AssetReconnectCount);
+            Assert.Equal(6, telemetry.AssetReconnectFailureCount);
+        }
+
+        [Fact]
         public void Constructor_invokes_optional_logger_configuration_callback()
         {
             using TestWorkingDirectory tmp = new();
