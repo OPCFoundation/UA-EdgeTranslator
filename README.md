@@ -7,6 +7,27 @@
 [![Docker](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml)
 [![Build & Push Driver Pack Image](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml)
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [How It Works](#how-it-works)
+- [Star History](#star-history)
+- [Supported Southbound Asset Interfaces (Protocol Drivers)](#supported-southbound-asset-interfaces-protocol-drivers)
+- [Installation](#installation)
+- [Running UA Edge Translator from a Docker environment](#running-ua-edge-translator-from-a-docker-environment)
+- [Running UA Edge Translator from a Kubernetes environment](#running-ua-edge-translator-from-a-kubernetes-environment)
+- [Running UA Edge Translator from Azure IoT Edge/Hub](#running-ua-edge-translator-from-azure-iot-edgehub)
+- [Mandatory Environment Variables](#mandatory-environment-variables)
+- [Optional Environment Variables](#optional-environment-variables)
+- [Provisioning](#provisioning)
+- [Operation](#operation)
+- [Diagnostics Dashboard (Web UI)](#diagnostics-dashboard-web-ui)
+- [How to build your own Protocol Driver](#how-to-build-your-own-protocol-driver)
+- [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
+- [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
+- [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
+- [Threat Model and Security Considerations](#threat-model-and-security-considerations)
+
 ## Introduction
 
 An standards-based and containerized industrial connectivity edge application translating from many proprietary protocols to [OPC UA](https://opcfoundation.org/) leveraging the [W3C Web of Things (WoT)](https://www.w3.org/WoT/) thing descriptions via the [WoT-Connectivity specification](https://reference.opcfoundation.org/WoT/v100/docs/), version 1.02. Data transformation into OPC UA [Companion Specs](https://opcfoundation.org/about/opc-technologies/opc-ua/ua-companion-specifications/) is also supported. Thing Descriptions can be easily edited using the [Eclipse Foundation's edi{TD}or](https://eclipse-editdor.github.io/editdor/), or automatically generated using AI. UA Edge Translator runs on both ARM and X64 architectures, it runs on both Windows and Linux and it runs in both Docker and Kubernetes environments.
@@ -258,7 +279,7 @@ Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight,
 >
 > The dashboard is unauthenticated HTTP intended for local/operator diagnostics — do not expose port `8081` directly to untrusted networks.
 
-The sidebar provides five sections:
+The UI provides five sections:
 
 ### Overview (`/`)
 
@@ -591,7 +612,7 @@ The importer invokes the Openness `UmacDelegate` overload of `Projects.Open` and
 
 > Files with extensions `.ap15_1`, `.ap16`, `.ap17`, `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
 
-## Generating a Thing Description for a Fixed‑Function Asset
+## Generating a Thing Description for a Fixed-Function Asset
 
 Many industrial assets — power meters, drives, gateways, sensors, scanners, RFID readers, soft starters, IO‑Link masters, weighing terminals, etc. — are *fixed‑function*: their data model is hard‑wired by the vendor and shipped as a Modbus / EtherNet/IP / S7 / HTTP register or object map in the user manual. There is no engineering project to export, so the two practical paths to a Thing Description are:
 
