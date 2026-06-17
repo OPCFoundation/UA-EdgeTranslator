@@ -391,6 +391,49 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
         }
 
+        /// <summary>
+        /// Removes a certificate from the trusted peer store so the matching client is
+        /// no longer allowed to connect. The certificate is located by its thumbprint
+        /// and its public certificate file is deleted from the trusted folder. The
+        /// running OPC UA stack re-reads the trusted folder on the next validation, so
+        /// no restart is needed.
+        /// </summary>
+        public TrustCertificateResult UntrustCertificate(string thumbprint)
+        {
+            if (string.IsNullOrWhiteSpace(thumbprint))
+            {
+                return new TrustCertificateResult(false, "No certificate thumbprint was provided.");
+            }
+
+            try
+            {
+                SecurityConfiguration security = Program.App?.ApplicationConfiguration?.SecurityConfiguration;
+                string trustedCerts = ResolveCertsDirectory(security?.TrustedPeerCertificates?.StorePath, "pki/trusted");
+
+                if (!Directory.Exists(trustedCerts))
+                {
+                    return new TrustCertificateResult(false, "The trusted certificate store does not exist.");
+                }
+
+                string normalized = thumbprint.Replace(" ", string.Empty).Trim();
+                string sourceFile = FindCertificateFileByThumbprint(trustedCerts, normalized);
+                if (sourceFile == null)
+                {
+                    return new TrustCertificateResult(false, "The certificate could not be found in the trusted store.");
+                }
+
+                File.Delete(sourceFile);
+
+                Log.Logger.Information("Removed certificate {Thumbprint} from the trusted peer store.", normalized);
+                return new TrustCertificateResult(true, "Certificate deleted from the trusted store.");
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to delete certificate {Thumbprint}.", thumbprint);
+                return new TrustCertificateResult(false, $"Failed to delete certificate: {ex.Message}");
+            }
+        }
+
         private static string FindCertificateFileByThumbprint(string certsDirectory, string thumbprint)
         {
             foreach (string file in Directory.EnumerateFiles(certsDirectory))

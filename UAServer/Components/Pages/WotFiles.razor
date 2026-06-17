@@ -1,8 +1,32 @@
 @page "/wot"
+@using System.IO
 @using Newtonsoft.Json.Linq
+@using Opc.Ua.Edge.Translator
 @inject DiagnosticsService Diagnostics
+@implements IDisposable
 
-<PageHeader Title="WoT Files" Subtitle="Loaded Thing Descriptions" OnRefresh="Reload" />
+<PageHeader Title="WoT Files" Subtitle="Loaded Thing Descriptions" OnRefresh="Reload">
+    <Actions>
+        <label class="btn-refresh import-wot-btn @(_importing ? "is-busy" : null)" title="Import a Thing Description (.jsonld) file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M12 15V3" />
+            </svg>
+            <span>@(_importing ? "Importing…" : "Import WoT File")</span>
+            <InputFile @key="_inputKey" OnChange="ImportFileAsync" accept=".jsonld,.json" disabled="@_importing" style="display:none" />
+        </label>
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrEmpty(_importError))
+{
+    <div class="banner banner-warning">@_importError</div>
+}
+else if (!string.IsNullOrEmpty(_importMessage))
+{
+    <div class="banner banner-success">@_importMessage</div>
+}
 
 @if (_files is null)
 {
@@ -47,6 +71,9 @@ else
                     {
                         <span class="pill pill-blue">@Scheme(_selected.Base)</span>
                     }
+                    <button type="button" class="btn-danger detail-unload" disabled="@_unloading" @onclick="() => UnloadAsync(_selected)" title="Delete this Thing Description and remove it from the server">
+                        @(_unloading ? "Deleting\u2026" : "Delete")
+                    </button>
                 </div>
 
                 @if (!string.IsNullOrEmpty(_selected.ParseError))
@@ -102,7 +129,43 @@ else
     private JToken _selectedJson;
     private bool _showRaw;
 
-    protected override void OnInitialized() => Reload();
+    private bool _importing;
+    private bool _unloading;
+    private string _importError;
+    private string _importMessage;
+    private Guid _inputKey = Guid.NewGuid();
+    private PeriodicTimer _timer;
+
+    protected override void OnInitialized()
+    {
+        Reload();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        try
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                // Marshal the reload onto the render sync-context so the periodic
+                // list refresh cannot interleave with user actions (Select/Import)
+                // that mutate the same selection fields.
+                await InvokeAsync(() =>
+                {
+                    Reload();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component was disposed between ticks; stop refreshing.
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
 
     private void Reload()
     {
@@ -122,6 +185,100 @@ else
     {
         _selected = file;
         ParseSelected();
+    }
+
+    private async Task ImportFileAsync(InputFileChangeEventArgs e)
+    {
+        IBrowserFile file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _importing = true;
+        _importError = null;
+        _importMessage = null;
+
+        try
+        {
+            UANodeManager manager = UANodeManager.Instance
+                ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+            // Thing Descriptions are small JSON-LD documents; cap the read at 16 MB.
+            string contents;
+            using (StreamReader reader = new(file.OpenReadStream(16 * 1024 * 1024)))
+            {
+                contents = await reader.ReadToEndAsync();
+            }
+
+            string importedFileName = await manager.ImportWoTFileAsync(file.Name, contents);
+
+            Reload();
+
+            WoTFileInfo imported = _files?.FirstOrDefault(
+                f => string.Equals(f.FileName, importedFileName, StringComparison.OrdinalIgnoreCase));
+
+            if (imported is not null)
+            {
+                Select(imported);
+            }
+
+            _importMessage = $"Imported '{file.Name}' successfully.";
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Failed to import '{file.Name}': {ex.Message}";
+        }
+        finally
+        {
+            _importing = false;
+            // Reset the file input so the same file can be selected again.
+            _inputKey = Guid.NewGuid();
+        }
+    }
+
+    private async Task UnloadAsync(WoTFileInfo file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        _unloading = true;
+        _importError = null;
+        _importMessage = null;
+
+        try
+        {
+            UANodeManager manager = UANodeManager.Instance
+                ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+            // Offload to a background thread: unloading disconnects the southbound
+            // driver, which may briefly block on network I/O.
+            bool deleted = await Task.Run(() => manager.UnloadWoTFile(file.FileName));
+
+            if (deleted)
+            {
+                _importMessage = $"Deleted '{DisplayName(file)}'.";
+                if (_selected?.FileName == file.FileName)
+                {
+                    _selected = null;
+                }
+            }
+            else
+            {
+                _importError = $"Could not delete '{DisplayName(file)}': it is not currently loaded.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Failed to delete '{DisplayName(file)}': {ex.Message}";
+        }
+        finally
+        {
+            _unloading = false;
+            Reload();
+        }
     }
 
     private void ParseSelected()

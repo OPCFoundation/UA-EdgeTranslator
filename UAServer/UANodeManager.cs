@@ -727,6 +727,78 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        /// <summary>
+        /// Unloads a WoT file from the running server: it locates the asset created
+        /// from the file by name and removes it through the same code path used by the
+        /// OPC UA DeleteAsset method (<see cref="OnDeleteAsset"/>), which deletes the
+        /// address-space nodes, disconnects the southbound driver, prunes the tag state
+        /// and removes the .jsonld file from the settings folder. Returns true when a
+        /// matching asset was found and unloaded.
+        /// </summary>
+        public bool UnloadWoTFile(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return false;
+            }
+
+            // The asset node display name matches the settings file name without its
+            // extension (see LoadLocalWoTFilesAsync / ImportWoTFileAsync).
+            string assetName = Path.GetFileNameWithoutExtension(fileName);
+
+            NodeId assetId;
+            lock (Lock)
+            {
+                assetId = FindAssetNodeIdByName(assetName);
+            }
+
+            if (assetId == null)
+            {
+                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);
+                return false;
+            }
+
+            ServiceResult result = OnDeleteAsset(SystemContext, null, new List<object> { assetId }, new List<object>());
+
+            bool success = result.StatusCode == StatusCodes.Good;
+            if (success)
+            {
+                Log.Logger.Information("Unloaded WoT file [{FileName}] (asset [{AssetName}]).", fileName, assetName);
+            }
+            else
+            {
+                Log.Logger.Warning("Failed to unload WoT file [{FileName}]: {Status}", fileName, result.StatusCode);
+            }
+
+            return success;
+        }
+
+        // Resolves the NodeId of an asset under the AssetManagement object by its
+        // display name. The caller must hold Lock while browsing the address space.
+        private NodeId FindAssetNodeIdByName(string assetName)
+        {
+            if (_assetManagement == null || string.IsNullOrEmpty(assetName))
+            {
+                return null;
+            }
+
+            INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, null, false, BrowseDirection.Forward, null, null, true);
+
+            IReference reference = browser.Next();
+            while ((reference != null) && (reference is NodeStateReference))
+            {
+                NodeStateReference node = reference as NodeStateReference;
+                if ((node.Target != null) && (node.Target.DisplayName.Text == assetName))
+                {
+                    return node.Target.NodeId;
+                }
+
+                reference = browser.Next();
+            }
+
+            return null;
+        }
+
         public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
         {
             List<string> allAddresses = new();
@@ -944,6 +1016,46 @@ namespace Opc.Ua.Edge.Translator
             RaiseModelChangedEvent(parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
             Log.Logger.Information($"Successfully parsed WoT file for asset: {td.Name}");
+        }
+
+        /// <summary>
+        /// Imports a Thing Description supplied by the diagnostics UI. It derives a
+        /// safe asset name from the uploaded file name, creates the asset node and
+        /// parses the Thing Description through the same onboarding path used for
+        /// assets created over OPC UA and for files loaded from the local settings
+        /// folder (<see cref="OnboardAssetFromWoTFileAsync"/>), then persists the
+        /// file to the settings folder so it survives a restart and appears in the
+        /// WoT file list. Returns the persisted settings file name.
+        /// </summary>
+        public async Task<string> ImportWoTFileAsync(string fileName, string contents)
+        {
+            if (string.IsNullOrWhiteSpace(contents))
+            {
+                throw new ArgumentException("The Thing Description file is empty.", nameof(contents));
+            }
+
+            // Derive a safe asset name from the uploaded file name, mirroring the
+            // trusted local-file load path (LoadLocalWoTFilesAsync). The OPC UA
+            // upload path inside OnboardAssetFromWoTFileAsync still validates the
+            // Thing Description's own name via IsSafeAssetName.
+            string assetName = SanitizeAssetName(Path.GetFileNameWithoutExtension(fileName));
+
+            if (!CreateAssetNode(assetName, out NodeState assetNode))
+            {
+                throw new InvalidOperationException($"An asset named '{assetName}' already exists.");
+            }
+
+            await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+
+            // Persist to the settings folder so the import survives a restart and
+            // appears in the WoT file list served by the diagnostics dashboard.
+            string settingsFileName = assetName + ".jsonld";
+            string settingsPath = Path.Combine(Directory.GetCurrentDirectory(), "settings", settingsFileName);
+            File.WriteAllText(settingsPath, contents);
+
+            Log.Logger.Information("Imported WoT file [{FileName}] as asset [{AssetName}]", fileName, assetName);
+
+            return settingsFileName;
         }
 
         public void AddPredefinedNodePublic(NodeState node)

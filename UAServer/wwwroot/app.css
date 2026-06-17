@@ -239,6 +239,15 @@ a {
         height: 15px;
     }
 
+    .import-wot-btn {
+        cursor: pointer;
+    }
+
+    .import-wot-btn.is-busy {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
 .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -282,6 +291,37 @@ a {
         opacity: 0.5;
         cursor: default;
     }
+
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 980px;
+    background: var(--red);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+
+    .btn-danger:hover {
+        background: #e0352b;
+    }
+
+    .btn-danger:active {
+        transform: scale(0.97);
+    }
+
+    .btn-danger:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+.detail-unload {
+    margin-left: auto;
+}
 
 .table-action {
     text-align: right;

@@ -1,5 +1,6 @@
 @page "/certificates"
 @inject DiagnosticsService Diagnostics
+@implements IDisposable
 
 <PageHeader Title="Certificates" Subtitle="OPC UA application certificate & trust lists" OnRefresh="Reload" />
 
@@ -65,6 +66,10 @@ else
     }
 
     <h2 class="section-title">Trusted peer certificates</h2>
+    @if (!string.IsNullOrEmpty(_message) && _messageForTrusted)
+    {
+        <div class="banner @(_messageSuccess ? "banner-success" : "banner-warning")">@_message</div>
+    }
     @if (_data.TrustedCount == 0)
     {
         <div class="card"><div class="card-body"><p class="muted">No trusted peer certificates in <span class="mono">@_data.TrustedStorePath</span>.</p></div></div>
@@ -73,7 +78,7 @@ else
     {
         <div class="card table-card">
             <table class="data-table">
-                <thead><tr><th>Subject</th><th>Issuer</th><th>Expires</th><th>Status</th></tr></thead>
+                <thead><tr><th>Subject</th><th>Issuer</th><th>Expires</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var cert in _data.TrustedCertificates)
                     {
@@ -82,6 +87,9 @@ else
                             <td class="mono">@CommonName(cert.Issuer)</td>
                             <td>@(cert.NotAfter.ToString("yyyy-MM-dd"))</td>
                             <td><StatusPill Status="@cert.Status" /></td>
+                            <td class="table-action">
+                                <button type="button" class="btn-danger" disabled="@_busy" @onclick="() => Untrust(cert)" title="Delete this certificate from the trusted store">Delete</button>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -123,7 +131,7 @@ else
     }
 
     <h2 class="section-title">Rejected certificates</h2>
-    @if (!string.IsNullOrEmpty(_message))
+    @if (!string.IsNullOrEmpty(_message) && !_messageForTrusted)
     {
         <div class="banner @(_messageSuccess ? "banner-success" : "banner-warning")">@_message</div>
     }
@@ -164,8 +172,33 @@ else
     private bool _busy;
     private string _message;
     private bool _messageSuccess;
+    private bool _messageForTrusted;
+    private PeriodicTimer _timer;
 
-    protected override void OnInitialized() => Reload();
+    protected override void OnInitialized()
+    {
+        Reload();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        try
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                Reload();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component was disposed between ticks; stop refreshing.
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
 
     private void Reload() => _data = Diagnostics.GetCertificateOverview();
 
@@ -177,6 +210,24 @@ else
             TrustCertificateResult result = Diagnostics.TrustRejectedCertificate(cert.Thumbprint);
             _message = result.Message;
             _messageSuccess = result.Success;
+            _messageForTrusted = false;
+        }
+        finally
+        {
+            _busy = false;
+            Reload();
+        }
+    }
+
+    private void Untrust(CertificateInfo cert)
+    {
+        _busy = true;
+        try
+        {
+            TrustCertificateResult result = Diagnostics.UntrustCertificate(cert.Thumbprint);
+            _message = result.Message;
+            _messageSuccess = result.Success;
+            _messageForTrusted = true;
         }
         finally
         {

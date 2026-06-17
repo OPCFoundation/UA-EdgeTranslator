@@ -291,7 +291,7 @@ Names that don't satisfy these rules are rejected with `BadInvalidArgument` and 
 
 ## Diagnostics Dashboard (Web UI)
 
-Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight, **read-only web dashboard** for observing a running instance at a glance. It is a Blazor Server application bundled with the server and started automatically, served over HTTP on the **fixed port `8081`**, separately from the OPC UA endpoint (`opc.tcp://<host>:4840`). Pages refresh automatically and always reflect live state — the dashboard never changes configuration (all control is performed through the OPC UA methods described under [Operation](#operation)).
+Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight, **web dashboard** for observing a running instance at a glance and for performing basic management tasks. It is a Blazor Server application bundled with the server and started automatically, served over HTTP on the **fixed port `8081`**, separately from the OPC UA endpoint (`opc.tcp://<host>:4840`). Pages refresh automatically and always reflect live state.
 
 > **Accessing the dashboard:** open `http://localhost:8081`. When running in Docker with the default bridge networking, publish the port by adding `-p 8081:8081` to your `docker run` command; with `--network=host` it is reachable directly on the host. The port is declared via `EXPOSE 8081` in the [Dockerfile](UAServer/Dockerfile).
 >
@@ -325,13 +325,13 @@ The loaded southbound protocol drivers — one row per registered driver, showin
 
 ### WoT Files (`/wot`)
 
-The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view.
+The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. The selected file also has a **Delete** button that unloads its asset — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
 
 ![UA Edge Translator — WoT Files page](docs/screenshots/diagnostics-wot-files.png)
 
 ### Certificates (`/certificates`)
 
-The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode. Each rejected certificate has a **Trust** button that moves it from `pki/rejected/certs` to `pki/trusted/certs`, so an untrusted client can be trusted from the dashboard without touching the filesystem; the running server honours the change on the next connection attempt.
+The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode. Each rejected certificate has a **Trust** button that moves it from `pki/rejected/certs` to `pki/trusted/certs`, so an untrusted client can be trusted from the dashboard without touching the filesystem; the running server honours the change on the next connection attempt. Conversely, each trusted-peer certificate has a **Delete** button that removes it from `pki/trusted/certs`, revoking that client's trust directly from the dashboard — the change is likewise picked up on the next connection attempt.
 
 ![UA Edge Translator — Certificates page](docs/screenshots/diagnostics-certificates.png)
 
