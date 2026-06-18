@@ -259,10 +259,10 @@ Two independent inputs determine the server's behaviour: whether the **issuer ce
 
 | Issuer certs present | `IGNORE_PROVISIONING_MODE` | Asset-tag access | Untrusted client certificates |
 | --- | --- | --- | --- |
-| No (empty store) | unset | **Blocked** (provisioning mode) | **Auto-accepted** so a GDS can push the first issuer/trust list |
-| No (empty store) | set (`1`) | **Allowed** | **Rejected** — OPC UA validates against the trusted store and the CRL |
+| No (empty store) | unset | **Blocked** | **Auto-accepted** so a GDS can push the first issuer/trust list |
+| No (empty store) | set (`1`) | **Allowed** | **Rejected** - OPC UA validates against the trusted store and the CRL |
 | Yes | unset | **Allowed** | **Rejected** - OPC UA validates against the trusted/issuer stores and the CRL |
-| Yes | set (`1`) | **Allowed** | **Rejected** — OPC UA validates against the trusted/issuer stores and the CRL |
+| Yes | set (`1`) | **Allowed** | **Rejected** - OPC UA validates against the trusted/issuer stores and the CRL |
 
 Key points:
 
