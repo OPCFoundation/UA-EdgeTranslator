@@ -437,6 +437,17 @@ a {
     padding: 6px 22px 14px;
 }
 
+.card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 14px;
+}
+
+    .card-actions a.btn-trust {
+        text-decoration: none;
+    }
+
 /* ---------- Key/value tables ---------- */
 .kv-table {
     display: flex;

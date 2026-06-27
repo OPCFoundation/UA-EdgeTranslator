@@ -434,6 +434,57 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
         }
 
+        /// <summary>
+        /// Returns the public application certificate identified by <paramref name="thumbprint"/>
+        /// as a raw byte stream so it can be offered to the browser as a download. The matching
+        /// file is located in the own/certs store (never the own/private store) and is re-exported
+        /// as a public-only DER certificate via <see cref="X509ContentType.Cert"/>, so a private
+        /// key can never be emitted even if the source file happened to contain one. Returns
+        /// <c>null</c> when no matching certificate is found.
+        /// </summary>
+        public CertificateFile GetApplicationCertificateFile(string thumbprint)
+        {
+            if (string.IsNullOrWhiteSpace(thumbprint))
+            {
+                return null;
+            }
+
+            try
+            {
+                SecurityConfiguration security = Program.App?.ApplicationConfiguration?.SecurityConfiguration;
+                string ownCerts = ResolveCertsDirectory(security?.ApplicationCertificate?.StorePath, "pki/own");
+
+                if (!Directory.Exists(ownCerts))
+                {
+                    return null;
+                }
+
+                string normalized = thumbprint.Replace(" ", string.Empty).Trim();
+                string sourceFile = FindCertificateFileByThumbprint(ownCerts, normalized);
+                if (sourceFile == null)
+                {
+                    return null;
+                }
+
+                using X509Certificate2 certificate = LoadCertificate(sourceFile);
+                if (certificate == null)
+                {
+                    return null;
+                }
+
+                // Export ONLY the public certificate (DER). X509ContentType.Cert never
+                // includes the private key, guaranteeing the download is public-only.
+                byte[] content = certificate.Export(X509ContentType.Cert);
+                string fileName = Path.ChangeExtension(Path.GetFileName(sourceFile), ".der");
+                return new CertificateFile(content, fileName, "application/x-x509-ca-cert");
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to read application certificate {Thumbprint} for download.", thumbprint);
+                return null;
+            }
+        }
+
         private static string FindCertificateFileByThumbprint(string certsDirectory, string thumbprint)
         {
             foreach (string file in Directory.EnumerateFiles(certsDirectory))

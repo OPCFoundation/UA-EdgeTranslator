@@ -59,6 +59,9 @@ else
                             <div class="kv-row"><span class="kv-key">Serial</span><span class="kv-value mono">@cert.SerialNumber</span></div>
                             <div class="kv-row"><span class="kv-key">Thumbprint</span><span class="kv-value mono">@cert.Thumbprint</span></div>
                         </div>
+                        <div class="card-actions">
+                            <a class="btn-trust" href="@($"certificates/download/{cert.Thumbprint}")" download="@cert.FileName" title="Download the public OPC UA certificate">Download certificate</a>
+                        </div>
                     </div>
                 </div>
             }

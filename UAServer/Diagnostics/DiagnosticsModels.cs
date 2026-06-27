@@ -30,6 +30,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>Outcome of moving a rejected certificate into the trusted store.</summary>
     public sealed record TrustCertificateResult(bool Success, string Message);
 
+    /// <summary>The raw public certificate file served as a browser download.</summary>
+    public sealed record CertificateFile(byte[] Content, string FileName, string ContentType);
+
     /// <summary>High-level snapshot rendered on the Overview page.</summary>
     public sealed class ServerOverview
     {

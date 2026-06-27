@@ -2,6 +2,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 {
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Edge.Translator.Components;
@@ -54,6 +55,17 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             _app.UseStaticFiles();
             _app.UseAntiforgery();
             _app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+            // Streams the public application certificate as a file download. Lives outside
+            // the Blazor circuit so the browser performs a normal HTTP GET (Save As) instead
+            // of trying to push bytes over the SignalR connection.
+            _app.MapGet("/certificates/download/{thumbprint}", (string thumbprint, DiagnosticsService diagnostics) =>
+            {
+                CertificateFile file = diagnostics.GetApplicationCertificateFile(thumbprint);
+                return file == null
+                    ? Results.NotFound()
+                    : Results.File(file.Content, file.ContentType, file.FileName);
+            });
 
             await _app.StartAsync(cancellationToken).ConfigureAwait(false);
 
