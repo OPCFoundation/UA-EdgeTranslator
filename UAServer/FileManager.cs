@@ -64,7 +64,8 @@
             _file.SetPosition.OnCall = new SetPositionMethodStateMethodCallHandler(OnSetPosition);
             _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnCloseAndUpdate);
             _file.Close.DisplayName = new Opc.Ua.LocalizedText("CloseAndUpdate");
-            _file.Close.BrowseName = new QualifiedName("CloseAndUpdate");
+            ushort WoTConNamespaceIndex = (ushort)_nodeManager.Server.NamespaceUris.GetIndex(_cWotCon);
+            _file.Close.BrowseName = new QualifiedName("CloseAndUpdate", WoTConNamespaceIndex);
         }
 
         public void Dispose()

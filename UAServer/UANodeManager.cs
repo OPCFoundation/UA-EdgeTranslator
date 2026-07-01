@@ -592,8 +592,10 @@ namespace Opc.Ua.Edge.Translator
                 asset.Create(SystemContext, new NodeId(), new QualifiedName(assetName), null, true);
                 asset.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cIWoTAssetType, _cWotCon), Server.NamespaceUris);
 
+                ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
+
                 FileState fileNode = new(asset);
-                fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile"), null, true);
+                fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile", WoTConNamespaceIndex), null, true);
                 fileNode.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cWoTAssetFileType, _cWotCon), Server.NamespaceUris);
                 asset.AddChild(fileNode);
 
