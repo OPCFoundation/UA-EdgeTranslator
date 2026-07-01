@@ -115,6 +115,63 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task CreateAsset_yields_a_spec_compliant_asset_reachable_via_Organizes()
+        {
+            // OPC 10100-1 §6.3.1.1/§6.3.2/§6.3.3: the asset must be an Object with
+            // TypeDefinition 0:BaseObjectType, carry a HasInterface reference to
+            // IWoTAssetType, and be attached to WoTAssetConnectionManagement via an
+            // Organizes reference that DeleteAsset removes again.
+            NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
+            NodeId createAsset = await ResolveAssetManagementChildAsync("CreateAsset").ConfigureAwait(false);
+            NodeId deleteAsset = await ResolveAssetManagementChildAsync("DeleteAsset").ConfigureAwait(false);
+            Assert.False(NodeId.IsNull(createAsset));
+            Assert.False(NodeId.IsNull(deleteAsset));
+
+            string assetName = "organizes" + Guid.NewGuid().ToString("N").Substring(0, 6);
+
+            IList<object> created = await CallMethodAsync(assetManagement, createAsset, new object[] { assetName })
+                .ConfigureAwait(false);
+            NodeId newAssetId = Assert.IsType<NodeId>(created[0]);
+            Assert.False(NodeId.IsNull(newAssetId));
+
+            // §6.3.2: a forward Organizes browse (Object node class) must return the asset.
+            ReferenceDescriptionCollection organized = await BrowseForwardAsync(
+                assetManagement, ReferenceTypeIds.Organizes, includeSubtypes: true, (uint)NodeClass.Object)
+                .ConfigureAwait(false);
+            ReferenceDescription assetRef = organized.FirstOrDefault(
+                r => string.Equals(r.DisplayName.Text, assetName, StringComparison.Ordinal));
+            Assert.NotNull(assetRef);
+            Assert.Equal(newAssetId, ExpandedNodeId.ToNodeId(assetRef.NodeId, _session.NamespaceUris));
+
+            // Table 5: the asset is an Object whose TypeDefinition is 0:BaseObjectType.
+            Assert.Equal(NodeClass.Object, assetRef.NodeClass);
+            Assert.Equal(
+                ObjectTypeIds.BaseObjectType,
+                ExpandedNodeId.ToNodeId(assetRef.TypeDefinition, _session.NamespaceUris));
+
+            // Table 6: the asset carries a HasInterface reference to IWoTAssetType.
+            ReferenceDescriptionCollection interfaces = await BrowseForwardAsync(
+                newAssetId, ReferenceTypeIds.HasInterface, includeSubtypes: false, (uint)NodeClass.ObjectType)
+                .ConfigureAwait(false);
+            Assert.Contains(
+                interfaces,
+                r => string.Equals(r.BrowseName.Name, "IWoTAssetType", StringComparison.Ordinal));
+
+            // §6.3.3: DeleteAsset removes the Organizes reference, so the asset disappears
+            // from the forward Organizes browse.
+            CallMethodResult deleted = await CallMethodRawAsync(assetManagement, deleteAsset, new object[] { newAssetId })
+                .ConfigureAwait(false);
+            Assert.True(StatusCode.IsGood(deleted.StatusCode), $"DeleteAsset returned {deleted.StatusCode}");
+
+            ReferenceDescriptionCollection afterDelete = await BrowseForwardAsync(
+                assetManagement, ReferenceTypeIds.Organizes, includeSubtypes: true, (uint)NodeClass.Object)
+                .ConfigureAwait(false);
+            Assert.DoesNotContain(
+                afterDelete,
+                r => string.Equals(r.DisplayName.Text, assetName, StringComparison.Ordinal));
+        }
+
+        [Fact]
         public async Task License_property_is_present_under_AssetManagement_Configuration()
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
@@ -200,6 +257,32 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
                 IncludeSubtypes = true,
                 NodeClassMask = 0,
+                ResultMask = (uint)BrowseResultMask.All
+            };
+
+            BrowseResponse response = await _session.BrowseAsync(
+                null,
+                null,
+                0,
+                new BrowseDescriptionCollection { browse },
+                System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+            Assert.NotNull(response);
+            Assert.NotEmpty(response.Results);
+
+            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+        }
+
+        private async Task<ReferenceDescriptionCollection> BrowseForwardAsync(
+            NodeId parent, NodeId referenceType, bool includeSubtypes, uint nodeClassMask)
+        {
+            BrowseDescription browse = new BrowseDescription
+            {
+                NodeId = parent,
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = referenceType,
+                IncludeSubtypes = includeSubtypes,
+                NodeClassMask = nodeClassMask,
                 ResultMask = (uint)BrowseResultMask.All
             };
 

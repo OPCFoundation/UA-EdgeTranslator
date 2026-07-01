@@ -573,33 +573,35 @@ namespace Opc.Ua.Edge.Translator
             lock (Lock)
             {
                 // check if the asset node already exists
-                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, null, false, BrowseDirection.Forward, null, null, true);
+                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, null, null, true);
 
-                IReference reference = browser.Next();
-                while ((reference != null) && (reference is NodeStateReference))
+                for (IReference reference = browser.Next(); reference != null; reference = browser.Next())
                 {
-                    NodeStateReference node = reference as NodeStateReference;
-                    if ((node.Target != null) && (node.Target.DisplayName.Text == assetName))
+                    NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
+                    if ((target != null) && (target.DisplayName.Text == assetName))
                     {
-                        assetNode = node.Target;
+                        assetNode = target;
                         return false;
                     }
-
-                    reference = browser.Next();
                 }
 
-                BaseInterfaceState asset = new(null);
-                asset.Create(SystemContext, new NodeId(), new QualifiedName(assetName), null, true);
-                asset.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cIWoTAssetType, _cWotCon), Server.NamespaceUris);
+                NodeId iWoTAssetTypeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cIWoTAssetType, _cWotCon), Server.NamespaceUris);
 
                 ushort WoTConNamespaceIndex = (ushort)Server.NamespaceUris.GetIndex(_cWotCon);
+
+                BaseObjectState asset = new(null);
+                asset.Create(SystemContext, new NodeId(), new QualifiedName(assetName, WoTConNamespaceIndex), new Opc.Ua.LocalizedText(assetName), true);
+                asset.TypeDefinitionId = ObjectTypeIds.BaseObjectType;
+
+                asset.AddReference(ReferenceTypeIds.HasInterface, false, iWoTAssetTypeId);
 
                 FileState fileNode = new(asset);
                 fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile", WoTConNamespaceIndex), null, true);
                 fileNode.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cWoTAssetFileType, _cWotCon), Server.NamespaceUris);
                 asset.AddChild(fileNode);
 
-                _assetManagement.AddChild(asset);
+                _assetManagement.AddReference(ReferenceTypeIds.Organizes, false, asset.NodeId);
+                asset.AddReference(ReferenceTypeIds.Organizes, true, _assetManagement.NodeId);
 
                 FileManager fileManager = new(this, fileNode);
                 _fileManagers.Add(asset.NodeId, fileManager);
@@ -646,7 +648,7 @@ namespace Opc.Ua.Edge.Translator
 
             lock (Lock)
             {
-                NodeState asset = FindPredefinedNode<BaseInterfaceState>(assetId);
+                NodeState asset = FindPredefinedNode<BaseObjectState>(assetId);
                 if (asset == null)
                 {
                     return StatusCodes.BadNodeIdUnknown;
@@ -661,6 +663,9 @@ namespace Opc.Ua.Edge.Translator
                 {
                     fileManager.Dispose();
                 }
+
+                _assetManagement.RemoveReference(ReferenceTypeIds.Organizes, false, assetId);
+                asset.RemoveReference(ReferenceTypeIds.Organizes, true, _assetManagement.NodeId);
 
                 DeleteNode(SystemContext, assetId);
 
@@ -784,18 +789,15 @@ namespace Opc.Ua.Edge.Translator
                 return null;
             }
 
-            INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, null, false, BrowseDirection.Forward, null, null, true);
+            INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, null, null, true);
 
-            IReference reference = browser.Next();
-            while ((reference != null) && (reference is NodeStateReference))
+            for (IReference reference = browser.Next(); reference != null; reference = browser.Next())
             {
-                NodeStateReference node = reference as NodeStateReference;
-                if ((node.Target != null) && (node.Target.DisplayName.Text == assetName))
+                NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
+                if ((target != null) && (target.DisplayName.Text == assetName))
                 {
-                    return node.Target.NodeId;
+                    return target.NodeId;
                 }
-
-                reference = browser.Next();
             }
 
             return null;
