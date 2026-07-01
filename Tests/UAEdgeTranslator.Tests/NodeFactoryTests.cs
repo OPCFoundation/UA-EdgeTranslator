@@ -24,7 +24,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             NodeFactory factory = new(bareManager);
 
             Assert.Throws<ArgumentNullException>(() =>
-                factory.CreateObject(parent: null, name: string.Empty, type: new ExpandedNodeId(58u, 0)));
+                factory.CreateObject(parent: null, name: string.Empty, type: new ExpandedNodeId(58u, 0), namespaceIndex: 0));
         }
     }
 }

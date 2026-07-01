@@ -33,21 +33,24 @@
             return method;
         }
 
-        public BaseObjectState CreateObject(NodeState parent, string name, ExpandedNodeId type)
+        public BaseObjectState CreateObject(NodeState parent, string name, ExpandedNodeId type, ushort namespaceIndex, string nodeIdentifier = null)
         {
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(type.ToString()))
             {
                 throw new ArgumentNullException("Cannot create UA object with empty browse name or type definition!");
             }
 
+            // Keep the object's NodeId and BrowseName in the caller-provided namespace
+            // (e.g. the asset's namespace) so every node under an asset shares the same
+            // index. Falling back to _manager.New() here would place the object in the
+            // EdgeTranslator namespace, inconsistent with its sibling variables.
             BaseObjectState obj = new(parent)
             {
-                BrowseName = name,
+                NodeId = new NodeId(nodeIdentifier ?? name, namespaceIndex),
+                BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = name,
                 TypeDefinitionId = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris)
             };
-
-            obj.NodeId = _manager.New(_manager.SystemContext, obj);
 
             parent?.AddChild(obj);
 
@@ -112,7 +115,7 @@
 
             PropertyState<Argument[]> arguments = new(methodState)
             {
-                NodeId = (nodeId == null) ? new NodeId(browseName, _manager.NamespaceIndex) : nodeId,
+                NodeId = (nodeId == null) ? new NodeId(browseName, methodState.NodeId.NamespaceIndex) : nodeId,
                 BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
                 TypeDefinitionId = VariableTypeIds.PropertyType,

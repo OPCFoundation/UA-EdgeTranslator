@@ -404,7 +404,7 @@ namespace Opc.Ua.Edge.Translator
             BaseObjectState configuration = _nodeFactory.CreateObject(
                 _assetManagement,
                 "Configuration",
-                new ExpandedNodeId(_cWoTAssetConfigurationType, _cWotCon));
+                new ExpandedNodeId(_cWoTAssetConfigurationType, _cWotCon), WoTConNamespaceIndex);
             AddPredefinedNode(SystemContext, configuration);
 
             // create a property for the license key
@@ -1309,7 +1309,11 @@ namespace Opc.Ua.Edge.Translator
                                 var existingNode = FindNodeInAddressSpace(new NodeId(variableId, assetNamespaceIndex));
                                 if (existingNode == null)
                                 {
-                                    objectInstance = _nodeFactory.CreateObject(assetFolder, variableName, ParseExpandedNodeId(property.Value.OpcUaType));
+                                    // Give the object instance the same asset-namespaced NodeId
+                                    // (variableId) the lookup above expects, so a second field
+                                    // mapped onto the same object reuses this instance instead of
+                                    // creating a duplicate in the EdgeTranslator namespace.
+                                    objectInstance = _nodeFactory.CreateObject(assetFolder, variableName, ParseExpandedNodeId(property.Value.OpcUaType), assetNamespaceIndex, variableId);
                                     AddPredefinedNode(SystemContext, objectInstance);
                                 }
                                 else
