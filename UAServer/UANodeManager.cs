@@ -69,6 +69,30 @@ namespace Opc.Ua.Edge.Translator
         private const uint _cWoTAssetFileType = 110;
         private const uint _cWoTAssetConfigurationType = 105;
 
+        // Type-declaration (InstanceDeclaration) NodeIds of the WoT-Con methods on
+        // WoTAssetConnectionManagementType / WoTAssetFileType. OPC UA Part 4
+        // §5.12.2.2 (Table 59) allows a client to Call a Method using either the
+        // per-instance Method NodeId or the type-declaration NodeId.
+        //
+        // Two resolution paths are needed because the WoT-Con methods reach their
+        // parent object two different ways:
+        //  * DiscoverAssets/CreateAssetForEndpoint/ConnectionTest are created as
+        //    in-memory children and the per-asset WoTFile.CloseAndUpdate is a real
+        //    FileType child, so setting MethodState.MethodDeclarationId lets the
+        //    SDK's NodeState.FindMethod (which enumerates children) resolve both
+        //    the instance and type-declaration NodeId to the same handler.
+        //  * CreateAsset (i=32) and DeleteAsset (i=35) come from the imported
+        //    nodeset and are only loosely coupled to the management object via the
+        //    reference table (not in its children collection), so FindMethod never
+        //    sees them. For those two the Call override below remaps the static
+        //    type-declaration NodeId onto the instance NodeId before dispatch.
+        private const uint _cWoTCreateAssetType = 26;
+        private const uint _cWoTDeleteAssetType = 29;
+        private const uint _cWoTDiscoverAssetsType = 41;
+        private const uint _cWoTCreateAssetForEndpointType = 49;
+        private const uint _cWoTConnectionTestType = 75;
+        private const uint _cWoTCloseAndUpdateType = 111;
+
         private const int _reconnectInitialBackoffMs = 1000;
         private const int _reconnectMaxBackoffMs = 60_000;
 
@@ -161,6 +185,54 @@ namespace Opc.Ua.Edge.Translator
         {
             // for new nodes we create, pick our default namespace
             return new NodeId(Utils.IncrementIdentifier(ref _lastUsedId), (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/"));
+        }
+
+        // OPC UA Part 4 §5.12.2.2 (Table 59) / v1.04 §5.11.2.2 (Table 65) allow a
+        // client to Call a Method using the NodeId of the Method that is the
+        // InstanceDeclaration on the ObjectType the addressed Object instantiates
+        // ("form 2"), not just the per-instance Method NodeId ("form 1").
+        //
+        // CreateAsset and DeleteAsset come from the imported WoT-Con nodeset and
+        // are only loosely coupled to the WoTAssetConnectionManagement object via
+        // the reference table, so the base NodeState.FindMethod (which enumerates
+        // in-memory children) cannot see them and a type-declaration methodId
+        // resolves to nothing -> Bad_MethodInvalid. Remap the two static
+        // type-declaration NodeIds onto their instance NodeIds before dispatch so
+        // both forms reach the same handler. (The other WoT-Con methods are real
+        // children and are handled via MethodState.MethodDeclarationId instead.)
+        public override void Call(
+            OperationContext context,
+            IList<CallMethodRequest> methodsToCall,
+            IList<CallMethodResult> results,
+            IList<ServiceResult> errors)
+        {
+            int wotConNamespaceIndex = Server.NamespaceUris.GetIndex(_cWotCon);
+            if (wotConNamespaceIndex > 0 && methodsToCall != null)
+            {
+                ushort ns = (ushort)wotConNamespaceIndex;
+                NodeId managementObjectId = new NodeId(_cWoTAssetManagement, ns);
+                NodeId createAssetType = new NodeId(_cWoTCreateAssetType, ns);
+                NodeId deleteAssetType = new NodeId(_cWoTDeleteAssetType, ns);
+
+                foreach (CallMethodRequest request in methodsToCall)
+                {
+                    if (request == null || request.ObjectId != managementObjectId)
+                    {
+                        continue;
+                    }
+
+                    if (request.MethodId == createAssetType)
+                    {
+                        request.MethodId = new NodeId(_cWoTCreateAsset, ns);
+                    }
+                    else if (request.MethodId == deleteAssetType)
+                    {
+                        request.MethodId = new NodeId(_cWoTDeleteAsset, ns);
+                    }
+                }
+            }
+
+            base.Call(context, methodsToCall, results, errors);
         }
 
         // Returns a point-in-time snapshot of every onboarded asset and its
@@ -369,17 +441,20 @@ namespace Opc.Ua.Edge.Translator
 
             MethodState discoverAssets = _nodeFactory.CreateMethod(_assetManagement, "DiscoverAssets", WoTConNamespaceIndex);
             discoverAssets.OnCallMethod = new GenericMethodCalledEventHandler(OnDiscoverAssets);
+            discoverAssets.MethodDeclarationId = new NodeId(_cWoTDiscoverAssetsType, WoTConNamespaceIndex);
             discoverAssets.OutputArguments = _nodeFactory.CreateMethodArguments(discoverAssets, ["AssetEndpoints"], ["The list of discovered asset endpoints."], [new ExpandedNodeId(DataTypes.String)], false, true);
             AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = _nodeFactory.CreateMethod(_assetManagement, "CreateAssetForEndpoint", WoTConNamespaceIndex);
             createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
+            createAssetForEndpoint.MethodDeclarationId = new NodeId(_cWoTCreateAssetForEndpointType, WoTConNamespaceIndex);
             createAssetForEndpoint.InputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], true);
             createAssetForEndpoint.OutputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
             MethodState connectionTest = _nodeFactory.CreateMethod(_assetManagement, "ConnectionTest", WoTConNamespaceIndex);
             connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
+            connectionTest.MethodDeclarationId = new NodeId(_cWoTConnectionTestType, WoTConNamespaceIndex);
             connectionTest.InputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], [new ExpandedNodeId(DataTypes.String)], true);
             connectionTest.OutputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], false);
             AddPredefinedNode(SystemContext, connectionTest);
@@ -605,6 +680,14 @@ namespace Opc.Ua.Edge.Translator
 
                 FileManager fileManager = new(this, fileNode);
                 _fileManagers.Add(asset.NodeId, fileManager);
+
+                // OPC UA Part 4 §5.12.2.2 (Table 59) lets a client Call this
+                // per-asset CloseAndUpdate method using the WoTAssetFileType
+                // type-declaration NodeId (ns=WoT-Con;i=111) instead of the
+                // per-instance NodeId. Point the instance method's
+                // MethodDeclarationId at that declaration so the SDK's
+                // NodeState.FindMethod resolves both forms to this handler.
+                fileNode.Close.MethodDeclarationId = new NodeId(_cWoTCloseAndUpdateType, WoTConNamespaceIndex);
 
                 AddPredefinedNode(SystemContext, asset);
 
