@@ -127,6 +127,46 @@ namespace Opc.Ua.Edge.Translator
             return tag.IsBigEndian ? ByteSwapper.Swap(raw, tag.SwapPerWord) : raw;
         }
 
+        /// <summary>
+        /// Convert Modbus register values into wire-format bytes: big-endian [Hi][Lo]
+        /// per register. Use this to bridge an NModbus register read into the raw byte
+        /// buffer that <see cref="Decode"/> consumes.
+        /// </summary>
+        public static byte[] RegistersToWireBytes(ushort[] registers)
+        {
+            byte[] bytes = new byte[registers.Length * 2];
+            int j = 0;
+
+            for (int i = 0; i < registers.Length; i++)
+            {
+                bytes[j++] = (byte)(registers[i] >> 8);
+                bytes[j++] = (byte)(registers[i] & 0xFF);
+            }
+
+            return bytes;
+        }
+
+        /// <summary>
+        /// Pack coil/discrete-input booleans into Modbus bit-packed format (LSB-first per
+        /// byte). Use this to bridge an NModbus coil/input read into the raw byte buffer
+        /// that <see cref="Decode"/> consumes.
+        /// </summary>
+        public static byte[] CoilsToWireBytes(bool[] coils)
+        {
+            int byteCount = (coils.Length + 7) / 8;
+            byte[] data = new byte[byteCount];
+
+            for (int i = 0; i < coils.Length; i++)
+            {
+                if (coils[i])
+                {
+                    data[i / 8] |= (byte)(1 << (i % 8)); // LSB-first
+                }
+            }
+
+            return data;
+        }
+
         private static byte[] Ordered(AssetTag tag, byte[] wireBytes)
         {
             return tag.IsBigEndian ? ByteSwapper.Swap(wireBytes, tag.SwapPerWord) : wireBytes;

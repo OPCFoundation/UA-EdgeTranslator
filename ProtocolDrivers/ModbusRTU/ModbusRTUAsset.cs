@@ -226,27 +226,27 @@
                     case "ReadHoldingRegisters":
                         {
                             ushort[] regs = _master!.ReadHoldingRegisters(unitID, startAddress, count);
-                            return Task.FromResult(ToBigEndianBytes(regs));
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
                         }
 
                     case "ReadInputRegisters":
                         {
                             ushort[] regs = _master!.ReadInputRegisters(unitID, startAddress, count);
-                            return Task.FromResult(ToBigEndianBytes(regs));
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
                         }
 
                     case "ReadCoilStatus":
                         {
-                            // Coil reads return bool[]; we pack into Modbus response format bytes (LSB-first).
+                            // Coil reads return bool[]; pack into Modbus response format bytes (LSB-first).
                             bool[] coils = _master!.ReadCoils(unitID, startAddress, count);
-                            return Task.FromResult(PackCoils(coils));
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(coils));
                         }
 
                     case "ReadInputStatus":
                         {
                             // Discrete input reads return bool[]; pack into Modbus response format bytes (LSB-first).
                             bool[] inputs = _master!.ReadInputs(unitID, startAddress, count);
-                            return Task.FromResult(PackCoils(inputs));
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(inputs));
                         }
 
                     default:
@@ -297,42 +297,6 @@
                     return Task.CompletedTask;
                 }
             }
-        }
-
-        /// <summary>
-        /// Convert ushort[] registers to Modbus wire-format bytes: big-endian [Hi][Lo] per register.
-        /// </summary>
-        private static byte[] ToBigEndianBytes(ushort[] regs)
-        {
-            byte[] bytes = new byte[regs.Length * 2];
-            int j = 0;
-
-            for (int i = 0; i < regs.Length; i++)
-            {
-                bytes[j++] = (byte)(regs[i] >> 8);
-                bytes[j++] = (byte)(regs[i] & 0xFF);
-            }
-
-            return bytes;
-        }
-
-        /// <summary>
-        /// Pack coil bools into Modbus bit-packed format (LSB-first per byte).
-        /// </summary>
-        private static byte[] PackCoils(bool[] coils)
-        {
-            int byteCount = (coils.Length + 7) / 8;
-            byte[] data = new byte[byteCount];
-
-            for (int i = 0; i < coils.Length; i++)
-            {
-                if (coils[i])
-                {
-                    data[i / 8] |= (byte)(1 << (i % 8)); // LSB-first
-                }
-            }
-
-            return data;
         }
     }
 }

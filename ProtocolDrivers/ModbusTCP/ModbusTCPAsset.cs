@@ -1,14 +1,18 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
+    using NModbus;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Net.Sockets;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// Modbus TCP implementation of IAsset using NModbus.
+    /// Connect(ipAddress, port): ipAddress = host, port = TCP port.
+    /// </summary>
     public class ModbusTCPAsset : IAsset
     {
         public enum FunctionCode : byte
@@ -24,48 +28,41 @@
             PresetMultipleRegisters = 16
         }
 
-        private TcpClient _tcpClient = null;
+        private readonly object _lock = new object();
+
+        private TcpClient _tcpClient;
+        private IModbusMaster _master;
 
         private string _endpoint = string.Empty;
 
         // Modbus uses long timeouts (10 seconds minimum)
         private const int _timeout = 10000;
 
-        private ushort _transactionID = 0;
-
-        private const byte _errorFlag = 0x80;
-
-        private object _lock = new object();
+        // Deliberately throttle writes so a small / single-threaded Modbus server
+        // (such as the OpenModSim demo) is not overwhelmed by back-to-back writes.
+        private const int _writeThrottleMilliseconds = 1000;
 
         public bool IsConnected { get; private set; } = false;
 
-        private void HandlerError(byte errorCode)
-        {
-            switch (errorCode)
-            {
-                case 1: throw new Exception("Illegal function");
-                case 2: throw new Exception("Illegal data address");
-                case 3: throw new Exception("Illegal data value");
-                case 4: throw new Exception("Server failure");
-                case 5: throw new Exception("Acknowledge");
-                case 6: throw new Exception("Server busy");
-                case 7: throw new Exception("Negative acknowledge");
-                case 8: throw new Exception("Memory parity error");
-                case 10: throw new Exception("Gateway path unavailable");
-                case 11: throw new Exception("Target unit failed to respond");
-                default: throw new Exception("Unknown error");
-            }
-        }
-
         public void Connect(string ipAddress, int port)
         {
-            _tcpClient = new TcpClient(ipAddress, port);
-            _tcpClient.GetStream().ReadTimeout = _timeout;
-            _tcpClient.GetStream().WriteTimeout = _timeout;
+            lock (_lock)
+            {
+                Disconnect();
 
-            _endpoint = ipAddress + ":" + port.ToString();
+                _tcpClient = new TcpClient(ipAddress, port);
+                _tcpClient.GetStream().ReadTimeout = _timeout;
+                _tcpClient.GetStream().WriteTimeout = _timeout;
 
-            IsConnected = true;
+                var factory = new ModbusFactory();
+                _master = factory.CreateMaster(_tcpClient);
+                _master.Transport.ReadTimeout = _timeout;
+                _master.Transport.WriteTimeout = _timeout;
+
+                _endpoint = ipAddress + ":" + port.ToString();
+
+                IsConnected = true;
+            }
         }
 
         public string GetRemoteEndpoint()
@@ -75,21 +72,19 @@
 
         public void Disconnect()
         {
-            if (_tcpClient != null)
+            lock (_lock)
             {
-                try
+                try { _master?.Dispose(); } catch { /* ignore */ }
+                _master = null;
+
+                if (_tcpClient != null)
                 {
-                    _tcpClient.Close();
-                }
-                catch (Exception)
-                {
-                    // ignore errors on close
+                    try { _tcpClient.Close(); } catch { /* ignore */ }
+                    _tcpClient = null;
                 }
 
-                _tcpClient = null;
+                IsConnected = false;
             }
-
-            IsConnected = false;
         }
 
         public object Read(AssetTag tag)
@@ -149,348 +144,98 @@
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
-            Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, writeCoil).GetAwaiter().GetResult();
-        }
-
-
-        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
-        {
-            var registerAddress = ushort.Parse(addressWithinAsset);
-
-            switch (function)
-            {
-                case "ForceMultipleCoils": return ReadInternal(unitID, FunctionCode.ForceMultipleCoils, registerAddress, count);
-                case "ForceSingleCoil": return ReadInternal(unitID, FunctionCode.ForceSingleCoil, registerAddress, count);
-                case "PresetMultipleRegisters": return ReadInternal(unitID, FunctionCode.PresetMultipleRegisters, registerAddress, count);
-                case "PresetSingleRegister": return ReadInternal(unitID, FunctionCode.PresetSingleRegister, registerAddress, count);
-                case "ReadCoilStatus": return ReadInternal(unitID, FunctionCode.ReadCoilStatus, registerAddress, count);
-                case "ReadExceptionStatus": return ReadInternal(unitID, FunctionCode.ReadExceptionStatus, registerAddress, count);
-                case "ReadHoldingRegisters": return ReadInternal(unitID, FunctionCode.ReadHoldingRegisters, registerAddress, count);
-                case "ReadInputRegisters": return ReadInternal(unitID, FunctionCode.ReadInputRegisters, registerAddress, count);
-                case "ReadInputStatus": return ReadInternal(unitID, FunctionCode.ReadInputStatus, registerAddress, count);
-                default: return Task.FromResult(Array.Empty<byte>());
-            }
-        }
-
-        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
-        {
-            var registerAddress = ushort.Parse(addressWithinAsset);
-
-            if (singleBitOnly && values.Length > 0)
-            {
-                return WriteCoil(unitID, registerAddress, values[0] != 0);
-            }
-            else
-            {
-                var ushortArrayLength = values.Length / 2;
-                var ushortArray = new ushort[ushortArrayLength];
-
-                for (var i = 0; i < ushortArrayLength; i++)
-                {
-                    ushortArray[i] = BitConverter.ToUInt16(values, i * 2);
-                }
-
-                if (ushortArray.Length == 1)
-                {
-                    // Single-register writes use PresetSingleRegister (FC 6) instead of
-                    // promoting the write to PresetMultipleRegisters (FC 16).
-                    return WriteSingleRegister(unitID, registerAddress, ushortArray[0]);
-                }
-
-                return WriteHoldingRegisters(unitID, registerAddress, ushortArray);
-            }
-        }
-
-        public Task<byte[]> ReadInternal(byte unitID, FunctionCode function, ushort registerBaseAddress, ushort count)
-        {
-            if (_tcpClient == null)
-            {
-                throw new Exception("Not connected to Modbus server");
-            }
-
-            lock (_lock)
-            {
-                // check funtion code
-                if (function != FunctionCode.ReadInputRegisters
-                 && function != FunctionCode.ReadHoldingRegisters
-                 && function != FunctionCode.ReadInputStatus
-                 && function != FunctionCode.ReadCoilStatus)
-                {
-                    throw new ArgumentException("Only coils, discrete inputs, input registers and holding registers can be read");
-                }
-
-                var aduRequest = new ApplicationDataUnit();
-                aduRequest.TransactionID = _transactionID++;
-                aduRequest.Length = 6;
-                aduRequest.UnitID = unitID;
-                aduRequest.FunctionCode = (byte)function;
-
-                aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
-                aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
-                aduRequest.Payload[2] = (byte)(count >> 8);
-                aduRequest.Payload[3] = (byte)(count & 0x00FF);
-
-                var buffer = new byte[ApplicationDataUnit.maxADU];
-                aduRequest.CopyADUToNetworkBuffer(buffer);
-
-                // send request to Modbus server
-                _tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
-
-                // read response header from Modbus server
-                var numBytesRead = _tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength);
-                if (numBytesRead != ApplicationDataUnit.headerLength)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                var aduResponse = new ApplicationDataUnit();
-                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-                // check for error
-                if ((aduResponse.FunctionCode & _errorFlag) > 0)
-                {
-                    // read error
-                    var errorCode = _tcpClient.GetStream().ReadByte();
-                    if (errorCode == -1)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    else
-                    {
-                        HandlerError((byte)errorCode);
-                    }
-                }
-
-                // read length of response
-                var length = _tcpClient.GetStream().ReadByte();
-                if (length == -1)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                // read response
-                var responseBuffer = new byte[length];
-                numBytesRead = _tcpClient.GetStream().Read(responseBuffer, 0, length);
-                if (numBytesRead != length)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                return Task.FromResult(responseBuffer);
-            }
-        }
-
-        public async Task WriteHoldingRegisters(byte unitID, ushort registerBaseAddress, ushort[] values)
-        {
-            // throttle writing to not overwhelm our poor little Modbus server
-            await Task.Delay(1000).ConfigureAwait(false);
-
-            lock (_lock)
-            {
-                if (11 + values.Length * 2 > ApplicationDataUnit.maxADU)
-                {
-                    throw new ArgumentException("Too many values");
-                }
-
-                var aduRequest = new ApplicationDataUnit();
-                aduRequest.TransactionID = _transactionID++;
-                aduRequest.Length = (ushort)(7 + values.Length * 2);
-                aduRequest.UnitID = unitID;
-                aduRequest.FunctionCode = (byte)FunctionCode.PresetMultipleRegisters;
-
-                aduRequest.Payload[0] = (byte)(registerBaseAddress >> 8);
-                aduRequest.Payload[1] = (byte)(registerBaseAddress & 0x00FF);
-                aduRequest.Payload[2] = (byte)((ushort)values.Length >> 8);
-                aduRequest.Payload[3] = (byte)((ushort)values.Length & 0x00FF);
-                aduRequest.Payload[4] = (byte)(values.Length * 2);
-
-                var payloadIndex = 5;
-                foreach (var value in values)
-                {
-                    aduRequest.Payload[payloadIndex++] = (byte)(value >> 8);
-                    aduRequest.Payload[payloadIndex++] = (byte)(value & 0x00FF);
-                }
-
-                var buffer = new byte[ApplicationDataUnit.maxADU];
-                aduRequest.CopyADUToNetworkBuffer(buffer);
-
-                // send request to Modbus server
-                _tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 5 + values.Length * 2);
-
-                // read response
-                var numBytesRead = _tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
-                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                var aduResponse = new ApplicationDataUnit();
-                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-                // check for error
-                if ((aduResponse.FunctionCode & _errorFlag) > 0)
-                {
-                    // read error
-                    var errorCode = _tcpClient.GetStream().ReadByte();
-                    if (errorCode == -1)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    else
-                    {
-                        HandlerError((byte)errorCode);
-                    }
-                }
-
-                // check address written
-                if (buffer[8] != registerBaseAddress >> 8
-                 && buffer[9] != (registerBaseAddress & 0x00FF))
-                {
-                    throw new Exception("Incorrect base register returned");
-                }
-
-                // check number of registers written
-                if (buffer[10] != (ushort)values.Length >> 8
-                 && buffer[11] != ((ushort)values.Length & 0x00FF))
-                {
-                    throw new Exception("Incorrect number of registers written returned");
-                }
-            }
-        }
-
-        public async Task WriteCoil(byte unitID, ushort coilAddress, bool set)
-        {
-            // throttle writing to not overwhelm our poor little Modbus server
-            await Task.Delay(1000).ConfigureAwait(false);
-
-            lock (_lock)
-            {
-                var aduRequest = new ApplicationDataUnit();
-                aduRequest.TransactionID = _transactionID++;
-                aduRequest.Length = 6;
-                aduRequest.UnitID = unitID;
-                aduRequest.FunctionCode = (byte)FunctionCode.ForceSingleCoil;
-
-                aduRequest.Payload[0] = (byte)(coilAddress >> 8);
-                aduRequest.Payload[1] = (byte)(coilAddress & 0x00FF);
-                aduRequest.Payload[2] = (byte)(set ? 0xFF : 0x0);
-                aduRequest.Payload[3] = 0x0;
-
-                var buffer = new byte[ApplicationDataUnit.maxADU];
-                aduRequest.CopyADUToNetworkBuffer(buffer);
-
-                // send request to Modbus server
-                _tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
-
-                // read response
-                var numBytesRead = _tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
-                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                var aduResponse = new ApplicationDataUnit();
-                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-                // check for error
-                if ((aduResponse.FunctionCode & _errorFlag) > 0)
-                {
-                    // read error
-                    var errorCode = _tcpClient.GetStream().ReadByte();
-                    if (errorCode == -1)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    else
-                    {
-                        HandlerError((byte)errorCode);
-                    }
-                }
-
-                // check address written
-                if (buffer[8] != coilAddress >> 8
-                 && buffer[9] != (coilAddress & 0x00FF))
-                {
-                    throw new Exception("Incorrect coil register returned");
-                }
-
-                // check flag written
-                if (buffer[10] != (set ? 0xFF : 0x0)
-                 && buffer[11] != 0x0)
-                {
-                    throw new Exception("Incorrect coil flag returned");
-                }
-            }
-        }
-
-        public async Task WriteSingleRegister(byte unitID, ushort registerAddress, ushort value)
-        {
-            // throttle writing to not overwhelm our poor little Modbus server
-            await Task.Delay(1000).ConfigureAwait(false);
-
-            lock (_lock)
-            {
-                var aduRequest = new ApplicationDataUnit();
-                aduRequest.TransactionID = _transactionID++;
-                aduRequest.Length = 6;
-                aduRequest.UnitID = unitID;
-                aduRequest.FunctionCode = (byte)FunctionCode.PresetSingleRegister;
-
-                aduRequest.Payload[0] = (byte)(registerAddress >> 8);
-                aduRequest.Payload[1] = (byte)(registerAddress & 0x00FF);
-                aduRequest.Payload[2] = (byte)(value >> 8);
-                aduRequest.Payload[3] = (byte)(value & 0x00FF);
-
-                var buffer = new byte[ApplicationDataUnit.maxADU];
-                aduRequest.CopyADUToNetworkBuffer(buffer);
-
-                // send request to Modbus server
-                _tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
-
-                // read response
-                var numBytesRead = _tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
-                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                var aduResponse = new ApplicationDataUnit();
-                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
-
-                // check for error
-                if ((aduResponse.FunctionCode & _errorFlag) > 0)
-                {
-                    // read error
-                    var errorCode = _tcpClient.GetStream().ReadByte();
-                    if (errorCode == -1)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    else
-                    {
-                        HandlerError((byte)errorCode);
-                    }
-                }
-
-                // check address written
-                if (buffer[8] != registerAddress >> 8
-                 && buffer[9] != (registerAddress & 0x00FF))
-                {
-                    throw new Exception("Incorrect register returned");
-                }
-
-                // check value written
-                if (buffer[10] != value >> 8
-                 && buffer[11] != (value & 0x00FF))
-                {
-                    throw new Exception("Incorrect value returned");
-                }
-            }
+            Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
         }
 
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             return null;
+        }
+
+        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
+        {
+            lock (_lock)
+            {
+                ushort startAddress = ushort.Parse(addressWithinAsset);
+
+                switch (function)
+                {
+                    case "ReadHoldingRegisters":
+                        {
+                            ushort[] regs = _master!.ReadHoldingRegisters(unitID, startAddress, count);
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
+                        }
+
+                    case "ReadInputRegisters":
+                        {
+                            ushort[] regs = _master!.ReadInputRegisters(unitID, startAddress, count);
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
+                        }
+
+                    case "ReadCoilStatus":
+                        {
+                            // Coil reads return bool[]; pack into Modbus response format bytes (LSB-first).
+                            bool[] coils = _master!.ReadCoils(unitID, startAddress, count);
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(coils));
+                        }
+
+                    case "ReadInputStatus":
+                        {
+                            // Discrete input reads return bool[]; pack into Modbus response format bytes (LSB-first).
+                            bool[] inputs = _master!.ReadInputs(unitID, startAddress, count);
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(inputs));
+                        }
+
+                    default:
+                        return Task.FromResult(Array.Empty<byte>());
+                }
+            }
+        }
+
+        private async Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        {
+            // Deliberately throttle writes so a small / single-threaded Modbus server
+            // is not overwhelmed by back-to-back writes.
+            await Task.Delay(_writeThrottleMilliseconds).ConfigureAwait(false);
+
+            lock (_lock)
+            {
+                ushort startAddress = ushort.Parse(addressWithinAsset);
+
+                if (singleBitOnly)
+                {
+                    bool set = values != null && values.Length > 0 && values[0] != 0;
+                    _master!.WriteSingleCoil(unitID, startAddress, set);
+                    return;
+                }
+
+                if (values == null)
+                {
+                    values = Array.Empty<byte>();
+                }
+
+                if ((values.Length % 2) != 0)
+                {
+                    throw new ArgumentException("Register write values must be an even number of bytes.");
+                }
+
+                ushort[] regs = new ushort[values.Length / 2];
+                for (int i = 0; i < regs.Length; i++)
+                {
+                    regs[i] = BitConverter.ToUInt16(values, i * 2);
+                }
+
+                if (regs.Length == 1)
+                {
+                    // Single-register writes use PresetSingleRegister (FC 6) instead of
+                    // promoting the write to PresetMultipleRegisters (FC 16).
+                    _master!.WriteSingleRegister(unitID, startAddress, regs[0]);
+                }
+                else
+                {
+                    _master!.WriteMultipleRegisters(unitID, startAddress, regs);
+                }
+            }
         }
     }
 }
