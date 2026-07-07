@@ -1,0 +1,5 @@
+# CI preset: recommended production-shaped defaults.
+# ClusterIP + only the OPC UA port + PersistentVolumeClaim persistence, with
+# credentials sourced from a pre-provisioned Secret (created out-of-band).
+credentials:
+  existingSecret: ua-edgetranslator-credentials

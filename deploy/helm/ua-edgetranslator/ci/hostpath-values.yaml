@@ -1,0 +1,46 @@
+# CI preset: reproduces the UA-EdgeTranslator.yaml behaviour.
+# LoadBalancer service exposing every protocol port, and hostPath persistence
+# using the WSL/K3s developer paths. This triggers the fix-hostpath-perms init
+# container. Intended for a single-node K3s-on-WSL dev cluster only.
+service:
+  type: LoadBalancer
+  ports:
+    opcua:
+      enabled: true
+      port: 4840
+    lorawan:
+      enabled: true
+      port: 5000
+    lorawanTls:
+      enabled: true
+      port: 5001
+    ocpp:
+      enabled: true
+      port: 19520
+    ocppTls:
+      enabled: true
+      port: 19521
+
+persistence:
+  settings:
+    enabled: true
+    kind: hostPath
+    hostPath: /mnt/c/K3s/UAEdgeTranslator/Settings
+  pki:
+    enabled: true
+    kind: hostPath
+    hostPath: /mnt/c/K3s/UAEdgeTranslator/PKI
+  logs:
+    enabled: true
+    kind: hostPath
+    hostPath: /mnt/c/K3s/UAEdgeTranslator/Logs
+  nodesets:
+    enabled: true
+    kind: hostPath
+    hostPath: /mnt/c/K3s/UAEdgeTranslator/Nodesets
+
+# Dev-only chart-managed credentials. Discouraged outside isolated dev clusters.
+credentials:
+  create: true
+  username: dev
+  password: changeit

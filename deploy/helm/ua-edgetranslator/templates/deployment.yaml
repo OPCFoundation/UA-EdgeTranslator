@@ -1,0 +1,220 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ua-edgetranslator.fullname" . }}
+  labels:
+    {{- include "ua-edgetranslator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ua-edgetranslator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ua-edgetranslator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- $secretName := include "ua-edgetranslator.secretName" . }}
+      {{- $renderFix := include "ua-edgetranslator.renderFixHostPath" . }}
+      {{- $uid := .Values.podSecurityContext.runAsUser | default 1000 }}
+      {{- $gid := .Values.podSecurityContext.runAsGroup | default 1000 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ua-edgetranslator.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or $renderFix .Values.drivers.enabled }}
+      initContainers:
+        {{- if $renderFix }}
+        # hostPath volumes are NOT subject to the pod-level fsGroup, so a freshly
+        # (re)created node directory is owned root:root 0755 and the non-root app
+        # user (UID {{ $uid }}) cannot write into /app/pki, /app/logs, etc. This
+        # init container runs as root with only the capabilities chown needs to
+        # fix ownership before the main container starts.
+        - name: fix-hostpath-perms
+          image: {{ .Values.fixHostPathPerms.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - chown -R {{ $uid }}:{{ $gid }} {{ include "ua-edgetranslator.persistencePaths" . }}
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+                - FOWNER
+                - DAC_OVERRIDE
+          volumeMounts:
+            {{- include "ua-edgetranslator.persistenceVolumeMounts" . | nindent 12 }}
+        {{- end }}
+        {{- if .Values.drivers.enabled }}
+        - name: ua-edgetranslator-drivers
+          image: {{ include "ua-edgetranslator.drivers.image" . | quote }}
+          imagePullPolicy: {{ .Values.drivers.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - cp -a /drivers/. /app/drivers/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: drivers
+              mountPath: /app/drivers
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "ua-edgetranslator.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or $secretName (and .Values.drivers.enabled .Values.drivers.allowlist.offlineMode) .Values.extraEnv }}
+          env:
+            {{- if $secretName }}
+            - name: OPCUA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: OPCUA_USERNAME
+            - name: OPCUA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: OPCUA_PASSWORD
+            {{- range $key, $value := .Values.credentials.extraKeys }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            {{- if and .Values.drivers.enabled .Values.drivers.allowlist.offlineMode }}
+            - name: DRIVER_ALLOWLIST_OFFLINE_MODE
+              value: {{ .Values.drivers.allowlist.offlineMode | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- $portDefs := list
+              (dict "key" "opcua" "name" "opcua")
+              (dict "key" "diagnostics" "name" "diagnostics")
+              (dict "key" "lorawan" "name" "lorawan")
+              (dict "key" "lorawanTls" "name" "lorawan-tls")
+              (dict "key" "ocpp" "name" "ocpp")
+              (dict "key" "ocppTls" "name" "ocpp-tls")
+          }}
+          {{- $enabledPorts := list }}
+          {{- range $def := $portDefs }}
+          {{- $p := index $.Values.service.ports $def.key }}
+          {{- if $p.enabled }}{{ $enabledPorts = append $enabledPorts $def }}{{ end }}
+          {{- end }}
+          {{- if $enabledPorts }}
+          ports:
+            {{- range $def := $enabledPorts }}
+            {{- $p := index $.Values.service.ports $def.key }}
+            - name: {{ $def.name }}
+              containerPort: {{ $p.port }}
+              protocol: TCP
+            {{- end }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.probes.liveness }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.probes.readiness }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- include "ua-edgetranslator.persistenceVolumeMounts" . | nindent 12 }}
+            {{- if .Values.drivers.enabled }}
+            - name: drivers
+              mountPath: /app/drivers
+            {{- end }}
+            {{- if and .Values.drivers.enabled .Values.drivers.allowlist.configMap }}
+            - name: drivers-allowlist
+              mountPath: /app/drivers/drivers.allowlist.json
+              subPath: drivers.allowlist.json
+              readOnly: true
+            {{- if ne .Values.drivers.allowlist.offlineMode "allow-hash-only" }}
+            - name: drivers-allowlist
+              mountPath: /app/drivers/drivers.allowlist.sigstore.json
+              subPath: drivers.allowlist.sigstore.json
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- range $key := splitList " " (include "ua-edgetranslator.persistenceKeys" .) }}
+        {{- $vol := index $.Values.persistence $key }}
+        {{- if $vol.enabled }}
+        - name: {{ $key }}
+          {{- if eq $vol.kind "pvc" }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim | default (printf "%s-%s" (include "ua-edgetranslator.fullname" $) $key) }}
+          {{- else if eq $vol.kind "hostPath" }}
+          hostPath:
+            path: {{ required (printf "persistence.%s.hostPath is required when kind=hostPath" $key) $vol.hostPath | quote }}
+          {{- else if eq $vol.kind "emptyDir" }}
+          emptyDir: {}
+          {{- else }}
+          {{- fail (printf "persistence.%s.kind must be one of pvc|hostPath|emptyDir, got %q" $key $vol.kind) }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.drivers.enabled }}
+        - name: drivers
+          emptyDir: {}
+        {{- end }}
+        {{- if and .Values.drivers.enabled .Values.drivers.allowlist.configMap }}
+        - name: drivers-allowlist
+          configMap:
+            name: {{ .Values.drivers.allowlist.configMap }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}

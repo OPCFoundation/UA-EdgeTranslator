@@ -1,0 +1,29 @@
+{{- range $key := splitList " " (include "ua-edgetranslator.persistenceKeys" .) }}
+{{- $vol := index $.Values.persistence $key }}
+{{- if and $vol.enabled (eq $vol.kind "pvc") (not $vol.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-%s" (include "ua-edgetranslator.fullname" $) $key }}
+  labels:
+    {{- include "ua-edgetranslator.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+    {{- with $vol.accessModes }}
+    {{- toYaml . | nindent 4 }}
+    {{- else }}
+    - ReadWriteOnce
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ $vol.size | default "1Gi" | quote }}
+  {{- if $vol.storageClass }}
+  {{- if eq $vol.storageClass "-" }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ $vol.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

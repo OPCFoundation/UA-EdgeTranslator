@@ -1,0 +1,29 @@
+apiVersion: v2
+name: ua-edgetranslator
+description: |
+  UA Edge Translator - a standards-based, containerized industrial connectivity
+  edge application translating from many proprietary protocols to OPC UA.
+type: application
+# version is the chart's own SemVer. It is bumped independently of the app and
+# overridden by .github/workflows/helm-publish.yml on tagged releases.
+version: 0.1.0
+# appVersion tracks the UA Edge Translator server/driver-pack image tag. The
+# committed default matches the images the UA-EdgeTranslator.yaml pins
+# (:main). On a `v*.*.*` tag the publish workflow overrides this with the tag so
+# image.tag/drivers.image.tag default to the released server image.
+appVersion: "main"
+home: https://github.com/OPCFoundation/UA-EdgeTranslator
+sources:
+  - https://github.com/OPCFoundation/UA-EdgeTranslator
+keywords:
+  - opcua
+  - opc-ua
+  - iiot
+  - edge
+  - industrial
+  - web-of-things
+maintainers:
+  - name: OPC Foundation
+    url: https://opcfoundation.org
+annotations:
+  category: Integration

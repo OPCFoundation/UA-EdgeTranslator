@@ -120,8 +120,27 @@ Client certificates need to be manually moved from the /pki/rejected/certs folde
 
 ## Running UA Edge Translator from a Kubernetes environment
 
-A ready-to-use Kubernetes deployment manifest is provided in this repository: [UA-EdgeTranslator.yaml](UA-EdgeTranslator.yaml). It creates a dedicated `ua-edgetranslator-namespace`, deploys UA Edge Translator with an init container that copies the protocol drivers from the driver-pack image into a shared volume, and exposes the OPC UA, LoRaWAN and OCPP ports via a `LoadBalancer` service.
+The recommended way to deploy UA Edge Translator on Kubernetes is the official Helm chart under [deploy/helm/ua-edgetranslator](deploy/helm/ua-edgetranslator/). It renders the same resource set as the manifest below, but parameterises the namespace, images, credentials, persistence, service exposure, security context, driver-pack rollout, RBAC and NetworkPolicy — so non-trivial deployments no longer need to fork the manifest. By default it uses a `ClusterIP` service exposing only the OPC UA port and `PersistentVolumeClaim` persistence.
 
+Provision the OPC UA credentials `Secret` out-of-band, then install the chart from the OCI registry:
+
+```
+kubectl create namespace ua-edgetranslator
+kubectl -n ua-edgetranslator create secret generic ua-edgetranslator-credentials \
+    --from-literal=OPCUA_USERNAME='<username>' \
+    --from-literal=OPCUA_PASSWORD='<password>'
+
+helm install ua-edgetranslator \
+    oci://ghcr.io/opcfoundation/charts/ua-edgetranslator \
+    --namespace ua-edgetranslator \
+    --set credentials.existingSecret=ua-edgetranslator-credentials
+```
+
+See the [chart README](deploy/helm/ua-edgetranslator/README.md) for provisioning the credentials `Secret`, pinning driver-pack allow-list `ConfigMap`s, RBAC, persistence options, the full values reference, and a migration guide from the manifest.
+
+### Kubernetes manifest file
+
+A single-file Kubernetes manifest is also provided: [UA-EdgeTranslator.yaml](UA-EdgeTranslator.yaml). It creates a dedicated `ua-edgetranslator-namespace`, deploys UA Edge Translator with an init container that copies the protocol drivers from the driver-pack image into a shared volume, and exposes the OPC UA, LoRaWAN and OCPP ports via a `LoadBalancer` service.
 Apply it to your cluster directly from this repository with:
 
 ```

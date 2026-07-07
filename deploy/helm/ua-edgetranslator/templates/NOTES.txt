@@ -1,0 +1,37 @@
+UA Edge Translator has been deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Server image:  {{ include "ua-edgetranslator.image" . }}
+{{- if .Values.drivers.enabled }}
+Drivers image: {{ include "ua-edgetranslator.drivers.image" . }}
+{{- else }}
+Driver pack:   disabled (drivers.enabled=false)
+{{- end }}
+
+{{- $secretName := include "ua-edgetranslator.secretName" . }}
+{{- if not $secretName }}
+
+WARNING: No credentials Secret is configured. OPCUA_USERNAME / OPCUA_PASSWORD
+will not be injected. Provision a Secret out-of-band and set
+credentials.existingSecret, for example:
+
+  kubectl -n {{ .Release.Namespace }} create secret generic {{ include "ua-edgetranslator.fullname" . }}-credentials \
+	  --from-literal=OPCUA_USERNAME='<username>' \
+	  --from-literal=OPCUA_PASSWORD='<password>'
+
+  helm upgrade {{ .Release.Name }} <chart> --reuse-values \
+	  --set credentials.existingSecret={{ include "ua-edgetranslator.fullname" . }}-credentials
+{{- end }}
+
+Service "{{ include "ua-edgetranslator.fullname" . }}" is type {{ .Values.service.type }} exposing:
+{{- range $key, $p := .Values.service.ports }}
+{{- if $p.enabled }}
+  - {{ $key }} -> {{ $p.port }}
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.service.type "ClusterIP" }}
+
+To reach the OPC UA endpoint locally, port-forward it:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "ua-edgetranslator.fullname" . }} 4840:{{ .Values.service.ports.opcua.port }}
+{{- end }}

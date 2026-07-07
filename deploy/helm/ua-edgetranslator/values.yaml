@@ -1,0 +1,201 @@
+# Default values for ua-edgetranslator.
+# This is a YAML-formatted file.
+# Values are documented in README.md.
+
+# -- Override the chart name portion of resource names.
+nameOverride: ""
+# -- Fully override the generated resource name (release-name-chart).
+fullnameOverride: ""
+
+image:
+  # -- UA Edge Translator server image repository.
+  repository: ghcr.io/opcfoundation/ua-edgetranslator
+  # -- Image tag. Defaults to .Chart.AppVersion when empty.
+  tag: ""
+  # -- Image pull policy for the server (and drivers, unless overridden).
+  pullPolicy: IfNotPresent
+  # -- Names of imagePullSecrets for private registries / mirrors.
+  #    Example: [ { name: my-registry } ]
+  pullSecrets: []
+
+drivers:
+  # -- Roll out the protocol driver pack via an init container. Disable when
+  #    loading only a curated allow-listed subset provisioned out-of-band.
+  enabled: true
+  image:
+    # -- Driver-pack image repository (independently versionable from the app).
+    repository: ghcr.io/opcfoundation/ua-edgetranslator-drivers
+    # -- Driver-pack tag. Defaults to .Chart.AppVersion when empty.
+    tag: ""
+    pullPolicy: IfNotPresent
+  allowlist:
+    # -- Name of a ConfigMap holding drivers.allowlist.json (+
+    #    drivers.allowlist.sigstore.json). When set it is overlaid onto
+    #    /app/drivers via subPath mounts, overriding the copy shipped in the
+    #    driver-pack image. Leave empty to use the image's built-in signed list.
+    configMap: ""
+    # -- DRIVER_ALLOWLIST_OFFLINE_MODE. "" (fail-closed, signature required) or
+    #    "allow-hash-only" (air-gapped hash-only enforcement; sigstore bundle
+    #    not required and its subPath mount is skipped).
+    offlineMode: ""
+
+credentials:
+  # -- Name of a pre-existing Secret holding OPCUA_USERNAME / OPCUA_PASSWORD
+  #    (and any extraKeys). Preferred: provision it out-of-band. Mutually
+  #    exclusive with create.
+  existingSecret: ""
+  # -- Let the chart create the credentials Secret from the values below.
+  #    Discouraged in production; intended for dev clusters only.
+  create: false
+  # -- OPCUA_USERNAME when create=true (required in that case).
+  username: ""
+  # -- OPCUA_PASSWORD when create=true (required in that case).
+  password: ""
+  # -- Additional secret keys wired as env vars (e.g. UACLUsername,
+  #    UACLPassword, UACLURL, LICENSE_KEY). When create=true the key/value pairs
+  #    are written to the created Secret. When existingSecret is used, list the
+  #    key NAMES your secret contains here (values are ignored) to wire them as
+  #    env vars via secretKeyRef.
+  extraKeys: {}
+
+# Persistent state. Each volume: enabled + kind (pvc | hostPath | emptyDir).
+#   pvc      -> a PersistentVolumeClaim is created unless existingClaim is set.
+#   hostPath -> mounts hostPath.path (triggers the fix-hostpath-perms init).
+#   emptyDir -> ephemeral scratch space.
+persistence:
+  settings:
+    enabled: true
+    kind: pvc
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    hostPath: ""
+    existingClaim: ""
+  pki:
+    enabled: true
+    kind: pvc
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    hostPath: ""
+    existingClaim: ""
+  logs:
+    enabled: true
+    kind: pvc
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    hostPath: ""
+    existingClaim: ""
+  nodesets:
+    enabled: true
+    kind: pvc
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    hostPath: ""
+    existingClaim: ""
+
+service:
+  # -- ClusterIP | LoadBalancer | NodePort.
+  type: ClusterIP
+  annotations: {}
+  # Only ports with enabled=true are exposed. nodePort applies to
+  # service.type=NodePort. By default only the OPC UA endpoint is published.
+  ports:
+    opcua:
+      enabled: true
+      port: 4840
+    diagnostics:
+      enabled: false
+      port: 8081
+    lorawan:
+      enabled: false
+      port: 5000
+    lorawanTls:
+      enabled: false
+      port: 5001
+    ocpp:
+      enabled: false
+      port: 19520
+    ocppTls:
+      enabled: false
+      port: 19521
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# -- Number of replicas. Stateful hostPath/PVC (ReadWriteOnce) deployments must
+#    keep this at 1.
+replicaCount: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+fixHostPathPerms:
+  # -- auto | true | false. auto renders the init container only when at least
+  #    one persistence volume uses kind=hostPath.
+  enabled: auto
+  image: busybox:1.36
+
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}
+
+probes:
+  liveness:
+    tcpSocket:
+      port: 4840
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 3
+  readiness:
+    tcpSocket:
+      port: 4840
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+networkPolicy:
+  # -- Render a NetworkPolicy selecting this workload.
+  enabled: false
+  # -- Ingress rules (raw NetworkPolicyIngressRule list).
+  ingress: []
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount.
+  create: true
+  # -- Name to use. Generated from the fullname when empty and create=true.
+  name: ""
+  annotations: {}
+
+# -- Extra environment variables appended to the server container.
+extraEnv: []
+# -- Extra pod volumes (raw volume list).
+extraVolumes: []
+# -- Extra server container volume mounts (raw volumeMount list).
+extraVolumeMounts: []

@@ -1,0 +1,26 @@
+# CI preset: PersistentVolumeClaim persistence with an explicit storageClass.
+# Demonstrates the recommended durable-state layout on a real cluster.
+persistence:
+  settings:
+    enabled: true
+    kind: pvc
+    storageClass: standard
+    size: 1Gi
+  pki:
+    enabled: true
+    kind: pvc
+    storageClass: standard
+    size: 1Gi
+  logs:
+    enabled: true
+    kind: pvc
+    storageClass: standard
+    size: 2Gi
+  nodesets:
+    enabled: true
+    kind: pvc
+    storageClass: standard
+    size: 1Gi
+
+credentials:
+  existingSecret: ua-edgetranslator-credentials
