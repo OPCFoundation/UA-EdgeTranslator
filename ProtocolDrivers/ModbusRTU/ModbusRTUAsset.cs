@@ -35,6 +35,9 @@
         private SerialPort _serialPort;
         private IModbusMaster _master;
 
+        // WoT action name -> the Modbus write tag it maps to (populated at asset creation).
+        private Dictionary<string, AssetTag> _actionTags;
+
         private const int DefaultTimeoutMs = 10_000;
 
         public bool IsConnected { get; private set; } = false;
@@ -210,9 +213,56 @@
             Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Registers the Modbus write tags that back this asset's WoT actions, keyed by
+        /// action name. Called once by the protocol driver at asset-creation time.
+        /// </summary>
+        public void SetActionTags(Dictionary<string, AssetTag> actionTags)
+        {
+            _actionTags = actionTags;
+        }
+
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
-            return null;
+            string actionName = method?.BrowseName?.Name;
+            if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
+            {
+                return $"No Modbus form found for action '{actionName}'.";
+            }
+
+            if (string.IsNullOrEmpty(tag.Address))
+            {
+                return $"Modbus action '{actionName}' has no target address.";
+            }
+
+            try
+            {
+                // An action invocation is a Modbus write: reuse the property write path
+                // (entity dispatch, encoding, read-only rejection and function-code choice).
+                Write(tag, ResolveActionValue(tag, inputArgs));
+                return "ok";
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to execute Modbus action '{Action}'.", actionName);
+                return ex.Message;
+            }
+        }
+
+        private static object ResolveActionValue(AssetTag tag, IList<object> inputArgs)
+        {
+            if ((inputArgs != null) && (inputArgs.Count > 0) && (inputArgs[0] != null))
+            {
+                return inputArgs[0];
+            }
+
+            // Nullary action (typical for a coil pulse / "button"): default a Coil to "true".
+            if (tag.Entity == "Coil")
+            {
+                return true;
+            }
+
+            throw new ArgumentException($"Action for entity '{tag.Entity}' requires an input value.");
         }
 
         private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)

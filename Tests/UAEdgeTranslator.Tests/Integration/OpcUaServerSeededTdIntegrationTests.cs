@@ -182,6 +182,32 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task Action_with_integer_input_materialises_an_Int32_argument()
+        {
+            // The seeded "compute" action declares an input property "x" of JSON-schema
+            // type "integer". AddActionsFromWoTFile must map that to a UA Int32 argument
+            // (regression: "integer" previously fell through to String).
+            NodeId methodId = await ResolveAssetChildNodeIdAsync("seededasset", "compute").ConfigureAwait(false);
+
+            ReferenceDescriptionCollection methodChildren = await BrowseChildrenAsync(methodId).ConfigureAwait(false);
+            ReferenceDescription inputArgsRef = methodChildren.First(
+                r => string.Equals(r.BrowseName.Name, "InputArguments", StringComparison.Ordinal));
+
+            NodeId inputArgsId = ExpandedNodeId.ToNodeId(inputArgsRef.NodeId, _session.NamespaceUris);
+            DataValue value = await _session.ReadValueAsync(inputArgsId).ConfigureAwait(false);
+
+            Argument[] arguments = value.Value switch
+            {
+                ExtensionObject[] extensions => extensions.Select(eo => (Argument)eo.Body).ToArray(),
+                Argument[] typed => typed,
+                _ => throw new InvalidOperationException($"Unexpected InputArguments value type: {value.Value?.GetType().Name ?? "null"}")
+            };
+
+            Argument xArgument = arguments.First(a => string.Equals(a.Name, "x", StringComparison.Ordinal));
+            Assert.Equal(DataTypeIds.Int32, xArgument.DataType);
+        }
+
+        [Fact]
         public async Task SeededAsset_temperature_can_be_read_via_OnReadValue()
         {
             // Browse to the asset → temperature node, then issue an OPC UA Read.

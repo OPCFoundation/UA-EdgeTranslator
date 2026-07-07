@@ -4,6 +4,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.IO;
     using System.Net;
     using System.Net.Sockets;
@@ -237,6 +238,103 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 asset.Disconnect();
             }
         }
+
+        [Fact]
+        public void ExecuteAction_coil_pulse_issues_write_single_coil()
+        {
+            using MockModbusTcpServer server = new();
+            ModbusTCPAsset asset = new();
+            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            asset.SetActionTags(new Dictionary<string, AssetTag>
+            {
+                ["motorStart"] = new AssetTag { Name = "motorStart", UnitID = 1, Entity = "Coil", Type = "Boolean", Address = "3?quantity=1" }
+            });
+
+            try
+            {
+                IList<object> outputArgs = new List<object>();
+
+                // A nullary coil action defaults to writing "true" (coil ON = 0xFF00).
+                string result = asset.ExecuteAction(ActionMethod("motorStart"), new List<object>(), ref outputArgs);
+
+                Assert.Equal("ok", result);
+                Assert.Contains(server.Writes, w => w.FunctionCode == ForceSingleCoil && w.Address == 3 && w.Value == 0xFF00);
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+        }
+
+        [Fact]
+        public void ExecuteAction_holding_register_setpoint_writes_value_via_fc6()
+        {
+            using MockModbusTcpServer server = new();
+            ModbusTCPAsset asset = new();
+            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            asset.SetActionTags(new Dictionary<string, AssetTag>
+            {
+                ["setTankHighLevel"] = new AssetTag { Name = "setTankHighLevel", UnitID = 1, Entity = "HoldingRegister", Type = "Short", Address = "0?quantity=1" }
+            });
+
+            try
+            {
+                IList<object> outputArgs = new List<object>();
+
+                string result = asset.ExecuteAction(ActionMethod("setTankHighLevel"), new List<object> { 1234 }, ref outputArgs);
+
+                Assert.Equal("ok", result);
+                Assert.Contains(server.Writes, w => w.FunctionCode == PresetSingleRegister && w.Address == 0 && w.Value == 1234);
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+        }
+
+        [Fact]
+        public void ExecuteAction_on_read_only_entity_returns_error_and_writes_nothing()
+        {
+            using MockModbusTcpServer server = new();
+            ModbusTCPAsset asset = new();
+            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            asset.SetActionTags(new Dictionary<string, AssetTag>
+            {
+                ["badAction"] = new AssetTag { Name = "badAction", UnitID = 1, Entity = "InputRegister", Type = "Short", Address = "0?quantity=1" }
+            });
+
+            try
+            {
+                IList<object> outputArgs = new List<object>();
+
+                string result = asset.ExecuteAction(ActionMethod("badAction"), new List<object> { 5 }, ref outputArgs);
+
+                Assert.NotEqual("ok", result);
+                Assert.Contains("read-only", result, StringComparison.OrdinalIgnoreCase);
+                Assert.Empty(server.Writes);
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+        }
+
+        [Fact]
+        public void ExecuteAction_unknown_action_returns_error()
+        {
+            ModbusTCPAsset asset = new();
+            IList<object> outputArgs = new List<object>();
+
+            string result = asset.ExecuteAction(ActionMethod("noSuchAction"), new List<object>(), ref outputArgs);
+
+            Assert.NotEqual("ok", result);
+            Assert.Contains("No Modbus form", result, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static MethodState ActionMethod(string name)
+        {
+            return new MethodState(null) { BrowseName = new QualifiedName(name) };
+        }
     }
 
     /// <summary>
@@ -270,6 +368,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         public int Port { get; }
 
         public ConcurrentQueue<byte> ReceivedFunctionCodes { get; } = new();
+
+        // Captured write requests: the function code, target address and the written
+        // value (first register / coil word) so tests can assert the exact Modbus write.
+        public ConcurrentQueue<(byte FunctionCode, ushort Address, ushort Value)> Writes { get; } = new();
 
         public void Dispose()
         {
@@ -371,7 +473,14 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 case 5:  // ForceSingleCoil
                 case 6:  // PresetSingleRegister
                 case 16: // PresetMultipleRegisters
+                {
+                    ushort address = payload.Length >= 2 ? (ushort)((payload[0] << 8) | payload[1]) : (ushort)0;
+                    ushort value = functionCode == 16
+                        ? (payload.Length >= 7 ? (ushort)((payload[5] << 8) | payload[6]) : (ushort)0)
+                        : (payload.Length >= 4 ? (ushort)((payload[2] << 8) | payload[3]) : (ushort)0);
+                    Writes.Enqueue((functionCode, address, value));
                     return BuildWriteEcho(transactionId, unitId, functionCode, payload);
+                }
 
                 default:
                     return BuildReadResponse(transactionId, unitId, functionCode, Array.Empty<byte>());

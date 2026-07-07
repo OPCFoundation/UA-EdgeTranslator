@@ -1280,6 +1280,10 @@ namespace Opc.Ua.Edge.Translator
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
                             }
+                            else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Integer)
+                            {
+                                inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Int32);
+                            }
                             else if (action.Value.Input.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
                             {
                                 inputArgumentTypes[i] = new ExpandedNodeId(DataTypes.ByteString);
@@ -1314,6 +1318,10 @@ namespace Opc.Ua.Edge.Translator
                             else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Boolean)
                             {
                                 outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Boolean);
+                            }
+                            else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Integer)
+                            {
+                                outputArgumentTypes[i] = new ExpandedNodeId(DataTypes.Int32);
                             }
                             else if (action.Value.Output.Properties.ElementAt(i).Value.Type == TypeEnum.Object)
                             {
