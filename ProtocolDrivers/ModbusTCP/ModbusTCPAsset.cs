@@ -2,6 +2,7 @@
 {
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -96,11 +97,14 @@
         {
             object value = null;
 
-            FunctionCode functionCode = FunctionCode.ReadCoilStatus;
-            if (tag.Entity == "HoldingRegister")
+            FunctionCode functionCode = tag.Entity switch
             {
-                functionCode = FunctionCode.ReadHoldingRegisters;
-            }
+                "HoldingRegister" => FunctionCode.ReadHoldingRegisters,
+                "InputRegister" => FunctionCode.ReadInputRegisters,
+                "Coil" => FunctionCode.ReadCoilStatus,
+                "DiscreteInput" => FunctionCode.ReadInputStatus,
+                _ => throw UnsupportedEntity(tag.Entity)
+            };
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
@@ -146,8 +150,31 @@
             return value;
         }
 
+        private static Exception UnsupportedEntity(string entity)
+        {
+            string message = $"Unsupported Modbus entity '{entity ?? "(null)"}'. Expected one of: HoldingRegister, InputRegister, Coil, DiscreteInput.";
+            Log.Logger.Error(message);
+            return new ArgumentException(message);
+        }
+
+        private static Exception ReadOnlyEntity(string entity)
+        {
+            string message = $"Modbus entity '{entity ?? "(null)"}' is read-only and cannot be written.";
+            Log.Logger.Error(message);
+            return new InvalidOperationException(message);
+        }
+
         public void Write(AssetTag tag, object value)
         {
+            bool writeCoil = tag.Entity switch
+            {
+                "HoldingRegister" => false,
+                "Coil" => true,
+                "InputRegister" => throw ReadOnlyEntity(tag.Entity),
+                "DiscreteInput" => throw ReadOnlyEntity(tag.Entity),
+                _ => throw UnsupportedEntity(tag.Entity)
+            };
+
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             ushort quantity = ushort.Parse(addressParts[2]);
             byte[] tagBytes = null;
@@ -178,7 +205,7 @@
                 tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
             }
 
-            Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, false).GetAwaiter().GetResult();
+            Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, writeCoil).GetAwaiter().GetResult();
         }
 
 
@@ -235,9 +262,10 @@
                 // check funtion code
                 if (function != FunctionCode.ReadInputRegisters
                  && function != FunctionCode.ReadHoldingRegisters
+                 && function != FunctionCode.ReadInputStatus
                  && function != FunctionCode.ReadCoilStatus)
                 {
-                    throw new ArgumentException("Only coil, input registers and holding registers can be read");
+                    throw new ArgumentException("Only coils, discrete inputs, input registers and holding registers can be read");
                 }
 
                 var aduRequest = new ApplicationDataUnit();
