@@ -26,6 +26,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private const byte ReadHoldingRegisters = 3;
         private const byte ReadInputRegisters = 4;
         private const byte ForceSingleCoil = 5;
+        private const byte PresetSingleRegister = 6;
         private const byte PresetMultipleRegisters = 16;
 
         [Theory]
@@ -175,6 +176,67 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 asset.Disconnect();
             }
         }
+
+        [Fact]
+        public void Read_short_at_quantity_1_reads_a_single_register()
+        {
+            // A native 16-bit register value; the driver must read exactly one register
+            // (no zero-padded neighbour / quantity=2 workaround required).
+            using MockModbusTcpServer server = new(registerReadData: BitConverter.GetBytes((short)1234));
+            ModbusTCPAsset asset = new();
+            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+
+            try
+            {
+                AssetTag tag = new()
+                {
+                    Name = "level",
+                    UnitID = 1,
+                    Entity = "HoldingRegister",
+                    Type = "Short",
+                    Address = "0?quantity=1"
+                };
+
+                object value = asset.Read(tag);
+
+                Assert.Contains(ReadHoldingRegisters, server.ReceivedFunctionCodes);
+                // Default multiplier (1.0) projects the 16-bit reading onto the Float-typed node.
+                Assert.Equal(1234.0f, Assert.IsType<float>(value));
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+        }
+
+        [Fact]
+        public void Write_short_dispatches_preset_single_register()
+        {
+            using MockModbusTcpServer server = new();
+            ModbusTCPAsset asset = new();
+            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+
+            try
+            {
+                AssetTag tag = new()
+                {
+                    Name = "setpoint",
+                    UnitID = 1,
+                    Entity = "HoldingRegister",
+                    Type = "Short",
+                    Address = "0?quantity=1"
+                };
+
+                asset.Write(tag, 4321.0f);
+
+                Assert.Contains(PresetSingleRegister, server.ReceivedFunctionCodes);
+                Assert.DoesNotContain(PresetMultipleRegisters, server.ReceivedFunctionCodes);
+            }
+            finally
+            {
+                asset.Disconnect();
+            }
+        }
     }
 
     /// <summary>
@@ -297,9 +359,17 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 case 3: // ReadHoldingRegisters
                 case 4: // ReadInputRegisters
-                    return BuildReadResponse(transactionId, unitId, functionCode, _registerReadData);
+                {
+                    // Honour the requested register count so width-aware decoding
+                    // receives exactly count*2 wire bytes.
+                    int registerCount = payload.Length >= 4 ? (payload[2] << 8) | payload[3] : _registerReadData.Length / 2;
+                    byte[] data = new byte[registerCount * 2];
+                    Array.Copy(_registerReadData, 0, data, 0, Math.Min(_registerReadData.Length, data.Length));
+                    return BuildReadResponse(transactionId, unitId, functionCode, data);
+                }
 
                 case 5:  // ForceSingleCoil
+                case 6:  // PresetSingleRegister
                 case 16: // PresetMultipleRegisters
                     return BuildWriteEcho(transactionId, unitId, functionCode, payload);
 

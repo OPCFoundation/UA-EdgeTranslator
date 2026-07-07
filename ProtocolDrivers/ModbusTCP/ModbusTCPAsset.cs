@@ -7,7 +7,6 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Net.Sockets;
-    using System.Text;
     using System.Threading.Tasks;
 
     public class ModbusTCPAsset : IAsset
@@ -113,37 +112,9 @@
                 ushort quantity = ushort.Parse(addressParts[2]);
                 byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
 
-                if ((tagBytes != null) && tag.IsBigEndian)
-                {
-                    tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-                }
-
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                        if (tag.Multiplier != 0.0f)
-                            value = (float)value * tag.Multiplier;
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                        if (tag.Multiplier != 0.0f)
-                            value = (float)value * tag.Multiplier;
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Modbus.");
-                    }
+                    value = ModbusValueCodec.Decode(tag, tagBytes);
                 }
             }
 
@@ -176,34 +147,7 @@
             };
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            ushort quantity = ushort.Parse(addressParts[2]);
-            byte[] tagBytes = null;
-
-            if ((tag.Type == "Float") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Boolean") && (quantity == 1))
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Integer") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value.ToString());
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Modbus.");
-            }
-
-            if ((tagBytes != null) && tag.IsBigEndian)
-            {
-                tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-            }
+            byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
             Write(addressParts[0], tag.UnitID, string.Empty, tagBytes, writeCoil).GetAwaiter().GetResult();
         }
@@ -244,6 +188,13 @@
                 for (var i = 0; i < ushortArrayLength; i++)
                 {
                     ushortArray[i] = BitConverter.ToUInt16(values, i * 2);
+                }
+
+                if (ushortArray.Length == 1)
+                {
+                    // Single-register writes use PresetSingleRegister (FC 6) instead of
+                    // promoting the write to PresetMultipleRegisters (FC 16).
+                    return WriteSingleRegister(unitID, registerAddress, ushortArray[0]);
                 }
 
                 return WriteHoldingRegisters(unitID, registerAddress, ushortArray);
@@ -468,6 +419,71 @@
                  && buffer[11] != 0x0)
                 {
                     throw new Exception("Incorrect coil flag returned");
+                }
+            }
+        }
+
+        public async Task WriteSingleRegister(byte unitID, ushort registerAddress, ushort value)
+        {
+            // throttle writing to not overwhelm our poor little Modbus server
+            await Task.Delay(1000).ConfigureAwait(false);
+
+            lock (_lock)
+            {
+                var aduRequest = new ApplicationDataUnit();
+                aduRequest.TransactionID = _transactionID++;
+                aduRequest.Length = 6;
+                aduRequest.UnitID = unitID;
+                aduRequest.FunctionCode = (byte)FunctionCode.PresetSingleRegister;
+
+                aduRequest.Payload[0] = (byte)(registerAddress >> 8);
+                aduRequest.Payload[1] = (byte)(registerAddress & 0x00FF);
+                aduRequest.Payload[2] = (byte)(value >> 8);
+                aduRequest.Payload[3] = (byte)(value & 0x00FF);
+
+                var buffer = new byte[ApplicationDataUnit.maxADU];
+                aduRequest.CopyADUToNetworkBuffer(buffer);
+
+                // send request to Modbus server
+                _tcpClient.GetStream().Write(buffer, 0, ApplicationDataUnit.headerLength + 4);
+
+                // read response
+                var numBytesRead = _tcpClient.GetStream().Read(buffer, 0, ApplicationDataUnit.headerLength + 4);
+                if (numBytesRead != ApplicationDataUnit.headerLength + 4)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                var aduResponse = new ApplicationDataUnit();
+                aduResponse.CopyHeaderFromNetworkBuffer(buffer);
+
+                // check for error
+                if ((aduResponse.FunctionCode & _errorFlag) > 0)
+                {
+                    // read error
+                    var errorCode = _tcpClient.GetStream().ReadByte();
+                    if (errorCode == -1)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    else
+                    {
+                        HandlerError((byte)errorCode);
+                    }
+                }
+
+                // check address written
+                if (buffer[8] != registerAddress >> 8
+                 && buffer[9] != (registerAddress & 0x00FF))
+                {
+                    throw new Exception("Incorrect register returned");
+                }
+
+                // check value written
+                if (buffer[10] != value >> 8
+                 && buffer[11] != (value & 0x00FF))
+                {
+                    throw new Exception("Incorrect value returned");
                 }
             }
         }

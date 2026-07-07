@@ -9,7 +9,6 @@
     using System;
     using System.Collections.Generic;
     using System.IO.Ports;
-    using System.Text;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -171,33 +170,9 @@
                 ushort quantity = ushort.Parse(addressParts[2]);
                 byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
 
-                if ((tagBytes != null) && tag.IsBigEndian)
-                {
-                    tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-                }
-
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Modbus.");
-                    }
+                    value = ModbusValueCodec.Decode(tag, tagBytes);
                 }
             }
 
@@ -230,34 +205,7 @@
             };
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            ushort quantity = ushort.Parse(addressParts[2]);
-            byte[] tagBytes = null;
-
-            if ((tag.Type == "Float") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Boolean") && (quantity == 1))
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Integer") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value.ToString());
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Modbus.");
-            }
-
-            if ((tagBytes != null) && tag.IsBigEndian)
-            {
-                tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-            }
+            byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
             Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
         }
@@ -335,7 +283,16 @@
                         regs[i] = BitConverter.ToUInt16(values, i * 2);
                     }
 
-                    _master!.WriteMultipleRegisters(unitID, startAddress, regs);
+                    if (regs.Length == 1)
+                    {
+                        // Single-register writes use WriteSingleRegister (FC 6) instead of
+                        // promoting the write to WriteMultipleRegisters (FC 16).
+                        _master!.WriteSingleRegister(unitID, startAddress, regs[0]);
+                    }
+                    else
+                    {
+                        _master!.WriteMultipleRegisters(unitID, startAddress, regs);
+                    }
 
                     return Task.CompletedTask;
                 }
