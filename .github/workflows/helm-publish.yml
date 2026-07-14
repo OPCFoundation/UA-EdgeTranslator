@@ -2,8 +2,14 @@
 name: Helm Chart
 
 # Lints and renders the chart on every change, and publishes it to the GHCR OCI
-# registry on v*.*.* tags so the chart appVersion tracks the released server
-# image tag (see docker-publish.yml / driver-pack.yml).
+# registry so the chart appVersion tracks the published server image tag (see
+# docker-publish.yml / driver-pack.yml). Publishes on:
+#   * v*.*.* tags   -> chart version = tag without "v" (e.g. 1.2.3),
+#                      appVersion = tag (e.g. v1.2.3) => immutable images.
+#   * pushes to main -> SemVer prerelease version
+#                      (e.g. 0.1.0-main.<short-sha>), appVersion = main.
+# Consumers resolve the latest prerelease with `--version '>=0.0.0-0'`; released
+# tags keep resolving unchanged.
 
 on:  # yamllint disable-line rule:truthy
   push:
@@ -60,24 +66,44 @@ jobs:
           owner="${{ github.repository_owner }}"
           echo "repo=oci://${REGISTRY}/${owner,,}/charts" >> "$GITHUB_OUTPUT"
 
+      # Strict SemVer is required for OCI push, so the raw branch name cannot be
+      # used. On a v*.*.* tag we derive the version from the tag; on main we
+      # publish a SemVer prerelease based on the chart's own version plus the
+      # short commit SHA.
+      - name: Compute chart version
+        id: ver
+        if: >-
+          startsWith(github.ref, 'refs/tags/v')
+          || github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          base="$(helm show chart "${CHART_DIR}" | awk '/^version:/ {print $2}')"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "chart=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "app=${GITHUB_REF_NAME}"     >> "$GITHUB_OUTPUT"
+          else
+            echo "chart=${base}-main.$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+            echo "app=main"                                           >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Log in to GHCR
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: >-
+          startsWith(github.ref, 'refs/tags/v')
+          || github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" \
             | helm registry login "${REGISTRY}" \
                 --username "${{ github.actor }}" --password-stdin
 
-      # On a v*.*.* tag, package with:
-      #   chart version = tag without the leading "v" (strict SemVer, e.g. 1.2.3)
-      #   app  version  = tag as published for the server image (e.g. v1.2.3)
       - name: Package and push chart
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: >-
+          startsWith(github.ref, 'refs/tags/v')
+          || github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          chart_version="${tag#v}"
+          chart_version="${{ steps.ver.outputs.chart }}"
           helm package "${CHART_DIR}" \
             --version "${chart_version}" \
-            --app-version "${tag}"
+            --app-version "${{ steps.ver.outputs.app }}"
           helm push "ua-edgetranslator-${chart_version}.tgz" "${{ steps.oci.outputs.repo }}"

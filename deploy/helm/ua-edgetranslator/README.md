@@ -38,6 +38,30 @@ helm install ua-edgetranslator \
 * A default StorageClass (or set `persistence.*.storageClass`) when using the
   default PVC-backed persistence.
 
+## Published versions
+
+The chart is published to `oci://ghcr.io/opcfoundation/charts/ua-edgetranslator`
+by [`helm-publish.yml`](../../../.github/workflows/helm-publish.yml):
+
+* **Released tags** — pushing a `v*.*.*` git tag publishes the chart with
+  version `<tag without v>` (e.g. `1.2.3`) and `appVersion: <tag>` (e.g.
+  `v1.2.3`), so `image.tag` / `drivers.image.tag` default to the immutable
+  released server and driver-pack images.
+* **Prereleases from `main`** — every push to `main` publishes a SemVer
+  prerelease `<Chart version>-main.<short-sha>` (e.g. `0.1.0-main.abc1234`) with
+  `appVersion: main`, tracking the mutable `:main` images.
+
+Pull the latest stable release (default), or opt into the newest prerelease:
+
+```
+# Latest stable release.
+helm show chart oci://ghcr.io/opcfoundation/charts/ua-edgetranslator
+
+# Latest prerelease from main.
+helm show chart oci://ghcr.io/opcfoundation/charts/ua-edgetranslator \
+    --version '>=0.0.0-0'
+```
+
 ## Namespace
 
 The chart does not template a `Namespace`; Helm installs resources into the
