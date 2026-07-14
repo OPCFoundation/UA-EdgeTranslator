@@ -40,9 +40,9 @@ UA Edge Translator solves the common "brownfield" use case of connecting dispara
 
 <a href="https://www.star-history.com/?repos=OPCFoundation%2FUA-EdgeTranslator&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&theme=dark&legend=top-left&sealed_token=i9LpD90-foEgyzYnbV43h33tLhc4YMyrT5zaOS1RaW324gV5NDwdzHjC1gRL_0HKRUbMZT52y2EgpOoiMhfaxFnLm406LAqdf_jBEFC2PG7-RQxuaiITzw" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&legend=top-left&sealed_token=i9LpD90-foEgyzYnbV43h33tLhc4YMyrT5zaOS1RaW324gV5NDwdzHjC1gRL_0HKRUbMZT52y2EgpOoiMhfaxFnLm406LAqdf_jBEFC2PG7-RQxuaiITzw" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=OPCFoundation/UA-EdgeTranslator&type=date&legend=top-left&sealed_token=i9LpD90-foEgyzYnbV43h33tLhc4YMyrT5zaOS1RaW324gV5NDwdzHjC1gRL_0HKRUbMZT52y2EgpOoiMhfaxFnLm406LAqdf_jBEFC2PG7-RQxuaiITzw" />
  </picture>
 </a>
 
