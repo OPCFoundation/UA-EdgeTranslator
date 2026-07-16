@@ -25,6 +25,7 @@
 - [How to build your own Protocol Driver](#how-to-build-your-own-protocol-driver)
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
+- [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
 - [Threat Model and Security Considerations](#threat-model-and-security-considerations)
 
@@ -71,6 +72,8 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 Other southbound asset interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
 There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
+
+Additionally, a browser-based tool (UA-WoTMapper) is provided that lets you interactively map the properties of a WoT Thing Model onto the types of an OPC UA information models via drag & drop. See [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-companion-specifications-ua-wotmapper) below for details.
 
 ## Installation
 
@@ -635,6 +638,47 @@ The importer invokes the Openness `UmacDelegate` overload of `Projects.Open` and
 3. For every PLC in the project, the tool emits `<projectName>_<plcName>.td.jsonld` containing one Property per leaf data block member, addressed by `s7:dbnumber`, `s7:start`, `s7:pos`, `s7:size` and `s7:maxlen` on the per-property `S7Form`. The PLC's IPv4 address (read from the PROFINET interface) and the CPU's rack are baked into the `base` field as `s7://<ip>:<rack>` (typically `s7://<ip>:0` for S7-1200 / S7-1500, since the runtime `SiemensProtocolDriver` interprets the URL's port component as the rack and assumes slot 0 for those CPUs).
 
 > Files with extensions `.ap15_1`, `.ap16`, `.ap17`, `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
+
+## Mapping WoT Properties to OPC UA Companion Specifications (UA-WoTMapper)
+
+`UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based (Blazor Server) application that makes this mapping a drag-and-drop exercise.
+
+### What it does
+
+* **Left pane — WoT Thing Model.** Open a Thing Model (`*.tm.jsonld` / `*.json`) to list all of its properties, their data types and descriptions. Mapped properties are highlighted and show the OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
+* **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree that you can browse for the type you need.
+* **Drag & drop mapping.** Drag any OPC UA type from the nodeset tree onto a WoT property to map them. If the target OPC UA type is a *complex* (structured) type, a dialog lets you pick which field of the structure the property maps to.
+* **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced companion specification.
+
+### Configuring the UA Cloud Library connection
+
+The **Settings** page lets you configure the UA Cloud Library endpoint and credentials used to list and download nodesets:
+
+* **Cloud Library URL** — defaults to `https://uacloudlibrary.opcfoundation.org`.
+* **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above).
+
+### Building and running UA-WoTMapper
+
+`UA-WoTMapper` targets `net10.0` and runs as a standard ASP.NET Core / Blazor Server web app.
+
+Run it locally from the repository:
+
+```powershell
+cd UA-EdgeTranslator
+dotnet run --project UA-WoTMapper\UA-WoTMapper.csproj
+```
+
+Then open the printed URL (e.g. `http://localhost:5124`) in a browser.
+
+Alternatively, build and run it as a Docker container (the container listens on port 8080):
+
+```powershell
+cd UA-WoTMapper
+docker build -t ua-wotmapper .
+docker run -d --name ua-wotmapper -p 8080:8080 ua-wotmapper
+```
+
+The resulting mapped `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start-up (after replacing any remaining `{{...}}` placeholders with the real values for your asset).
 
 ## Generating a Thing Description for a Fixed-Function Asset
 

@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/.vs/
+**/pki/
+**/App_Data/
+Dockerfile
+.dockerignore
+*.user

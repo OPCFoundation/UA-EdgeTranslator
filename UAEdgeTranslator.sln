@@ -91,6 +91,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mock", "ProtocolDrivers\Moc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UAEdgeTranslator.Tests", "Tests\UAEdgeTranslator.Tests\UAEdgeTranslator.Tests.csproj", "{10B643FD-EACC-5794-7316-65CDA61CA95D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UA-WoTMapper", "UA-WoTMapper\UA-WoTMapper.csproj", "{C28B2AB3-F172-EF02-995D-8399FD94165E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -229,6 +231,14 @@ Global
 		{10B643FD-EACC-5794-7316-65CDA61CA95D}.Release|x64.Build.0 = Release|x64
 		{10B643FD-EACC-5794-7316-65CDA61CA95D}.Release|x86.ActiveCfg = Release|x64
 		{10B643FD-EACC-5794-7316-65CDA61CA95D}.Release|x86.Build.0 = Release|x64
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Debug|x64.Build.0 = Debug|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Debug|x86.Build.0 = Debug|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Release|x64.ActiveCfg = Release|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Release|x64.Build.0 = Release|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Release|x86.ActiveCfg = Release|Any CPU
+		{C28B2AB3-F172-EF02-995D-8399FD94165E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

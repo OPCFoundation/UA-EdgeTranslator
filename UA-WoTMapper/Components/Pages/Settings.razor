@@ -1,0 +1,50 @@
+@page "/settings"
+@rendermode InteractiveServer
+@using WotOpcUaMapper.Models
+@using WotOpcUaMapper.Services
+@inject SettingsService SettingsSvc
+
+<PageTitle>Settings</PageTitle>
+
+<h1>UA Cloud Library Settings</h1>
+
+<p class="hint">Configure the UA Cloud Library endpoint and credentials used to list and download nodesets.</p>
+
+<EditForm Model="_settings" OnValidSubmit="Save" class="settings-form">
+    <label>
+        Cloud Library URL
+        <InputText @bind-Value="_settings.CloudLibraryUrl" placeholder="https://uacloudlibrary.opcfoundation.org" />
+    </label>
+    <label>
+        User name
+        <InputText @bind-Value="_settings.UserName" autocomplete="username" />
+    </label>
+    <label>
+        Password
+        <InputText type="password" @bind-Value="_settings.Password" autocomplete="current-password" />
+    </label>
+
+    <div>
+        <button type="submit" class="btn">Save settings</button>
+        @if (_saved)
+        {
+            <span class="settings-saved">&nbsp;Saved.</span>
+        }
+    </div>
+</EditForm>
+
+@code {
+    private AppSettings _settings = new();
+    private bool _saved;
+
+    protected override void OnInitialized()
+    {
+        _settings = SettingsSvc.Current;
+    }
+
+    private void Save()
+    {
+        SettingsSvc.Save(_settings);
+        _saved = true;
+    }
+}
