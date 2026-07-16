@@ -25,8 +25,8 @@
 - [How to build your own Protocol Driver](#how-to-build-your-own-protocol-driver)
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
-- [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
+- [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
 - [Threat Model and Security Considerations](#threat-model-and-security-considerations)
 
 ## Introduction
@@ -658,47 +658,6 @@ The importer invokes the Openness `UmacDelegate` overload of `Projects.Open` and
 
 > Files with extensions `.ap15_1`, `.ap16`, `.ap17`, `.ap18`, `.ap19`, `.ap20` and `.ap21` are all recognised; pick the one that matches your installed TIA version.
 
-## Mapping WoT Properties to OPC UA Companion Specifications (UA-WoTMapper)
-
-`UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based (Blazor Server) application that makes this mapping a drag-and-drop exercise.
-
-### What it does
-
-* **Left pane — WoT Thing Model.** Open a Thing Model (`*.tm.jsonld` / `*.json`) to list all of its properties, their data types and descriptions. Mapped properties are highlighted and show the OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
-* **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree that you can browse for the type you need.
-* **Drag & drop mapping.** Drag any OPC UA type from the nodeset tree onto a WoT property to map them. If the target OPC UA type is a *complex* (structured) type, a dialog lets you pick which field of the structure the property maps to.
-* **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced companion specification.
-
-### Configuring the UA Cloud Library connection
-
-The **Settings** page lets you configure the UA Cloud Library endpoint and credentials used to list and download nodesets:
-
-* **Cloud Library URL** — defaults to `https://uacloudlibrary.opcfoundation.org`.
-* **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above).
-
-### Building and running UA-WoTMapper
-
-`UA-WoTMapper` targets `net10.0` and runs as a standard ASP.NET Core / Blazor Server web app.
-
-Run it locally from the repository:
-
-```powershell
-cd UA-EdgeTranslator
-dotnet run --project UA-WoTMapper\UA-WoTMapper.csproj
-```
-
-Then open the printed URL (e.g. `http://localhost:5124`) in a browser.
-
-Alternatively, build and run it as a Docker container (the container listens on port 8080):
-
-```powershell
-cd UA-WoTMapper
-docker build -t ua-wotmapper .
-docker run -d --name ua-wotmapper -p 8080:8080 ua-wotmapper
-```
-
-The resulting mapped `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start-up (after replacing any remaining `{{...}}` placeholders with the real values for your asset).
-
 ## Generating a Thing Description for a Fixed-Function Asset
 
 Many industrial assets — power meters, drives, gateways, sensors, scanners, RFID readers, soft starters, IO‑Link masters, weighing terminals, etc. — are *fixed‑function*: their data model is hard‑wired by the vendor and shipped as a Modbus / EtherNet/IP / S7 / HTTP register or object map in the user manual. There is no engineering project to export, so the two practical paths to a Thing Description are:
@@ -749,6 +708,47 @@ Recommended workflow:
 6. Upload the file to UA Edge Translator using the OPC UA File API exposed under the asset node (or drop it into `/app/settings`) and let the matching protocol driver onboard the asset.
 
 > **Important**: an LLM can misread tables, especially in scanned PDFs, multi‑column layouts or manuals with several variants of the same register map. Always validate the produced Thing Description against the manual and against a live test read from the asset before deploying it to production.
+
+## Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)
+
+`UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based (Blazor Server) application that makes this mapping a drag-and-drop exercise.
+
+### What it does
+
+* **Left pane — WoT Thing Model.** Open a Thing Model (`*.tm.jsonld` / `*.json`) to list all of its properties, their data types and descriptions. Mapped properties are highlighted and show the OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
+* **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree that you can browse for the type you need.
+* **Drag & drop mapping.** Drag any OPC UA type from the nodeset tree onto a WoT property to map them. If the target OPC UA type is a *complex* (structured) type, a dialog lets you pick which field of the structure the property maps to.
+* **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced companion specification.
+
+### Configuring the UA Cloud Library connection
+
+The **Settings** page lets you configure the UA Cloud Library endpoint and credentials used to list and download nodesets:
+
+* **Cloud Library URL** — defaults to `https://uacloudlibrary.opcfoundation.org`.
+* **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above).
+
+### Building and running UA-WoTMapper
+
+`UA-WoTMapper` targets `net10.0` and runs as a standard ASP.NET Core / Blazor Server web app.
+
+Run it locally from the repository:
+
+```powershell
+cd UA-EdgeTranslator
+dotnet run --project UA-WoTMapper\UA-WoTMapper.csproj
+```
+
+Then open the printed URL (e.g. `http://localhost:5124`) in a browser.
+
+Alternatively, build and run it as a Docker container (the container listens on port 8080):
+
+```powershell
+cd UA-WoTMapper
+docker build -t ua-wotmapper .
+docker run -d --name ua-wotmapper -p 8080:8080 ua-wotmapper
+```
+
+The resulting mapped `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start-up (after replacing any remaining `{{...}}` placeholders with the real values for your asset).
 
 ## Threat Model and Security Considerations
 
