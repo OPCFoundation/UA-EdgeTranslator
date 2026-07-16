@@ -35,6 +35,15 @@ namespace Opc.Ua.Edge.Translator.Models
     public enum ModbusEntity
     {
         [EnumMember(Value = "HoldingRegister")]
-        HoldingRegister
+        HoldingRegister,
+
+        [EnumMember(Value = "InputRegister")]
+        InputRegister,
+
+        [EnumMember(Value = "Coil")]
+        Coil,
+
+        [EnumMember(Value = "DiscreteInput")]
+        DiscreteInput
     };
 }

@@ -5,10 +5,10 @@
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO.Ports;
-    using System.Text;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -34,6 +34,9 @@
 
         private SerialPort _serialPort;
         private IModbusMaster _master;
+
+        // WoT action name -> the Modbus write tag it maps to (populated at asset creation).
+        private Dictionary<string, AssetTag> _actionTags;
 
         private const int DefaultTimeoutMs = 10_000;
 
@@ -154,11 +157,14 @@
         {
             object value = null;
 
-            FunctionCode functionCode = FunctionCode.ReadCoilStatus;
-            if (tag.Entity == "HoldingRegister")
+            FunctionCode functionCode = tag.Entity switch
             {
-                functionCode = FunctionCode.ReadHoldingRegisters;
-            }
+                "HoldingRegister" => FunctionCode.ReadHoldingRegisters,
+                "InputRegister" => FunctionCode.ReadInputRegisters,
+                "Coil" => FunctionCode.ReadCoilStatus,
+                "DiscreteInput" => FunctionCode.ReadInputStatus,
+                _ => throw UnsupportedEntity(tag.Entity)
+            };
 
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
@@ -167,77 +173,96 @@
                 ushort quantity = ushort.Parse(addressParts[2]);
                 byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
 
-                if ((tagBytes != null) && tag.IsBigEndian)
-                {
-                    tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-                }
-
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
-                    if (tag.Type == "Float")
-                    {
-                        value = BitConverter.ToSingle(tagBytes);
-                    }
-                    else if (tag.Type == "Boolean")
-                    {
-                        value = BitConverter.ToBoolean(tagBytes);
-                    }
-                    else if (tag.Type == "Integer")
-                    {
-                        value = BitConverter.ToInt32(tagBytes);
-                    }
-                    else if (tag.Type == "String")
-                    {
-                        value = Encoding.UTF8.GetString(tagBytes);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Type not supported by Modbus.");
-                    }
+                    value = ModbusValueCodec.Decode(tag, tagBytes);
                 }
             }
 
             return value;
         }
 
+        private static Exception UnsupportedEntity(string entity)
+        {
+            string message = $"Unsupported Modbus entity '{entity ?? "(null)"}'. Expected one of: HoldingRegister, InputRegister, Coil, DiscreteInput.";
+            Log.Logger.Error(message);
+            return new ArgumentException(message);
+        }
+
+        private static Exception ReadOnlyEntity(string entity)
+        {
+            string message = $"Modbus entity '{entity ?? "(null)"}' is read-only and cannot be written.";
+            Log.Logger.Error(message);
+            return new InvalidOperationException(message);
+        }
+
         public void Write(AssetTag tag, object value)
         {
+            bool writeCoil = tag.Entity switch
+            {
+                "HoldingRegister" => false,
+                "Coil" => true,
+                "InputRegister" => throw ReadOnlyEntity(tag.Entity),
+                "DiscreteInput" => throw ReadOnlyEntity(tag.Entity),
+                _ => throw UnsupportedEntity(tag.Entity)
+            };
+
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
-            ushort quantity = ushort.Parse(addressParts[2]);
-            byte[] tagBytes = null;
+            byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
-            if ((tag.Type == "Float") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Boolean") && (quantity == 1))
-            {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
-            }
-            else if ((tag.Type == "Integer") && (quantity == 2))
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
-            }
-            else if (tag.Type == "String")
-            {
-                tagBytes = Encoding.UTF8.GetBytes(value.ToString());
-            }
-            else
-            {
-                throw new ArgumentException("Type not supported by Modbus.");
-            }
+            Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
+        }
 
-            if ((tagBytes != null) && tag.IsBigEndian)
-            {
-                tagBytes = ByteSwapper.Swap(tagBytes, tag.SwapPerWord);
-            }
-
-            Write(addressParts[0], tag.UnitID, tagBytes, false).GetAwaiter().GetResult();
+        /// <summary>
+        /// Registers the Modbus write tags that back this asset's WoT actions, keyed by
+        /// action name. Called once by the protocol driver at asset-creation time.
+        /// </summary>
+        public void SetActionTags(Dictionary<string, AssetTag> actionTags)
+        {
+            _actionTags = actionTags;
         }
 
         public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
-            return null;
+            string actionName = method?.BrowseName?.Name;
+            if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
+            {
+                return $"No Modbus form found for action '{actionName}'.";
+            }
+
+            if (string.IsNullOrEmpty(tag.Address))
+            {
+                return $"Modbus action '{actionName}' has no target address.";
+            }
+
+            try
+            {
+                // An action invocation is a Modbus write: reuse the property write path
+                // (entity dispatch, encoding, read-only rejection and function-code choice).
+                Write(tag, ResolveActionValue(tag, inputArgs));
+                return "ok";
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Failed to execute Modbus action '{Action}'.", actionName);
+                return ex.Message;
+            }
+        }
+
+        private static object ResolveActionValue(AssetTag tag, IList<object> inputArgs)
+        {
+            if ((inputArgs != null) && (inputArgs.Count > 0) && (inputArgs[0] != null))
+            {
+                return inputArgs[0];
+            }
+
+            // Nullary action (typical for a coil pulse / "button"): default a Coil to "true".
+            if (tag.Entity == "Coil")
+            {
+                return true;
+            }
+
+            throw new ArgumentException($"Action for entity '{tag.Entity}' requires an input value.");
         }
 
         private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
@@ -251,20 +276,27 @@
                     case "ReadHoldingRegisters":
                         {
                             ushort[] regs = _master!.ReadHoldingRegisters(unitID, startAddress, count);
-                            return Task.FromResult(ToBigEndianBytes(regs));
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
                         }
 
                     case "ReadInputRegisters":
                         {
                             ushort[] regs = _master!.ReadInputRegisters(unitID, startAddress, count);
-                            return Task.FromResult(ToBigEndianBytes(regs));
+                            return Task.FromResult(ModbusValueCodec.RegistersToWireBytes(regs));
                         }
 
                     case "ReadCoilStatus":
                         {
-                            // Coil reads return bool[]; we pack into Modbus response format bytes (LSB-first).
+                            // Coil reads return bool[]; pack into Modbus response format bytes (LSB-first).
                             bool[] coils = _master!.ReadCoils(unitID, startAddress, count);
-                            return Task.FromResult(PackCoils(coils));
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(coils));
+                        }
+
+                    case "ReadInputStatus":
+                        {
+                            // Discrete input reads return bool[]; pack into Modbus response format bytes (LSB-first).
+                            bool[] inputs = _master!.ReadInputs(unitID, startAddress, count);
+                            return Task.FromResult(ModbusValueCodec.CoilsToWireBytes(inputs));
                         }
 
                     default:
@@ -301,47 +333,20 @@
                         regs[i] = BitConverter.ToUInt16(values, i * 2);
                     }
 
-                    _master!.WriteMultipleRegisters(unitID, startAddress, regs);
+                    if (regs.Length == 1)
+                    {
+                        // Single-register writes use WriteSingleRegister (FC 6) instead of
+                        // promoting the write to WriteMultipleRegisters (FC 16).
+                        _master!.WriteSingleRegister(unitID, startAddress, regs[0]);
+                    }
+                    else
+                    {
+                        _master!.WriteMultipleRegisters(unitID, startAddress, regs);
+                    }
 
                     return Task.CompletedTask;
                 }
             }
-        }
-
-        /// <summary>
-        /// Convert ushort[] registers to Modbus wire-format bytes: big-endian [Hi][Lo] per register.
-        /// </summary>
-        private static byte[] ToBigEndianBytes(ushort[] regs)
-        {
-            byte[] bytes = new byte[regs.Length * 2];
-            int j = 0;
-
-            for (int i = 0; i < regs.Length; i++)
-            {
-                bytes[j++] = (byte)(regs[i] >> 8);
-                bytes[j++] = (byte)(regs[i] & 0xFF);
-            }
-
-            return bytes;
-        }
-
-        /// <summary>
-        /// Pack coil bools into Modbus bit-packed format (LSB-first per byte).
-        /// </summary>
-        private static byte[] PackCoils(bool[] coils)
-        {
-            int byteCount = (coils.Length + 7) / 8;
-            byte[] data = new byte[byteCount];
-
-            for (int i = 0; i < coils.Length; i++)
-            {
-                if (coils[i])
-                {
-                    data[i / 8] |= (byte)(1 << (i % 8)); // LSB-first
-                }
-            }
-
-            return data;
         }
     }
 }

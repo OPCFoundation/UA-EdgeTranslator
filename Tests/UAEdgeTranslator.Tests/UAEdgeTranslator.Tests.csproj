@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj" />
     <ProjectReference Include="..\..\ProtocolDrivers\Mock\Mock.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\ModbusTCP\ModbusTCP.csproj" />
   </ItemGroup>
 
   <ItemGroup>

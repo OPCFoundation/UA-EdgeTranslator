@@ -15,6 +15,26 @@ env:
   DOTNET_NOLOGO: true
 
 jobs:
+  line-endings:
+    name: Line endings (LF)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Fail on CRLF in tracked text files
+        shell: bash
+        run: |
+          # .gitattributes pins all text to eol=lf except *.bat / *.cmd.
+          # Fail if any other tracked file has a CR byte in its blob.
+          offenders="$(git grep --cached -Il $'\r' -- ':(exclude)*.bat' ':(exclude)*.cmd' || true)"
+          if [ -n "$offenders" ]; then
+            echo "::error::Tracked text files contain CRLF; run 'git add --renormalize .' and commit."
+            echo "$offenders"
+            exit 1
+          fi
+          echo "OK: no CRLF in tracked text files."
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

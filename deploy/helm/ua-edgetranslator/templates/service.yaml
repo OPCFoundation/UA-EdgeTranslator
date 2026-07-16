@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ua-edgetranslator.fullname" . }}
+  labels:
+    {{- include "ua-edgetranslator.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "ua-edgetranslator.selectorLabels" . | nindent 4 }}
+  {{- $portDefs := list
+      (dict "key" "opcua" "name" "opcua")
+      (dict "key" "diagnostics" "name" "diagnostics")
+      (dict "key" "lorawan" "name" "lorawan")
+      (dict "key" "lorawanTls" "name" "lorawan-tls")
+      (dict "key" "ocpp" "name" "ocpp")
+      (dict "key" "ocppTls" "name" "ocpp-tls")
+  }}
+  {{- $enabledPorts := list }}
+  {{- range $def := $portDefs }}
+  {{- $p := index $.Values.service.ports $def.key }}
+  {{- if $p.enabled }}{{ $enabledPorts = append $enabledPorts $def }}{{ end }}
+  {{- end }}
+  {{- if not $enabledPorts }}
+  {{- fail "service.ports has no enabled port; enable at least service.ports.opcua." }}
+  {{- end }}
+  ports:
+    {{- range $def := $enabledPorts }}
+    {{- $p := index $.Values.service.ports $def.key }}
+    - name: {{ $def.name }}
+      port: {{ $p.port }}
+      targetPort: {{ $p.targetPort | default $p.port }}
+      protocol: TCP
+      {{- if and (eq $.Values.service.type "NodePort") $p.nodePort }}
+      nodePort: {{ $p.nodePort }}
+      {{- end }}
+    {{- end }}

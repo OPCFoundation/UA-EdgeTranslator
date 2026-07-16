@@ -14,11 +14,11 @@
 
   <ItemGroup>
 	<!-- OPC UA SDK -->
-	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.152" />
-	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.378.145" />
+	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.156" />
+	<PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.378.156" />
 
 	<!-- Logging -->
-	<PackageVersion Include="Serilog" Version="4.3.1" />
+	<PackageVersion Include="Serilog" Version="4.4.0" />
 	<PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
 	<PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
 	<PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />

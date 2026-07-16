@@ -50,7 +50,28 @@
             // check if we can reach the Modbus RTU asset
             asset.Connect(td.Base, 0);
 
+            // Register any WoT actions so that invoking them issues a Modbus write.
+            asset.SetActionTags(BuildActionTags(td, unitId));
+
             return asset;
+        }
+
+        private Dictionary<string, AssetTag> BuildActionTags(ThingDescription td, byte unitId)
+        {
+            Dictionary<string, AssetTag> actionTags = new();
+
+            if (td.Actions != null)
+            {
+                foreach (KeyValuePair<string, TDAction> action in td.Actions)
+                {
+                    if ((action.Value.Forms != null) && (action.Value.Forms.Length > 0) && (action.Value.Forms[0] != null))
+                    {
+                        actionTags[action.Key] = CreateTag(td, action.Value.Forms[0], td.Name, unitId, action.Key, null, null);
+                    }
+                }
+            }
+
+            return actionTags;
         }
 
         public AssetTag CreateTag(

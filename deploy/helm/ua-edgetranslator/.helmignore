@@ -1,0 +1,23 @@
+# Patterns to ignore when building Helm packages.
+# Operates on files, one pattern per line. Matches against the relative path.
+.DS_Store
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.hg/
+.hgignore
+.svn/
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+# CI helper value files are not needed inside the packaged chart artifact.
+ci/

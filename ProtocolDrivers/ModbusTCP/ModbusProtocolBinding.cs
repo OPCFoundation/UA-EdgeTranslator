@@ -36,7 +36,14 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [EnumMember(Value = "HoldingRegister")]
         HoldingRegister,
+
         [EnumMember(Value = "InputRegister")]
-        InputRegister
+        InputRegister,
+
+        [EnumMember(Value = "Coil")]
+        Coil,
+
+        [EnumMember(Value = "DiscreteInput")]
+        DiscreteInput
     };
 }
