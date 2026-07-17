@@ -5,10 +5,17 @@ EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY ["UA-WoTMapper.csproj", "./"]
-RUN dotnet restore "UA-WoTMapper.csproj"
+
+# Copy the repo-root MSBuild infrastructure that NuGet restore needs under
+# central package management: Directory.Packages.props pins every version,
+# Directory.Build.props enforces shared policy (TreatWarningsAsErrors etc.),
+# and global.json pins the .NET SDK channel.
+COPY ["Directory.Packages.props", "Directory.Build.props", "global.json", "./"]
+COPY ["UA-WoTMapper/UA-WoTMapper.csproj", "UA-WoTMapper/"]
+RUN dotnet restore "UA-WoTMapper/UA-WoTMapper.csproj"
 COPY . .
-RUN dotnet publish "UA-WoTMapper.csproj" -c Release -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/UA-WoTMapper"
+RUN dotnet publish "UA-WoTMapper.csproj" --no-restore -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
