@@ -26,7 +26,7 @@
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
-- [Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
+- [Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-model-types-ua-wotmapper)
 - [Threat Model and Security Considerations](#threat-model-and-security-considerations)
 
 ## Introduction
