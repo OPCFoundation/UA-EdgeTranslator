@@ -26,7 +26,7 @@
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
-- [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
+- [Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-models-ua-wotmapper)
 - [Threat Model and Security Considerations](#threat-model-and-security-considerations)
 
 ## Introduction
@@ -709,16 +709,16 @@ Recommended workflow:
 
 > **Important**: an LLM can misread tables, especially in scanned PDFs, multi‑column layouts or manuals with several variants of the same register map. Always validate the produced Thing Description against the manual and against a live test read from the asset before deploying it to production.
 
-## Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)
+## Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)
 
-`UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based (Blazor Server) application that makes this mapping a drag-and-drop exercise.
+`UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based application that makes this mapping a drag-and-drop exercise.
 
 ### What it does
 
-* **Left pane — WoT Thing Model.** Open a Thing Model (`*.tm.jsonld` / `*.json`) to list all of its properties, their data types and descriptions. Mapped properties are highlighted and show the OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
+* **Left pane — WoT Thing Model/Description.** Open a Thing Model or Thing Description to list all of its properties. Mapped properties are highlighted and show the target OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
 * **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree that you can browse for the type you need.
 * **Drag & drop mapping.** Drag any OPC UA type from the nodeset tree onto a WoT property to map them. If the target OPC UA type is a *complex* (structured) type, a dialog lets you pick which field of the structure the property maps to.
-* **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced companion specification.
+* **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced OPC UA Information Model.
 
 ### Configuring the UA Cloud Library connection
 
@@ -740,7 +740,17 @@ dotnet run --project UA-WoTMapper\UA-WoTMapper.csproj
 
 Then open the printed URL (e.g. `http://localhost:5124`) in a browser.
 
-Alternatively, build and run it as a Docker container (the container listens on port 8080):
+Alternatively, run the pre-built container image published to GitHub Container Registry (the container listens on port 8080):
+
+```powershell
+docker run -d --name ua-wotmapper -p 8080:8080 ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
+```
+
+Then open `http://localhost:8080` in a browser.
+
+The `ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper` image is built for `linux/amd64` and `linux/arm64` and published automatically by the [Docker (WoT Mapper)](.github/workflows/docker-publish-wotmapper.yml) GitHub Actions workflow on every push to `main` (tagged `main`) and for released version tags (e.g. `v1.2.3`).
+
+Or build and run it as a Docker container yourself:
 
 ```powershell
 cd UA-WoTMapper
@@ -748,7 +758,7 @@ docker build -t ua-wotmapper .
 docker run -d --name ua-wotmapper -p 8080:8080 ua-wotmapper
 ```
 
-The resulting mapped `*.tm.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start-up (after replacing any remaining `{{...}}` placeholders with the real values for your asset).
+The resulting mapped WoT Thing Model can then be converted into a Thing Description by filling in any placeholders and subsequently uploaded to UA Edge Translator.
 
 ## Threat Model and Security Considerations
 
