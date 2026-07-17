@@ -715,10 +715,12 @@ Recommended workflow:
 
 ### What it does
 
-* **Left pane — WoT Thing Model/Description.** Open a Thing Model or Thing Description to list all of its properties. Mapped properties are highlighted and show the target OPC UA `NodeId`, type and (for complex types) the field path they were mapped to.
-* **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/). The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree that you can browse for the type you need.
+* **Left pane — WoT Thing Model/Description.** Open a Thing Model or Thing Description to list all of its properties; the loaded file name is shown at the top of the pane. Each property has a target OPC UA `NodeId` that defaults to `s=<property name>` and can be edited inline by clicking it. Mapped properties additionally show the OPC UA type and (for complex types) the field path they were mapped to.
+* **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/); the loaded nodeset name is shown at the top of the pane. The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree (scoped to the type hierarchy) in which the types belonging to the loaded nodeset are highlighted. Loaded files are retained when you switch to the Settings page and back.
 * **Drag & drop mapping.** Drag any OPC UA type from the nodeset tree onto a WoT property to map them. If the target OPC UA type is a *complex* (structured) type, a dialog lets you pick which field of the structure the property maps to.
 * **Save the mapped model.** Once the properties are mapped, save the updated Thing Model back out (`Save mapped model`). The tool injects the required OPC UA namespace context prefix and the per-property mapping metadata (`NodeId`, type node id and optional field path) so UA Edge Translator can expose the translated data via the referenced OPC UA Information Model.
+* **Create a Thing Description.** For a loaded Thing Model, `Create Thing Description…` opens a dialog pre-populated with every `{{placeholder}}` found in the model. Fill in the values and save; the tool substitutes them, drops the `tm:ThingModel` marker, writes the resulting Thing Description to the server-side WoT directory (see `WOT_DIRECTORY` below) and immediately loads it in place of the Thing Model.
+
 
 ### Configuring the UA Cloud Library connection
 
@@ -726,6 +728,48 @@ The **Settings** page lets you configure the UA Cloud Library endpoint and crede
 
 * **Cloud Library URL** — defaults to `https://uacloudlibrary.opcfoundation.org`.
 * **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above).
+
+Settings saved on the Settings page are persisted to `App_Data/settings.json` and survive restarts.
+
+#### Providing the connection via environment variables
+
+For container deployments the UA Cloud Library connection can be supplied **upfront** through environment variables, so the tool is usable without opening the Settings page first. The following variables are read on startup **when no `App_Data/settings.json` has been saved yet** (once you save settings from the Settings page, that saved file takes precedence):
+
+| Environment variable | Description | Default |
+| --- | --- | --- |
+| `CLOUDLIB_URL` | Base URL of the UA Cloud Library server. | `https://uacloudlibrary.opcfoundation.org` |
+| `CLOUDLIB_USERNAME` | User name for UA Cloud Library basic authentication. | *(empty)* |
+| `CLOUDLIB_PASSWORD` | Password for UA Cloud Library basic authentication. | *(empty)* |
+| `WOT_DIRECTORY` | Directory where generated Thing Descriptions are written (map a volume here to persist them). | `App_Data/wot` under the content root |
+
+The equivalent ASP.NET Core configuration section is also supported (e.g. via `appsettings.json` or the double-underscore environment variables `CloudLibrary__Url`, `CloudLibrary__UserName`, `CloudLibrary__Password`); the flat `CLOUDLIB_*` variables take precedence over the `CloudLibrary` section.
+
+Example — run the container with the Cloud Library connection preconfigured:
+
+```powershell
+docker run -d --name ua-wotmapper -p 8080:8080 `
+  -e CLOUDLIB_URL="https://uacloudlibrary.opcfoundation.org" `
+  -e CLOUDLIB_USERNAME="REPLACE_ME" `
+  -e CLOUDLIB_PASSWORD="REPLACE_ME" `
+  ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
+```
+
+#### Persisting settings and generated Thing Descriptions
+
+Inside the container the application stores its writable state under `/app/App_Data`:
+
+* `/app/App_Data/settings.json` — the UA Cloud Library connection saved from the Settings page.
+* `/app/App_Data/wot` — the generated Thing Descriptions (the default location for `WOT_DIRECTORY`).
+
+Map `/app/App_Data` to a folder on the Docker host so this state survives container restarts and re-creation, and so the generated Thing Descriptions are accessible from the host:
+
+```powershell
+docker run -d --name ua-wotmapper -p 8080:8080 `
+  -v C:/uawotmapper/App_Data:/app/App_Data `
+  ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
+```
+
+(On Linux/macOS use a host path such as `-v /opt/uawotmapper/App_Data:/app/App_Data`.)
 
 ### Building and running UA-WoTMapper
 
@@ -740,15 +784,17 @@ dotnet run --project UA-WoTMapper\UA-WoTMapper.csproj
 
 Then open the printed URL (e.g. `http://localhost:5124`) in a browser.
 
-Alternatively, run the pre-built container image published to GitHub Container Registry (the container listens on port 8080):
+Alternatively, run the pre-built container image published to GitHub Container Registry (the container listens on port 8080; map `/app/App_Data` to persist settings and generated Thing Descriptions — see above):
 
 ```powershell
-docker run -d --name ua-wotmapper -p 8080:8080 ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
+docker run -d --name ua-wotmapper -p 8080:8080 `
+  -v C:/uawotmapper/App_Data:/app/App_Data `
+  ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
 ```
 
 Then open `http://localhost:8080` in a browser.
 
-The `ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper` image is built for `linux/amd64` and `linux/arm64` and published automatically by the [Docker (WoT Mapper)](.github/workflows/docker-publish-wotmapper.yml) GitHub Actions workflow on every push to `main` (tagged `main`) and for released version tags (e.g. `v1.2.3`).
+The `ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper` image is built for `linux/amd64` and `linux/arm64` and published automatically by the [Docker (WoT Mapper)](.github/workflows/docker-publish-wotmapper.yml) GitHub Actions workflow on every push to `main` (tagged `main`) and for released version tags (e.g. `v1.2.3`). When debugging the project in Visual Studio with the **Docker** launch profile, `App_Data` is mounted automatically (via `containerRunArguments` in `launchSettings.json`).
 
 Or build and run it as a Docker container yourself:
 

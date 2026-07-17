@@ -9,8 +9,10 @@ builder.Services.AddRazorComponents()
 
 // Application services
 builder.Services.AddSingleton<SettingsService>();
+builder.Services.AddSingleton<WotFileService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<CloudLibraryClient>();
+builder.Services.AddScoped<MapperState>();
 builder.Services.AddSingleton<WotOpcUaMapper.UAClientLib.OpcUaApplication>();
 builder.Services.AddScoped<WotOpcUaMapper.UAClientLib.UAClient>();
 

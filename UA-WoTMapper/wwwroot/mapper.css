@@ -17,7 +17,13 @@ body { font-family: Segoe UI, Helvetica, Arial, sans-serif; margin:0; background
 .btn-secondary { background:#6b7280; }
 .btn-xs { padding:.2rem .5rem; font-size:.75rem; margin-top:.4rem; }
 .btn-file { display:inline-block; }
+.cloud-select-wrap { position:relative; display:inline-flex; align-items:center; }
 .cloud-select { padding:.35rem; border-radius:5px; border:1px solid #b9c0cc; max-width:16rem; }
+.cloud-select:disabled { background:#f0f2f5; color:#9aa4b2; }
+
+/* Loading spinner shown while the Cloud Library list is being populated */
+.spinner { position:absolute; right:.5rem; width:14px; height:14px; border:2px solid #c3ccda; border-top-color:#2b5cb8; border-radius:50%; animation:spin .7s linear infinite; pointer-events:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
 .hint { color:#6b7280; font-size:.9rem; }
 .error { color:#c0392b; font-weight:500; }
@@ -33,18 +39,41 @@ body { font-family: Segoe UI, Helvetica, Arial, sans-serif; margin:0; background
 .prop-map { font-size:.78rem; margin-top:.4rem; color:#255e39; word-break:break-all; }
 .prop-drophint { font-size:.75rem; color:#9aa4b2; margin-top:.3rem; font-style:italic; }
 
+/* Loaded file name shown at the top of each pane */
+.loaded-file { display:flex; align-items:center; gap:.4rem; font-size:.82rem; color:#3a4658; background:#eef2f8; border:1px solid #dce3ee; border-radius:5px; padding:.3rem .55rem; margin-bottom:.7rem; word-break:break-all; }
+.loaded-file__icon { flex:0 0 auto; }
+
+/* Inline-editable target NodeId */
+.prop-nodeid { font-size:.8rem; margin-top:.35rem; display:flex; align-items:center; gap:.4rem; }
+.nodeid-value { cursor:text; border-bottom:1px dashed #9aa4b2; padding:.05rem .15rem; word-break:break-all; }
+.nodeid-value:hover { background:#eef3fc; }
+.nodeid-edit { font-family:inherit; font-size:.8rem; padding:.15rem .3rem; border:1px solid #2b5cb8; border-radius:4px; min-width:12rem; }
+
+/* Thing Description dialog */
+.td-placeholders { max-height:45vh; overflow:auto; }
+.td-placeholder { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.5rem; font-size:.85rem; }
+.td-placeholder__name { font-weight:600; font-family:Consolas, monospace; }
+.td-placeholder input, .td-filename input { padding:.4rem; border:1px solid #b9c0cc; border-radius:5px; font-size:.85rem; width:100%; box-sizing:border-box; }
+.td-filename { display:flex; flex-direction:column; gap:.25rem; font-weight:600; font-size:.85rem; margin-top:.6rem; }
+
 .tree-container { max-height:60vh; overflow:auto; border:1px solid #eef0f3; border-radius:6px; padding:.5rem; }
 .ns-status { margin-bottom:.6rem; font-size:.85rem; }
 .ns-status .missing { color:#c0392b; }
 
-.uic-tree { font-size:.9rem; }
-.uic-tree__children { margin-left:1.1rem; border-left:1px dashed #dfe3ea; padding-left:.4rem; }
-.uic-tree__icon { cursor:pointer; margin-right:.25rem; user-select:none; font-size:.7rem; }
-.uic-tree__icon-spacer { display:inline-block; width:1rem; }
+.uic-tree { font-size:1.05rem; line-height:1.5; }
+.uic-tree__children { margin-left:1.4rem; border-left:1px dashed #dfe3ea; padding-left:.6rem; }
+.uic-tree__icon { cursor:pointer; margin-right:.4rem; user-select:none; font-size:.9rem; }
+.uic-tree__icon-spacer { display:inline-block; width:1.3rem; }
 .uic-tree--hidden { display:none; }
-.ua-node { cursor:grab; padding:.05rem .2rem; border-radius:3px; }
+.ua-node { display:inline-block; cursor:grab; padding:.25rem .5rem; margin:.1rem 0; border-radius:4px; font-size:1.05rem; }
 .ua-node:hover { background:#eef3fc; }
 .ua-node-datatype, .ua-node-objecttype, .ua-node-variabletype { color:#8a4b00; font-weight:600; }
+
+/* Emphasize types that belong to the loaded nodeset; de-emphasize inherited/base ones. */
+.ua-node--in-nodeset { background:#fff5e6; box-shadow:inset 0 0 0 1px #f0c88a; font-weight:600; }
+.ua-node--in-nodeset:hover { background:#ffe9c7; }
+.ua-node--other { color:#000; font-weight:400; }
+.ua-node--other:hover { background:#eef3fc; }
 
 .settings-form { max-width:32rem; display:flex; flex-direction:column; gap:.9rem; }
 .settings-form label { display:flex; flex-direction:column; gap:.25rem; font-weight:600; font-size:.9rem; }

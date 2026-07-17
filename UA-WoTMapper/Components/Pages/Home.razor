@@ -7,8 +7,9 @@
 @using WotOpcUaMapper.UAClientLib
 @inject UAClient UaClient
 @inject CloudLibraryClient CloudLib
+@inject MapperState State
+@inject WotFileService WotFiles
 @inject IJSRuntime JS
-@implements IAsyncDisposable
 
 <PageTitle>WoT &harr; OPC UA Mapper</PageTitle>
 
@@ -17,20 +18,31 @@
     <!-- LEFT PANE: WoT Thing Model properties -->
     <section class="pane pane-left">
         <div class="pane-header">
-            <h2>WoT Thing Model</h2>
+            <h2>WoT Thing Model/Description</h2>
             <label class="btn btn-file">
-                Open Thing Model&hellip;
+                Open Thing Model/Description&hellip;
                 <InputFile OnChange="OnThingModelSelected" accept=".jsonld,.json,.tm.jsonld" hidden />
             </label>
             @if (_thingModel != null)
             {
+                @if (_thingModel.IsThingModel)
+                {
+                    <button class="btn" @onclick="OpenThingDescriptionDialog">Create Thing Description&hellip;</button>
+                }
                 <button class="btn" @onclick="DownloadThingModel">Save mapped model</button>
             }
         </div>
 
+        @if (!string.IsNullOrEmpty(_thingModel?.FileName))
+        {
+            <div class="loaded-file" title="Loaded WoT file">
+                <span class="loaded-file__icon">&#128196;</span>@_thingModel!.FileName
+            </div>
+        }
+
         @if (_thingModel == null)
         {
-            <p class="hint">Load a Web of Things Thing Model (<code>.tm.jsonld</code>) file to list its properties.</p>
+            <p class="hint">Load a Web of Things Thing Model/Description file to list its properties.</p>
         }
         else
         {
@@ -48,10 +60,24 @@
                         {
                             <div class="prop-desc">@prop.Description</div>
                         }
+                        <div class="prop-nodeid">
+                            <b>NodeId:</b>
+                            @if (_editingNodeIdProp == prop)
+                            {
+                                <input class="nodeid-edit" @bind="_nodeIdEditValue" @bind:event="oninput"
+                                       @onblur="() => CommitNodeId(prop)"
+                                       @onkeydown="(e) => OnNodeIdKeyDown(e, prop)"
+                                       @ref="_nodeIdInput" />
+                            }
+                            else
+                            {
+                                <span class="nodeid-value" title="Click to edit the target OPC UA NodeId"
+                                      @onclick="() => BeginEditNodeId(prop)">@prop.MapToNodeId</span>
+                            }
+                        </div>
                         @if (prop.IsMapped)
                         {
                             <div class="prop-map">
-                                <div><b>NodeId:</b> @prop.MapToNodeId</div>
                                 <div><b>Type:</b> @prop.MapToType</div>
                                 @if (!string.IsNullOrEmpty(prop.MapByFieldPath))
                                 {
@@ -78,15 +104,28 @@
                 Open NodeSet2 XML&hellip;
                 <InputFile OnChange="OnNodesetFileSelected" accept=".xml" hidden />
             </label>
-            <select class="cloud-select" @onchange="OnCloudNodesetSelected">
-                <option value="">-- Cloud Library nodeset --</option>
-                @foreach (var ns in _cloudNodesets)
+            <span class="cloud-select-wrap">
+                <select class="cloud-select" @onchange="OnCloudNodesetSelected" disabled="@_loadingCloudList">
+                    <option value="">@(_loadingCloudList ? "Loading nodesets…" : "-- Cloud Library nodeset --")</option>
+                    @foreach (var ns in _cloudNodesets)
+                    {
+                        <option value="@ns.Identifier" title="@ns.NamespaceUri">@ns.Title</option>
+                    }
+                </select>
+                @if (_loadingCloudList)
                 {
-                    <option value="@ns.Identifier">@ns.Title</option>
+                    <span class="spinner" title="Loading Cloud Library nodesets…" aria-label="Loading"></span>
                 }
-            </select>
-            <button class="btn" @onclick="RefreshCloudNodesets">Refresh list</button>
+            </span>
+            <button class="btn" @onclick="RefreshCloudNodesets" disabled="@_loadingCloudList">Refresh list</button>
         </div>
+
+        @if (!string.IsNullOrEmpty(_nodesetName))
+        {
+            <div class="loaded-file" title="Loaded OPC UA nodeset">
+                <span class="loaded-file__icon">&#128196;</span>@_nodesetName
+            </div>
+        }
 
         @if (_loadingNodeset)
         {
@@ -105,7 +144,7 @@
                 <ul>
                     @foreach (var ns in _loadedNamespaces)
                     {
-                        <li>@ns.Key <small>(v@ns.Value.Item2)</small></li>
+                        <li>@ns.Key <small>(v@(ns.Value.Item2))</small></li>
                     }
                     @foreach (var miss in _missingNamespaces)
                     {
@@ -122,12 +161,13 @@
                       ChildSelector="node => node.Children"
                       SelectedNode="_selectedNode"
                       SelectedNodeChanged="SelectedNodeChanged"
+                      ExpandedNodes="State.ExpandedNodes"
                       OnNodeExpand="OnNodeExpand"
                       HasChildNodes="HasChildNodes">
                     <TitleTemplate>
                         <span draggable="true"
                               @ondragstart="() => OnDragStart(context)"
-                              class="ua-node ua-node-@context.NodeClass.ToLowerInvariant()">
+                              class="ua-node ua-node-@context.NodeClass.ToLowerInvariant() @(IsInLoadedNodeset(context) ? "ua-node--in-nodeset" : "ua-node--other")">
                             @context.Text
                         </span>
                     </TitleTemplate>
@@ -171,27 +211,92 @@
     </div>
 }
 
-@code {
-    private ThingModel? _thingModel;
+<!-- Thing Model -> Thing Description dialog -->
+@if (_showTdDialog)
+{
+    <div class="modal-backdrop-custom" @onclick="CancelThingDescriptionDialog">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <h3>Create Thing Description</h3>
+            @if (_tdPlaceholders.Count == 0)
+            {
+                <p>
+                    This Thing Model contains no placeholders. A Thing Description will be created by
+                    removing the <code>tm:ThingModel</code> marker.
+                </p>
+            }
+            else
+            {
+                <p>
+                    Provide a value for each Thing Model placeholder. The values are substituted and the
+                    result is saved as a Thing Description.
+                </p>
+                <div class="field-list td-placeholders">
+                    @foreach (var name in _tdPlaceholders)
+                    {
+                        <label class="td-placeholder">
+                            <span class="td-placeholder__name">@name</span>
+                            <input value="@(_tdValues.TryGetValue(name, out var v) ? v : string.Empty)"
+                                   @onchange="(e) => _tdValues[name] = e.Value?.ToString() ?? string.Empty" />
+                        </label>
+                    }
+                </div>
+            }
+            <label class="td-filename">
+                Save as
+                <input @bind="_tdFileName" />
+            </label>
+            @if (!string.IsNullOrEmpty(_tdError))
+            {
+                <p class="error">@_tdError</p>
+            }
+            <p class="hint">Saved to: @WotFiles.Directory</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="ConfirmThingDescriptionDialog" disabled="@(!CanSaveThingDescription)">Save &amp; load</button>
+                <button class="btn btn-secondary" @onclick="CancelThingDescriptionDialog">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
 
-    private readonly List<NodesetViewerNode> _treeNodes = new();
-    private NodesetViewerNode? _selectedNode;
+@code {
+    // Persistent state lives in the scoped MapperState service so loaded files survive
+    // navigation between the Mapper and Settings pages.
+    private ThingModel? _thingModel { get => State.ThingModel; set => State.ThingModel = value; }
+    private List<NodesetViewerNode> _treeNodes => State.TreeNodes;
+    private NodesetViewerNode? _selectedNode { get => State.SelectedNode; set => State.SelectedNode = value; }
+    private string? _loadedNamespaceUri { get => State.LoadedNamespaceUri; set => State.LoadedNamespaceUri = value; }
+    private Dictionary<string, Tuple<string, string>> _loadedNamespaces { get => State.LoadedNamespaces; set => State.LoadedNamespaces = value; }
+    private List<string> _missingNamespaces { get => State.MissingNamespaces; set => State.MissingNamespaces = value; }
+    private string? _nodesetName { get => State.NodesetName; set => State.NodesetName = value; }
+
     private NodesetViewerNode? _draggedNode;
     private WotProperty? _dropTarget;
 
     private List<CloudLibNodeset> _cloudNodesets = new();
+    private bool _loadingCloudList;
     private bool _loadingNodeset;
     private string? _nodesetError;
-    private string? _loadedNamespaceUri;
 
-    private Dictionary<string, Tuple<string, string>> _loadedNamespaces = new();
-    private List<string> _missingNamespaces = new();
+    // inline NodeId editing
+    private WotProperty? _editingNodeIdProp;
+    private string _nodeIdEditValue = string.Empty;
+    private ElementReference _nodeIdInput;
+    private bool _focusNodeIdInput;
 
     // complex-type dialog state
     private bool _showFieldDialog;
     private NodeMappingInfo? _pendingMapping;
     private WotProperty? _pendingProperty;
     private string? _selectedFieldPath;
+
+    // Thing Description dialog state
+    private bool _showTdDialog;
+    private List<string> _tdPlaceholders = new();
+    private readonly Dictionary<string, string> _tdValues = new();
+    private string _tdFileName = string.Empty;
+    private string? _tdError;
+
+    private bool CanSaveThingDescription => !string.IsNullOrWhiteSpace(_tdFileName);
 
     protected override async Task OnInitializedAsync()
     {
@@ -232,17 +337,137 @@
         await JS.InvokeVoidAsync("downloadText", fileName, json);
     }
 
+    // ---------- Inline NodeId editing ----------
+
+    private void BeginEditNodeId(WotProperty prop)
+    {
+        _editingNodeIdProp = prop;
+        _nodeIdEditValue = prop.MapToNodeId ?? string.Empty;
+        _focusNodeIdInput = true;
+    }
+
+    private void CommitNodeId(WotProperty prop)
+    {
+        prop.SetNodeId(_nodeIdEditValue);
+        _editingNodeIdProp = null;
+    }
+
+    private void OnNodeIdKeyDown(KeyboardEventArgs e, WotProperty prop)
+    {
+        if (e.Key == "Enter")
+        {
+            CommitNodeId(prop);
+        }
+        else if (e.Key == "Escape")
+        {
+            _editingNodeIdProp = null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusNodeIdInput)
+        {
+            _focusNodeIdInput = false;
+            try
+            {
+                await _nodeIdInput.FocusAsync();
+            }
+            catch
+            {
+                // element may no longer be present; ignore
+            }
+        }
+    }
+
+    // ---------- Thing Model -> Thing Description ----------
+
+    private void OpenThingDescriptionDialog()
+    {
+        if (_thingModel == null)
+        {
+            return;
+        }
+
+        _tdError = null;
+        _tdValues.Clear();
+        _tdPlaceholders = _thingModel.FindPlaceholders().ToList();
+        foreach (var name in _tdPlaceholders)
+        {
+            _tdValues[name] = string.Empty;
+        }
+
+        // default output name: <base>.td.jsonld derived from the loaded file name
+        var baseName = _thingModel.FileName ?? "thing";
+        baseName = baseName.Replace(".tm.jsonld", string.Empty, StringComparison.OrdinalIgnoreCase)
+                           .Replace(".jsonld", string.Empty, StringComparison.OrdinalIgnoreCase)
+                           .Replace(".json", string.Empty, StringComparison.OrdinalIgnoreCase);
+        _tdFileName = baseName + ".td.jsonld";
+
+        _showTdDialog = true;
+    }
+
+    private void CancelThingDescriptionDialog()
+    {
+        _showTdDialog = false;
+        _tdError = null;
+    }
+
+    private async Task ConfirmThingDescriptionDialog()
+    {
+        if (_thingModel == null || !CanSaveThingDescription)
+        {
+            return;
+        }
+
+        try
+        {
+            var tdJson = _thingModel.CreateThingDescriptionJson(_tdValues);
+
+            // Save to the server-side WoT directory, replacing any existing file.
+            WotFiles.Save(_tdFileName, tdJson);
+
+            // Remove the previous Thing Model file from the directory if it was different.
+            var previousName = _thingModel.FileName;
+            if (!string.IsNullOrEmpty(previousName) &&
+                !string.Equals(previousName, _tdFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                WotFiles.Delete(previousName);
+            }
+
+            // Immediately load the new Thing Description, replacing the Thing Model.
+            var td = ThingModel.Parse(tdJson);
+            td.FileName = _tdFileName;
+            _thingModel = td;
+
+            _showTdDialog = false;
+        }
+        catch (Exception ex)
+        {
+            _tdError = "Failed to create Thing Description: " + ex.Message;
+        }
+
+        await Task.CompletedTask;
+    }
+
     // ---------- OPC UA nodeset ----------
 
     private async Task RefreshCloudNodesets()
     {
+        _loadingCloudList = true;
+        _nodesetError = null;
+        StateHasChanged();
         try
         {
-            _cloudNodesets = await CloudLib.GetNamespacesAsync();
+            _cloudNodesets = await CloudLib.GetNamespacesAsync(enrichMetadata: true);
         }
         catch (Exception ex)
         {
             _nodesetError = "Failed to query Cloud Library: " + ex.Message;
+        }
+        finally
+        {
+            _loadingCloudList = false;
         }
     }
 
@@ -252,7 +477,7 @@
         {
             using var reader = new StreamReader(e.File.OpenReadStream(50 * 1024 * 1024));
             var xml = await reader.ReadToEndAsync();
-            await LoadNodesetXml(xml);
+            await LoadNodesetXml(xml, e.File.Name);
         }
         catch (Exception ex)
         {
@@ -268,6 +493,8 @@
             return;
         }
 
+        var title = _cloudNodesets.FirstOrDefault(n => n.Identifier == identifier)?.Title ?? identifier;
+
         _loadingNodeset = true;
         _nodesetError = null;
         StateHasChanged();
@@ -280,7 +507,7 @@
                 _nodesetError = "Could not download the selected nodeset from the Cloud Library.";
                 return;
             }
-            await LoadNodesetXml(xml);
+            await LoadNodesetXml(xml, title);
         }
         catch (Exception ex)
         {
@@ -292,11 +519,14 @@
         }
     }
 
-    private async Task LoadNodesetXml(string xml)
+    private async Task LoadNodesetXml(string xml, string displayName)
     {
         _loadingNodeset = true;
         _nodesetError = null;
         _treeNodes.Clear();
+        State.ExpandedNodes.Clear();
+        _nodesetName = null;
+        State.NodesetLoaded = false;
         StateHasChanged();
 
         try
@@ -310,12 +540,15 @@
             var root = new NodesetViewerNode
             {
                 Id = ObjectIdsRoot,
-                Text = "Root",
+                Text = "Types",
                 Children = new List<NodesetViewerNode>()
             };
             _treeNodes.Add(root);
             _selectedNode = root;
             await OnNodeExpand(root);
+
+            _nodesetName = displayName;
+            State.NodesetLoaded = true;
         }
         catch (Exception ex)
         {
@@ -327,7 +560,7 @@
         }
     }
 
-    private const string ObjectIdsRoot = "i=84"; // ObjectIds.RootFolder
+    private const string ObjectIdsRoot = "i=86"; // ObjectIds.TypesFolder - show OPC UA types only
 
     private async Task<string?> ResolveDependencyAsync(string namespaceUri)
     {
@@ -359,6 +592,10 @@
     }
 
     private bool HasChildNodes(NodesetViewerNode node) => node.Children != null;
+
+    private bool IsInLoadedNodeset(NodesetViewerNode node) =>
+        !string.IsNullOrEmpty(_loadedNamespaceUri) &&
+        string.Equals(node.NamespaceUri, _loadedNamespaceUri, StringComparison.Ordinal);
 
     // ---------- Drag & drop mapping ----------
 
@@ -399,7 +636,7 @@
 
     private void ApplyMapping(WotProperty prop, NodeMappingInfo mapping, string? fieldPath)
     {
-        prop.ApplyMapping(mapping.NodeId, mapping.TypeNodeId, fieldPath);
+        prop.ApplyMapping(mapping.TypeNodeId, fieldPath);
         if (_thingModel != null && !string.IsNullOrEmpty(_loadedNamespaceUri))
         {
             _thingModel.EnsureContextPrefix("uav", ExtractNamespace(mapping.TypeNodeId) ?? _loadedNamespaceUri);
@@ -435,11 +672,6 @@
         _pendingMapping = null;
         _pendingProperty = null;
         _selectedFieldPath = null;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await UaClient.DisposeAsync();
     }
 }
 

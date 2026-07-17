@@ -37,9 +37,14 @@ namespace WotOpcUaMapper.UAClientLib
                     return App;
                 }
 
+                // Provide a non-interactive approval dialog so the SDK can (re)generate the
+                // application certificate unattended when the one on disk is missing or invalid,
+                // rather than throwing "the certificate ... is invalid". Mirrors UA Cloud Publisher.
+                ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
+
                 var app = new ApplicationInstance(Telemetry)
                 {
-                    ApplicationName = "WotOpcUaMapper",
+                    ApplicationName = "UAWoTMapper",
                     ApplicationType = ApplicationType.ClientAndServer
                 };
 
@@ -47,7 +52,13 @@ namespace WotOpcUaMapper.UAClientLib
 
                 ApplicationConfiguration config = await app.LoadApplicationConfigurationAsync(configPath, false).ConfigureAwait(false);
 
-                await app.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
+                // With the MessageDlg above approving, the SDK creates or replaces the application
+                // certificate as needed. A false result means it still could not produce a valid one.
+                bool certOk = await app.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
+                if (!certOk)
+                {
+                    throw new InvalidOperationException("OPC UA application instance certificate is invalid and could not be created.");
+                }
 
                 config.CertificateValidator = new CertificateValidator(Telemetry);
                 config.CertificateValidator.CertificateValidation += (validator, e) =>

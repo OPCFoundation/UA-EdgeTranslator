@@ -11,6 +11,7 @@ namespace WotOpcUaMapper.UAClientLib
         public string Id { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;
         public string NodeClass { get; set; } = string.Empty;
+        public string NamespaceUri { get; set; } = string.Empty;
         public List<NodesetViewerNode> Children { get; set; } = new();
 
         public int CompareTo(NodesetViewerNode? other)

@@ -5,14 +5,19 @@
   schemaLocation="./Schema/ApplicationConfiguration.xsd"
 >
   <!-- A human readable but not necessarily unique name for the application instance -->
-  <ApplicationName>UACloudLibrary</ApplicationName>
+  <ApplicationName>UAWoTMapper</ApplicationName>
 
   <!-- A globally unique identifier for the application instance.
-       This is overridden with the value contained in the application certificate. -->
-  <ApplicationUri>urn:localhost:OPCFoundation:UACloudLibrary</ApplicationUri>
+       This is overridden with the value contained in the application certificate.
+       NOTE: do NOT include the "localhost" token here. The OPC UA SDK expands
+       "localhost" to the actual machine/container hostname at runtime, which changes
+       on every container rebuild; the certificate's SAN URI would then no longer match
+       the ApplicationUri, causing "the certificate ... is invalid" errors. A fixed URI
+       keeps the certificate valid across rebuilds. -->
+  <ApplicationUri>urn:UAWoTMapper</ApplicationUri>
 
   <!-- A globally unique URI for the product (usually assigned by the product vendor) -->
-  <ProductUri>http://opcfoundation.org/UA/UACloudLibrary/</ProductUri>
+  <ProductUri>http://opcfoundation.org/UA/UAWoTMapper/</ProductUri>
 
   <!-- Indicates the type of application (Client, Server or ClientServer). -->
   <ApplicationType>ClientAndServer_2</ApplicationType>
@@ -20,12 +25,24 @@
   <!-- Specifies security related configuration information -->
   <SecurityConfiguration>
 
-    <!-- The location of the application instance certificate in the Windows certificate store -->
+    <!-- The location of the application instance certificate. -->
     <ApplicationCertificate>
       <StoreType>Directory</StoreType>
       <StorePath>./pki/own</StorePath>
-      <SubjectName>AAS-Repository</SubjectName>
+      <SubjectName>CN=UAWoTMapper, C=US, S=Arizona, O=OPC Foundation</SubjectName>
     </ApplicationCertificate>
+
+    <!-- The set of application instance certificates (modern SDK format). Declaring the
+         certificate type explicitly avoids "certificate is invalid" errors when the self-signed
+         certificate is (re)generated after a rebuild. -->
+    <ApplicationCertificates>
+      <CertificateIdentifier>
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UAWoTMapper, C=US, S=Arizona, O=OPC Foundation</SubjectName>
+        <CertificateTypeString>RsaSha256</CertificateTypeString>
+      </CertificateIdentifier>
+    </ApplicationCertificates>
 
     <TrustedIssuerCertificates>
       <StoreType>Directory</StoreType>
@@ -48,10 +65,13 @@
 
     <AutoAcceptUntrustedCertificates>true</AutoAcceptUntrustedCertificates>
 
-    <!-- WARNING: SHA1 signed certficates are by default rejected and should be phased out.
-    The setting below to allow them is only required for UACTT (1.02.336.244) which uses SHA-1 signed certs. -->
-    <RejectSHA1SignedCertificates>false</RejectSHA1SignedCertificates>
-    <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
+    <!-- Add the auto-generated application certificate to the trusted store so the in-process
+         client trusts the in-process server across rebuilds. -->
+    <AddAppCertToTrustedStore>true</AddAppCertToTrustedStore>
+
+    <!-- WARNING: SHA1 signed certficates are by default rejected and should be phased out. -->
+    <RejectSHA1SignedCertificates>true</RejectSHA1SignedCertificates>
+    <MinimumCertificateKeySize>2048</MinimumCertificateKeySize>
 
   </SecurityConfiguration>
 

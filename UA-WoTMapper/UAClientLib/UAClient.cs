@@ -246,6 +246,7 @@ namespace WotOpcUaMapper.UAClientLib
                     Id = NodeId.ToExpandedNodeId(id, _session.NamespaceUris).ToString(),
                     Text = description.DisplayName.ToString(),
                     NodeClass = description.NodeClass.ToString(),
+                    NamespaceUri = _session.NamespaceUris.GetString(id.NamespaceIndex) ?? string.Empty,
                     Children = new List<NodesetViewerNode>()
                 });
             }
