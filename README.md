@@ -5,7 +5,9 @@
 [![CI](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml)
 [![Docker](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml)
+[![Docker (WoT Mapper)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml/badge.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml)
 [![Build & Push Driver Pack Image](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml)
+[![Helm Chart](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/helm-publish.yml/badge.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/helm-publish.yml)
 
 ## Table of Contents
 
