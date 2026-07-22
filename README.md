@@ -28,7 +28,7 @@
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
-- [Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-information-model-types-ua-wotmapper)
+- [UA WoT Mapper](#ua-wot-mapper)
 - [Threat Model and Security Considerations](#threat-model-and-security-considerations)
 
 ## Introduction
@@ -75,7 +75,7 @@ Other southbound asset interfaces can easily be added by implementing the IAsset
 
 There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
-Additionally, a browser-based tool (UA-WoTMapper) is provided that lets you interactively map the properties of a WoT Thing Model onto the types of an OPC UA information models via drag & drop. See [Mapping WoT Properties to OPC UA Information Models (UA-WoTMapper)](#mapping-wot-properties-to-opc-ua-companion-specifications-ua-wotmapper) below for details.
+Additionally, a browser-based tool (UA-WoTMapper) is provided that lets you interactively map the properties of a WoT Thing Model onto the types of an OPC UA information models via drag & drop. See [UA WoT Mapper](#ua-wot-mapper) below for details.
 
 ## Installation
 
