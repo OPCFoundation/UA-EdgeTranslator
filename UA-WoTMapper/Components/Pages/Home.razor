@@ -1,6 +1,4 @@
 ﻿@page "/"
-@rendermode InteractiveServer
-@using System.Text.Json
 @using WotOpcUaMapper.Components.Shared
 @using WotOpcUaMapper.Models
 @using WotOpcUaMapper.Services
@@ -9,6 +7,7 @@
 @inject CloudLibraryClient CloudLib
 @inject MapperState State
 @inject WotFileService WotFiles
+@inject SettingsService SettingsSvc
 @inject IJSRuntime JS
 
 <PageTitle>WoT &harr; OPC UA Mapper</PageTitle>
@@ -298,9 +297,15 @@
 
     private bool CanSaveThingDescription => !string.IsNullOrWhiteSpace(_tdFileName);
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await RefreshCloudNodesets();
+        // Use the cached list if the Cloud Library was already queried in this session; the
+        // initial fetch happens after the first render once settings have been hydrated from
+        // the browser (see OnAfterRenderAsync).
+        if (State.CloudNodesetsLoaded)
+        {
+            _cloudNodesets = State.CloudNodesets;
+        }
     }
 
     // ---------- WoT Thing Model ----------
@@ -366,6 +371,15 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender && !State.CloudNodesetsLoaded)
+        {
+            // Load the user's saved Cloud Library credentials from the browser first, then
+            // populate the nodeset list (only if credentials have been provided).
+            await SettingsSvc.HydrateAsync();
+            await RefreshCloudNodesets();
+            StateHasChanged();
+        }
+
         if (_focusNodeIdInput)
         {
             _focusNodeIdInput = false;
@@ -454,12 +468,26 @@
 
     private async Task RefreshCloudNodesets()
     {
+        // Only query the Cloud Library once the user has supplied credentials; it requires
+        // basic authentication, so there is nothing to load without a user name and password.
+        if (!CloudLib.HasCredentials)
+        {
+            _cloudNodesets = new();
+            State.CloudNodesets = _cloudNodesets;
+            State.CloudNodesetsLoaded = false;
+            _nodesetError = "Enter your UA Cloud Library credentials on the Settings page to list nodesets.";
+            _loadingCloudList = false;
+            return;
+        }
+
         _loadingCloudList = true;
         _nodesetError = null;
         StateHasChanged();
         try
         {
             _cloudNodesets = await CloudLib.GetNamespacesAsync(enrichMetadata: true);
+            State.CloudNodesets = _cloudNodesets;
+            State.CloudNodesetsLoaded = true;
         }
         catch (Exception ex)
         {

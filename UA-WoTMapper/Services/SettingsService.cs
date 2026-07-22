@@ -1,32 +1,30 @@
-using System.Text.Json;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using WotOpcUaMapper.Models;
 
 namespace WotOpcUaMapper.Services
 {
     /// <summary>
-    /// Loads and persists <see cref="AppSettings"/> to a JSON file so that the
-    /// Cloud Library URL and credentials survive restarts. Registered as a singleton.
+    /// Holds <see cref="AppSettings"/> (Cloud Library URL and credentials) for the current user.
+    /// Registered as scoped so that each user configures their own Cloud Library instance and
+    /// credentials without seeing or affecting other users. Settings are persisted to the
+    /// browser's protected session storage, so they survive a page refresh (F5) while remaining
+    /// isolated per user and are never written to shared server-side storage.
     /// </summary>
     public class SettingsService
     {
-        private readonly string _filePath;
-        private readonly IConfiguration _configuration;
+        private const string StorageKey = "wotmapper.cloudlibrary.settings";
+
+        private readonly ProtectedSessionStorage _storage;
         private readonly object _lock = new();
-        private AppSettings _settings;
+        private AppSettings _settings = new();
 
-        private static readonly JsonSerializerOptions SerializerOptions = new()
+        public SettingsService(ProtectedSessionStorage storage)
         {
-            WriteIndented = true
-        };
-
-        public SettingsService(IWebHostEnvironment env, IConfiguration configuration)
-        {
-            _configuration = configuration;
-            var dir = Path.Combine(env.ContentRootPath, "App_Data");
-            Directory.CreateDirectory(dir);
-            _filePath = Path.Combine(dir, "settings.json");
-            _settings = Load();
+            _storage = storage;
         }
+
+        /// <summary>True once <see cref="HydrateAsync"/> has attempted to load stored settings.</summary>
+        public bool Hydrated { get; private set; }
 
         public AppSettings Current
         {
@@ -45,87 +43,51 @@ namespace WotOpcUaMapper.Services
             }
         }
 
-        public void Save(AppSettings settings)
+        /// <summary>
+        /// Loads any previously saved settings from the browser's session storage into memory.
+        /// Must be called from a component after the first interactive render (JS interop is not
+        /// available earlier). Safe to call repeatedly; only the first call reads storage.
+        /// </summary>
+        public async Task HydrateAsync()
+        {
+            if (Hydrated)
+            {
+                return;
+            }
+
+            try
+            {
+                var result = await _storage.GetAsync<AppSettings>(StorageKey);
+                if (result.Success && result.Value != null)
+                {
+                    lock (_lock)
+                    {
+                        _settings = result.Value;
+                    }
+                }
+            }
+            catch
+            {
+                // No/invalid stored settings; keep the in-memory defaults.
+            }
+            finally
+            {
+                Hydrated = true;
+            }
+        }
+
+        /// <summary>
+        /// Stores the given settings in memory for this session and persists them to the browser's
+        /// session storage so they survive a page refresh.
+        /// </summary>
+        public async Task SaveAsync(AppSettings settings)
         {
             lock (_lock)
             {
                 _settings = settings;
-                File.WriteAllText(_filePath, JsonSerializer.Serialize(settings, SerializerOptions));
-            }
-        }
-
-        private AppSettings Load()
-        {
-            // A user-saved settings.json (e.g. edited via the Settings page) always wins.
-            try
-            {
-                if (File.Exists(_filePath))
-                {
-                    var json = File.ReadAllText(_filePath);
-                    var loaded = JsonSerializer.Deserialize<AppSettings>(json);
-                    if (loaded != null)
-                    {
-                        return loaded;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to load settings: " + ex.Message);
             }
 
-            // No saved settings yet: seed from environment variables / configuration so
-            // the Cloud Library connection can be provided to the container upfront.
-            return LoadFromConfiguration();
-        }
-
-        /// <summary>
-        /// Builds settings from configuration (environment variables, appsettings.json, etc.),
-        /// falling back to the built-in defaults when a value is not provided.
-        /// Supported keys (in precedence order): the flat environment variables
-        /// CLOUDLIB_URL / CLOUDLIB_USERNAME / CLOUDLIB_PASSWORD, then the
-        /// "CloudLibrary" section (CloudLibrary:Url / CloudLibrary:UserName / CloudLibrary:Password,
-        /// i.e. CloudLibrary__Url style environment variables).
-        /// </summary>
-        private AppSettings LoadFromConfiguration()
-        {
-            var defaults = new AppSettings();
-            var section = _configuration.GetSection("CloudLibrary");
-
-            string url = FirstNonEmpty(
-                _configuration["CLOUDLIB_URL"],
-                section["Url"],
-                defaults.CloudLibraryUrl);
-
-            string userName = FirstNonEmpty(
-                _configuration["CLOUDLIB_USERNAME"],
-                section["UserName"],
-                defaults.UserName);
-
-            string password = FirstNonEmpty(
-                _configuration["CLOUDLIB_PASSWORD"],
-                section["Password"],
-                defaults.Password);
-
-            return new AppSettings
-            {
-                CloudLibraryUrl = url,
-                UserName = userName,
-                Password = password
-            };
-        }
-
-        private static string FirstNonEmpty(params string?[] values)
-        {
-            foreach (var value in values)
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value;
-                }
-            }
-
-            return string.Empty;
+            await _storage.SetAsync(StorageKey, settings);
         }
     }
 }

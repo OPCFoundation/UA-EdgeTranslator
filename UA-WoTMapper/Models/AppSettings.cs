@@ -2,7 +2,7 @@ namespace WotOpcUaMapper.Models
 {
     /// <summary>
     /// User configurable settings for connecting to a UA Cloud Library instance.
-    /// Persisted as JSON on disk by <see cref="Services.SettingsService"/>.
+    /// Held per user session (Blazor circuit) by <see cref="Services.SettingsService"/>.
     /// </summary>
     public class AppSettings
     {

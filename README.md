@@ -729,41 +729,15 @@ Recommended workflow:
 The **Settings** page lets you configure the UA Cloud Library endpoint and credentials used to list and download nodesets:
 
 * **Cloud Library URL** — defaults to `https://uacloudlibrary.opcfoundation.org`.
-* **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above).
+* **User name** / **Password** — your UA Cloud Library account credentials (a free account can be created at the URL above). These are blank by default.
 
-Settings saved on the Settings page are persisted to `App_Data/settings.json` and survive restarts.
+The tool is **multi-tenant**: settings are held **per user** in the browser's protected session storage, so they survive a page refresh (F5) but stay private to that user and their session. Each user configures their own Cloud Library endpoint and credentials without seeing or affecting other users, and nothing is written to shared server-side storage. Loaded WoT files and OPC UA nodesets are likewise isolated per session. Changes on the Settings page are saved automatically.
 
-#### Providing the connection via environment variables
+#### Persisting generated Thing Descriptions
 
-For container deployments the UA Cloud Library connection can be supplied **upfront** through environment variables, so the tool is usable without opening the Settings page first. The following variables are read on startup **when no `App_Data/settings.json` has been saved yet** (once you save settings from the Settings page, that saved file takes precedence):
+Generated Thing Descriptions are written to a server-side WoT directory, with each user session using its own isolated sub-directory. The base directory defaults to `App_Data/wot` under the content root and can be overridden with the `WOT_DIRECTORY` environment variable (map a volume there to persist the generated files).
 
-| Environment variable | Description | Default |
-| --- | --- | --- |
-| `CLOUDLIB_URL` | Base URL of the UA Cloud Library server. | `https://uacloudlibrary.opcfoundation.org` |
-| `CLOUDLIB_USERNAME` | User name for UA Cloud Library basic authentication. | *(empty)* |
-| `CLOUDLIB_PASSWORD` | Password for UA Cloud Library basic authentication. | *(empty)* |
-| `WOT_DIRECTORY` | Directory where generated Thing Descriptions are written (map a volume here to persist them). | `App_Data/wot` under the content root |
-
-The equivalent ASP.NET Core configuration section is also supported (e.g. via `appsettings.json` or the double-underscore environment variables `CloudLibrary__Url`, `CloudLibrary__UserName`, `CloudLibrary__Password`); the flat `CLOUDLIB_*` variables take precedence over the `CloudLibrary` section.
-
-Example — run the container with the Cloud Library connection preconfigured:
-
-```powershell
-docker run -d --name ua-wotmapper -p 8080:8080 `
-  -e CLOUDLIB_URL="https://uacloudlibrary.opcfoundation.org" `
-  -e CLOUDLIB_USERNAME="REPLACE_ME" `
-  -e CLOUDLIB_PASSWORD="REPLACE_ME" `
-  ghcr.io/opcfoundation/ua-edgetranslator/wot-mapper:main
-```
-
-#### Persisting settings and generated Thing Descriptions
-
-Inside the container the application stores its writable state under `/app/App_Data`:
-
-* `/app/App_Data/settings.json` — the UA Cloud Library connection saved from the Settings page.
-* `/app/App_Data/wot` — the generated Thing Descriptions (the default location for `WOT_DIRECTORY`).
-
-Map `/app/App_Data` to a folder on the Docker host so this state survives container restarts and re-creation, and so the generated Thing Descriptions are accessible from the host:
+Inside the container the application stores this writable state under `/app/App_Data`. Map `/app/App_Data` to a folder on the Docker host so the generated Thing Descriptions survive container restarts and re-creation, and are accessible from the host:
 
 ```powershell
 docker run -d --name ua-wotmapper -p 8080:8080 `

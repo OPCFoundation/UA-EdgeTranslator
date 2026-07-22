@@ -1,10 +1,20 @@
 /* ===== WoT <-> OPC UA Mapper layout ===== */
-body { font-family: Segoe UI, Helvetica, Arial, sans-serif; margin:0; background:#f4f5f7; }
-.app-topbar { display:flex; align-items:center; gap:2rem; background:#1b2a4a; color:#fff; padding:.6rem 1.2rem; }
-.app-brand { font-weight:600; font-size:1.1rem; }
+body { font-family: Segoe UI, Helvetica, Arial, sans-serif; margin:0; background:#f4f5f7; display:flex; flex-direction:column; min-height:100vh; }
+.app-topbar { display:flex; align-items:center; gap:1.2rem; background:#2b5a87; color:#fff; padding:.5rem 1rem; box-shadow:0 2px 4px rgba(0,0,0,.15); }
+.app-logo { background:#fff; border-radius:4px; padding:.25rem .4rem; display:flex; align-items:center; }
+.app-logo img { height:38px; display:block; }
+.app-brand { font-weight:600; font-size:1.25rem; color:#fff; text-decoration:none; }
+.app-brand:hover { text-decoration:none; }
+.app-nav { display:flex; align-items:center; }
 .app-nav a { color:#cdd7e6; margin-right:1rem; text-decoration:none; }
 .app-nav a.active, .app-nav a:hover { color:#fff; }
-.app-main { padding:1rem; }
+.app-main { padding:1rem; flex:1 0 auto; }
+
+/* Footer bar matching the OPC Foundation site */
+.app-footer { background:#2b5a87; color:#fff; padding:.75rem 1.2rem; display:flex; flex-wrap:wrap; align-items:center; gap:1.2rem; font-size:.9rem; flex-shrink:0; }
+.app-footer a { color:#fff; text-decoration:none; }
+.app-footer a:hover { text-decoration:underline; }
+.app-footer__nav { display:flex; flex-wrap:wrap; gap:1.2rem; }
 
 .mapper-layout { display:grid; grid-template-columns:1fr 1fr; gap:1rem; align-items:start; }
 .pane { background:#fff; border:1px solid #d8dce3; border-radius:8px; padding:1rem; min-height:70vh; }

@@ -32,6 +32,20 @@ namespace WotOpcUaMapper.Services
             _settings = settings;
         }
 
+        /// <summary>
+        /// True when the current session has supplied UA Cloud Library credentials (both a user
+        /// name and a password). The Cloud Library requires basic authentication, so callers
+        /// should only attempt to query it once this returns true.
+        /// </summary>
+        public bool HasCredentials
+        {
+            get
+            {
+                var cfg = _settings.Current;
+                return !string.IsNullOrWhiteSpace(cfg.UserName) && !string.IsNullOrWhiteSpace(cfg.Password);
+            }
+        }
+
         private HttpClient CreateClient()
         {
             var cfg = _settings.Current;

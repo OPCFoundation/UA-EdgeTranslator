@@ -27,5 +27,14 @@ namespace WotOpcUaMapper.Services
 
         /// <summary>True once a nodeset has been loaded into the shared UAClient session.</summary>
         public bool NodesetLoaded { get; set; }
+
+        /// <summary>
+        /// Cached Cloud Library nodeset list, retained for the lifetime of the circuit so the
+        /// list is not re-fetched every time the user navigates back to the Mapper page.
+        /// </summary>
+        public List<CloudLibNodeset> CloudNodesets { get; set; } = new();
+
+        /// <summary>True once the Cloud Library list has been fetched at least once.</summary>
+        public bool CloudNodesetsLoaded { get; set; }
     }
 }

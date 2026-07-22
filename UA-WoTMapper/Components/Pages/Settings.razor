@@ -1,5 +1,4 @@
 @page "/settings"
-@rendermode InteractiveServer
 @using WotOpcUaMapper.Models
 @using WotOpcUaMapper.Services
 @inject SettingsService SettingsSvc
@@ -8,43 +7,38 @@
 
 <h1>UA Cloud Library Settings</h1>
 
-<p class="hint">Configure the UA Cloud Library endpoint and credentials used to list and download nodesets.</p>
+<p class="hint">Configure the UA Cloud Library endpoint and credentials used to list and download nodesets. Changes are saved automatically and kept for your session (they survive a page refresh).</p>
 
-<EditForm Model="_settings" OnValidSubmit="Save" class="settings-form">
+<EditForm Model="_settings" class="settings-form">
     <label>
         Cloud Library URL
-        <InputText @bind-Value="_settings.CloudLibraryUrl" placeholder="https://uacloudlibrary.opcfoundation.org" />
+        <InputText @bind-Value="_settings.CloudLibraryUrl" @bind-Value:after="PersistAsync" placeholder="https://uacloudlibrary.opcfoundation.org" />
     </label>
     <label>
         User name
-        <InputText @bind-Value="_settings.UserName" autocomplete="username" />
+        <InputText @bind-Value="_settings.UserName" @bind-Value:after="PersistAsync" autocomplete="username" />
     </label>
     <label>
         Password
-        <InputText type="password" @bind-Value="_settings.Password" autocomplete="current-password" />
+        <InputText type="password" @bind-Value="_settings.Password" @bind-Value:after="PersistAsync" autocomplete="current-password" />
     </label>
-
-    <div>
-        <button type="submit" class="btn">Save settings</button>
-        @if (_saved)
-        {
-            <span class="settings-saved">&nbsp;Saved.</span>
-        }
-    </div>
 </EditForm>
 
 @code {
     private AppSettings _settings = new();
-    private bool _saved;
 
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _settings = SettingsSvc.Current;
+        if (firstRender)
+        {
+            await SettingsSvc.HydrateAsync();
+            _settings = SettingsSvc.Current;
+            StateHasChanged();
+        }
     }
 
-    private void Save()
+    private async Task PersistAsync()
     {
-        SettingsSvc.Save(_settings);
-        _saved = true;
+        await SettingsSvc.SaveAsync(_settings);
     }
 }

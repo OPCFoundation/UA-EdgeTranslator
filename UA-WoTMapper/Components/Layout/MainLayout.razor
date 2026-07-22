@@ -1,16 +1,30 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="app-topbar">
-    <span class="app-brand">WoT &harr; OPC UA Mapper</span>
+<header class="app-topbar">
+    <div class="app-logo">
+        <img src="https://opcfoundation.org/wp-content/themes/opc/images/logo.jpg" alt="OPC Foundation" />
+    </div>
+    <NavLink class="app-brand" href="" Match="NavLinkMatch.All">WoT &harr; OPC UA Mapper</NavLink>
     <nav class="app-nav">
-        <NavLink href="" Match="NavLinkMatch.All">Mapper</NavLink>
         <NavLink href="settings">Settings</NavLink>
     </nav>
-</div>
+</header>
 
 <main class="app-main">
     @Body
 </main>
+
+<footer class="app-footer">
+    <span class="app-footer__copy">
+        <a href="https://opcfoundation.org/about/what-is-opc/" target="_blank" rel="noopener">&copy; OPC Federation AISBL @DateTime.UtcNow.Year</a>
+    </span>
+    <nav class="app-footer__nav">
+        <a href="https://opcfoundation.org/about/contact-us/" target="_blank" rel="noopener">Contact Us</a>
+        <a href="https://opcfoundation.org/membership/become-a-member/step1" target="_blank" rel="noopener">Become a Member</a>
+        <a href="https://opcfoundation.org/privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>
+        <a href="https://opcfoundation.org/license/services/1.0/" target="_blank" rel="noopener">Terms of Use</a>
+    </nav>
+</footer>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

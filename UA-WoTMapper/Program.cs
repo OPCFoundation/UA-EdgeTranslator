@@ -8,8 +8,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Application services
-builder.Services.AddSingleton<SettingsService>();
-builder.Services.AddSingleton<WotFileService>();
+builder.Services.AddScoped<SettingsService>();
+builder.Services.AddScoped<WotFileService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<CloudLibraryClient>();
 builder.Services.AddScoped<MapperState>();
