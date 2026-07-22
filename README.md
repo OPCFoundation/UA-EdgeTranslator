@@ -711,11 +711,15 @@ Recommended workflow:
 
 > **Important**: an LLM can misread tables, especially in scanned PDFs, multi‑column layouts or manuals with several variants of the same register map. Always validate the produced Thing Description against the manual and against a live test read from the asset before deploying it to production.
 
-## Mapping WoT Properties to OPC UA Information Model Types (UA-WoTMapper)
+## UA WoT Mapper
+
+### Mapping WoT Properties to OPC UA Information Model Types
 
 `UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based application that makes this mapping a drag-and-drop exercise.
 
-### What it does
+![UA WoT Mapper](docs/screenshots/wotmapper.png)
+
+### How to use the UA WoT Mapper
 
 * **Left pane — WoT Thing Model/Description.** Open a Thing Model or Thing Description to list all of its properties; the loaded file name is shown at the top of the pane. Each property has a target OPC UA `NodeId` that defaults to `s=<property name>` and can be edited inline by clicking it. Mapped properties additionally show the OPC UA type and (for complex types) the field path they were mapped to.
 * **Right pane — OPC UA nodeset browser.** Load an OPC UA `NodeSet2` information model either from a local `*.xml` file or directly from the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/); the loaded nodeset name is shown at the top of the pane. The tool resolves and downloads any referenced (dependency) nodesets automatically and shows which namespaces were loaded and which are still missing. The address space is presented as an expandable tree (scoped to the type hierarchy) in which the types belonging to the loaded nodeset are highlighted. Loaded files are retained when you switch to the Settings page and back.
