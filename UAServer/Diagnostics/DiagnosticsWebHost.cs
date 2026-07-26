@@ -9,6 +9,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     using Serilog;
     using System;
     using System.Globalization;
+    using System.Net.Http.Headers;
+    using System.Security.Cryptography;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -53,6 +56,24 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             _app = builder.Build();
 
             _app.UseStaticFiles();
+
+            // Enforce HTTP Basic authentication on every request before anything
+            // else runs. The dashboard exposes operational controls (certificates,
+            // driver/device management), so access is mandatory-gated behind the
+            // same OPCUA_USERNAME / OPCUA_PASSWORD credentials the OPC UA server
+            // validates at startup (see Program.ValidateRequiredEnvironment).
+            _app.Use(async (context, next) =>
+            {
+                if (!IsAuthorized(context))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.Headers.WWWAuthenticate = "Basic realm=\"UA Edge Translator\", charset=\"UTF-8\"";
+                    return;
+                }
+
+                await next().ConfigureAwait(false);
+            });
+
             _app.UseAntiforgery();
             _app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
@@ -70,6 +91,54 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             await _app.StartAsync(cancellationToken).ConfigureAwait(false);
 
             Log.Logger.Information("Diagnostics UI is available on http://localhost:{Port} (listening on {Url}).", port, Url);
+        }
+
+        private static bool IsAuthorized(HttpContext context)
+        {
+            string expectedUsername = Program.OpcUaUsername;
+            string expectedPassword = Program.OpcUaPassword;
+
+            string headerValue = context.Request.Headers.Authorization;
+            if (string.IsNullOrEmpty(headerValue)
+                || !AuthenticationHeaderValue.TryParse(headerValue, out AuthenticationHeaderValue header)
+                || !string.Equals(header.Scheme, "Basic", StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrEmpty(header.Parameter))
+            {
+                return false;
+            }
+
+            string decoded;
+            try
+            {
+                decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header.Parameter));
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+
+            int separatorIndex = decoded.IndexOf(':');
+            if (separatorIndex < 0)
+            {
+                return false;
+            }
+
+            string username = decoded.Substring(0, separatorIndex);
+            string password = decoded.Substring(separatorIndex + 1);
+
+            // Constant-time comparison to avoid leaking credential length/content
+            // through timing side channels.
+            bool usernameMatches = FixedTimeEquals(username, expectedUsername);
+            bool passwordMatches = FixedTimeEquals(password, expectedPassword);
+
+            return usernameMatches && passwordMatches;
+        }
+
+        private static bool FixedTimeEquals(string a, string b)
+        {
+            byte[] bytesA = Encoding.UTF8.GetBytes(a ?? string.Empty);
+            byte[] bytesB = Encoding.UTF8.GetBytes(b ?? string.Empty);
+            return CryptographicOperations.FixedTimeEquals(bytesA, bytesB);
         }
 
         public async Task StopAsync()

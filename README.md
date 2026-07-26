@@ -319,7 +319,7 @@ Alongside the OPC UA control/data plane, UA Edge Translator hosts a lightweight,
 
 > **Accessing the dashboard:** open `http://localhost:8081`. When running in Docker with the default bridge networking, publish the port by adding `-p 8081:8081` to your `docker run` command; with `--network=host` it is reachable directly on the host. The port is declared via `EXPOSE 8081` in the [Dockerfile](UAServer/Dockerfile).
 >
-> The dashboard is unauthenticated HTTP intended for local/operator diagnostics — do not expose port `8081` directly to untrusted networks.
+> **Authentication is mandatory.** The dashboard is protected with HTTP Basic authentication using the same `OPCUA_USERNAME` / `OPCUA_PASSWORD` credentials required to start the server (see [Mandatory Environment Variables](#mandatory-environment-variables)). Every request must supply these credentials; unauthenticated requests receive `401 Unauthorized`. Because HTTP Basic sends credentials Base64-encoded (not encrypted), still avoid exposing port `8081` directly to untrusted networks and place it behind a TLS-terminating reverse proxy when remote access is required.
 
 The UI provides the following sections:
 
