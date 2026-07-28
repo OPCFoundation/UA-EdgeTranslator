@@ -47,6 +47,12 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly ConcurrentDictionary<string, List<AssetTag>> _tags = new();
 
+        private readonly ConcurrentDictionary<string, BaseObjectState> _eventSources = new();
+
+        private readonly ConcurrentDictionary<string, AlarmConditionState> _alarmConditions = new();
+
+        private readonly ConcurrentDictionary<string, (IEventingAsset Asset, EventHandler<AlarmEvent> Handler)> _eventSubscriptions = new();
+
         // Reverse index: maps the OPC UA NodeId of a translated tag to its
         // owning asset and tag, so OnReadValue / OnWriteValue can resolve a
         // tag in O(1) instead of scanning every (asset, tag) pair on every
@@ -165,6 +171,24 @@ namespace Opc.Ua.Edge.Translator
                 catch (ObjectDisposedException)
                 {
                     // already disposed — nothing to do
+                }
+
+                if (_eventSubscriptions != null)
+                {
+                    foreach (var eventSubscription in _eventSubscriptions.Values)
+                    {
+                        try
+                        {
+                            eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
+                            eventSubscription.Asset.StopEventSubscription();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to stop event subscription during server shutdown.");
+                        }
+                    }
+
+                    _eventSubscriptions.Clear();
                 }
 
                 lock (Lock)
@@ -769,6 +793,12 @@ namespace Opc.Ua.Edge.Translator
 
                 if (_assets.TryRemove(assetName, out IAsset removedAsset))
                 {
+                    if (_eventSubscriptions.TryRemove(assetName, out var eventSubscription))
+                    {
+                        eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
+                        eventSubscription.Asset.StopEventSubscription();
+                    }
+
                     // Release the southbound connection (socket/stream) the driver
                     // holds. Dropping only the dictionary reference leaks it until
                     // finalization. Defensive: a faulty driver must not fail delete.
@@ -783,6 +813,11 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 _reconnectStates.TryRemove(assetName, out _);
+                _eventSources.TryRemove(assetName, out _);
+                foreach (var entry in _alarmConditions.Where(e => e.Key.StartsWith(assetName + ":", StringComparison.Ordinal)).ToArray())
+                {
+                    _alarmConditions.TryRemove(entry.Key, out _);
+                }
 
                 // Drop NodeId -> tag entries for this asset from the reverse index.
                 foreach (var entry in _tagIndex.Where(e => e.Value.AssetId == assetName).ToArray())
@@ -1065,10 +1100,13 @@ namespace Opc.Ua.Edge.Translator
             }
 
             byte unitId = 1;
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
+            bool requiresEventConnection = td.Events?.Count > 0;
+            if (requiresEventConnection || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
             {
                 AssetConnectionTest(td, out unitId);
             }
+
+            AttachEventingAsset(td.Name, parent);
 
             // create nodes for each TD property
             if ((td.Properties != null) && (td.Properties.Count > 0))
@@ -1613,6 +1651,78 @@ namespace Opc.Ua.Edge.Translator
             _assets[td.Name] = asset;
         }
 
+        private void AttachEventingAsset(string assetId, NodeState assetNode)
+        {
+            if (!_assets.TryGetValue(assetId, out IAsset asset) || asset is not IEventingAsset eventingAsset)
+            {
+                return;
+            }
+
+            ushort namespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + assetId + "/");
+            BaseObjectState source = _nodeFactory.CreateObject(assetNode as BaseObjectState, "Alarms", ObjectTypeIds.BaseObjectType, namespaceIndex, assetId + "_Alarms");
+            source.EventNotifier = EventNotifiers.SubscribeToEvents;
+            AddPredefinedNode(SystemContext, source);
+            _eventSources[assetId] = source;
+
+            EventHandler<AlarmEvent> handler = (_, alarm) =>
+            {
+                if (alarm != null)
+                {
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            ReportReadOnlyAlarm(assetId, alarm);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to project alarm event for asset {AssetId}", assetId);
+                        }
+                    });
+                }
+            };
+
+            eventingAsset.AlarmReceived += handler;
+            _eventSubscriptions[assetId] = (eventingAsset, handler);
+            eventingAsset.StartEventSubscription();
+        }
+
+        private void ReportReadOnlyAlarm(string assetId, AlarmEvent alarm)
+        {
+            if (!_eventSources.TryGetValue(assetId, out BaseObjectState source))
+            {
+                return;
+            }
+
+            lock (Lock)
+            {
+                string conditionKey = string.IsNullOrWhiteSpace(alarm.ConditionKey)
+                    ? assetId + ":" + alarm.Source + ":" + alarm.ConditionName
+                    : assetId + ":" + alarm.ConditionKey;
+
+                AlarmConditionState condition = _alarmConditions.GetOrAdd(conditionKey, _ =>
+                {
+                    var created = new AlarmConditionState(source);
+                    created.Initialize(SystemContext, null, EventSeverity.Medium, new Ua.LocalizedText("Alarm condition"));
+                    return created;
+                });
+
+                condition.SetChildValue(SystemContext, BrowseNames.SourceNode, source.NodeId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.SourceName, alarm.Source ?? assetId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.ConditionName, alarm.ConditionName ?? alarm.Source ?? assetId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.Severity, (ushort)Math.Clamp(alarm.Severity, 0, ushort.MaxValue), false);
+                condition.SetChildValue(SystemContext, BrowseNames.Message, new Ua.LocalizedText(alarm.Message ?? string.Empty), false);
+                condition.SetChildValue(SystemContext, BrowseNames.Time, alarm.Time == default ? DateTime.UtcNow : alarm.Time, false);
+                condition.SetChildValue(SystemContext, BrowseNames.ReceiveTime, DateTime.UtcNow, false);
+                condition.SetChildValue(SystemContext, BrowseNames.Retain, alarm.Active || !alarm.Acknowledged, false);
+                condition.SetChildValue(SystemContext, BrowseNames.EnabledState, new Ua.LocalizedText(alarm.Enabled ? "Enabled" : "Disabled"), false);
+                condition.SetChildValue(SystemContext, BrowseNames.ActiveState, new Ua.LocalizedText(alarm.Active ? "Active" : "Inactive"), false);
+                condition.SetChildValue(SystemContext, BrowseNames.AckedState, new Ua.LocalizedText(alarm.Acknowledged ? "Acknowledged" : "Unacknowledged"), false);
+
+                Server.ReportEvent(condition);
+            }
+        }
+
         private ExpandedNodeId ParseExpandedNodeId(string nodeString)
         {
             if (!string.IsNullOrEmpty(nodeString))
@@ -2050,6 +2160,11 @@ namespace Opc.Ua.Edge.Translator
 
                 if (asset.IsConnected)
                 {
+                    if (asset is IEventingAsset eventingAsset)
+                    {
+                        eventingAsset.StartEventSubscription();
+                    }
+
                     Log.Logger.Information("Reconnected to asset {AssetId}.", assetId);
                     ResetReconnectState(assetId);
                     return;

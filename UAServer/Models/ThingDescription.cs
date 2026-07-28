@@ -39,6 +39,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("actions")]
         public Dictionary<string, TDAction> Actions { get; set; }
+
+        [JsonProperty("events")]
+        public Dictionary<string, TDEvent> Events { get; set; }
     }
 
     public class Property
@@ -90,6 +93,48 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("required")]
         public string[] Required { get; set; }
+    }
+
+    public class TDEvent
+    {
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string Description { get; set; }
+
+        [JsonProperty("forms")]
+        public object[] Forms { get; set; }
+    }
+
+    public class OpcAeEventForm
+    {
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
+        [JsonProperty("categories")]
+        public int[] Categories { get; set; }
+
+        [JsonProperty("areas")]
+        public string[] Areas { get; set; }
+
+        [JsonProperty("sources")]
+        public string[] Sources { get; set; }
+
+        [JsonProperty("eventTypes")]
+        public int EventTypes { get; set; } = 7;
+
+        [JsonProperty("lowSeverity")]
+        public int LowSeverity { get; set; } = 1;
+
+        [JsonProperty("highSeverity")]
+        public int HighSeverity { get; set; } = 1000;
+
+        [JsonProperty("bufferTime")]
+        public int BufferTime { get; set; } = 1000;
+
+        [JsonProperty("maxEvents")]
+        public int MaxEvents { get; set; } = 1000;
+
+        [JsonProperty("refreshOnConnect")]
+        public bool RefreshOnConnect { get; set; } = true;
     }
 
     public class GenericForm

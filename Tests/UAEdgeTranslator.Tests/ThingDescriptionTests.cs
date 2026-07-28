@@ -1,8 +1,8 @@
 namespace Opc.Ua.Edge.Translator.Tests
 {
-    using System.Collections.Generic;
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Models;
+    using System.Collections.Generic;
     using Xunit;
 
     public class ThingDescriptionTests
@@ -141,6 +141,47 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             Assert.Equal(TypeEnum.String, hydrated.Type);
             Assert.Equal("factory-default", hydrated.Const?.ToString());
+        }
+
+        [Fact]
+        public void ThingDescription_round_trips_opc_ae_event_filters()
+        {
+            ThingDescription td = new()
+            {
+                Name = "MatrikonAe",
+                Base = "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+                Events = new Dictionary<string, TDEvent>
+                {
+                    ["alarms"] = new()
+                    {
+                        Forms = new object[]
+                        {
+                            new OpcAeEventForm
+                            {
+                                Href = "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+                                Categories = new[] { 1, 2 },
+                                Areas = new[] { "Simulation" },
+                                Sources = new[] { "Simulation.Source" },
+                                EventTypes = 7,
+                                LowSeverity = 100,
+                                HighSeverity = 900,
+                                BufferTime = 500,
+                                MaxEvents = 100,
+                                RefreshOnConnect = true
+                            }
+                        }
+                    }
+                }
+            };
+
+            ThingDescription roundTripped = JsonConvert.DeserializeObject<ThingDescription>(JsonConvert.SerializeObject(td));
+            OpcAeEventForm form = JsonConvert.DeserializeObject<OpcAeEventForm>(roundTripped.Events["alarms"].Forms[0].ToString());
+
+            Assert.Equal(td.Base, form.Href);
+            Assert.Equal(new[] { 1, 2 }, form.Categories);
+            Assert.Equal("Simulation", form.Areas[0]);
+            Assert.Equal(100, form.LowSeverity);
+            Assert.True(form.RefreshOnConnect);
         }
     }
 }

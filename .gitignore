@@ -188,6 +188,10 @@ PublishScripts/
 *.snupkg
 # The packages folder can be ignored because of Package Restore
 **/[Pp]ackages/*
+# The OPC A&E driver vendors the OPC Foundation MIT-licensed package feed so
+# clean builds restore the required Classic COM API without an external feed.
+!ProtocolDrivers/OPCAE/packages/
+!ProtocolDrivers/OPCAE/packages/*.nupkg
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
@@ -349,6 +353,7 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 *.jsonld
+!Samples/Matrikon OPC A&E Simulation Server.td.jsonld
 /*.nodeset2.xml
 /UA-WoTGenerator/Mondelez
 /UA-WoTGenerator/MCC1_V33_20240810_Tags.csv
@@ -358,3 +363,5 @@ MigrationBackup/
 /UAServer/settings
 /UA-WoTMapper/pki
 /UA-WoTMapper/App_Data
+/dist/
+/isntallationinstrcutions.md

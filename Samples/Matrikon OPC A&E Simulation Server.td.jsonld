@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1"
+  ],
+  "id": "urn:MatrikonAe",
+  "name": "MatrikonAe",
+  "title": "Matrikon A&E",
+  "base": "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "properties": {},
+  "actions": {},
+  "events": {
+    "alarms": {
+      "description": "Read-only Matrikon A&E conditions",
+      "forms": [
+        {
+          "href": "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+          "eventTypes": 7,
+          "lowSeverity": 1,
+          "highSeverity": 1000,
+          "bufferTime": 1000,
+          "maxEvents": 1000,
+          "refreshOnConnect": true
+        }
+      ]
+    }
+  }
+}
