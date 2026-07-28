@@ -1,6 +1,7 @@
 namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
@@ -58,7 +59,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             OpcAeEventForm form = td.Events?
                 .Values
                 .SelectMany(value => value.Forms ?? Array.Empty<object>())
-                .Select(value => JsonConvert.DeserializeObject<OpcAeEventForm>(value.ToString()))
+                .Select(TryReadEventForm)
                 .FirstOrDefault(value => value != null)
                 ?? new OpcAeEventForm { Href = td.Base };
 
@@ -92,6 +93,63 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (!isLocal)
             {
                 throw new ArgumentException("Remote DCOM OPC A&E endpoints are not supported. Use localhost or the local machine name.", nameof(endpoint));
+            }
+        }
+
+        private static OpcAeEventForm TryReadEventForm(object value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is OpcAeEventForm typed)
+            {
+                return typed;
+            }
+
+            if (value is JObject jsonObject)
+            {
+                return jsonObject.ToObject<OpcAeEventForm>();
+            }
+
+            if (value is JToken token)
+            {
+                if (token.Type == JTokenType.Object)
+                {
+                    return token.ToObject<OpcAeEventForm>();
+                }
+
+                if (token.Type == JTokenType.String)
+                {
+                    return TryDeserializeJsonString(token.Value<string>());
+                }
+
+                return null;
+            }
+
+            if (value is string json)
+            {
+                return TryDeserializeJsonString(json);
+            }
+
+            return null;
+        }
+
+        private static OpcAeEventForm TryDeserializeJsonString(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<OpcAeEventForm>(json);
+            }
+            catch (JsonException)
+            {
+                return null;
             }
         }
     }

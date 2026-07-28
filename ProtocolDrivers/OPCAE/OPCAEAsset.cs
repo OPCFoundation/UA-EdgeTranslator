@@ -18,6 +18,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         private const string EventChangedName = "EventChanged";
 
         private readonly object _sync = new();
+        private static readonly object s_runtimeAssemblySync = new();
+        private static readonly Dictionary<string, Assembly> s_runtimeAssemblyCache = new(StringComparer.OrdinalIgnoreCase);
         private Uri _endpoint;
         private OpcAeEventForm _form;
         private object _server;
@@ -53,12 +55,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     Type factoryType = RequireType(com, "OpcCom.Factory");
                     Type urlType = RequireType(api, "Opc.URL");
                     Type serverType = RequireType(api, "Opc.Ae.Server");
+                    Type connectDataType = RequireType(api, "Opc.ConnectData");
 
                     object factory = Activator.CreateInstance(factoryType);
                     string classicEndpoint = "opcae://" + _endpoint.Host + "/" + _endpoint.AbsolutePath.Trim('/');
                     object url = Activator.CreateInstance(urlType, classicEndpoint);
                     _server = Activator.CreateInstance(serverType, factory, url);
-                    serverType.GetMethod("Connect", [urlType, api.GetType("Opc.ConnectData")])?.Invoke(_server, [url, null]);
+                    MethodInfo connectMethod = serverType.GetMethod("Connect", [urlType, connectDataType])
+                        ?? throw new InvalidOperationException("Required OPC A&E method Connect is unavailable.");
+                    connectMethod.Invoke(_server, [url, null]);
                     IsConnected = true;
                     Log.Logger.Information("Connected to OPC A&E server {ProgId} on {Host}", _endpoint.AbsolutePath.Trim('/'), _endpoint.Host);
                 }
@@ -279,7 +284,25 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new FileNotFoundException("Required OPC A&E runtime assembly was not packaged.", path);
             }
 
-            return Assembly.LoadFrom(path);
+            lock (s_runtimeAssemblySync)
+            {
+                if (s_runtimeAssemblyCache.TryGetValue(path, out Assembly cached))
+                {
+                    return cached;
+                }
+
+                string fullPath = Path.GetFullPath(path);
+                Assembly loaded = AppDomain.CurrentDomain
+                    .GetAssemblies()
+                    .FirstOrDefault(assembly =>
+                        !assembly.IsDynamic &&
+                        !string.IsNullOrEmpty(assembly.Location) &&
+                        string.Equals(Path.GetFullPath(assembly.Location), fullPath, StringComparison.OrdinalIgnoreCase));
+
+                loaded ??= Assembly.LoadFrom(fullPath);
+                s_runtimeAssemblyCache[path] = loaded;
+                return loaded;
+            }
         }
 
         private static Type RequireType(Assembly assembly, string typeName) =>

@@ -18,6 +18,7 @@ namespace Opc.Ua.Edge.Translator
     using System.Linq;
     using System.Text;
     using System.Threading;
+    using System.Threading.Channels;
     using System.Threading.Tasks;
 
     public class UANodeManager : CustomNodeManager2
@@ -52,6 +53,16 @@ namespace Opc.Ua.Edge.Translator
         private readonly ConcurrentDictionary<string, AlarmConditionState> _alarmConditions = new();
 
         private readonly ConcurrentDictionary<string, (IEventingAsset Asset, EventHandler<AlarmEvent> Handler)> _eventSubscriptions = new();
+
+        private sealed class AlarmProjectionQueue
+        {
+            public required Channel<AlarmEvent> Channel { get; init; }
+            public required CancellationTokenSource Cancellation { get; init; }
+            public required Task Worker { get; init; }
+            public int DroppedEvents;
+        }
+
+        private readonly ConcurrentDictionary<string, AlarmProjectionQueue> _alarmProjectionQueues = new();
 
         // Reverse index: maps the OPC UA NodeId of a translated tag to its
         // owning asset and tag, so OnReadValue / OnWriteValue can resolve a
@@ -189,6 +200,11 @@ namespace Opc.Ua.Edge.Translator
                     }
 
                     _eventSubscriptions.Clear();
+                }
+
+                foreach (string assetId in _alarmProjectionQueues.Keys.ToArray())
+                {
+                    StopAlarmProjectionQueue(assetId);
                 }
 
                 lock (Lock)
@@ -795,9 +811,18 @@ namespace Opc.Ua.Edge.Translator
                 {
                     if (_eventSubscriptions.TryRemove(assetName, out var eventSubscription))
                     {
-                        eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
-                        eventSubscription.Asset.StopEventSubscription();
+                        try
+                        {
+                            eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
+                            eventSubscription.Asset.StopEventSubscription();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to stop event subscription for asset {AssetId} during delete.", assetName);
+                        }
                     }
+
+                    StopAlarmProjectionQueue(assetName);
 
                     // Release the southbound connection (socket/stream) the driver
                     // holds. Dropping only the dictionary reference leaks it until
@@ -1658,17 +1683,65 @@ namespace Opc.Ua.Edge.Translator
                 return;
             }
 
-            ushort namespaceIndex = (ushort)Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/" + assetId + "/");
+            string namespaceUri = "http://opcfoundation.org/UA/" + assetId + "/";
+            ushort namespaceIndex = (ushort)Server.NamespaceUris.GetIndexOrAppend(namespaceUri);
             BaseObjectState source = _nodeFactory.CreateObject(assetNode as BaseObjectState, "Alarms", ObjectTypeIds.BaseObjectType, namespaceIndex, assetId + "_Alarms");
             source.EventNotifier = EventNotifiers.SubscribeToEvents;
             AddPredefinedNode(SystemContext, source);
             _eventSources[assetId] = source;
 
+            AlarmProjectionQueue projectionQueue = CreateAlarmProjectionQueue(assetId);
+
             EventHandler<AlarmEvent> handler = (_, alarm) =>
             {
-                if (alarm != null)
+                if (alarm == null)
                 {
-                    _ = Task.Run(() =>
+                    return;
+                }
+
+                if (!projectionQueue.Channel.Writer.TryWrite(alarm))
+                {
+                    int dropped = Interlocked.Increment(ref projectionQueue.DroppedEvents);
+                    if (dropped == 1 || dropped % 100 == 0)
+                    {
+                        Log.Logger.Warning(
+                            "Dropped OPC A&E alarm for asset {AssetId} because projection queue is full. Total dropped={DroppedCount}.",
+                            assetId,
+                            dropped);
+                    }
+                }
+            };
+
+            try
+            {
+                eventingAsset.AlarmReceived += handler;
+                _eventSubscriptions[assetId] = (eventingAsset, handler);
+                eventingAsset.StartEventSubscription();
+            }
+            catch
+            {
+                eventingAsset.AlarmReceived -= handler;
+                _eventSubscriptions.TryRemove(assetId, out _);
+                StopAlarmProjectionQueue(assetId);
+                throw;
+            }
+        }
+
+        private AlarmProjectionQueue CreateAlarmProjectionQueue(string assetId)
+        {
+            var queue = Channel.CreateBounded<AlarmEvent>(new BoundedChannelOptions(512)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.DropWrite
+            });
+
+            var cancellation = new CancellationTokenSource();
+            Task worker = Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (AlarmEvent alarm in queue.Reader.ReadAllAsync(cancellation.Token))
                     {
                         try
                         {
@@ -1678,13 +1751,46 @@ namespace Opc.Ua.Edge.Translator
                         {
                             Log.Logger.Warning(ex, "Failed to project alarm event for asset {AssetId}", assetId);
                         }
-                    });
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+                    // expected during delete/shutdown
+                }
+            }, cancellation.Token);
+
+            var projectionQueue = new AlarmProjectionQueue
+            {
+                Channel = queue,
+                Cancellation = cancellation,
+                Worker = worker
             };
 
-            eventingAsset.AlarmReceived += handler;
-            _eventSubscriptions[assetId] = (eventingAsset, handler);
-            eventingAsset.StartEventSubscription();
+            _alarmProjectionQueues[assetId] = projectionQueue;
+            return projectionQueue;
+        }
+
+        private void StopAlarmProjectionQueue(string assetId)
+        {
+            if (!_alarmProjectionQueues.TryRemove(assetId, out AlarmProjectionQueue queue))
+            {
+                return;
+            }
+
+            try
+            {
+                queue.Channel.Writer.TryComplete();
+                queue.Cancellation.Cancel();
+                queue.Worker.Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Failed to stop alarm projection queue for asset {AssetId}.", assetId);
+            }
+            finally
+            {
+                queue.Cancellation.Dispose();
+            }
         }
 
         private void ReportReadOnlyAlarm(string assetId, AlarmEvent alarm)

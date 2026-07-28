@@ -97,44 +97,38 @@ namespace Opc.Ua.Edge.Translator.Models
 
     public class TDEvent
     {
+        [JsonProperty("@type", NullValueHandling = NullValueHandling.Ignore)]
+        public string[] Type { get; set; }
+
+        [JsonProperty("title", NullValueHandling = NullValueHandling.Ignore)]
+        public string Title { get; set; }
+
+        [JsonProperty("titles", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, string> Titles { get; set; }
+
         [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
         public string Description { get; set; }
 
+        [JsonProperty("descriptions", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, string> Descriptions { get; set; }
+
+        [JsonProperty("uriVariables", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, object> UriVariables { get; set; }
+
+        [JsonProperty("data", NullValueHandling = NullValueHandling.Ignore)]
+        public object Data { get; set; }
+
+        [JsonProperty("subscription", NullValueHandling = NullValueHandling.Ignore)]
+        public object Subscription { get; set; }
+
+        [JsonProperty("cancellation", NullValueHandling = NullValueHandling.Ignore)]
+        public object Cancellation { get; set; }
+
+        [JsonProperty("dataResponse", NullValueHandling = NullValueHandling.Ignore)]
+        public object DataResponse { get; set; }
+
         [JsonProperty("forms")]
         public object[] Forms { get; set; }
-    }
-
-    public class OpcAeEventForm
-    {
-        [JsonProperty("href")]
-        public string Href { get; set; }
-
-        [JsonProperty("categories")]
-        public int[] Categories { get; set; }
-
-        [JsonProperty("areas")]
-        public string[] Areas { get; set; }
-
-        [JsonProperty("sources")]
-        public string[] Sources { get; set; }
-
-        [JsonProperty("eventTypes")]
-        public int EventTypes { get; set; } = 7;
-
-        [JsonProperty("lowSeverity")]
-        public int LowSeverity { get; set; } = 1;
-
-        [JsonProperty("highSeverity")]
-        public int HighSeverity { get; set; } = 1000;
-
-        [JsonProperty("bufferTime")]
-        public int BufferTime { get; set; } = 1000;
-
-        [JsonProperty("maxEvents")]
-        public int MaxEvents { get; set; } = 1000;
-
-        [JsonProperty("refreshOnConnect")]
-        public bool RefreshOnConnect { get; set; } = true;
     }
 
     public class GenericForm
