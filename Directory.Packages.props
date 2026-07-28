@@ -47,7 +47,8 @@
 	<PackageVersion Include="NModbus" Version="3.0.83" />
 	<PackageVersion Include="NModbus.Serial" Version="3.0.83" />
 	<PackageVersion Include="TitaniumAS.Opc.Client.NetCore" Version="1.0.2.1" />
-	<PackageVersion Include="OpcNetApi.Com" Version="2.2.1" />
+	<PackageVersion Include="Quick.OpcNetApi" Version="2.1.108" />
+	<PackageVersion Include="Quick.OpcNetApi.Com" Version="2.1.108" />
 	<PackageVersion Include="libplctag" Version="1.5.2" />
 	<PackageVersion Include="Sharp7" Version="1.1.84" />
 

@@ -12,7 +12,8 @@
   <ItemGroup>
     <!-- Official OPC Foundation Classic .NET API. Its net10.0-windows target
          brings the COM RCW and managed API needed for local OPC A&E. -->
-    <PackageReference Include="OpcNetApi.Com" />
+    <PackageReference Include="Quick.OpcNetApi" />
+    <PackageReference Include="Quick.OpcNetApi.Com" />
   </ItemGroup>
 
   <ItemGroup>
