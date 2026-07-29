@@ -1834,6 +1834,10 @@ namespace Opc.Ua.Edge.Translator
                 condition.SetChildValue(SystemContext, BrowseNames.ActiveState, new Ua.LocalizedText(alarm.Active ? "Active" : "Inactive"), false);
                 condition.SetChildValue(SystemContext, BrowseNames.AckedState, new Ua.LocalizedText(alarm.Acknowledged ? "Acknowledged" : "Unacknowledged"), false);
 
+                condition.EnabledState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Enabled, false);
+                condition.ActiveState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Active, false);
+                condition.AckedState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Acknowledged, false);
+
                 Server.ReportEvent(condition);
             }
         }
