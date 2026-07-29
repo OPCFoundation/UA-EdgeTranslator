@@ -57,6 +57,7 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Modbus RTU
 * OPC UA
 * OPC DA (a.k.a. OPC Classic)
+* OPC Classic Alarms & Events (read-only)
 * HTTP
 * Siemens S7 Comm
 * Rockwell CIP (Ethernet/IP)
@@ -92,6 +93,8 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 > **Note**: Since Matter uses BluetoothLE and mDNS as the underlying network protocol for commissioning, Matter support is limited to running UA Edge Translator natively or with the --network=host argument as well as with the `-v /run/dbus:/run/dbus:ro` argument and, depending on your Linux distro, `--cap-add=NET_ADMIN`, within a Docker container! Also, if you are using the BlueZ stack on Linux, make sure that experimental features are enabled since Matter uses some Bluetooth features that are not enabled by default in this stack.
 
 > **Note**: OPC DA (OLE for Process Control Data Access) is a legacy protocol that relies on COM/DCOM and its support is limited to running UA Edge Translator natively on Windows on x86 CPUs and the OPC DA server must be located on the same machine as UA Edge Translator (i.e. no DCOM support).
+
+> **Note**: OPC Classic Alarms & Events support is read-only and follows the same native Windows x86 and local-server restrictions as OPC DA. See [OPC A&E deployment](ProtocolDrivers/OPCAE/README.md) for prerequisites and configuration.
 
 > **Note**: For testing the Matter asset interface, you will also need to create a Thread network using an OpenThread Border Router (OTBR). An open-source OTBR is available [here](https://openthread.io/guides/border-router) and runs on a Raspberry Pi equipped with a Thread radio USB dongle, the setup instructions are [here](https://github.com/make2explore/Open-Thread-Border-Router-on-RaspberryPi). If you need a Matter commissioning QR-code scanner/decoder, there is an online one [here](https://zxing.org/w/decode.jspx).
 
@@ -396,8 +399,8 @@ To build your own protocol driver, create a new .NET10 Class Library project and
 ```
 <ItemGroup>
   <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
-    <Private>true</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    <Private>false</Private>
+    <ExcludeAssets>runtime</ExcludeAssets>
   </ProjectReference>
 </ItemGroup>
 ```

@@ -39,6 +39,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("actions")]
         public Dictionary<string, TDAction> Actions { get; set; }
+
+        [JsonProperty("events")]
+        public Dictionary<string, TDEvent> Events { get; set; }
     }
 
     public class Property
@@ -90,6 +93,42 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("required")]
         public string[] Required { get; set; }
+    }
+
+    public class TDEvent
+    {
+        [JsonProperty("@type", NullValueHandling = NullValueHandling.Ignore)]
+        public string[] Type { get; set; }
+
+        [JsonProperty("title", NullValueHandling = NullValueHandling.Ignore)]
+        public string Title { get; set; }
+
+        [JsonProperty("titles", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, string> Titles { get; set; }
+
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string Description { get; set; }
+
+        [JsonProperty("descriptions", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, string> Descriptions { get; set; }
+
+        [JsonProperty("uriVariables", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, object> UriVariables { get; set; }
+
+        [JsonProperty("data", NullValueHandling = NullValueHandling.Ignore)]
+        public object Data { get; set; }
+
+        [JsonProperty("subscription", NullValueHandling = NullValueHandling.Ignore)]
+        public object Subscription { get; set; }
+
+        [JsonProperty("cancellation", NullValueHandling = NullValueHandling.Ignore)]
+        public object Cancellation { get; set; }
+
+        [JsonProperty("dataResponse", NullValueHandling = NullValueHandling.Ignore)]
+        public object DataResponse { get; set; }
+
+        [JsonProperty("forms")]
+        public object[] Forms { get; set; }
     }
 
     public class GenericForm

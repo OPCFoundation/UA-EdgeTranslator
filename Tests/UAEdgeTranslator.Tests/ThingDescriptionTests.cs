@@ -1,8 +1,10 @@
 namespace Opc.Ua.Edge.Translator.Tests
 {
-    using System.Collections.Generic;
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua.Edge.Translator.Models;
+    using System.Collections.Generic;
+    using System.Linq;
     using Xunit;
 
     public class ThingDescriptionTests
@@ -141,6 +143,109 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             Assert.Equal(TypeEnum.String, hydrated.Type);
             Assert.Equal("factory-default", hydrated.Const?.ToString());
+        }
+
+        [Fact]
+        public void ThingDescription_round_trips_opc_ae_event_filters()
+        {
+            ThingDescription td = new()
+            {
+                Name = "MatrikonAe",
+                Base = "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+                Events = new Dictionary<string, TDEvent>
+                {
+                    ["alarms"] = new()
+                    {
+                        Forms = new object[]
+                        {
+                            new
+                            {
+                                Href = "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+                                Categories = new[] { 1, 2 },
+                                Areas = new[] { "Simulation" },
+                                Sources = new[] { "Simulation.Source" },
+                                EventTypes = 7,
+                                LowSeverity = 100,
+                                HighSeverity = 900,
+                                BufferTime = 500,
+                                MaxEvents = 100,
+                                RefreshOnConnect = true
+                            }
+                        }
+                    }
+                }
+            };
+
+            ThingDescription roundTripped = JsonConvert.DeserializeObject<ThingDescription>(JsonConvert.SerializeObject(td));
+            JObject form = JObject.Parse(roundTripped.Events["alarms"].Forms[0].ToString());
+            JToken categories = form["Categories"] ?? form["categories"];
+
+            Assert.Equal(td.Base, form["Href"]?.ToString() ?? form["href"]?.ToString());
+            Assert.Equal(2, categories?.Values().Count());
+            Assert.Equal("Simulation", form["Areas"]?[0]?.ToString() ?? form["areas"]?[0]?.ToString());
+            Assert.Equal("100", form["LowSeverity"]?.ToString() ?? form["lowSeverity"]?.ToString());
+            Assert.True((form["RefreshOnConnect"] ?? form["refreshOnConnect"])?.Value<bool>() ?? false);
+        }
+
+        [Fact]
+        public void TDEvent_round_trips_extended_td11_fields()
+        {
+            ThingDescription td = new()
+            {
+                Name = "EventThing",
+                Base = "mock://event-thing",
+                Events = new Dictionary<string, TDEvent>
+                {
+                    ["statusChanged"] = new()
+                    {
+                        Type = new[] { "StatusEvent" },
+                        Title = "Status changed",
+                        Titles = new Dictionary<string, string>
+                        {
+                            ["en"] = "Status changed"
+                        },
+                        Description = "Notifies when status changes.",
+                        Descriptions = new Dictionary<string, string>
+                        {
+                            ["en"] = "Notifies when status changes."
+                        },
+                        UriVariables = new Dictionary<string, object>
+                        {
+                            ["subscriptionId"] = new { type = "string" }
+                        },
+                        Data = new { type = "object", properties = new { state = new { type = "string" } } },
+                        Subscription = new { type = "object", properties = new { threshold = new { type = "number" } } },
+                        Cancellation = new { type = "object", properties = new { subscriptionId = new { type = "string" } } },
+                        DataResponse = new { type = "object", properties = new { accepted = new { type = "boolean" } } },
+                        Forms = new object[]
+                        {
+                            new { href = "mock://event-thing/events/status", op = new[] { "subscribeevent", "unsubscribeevent" } }
+                        }
+                    }
+                }
+            };
+
+            ThingDescription roundTripped = JsonConvert.DeserializeObject<ThingDescription>(JsonConvert.SerializeObject(td));
+            TDEvent ev = roundTripped.Events["statusChanged"];
+
+            Assert.Equal("StatusEvent", ev.Type[0]);
+            Assert.Equal("Status changed", ev.Title);
+            Assert.Equal("Status changed", ev.Titles["en"]);
+            Assert.Equal("Notifies when status changes.", ev.Description);
+            Assert.NotNull(ev.Data);
+            Assert.NotNull(ev.Subscription);
+            Assert.NotNull(ev.Cancellation);
+            Assert.NotNull(ev.DataResponse);
+
+            JObject data = (JObject)ev.Data;
+            JObject subscription = (JObject)ev.Subscription;
+            JObject cancellation = (JObject)ev.Cancellation;
+            JObject dataResponse = (JObject)ev.DataResponse;
+
+            Assert.Equal("object", data["type"]?.ToString());
+            Assert.Equal("object", subscription["type"]?.ToString());
+            Assert.Equal("object", cancellation["type"]?.ToString());
+            Assert.Equal("object", dataResponse["type"]?.ToString());
         }
     }
 }
