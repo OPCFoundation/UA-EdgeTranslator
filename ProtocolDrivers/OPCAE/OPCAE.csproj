@@ -2,9 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Platforms>x86</Platforms>
-    <PlatformTarget Condition="'$(Platform)' == 'x86'">x86</PlatformTarget>
-    <PlatformTarget Condition="'$(Platform)' != 'x86'">x64</PlatformTarget>
+    <Platforms>x86;x64</Platforms>
+    <!-- Deliberately no explicit <PlatformTarget>. Like OPCDA, this driver's
+         x86 requirement is a runtime concern satisfied by publishing with
+         win-x86; forcing architecture-specific compilation causes CS8012 in
+         mixed solution builds when referenced projects are configured x64. -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

@@ -175,13 +175,16 @@ namespace Opc.Ua.Edge.Translator
                 // Signal all per-asset polling tasks to exit before tearing down
                 // the rest of the address space; otherwise they would race against
                 // the disposed file managers and disposed lock.
-                try
+                if (_shutdownCts != null)
                 {
-                    _shutdownCts.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // already disposed — nothing to do
+                    try
+                    {
+                        _shutdownCts.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // already disposed — nothing to do
+                    }
                 }
 
                 if (_eventSubscriptions != null)
@@ -202,22 +205,28 @@ namespace Opc.Ua.Edge.Translator
                     _eventSubscriptions.Clear();
                 }
 
-                foreach (string assetId in _alarmProjectionQueues.Keys.ToArray())
+                if (_alarmProjectionQueues != null)
                 {
-                    StopAlarmProjectionQueue(assetId);
-                }
-
-                lock (Lock)
-                {
-                    foreach (FileManager manager in _fileManagers.Values)
+                    foreach (string assetId in _alarmProjectionQueues.Keys.ToArray())
                     {
-                        manager.Dispose();
+                        StopAlarmProjectionQueue(assetId);
                     }
-
-                    _fileManagers.Clear();
                 }
 
-                _shutdownCts.Dispose();
+                if (_fileManagers != null && Lock != null)
+                {
+                    lock (Lock)
+                    {
+                        foreach (FileManager manager in _fileManagers.Values)
+                        {
+                            manager.Dispose();
+                        }
+
+                        _fileManagers.Clear();
+                    }
+                }
+
+                _shutdownCts?.Dispose();
             }
         }
 
@@ -1741,7 +1750,7 @@ namespace Opc.Ua.Edge.Translator
             {
                 try
                 {
-                    await foreach (AlarmEvent alarm in queue.Reader.ReadAllAsync(cancellation.Token))
+                    await foreach (AlarmEvent alarm in queue.Reader.ReadAllAsync(cancellation.Token).ConfigureAwait(false))
                     {
                         try
                         {
