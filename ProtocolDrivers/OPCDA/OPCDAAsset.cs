@@ -60,6 +60,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public void Disconnect()
         {
+            bool cleanupFailed = false;
+
             try
             {
                 if (_group != null)
@@ -72,6 +74,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // A reconnect often begins after DCOM has already dropped the
                 // underlying connection. Cleanup must still continue.
                 Log.Logger.Debug(ex, "OPC DA group removal during disconnect failed.");
+                cleanupFailed = true;
             }
             finally
             {
@@ -84,6 +87,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 catch (Exception ex)
                 {
                     Log.Logger.Debug(ex, "OPC DA server disconnect failed.");
+                    cleanupFailed = true;
                 }
                 finally
                 {
@@ -92,7 +96,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
             }
 
-            Log.Logger.Information("Disconnected from OPC DA server");
+            if (cleanupFailed)
+            {
+                Log.Logger.Warning("OPC DA disconnect for {ProgId} completed with cleanup errors.", _progId);
+            }
+            else
+            {
+                Log.Logger.Information("Disconnected from OPC DA server {ProgId}", _progId);
+            }
         }
 
         public string GetRemoteEndpoint()

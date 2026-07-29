@@ -2048,6 +2048,12 @@ namespace Opc.Ua.Edge.Translator
                         port = uri.Port;
                     }
                 }
+                else if (remoteEndpoint.Contains("://", StringComparison.Ordinal))
+                {
+                    Log.Logger.Warning("Asset {AssetId} returned an invalid URI-like endpoint [{Endpoint}]; skipping reconnect.", assetId, remoteEndpoint);
+                    ScheduleNextReconnect(state);
+                    return;
+                }
                 else
                 {
                     // Backward-compatible fallback for host[:port] endpoints.

@@ -217,6 +217,26 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void TryReconnect_skips_when_remote_endpoint_is_malformed_uri_and_schedules_next_attempt()
+        {
+            UANodeManager nm = NewBareInstance();
+            ReconnectAsset asset = new() { Endpoint = "opc.da://" };
+
+            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
+            m.Invoke(nm, new object[] { "asset-malformed-uri", asset });
+
+            Assert.Equal(0, asset.DisconnectCalls);
+            Assert.Equal(0, asset.ConnectCalls);
+
+            FieldInfo statesField = _sut.GetField("_reconnectStates", BindingFlags.NonPublic | BindingFlags.Instance);
+            object map = statesField.GetValue(nm);
+            object state = map.GetType().GetMethod("get_Item").Invoke(map, new object[] { "asset-malformed-uri" });
+            Assert.NotNull(state);
+            FieldInfo failuresField = state.GetType().GetField("ConsecutiveFailures");
+            Assert.Equal(1, (int)failuresField.GetValue(state));
+        }
+
+        [Fact]
         public void TryReconnect_clears_reconnect_state_on_successful_reconnect()
         {
             UANodeManager nm = NewBareInstance();

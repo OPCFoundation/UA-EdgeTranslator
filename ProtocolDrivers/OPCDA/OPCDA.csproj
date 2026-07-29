@@ -2,9 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Platforms>x86</Platforms>
-    <PlatformTarget Condition="'$(Platform)' == 'x86'">x86</PlatformTarget>
-    <PlatformTarget Condition="'$(Platform)' != 'x86'">x64</PlatformTarget>
+    <Platforms>x86;x64</Platforms>
+    <!-- Deliberately no explicit <PlatformTarget>. This driver wraps a 32-bit
+         COM/DCOM OPC Classic stack, but that is a runtime concern satisfied
+         by publishing with -r win-x86. Hard-coding PlatformTarget forces
+         architecture-specific compilation and causes CS8012 in mixed solution
+         builds when referenced projects are not also x86. -->
   </PropertyGroup>
 
   <ItemGroup>
