@@ -44,7 +44,7 @@ namespace InTheHand.Bluetooth
         {
             if (_service.Session.SessionStatus != WBluetooth.GattSessionStatus.Active)
             {
-                if (!await OpenAsync())
+                if (!await OpenAsync().ConfigureAwait(false))
                 {
                     return null;
                 }
