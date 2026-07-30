@@ -93,8 +93,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UAEdgeTranslator.Tests", "T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UA-WoTMapper", "UA-WoTMapper\UA-WoTMapper.csproj", "{C28B2AB3-F172-EF02-995D-8399FD94165E}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ProtocolDrivers", "ProtocolDrivers", "{C163E181-DCED-80CA-5E35-A9AA53B2CE73}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPCAE", "ProtocolDrivers\OPCAE\OPCAE.csproj", "{5279AA4A-0A12-43F7-A703-F88609B55CB2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UAServer", "UAServer", "{A453EE22-7872-B91B-CA85-85CEFC95EA25}"
@@ -258,9 +256,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{5279AA4A-0A12-43F7-A703-F88609B55CB2} = {C163E181-DCED-80CA-5E35-A9AA53B2CE73}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EC2C52AB-B40A-4371-B1A6-3096D2396F9B}

@@ -56,7 +56,8 @@ The following southbound asset interfaces (a.k.a. protocol drivers) are supporte
 * Modbus TCP
 * Modbus RTU
 * OPC UA
-* OPC DA (a.k.a. OPC Classic)
+* OPC DA (a.k.a. OPC Classic Data Access)
+* OPC A&E (a.k.a. OPC Classic Alarms & Events)
 * OPC Classic Alarms & Events (read-only)
 * HTTP
 * Siemens S7 Comm
