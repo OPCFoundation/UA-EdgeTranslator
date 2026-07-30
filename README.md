@@ -53,25 +53,24 @@ UA Edge Translator solves the common "brownfield" use case of connecting dispara
 
 The following southbound asset interfaces (a.k.a. protocol drivers) are supported:
 
-* Modbus TCP
-* Modbus RTU
-* OPC UA
-* OPC DA (a.k.a. OPC Classic Data Access)
-* OPC A&E (a.k.a. OPC Classic Alarms & Events)
-* OPC Classic Alarms & Events (read-only)
-* HTTP
-* Siemens S7 Comm
-* Rockwell CIP (Ethernet/IP)
-* Beckhoff ADS (TwinCAT)
-* LoRaWAN
-* Matter
-* OCPP (Open Charge Point Protocol) V1.6J
-* OCPP (Open Charge Point Protocol) V2.1 (experimental)
-* Mitsubishi MC Protocol (experimental)
-* Aveva PI (experimental)
-* BACNet (experimental)
-* IEC61850 (experimental)
-* DMTF Redfish (experimental)
+1. Modbus TCP
+1. Modbus RTU
+1. OPC UA
+1. OPC DA (a.k.a. OPC Classic Data Access)
+1. OPC A&E (a.k.a. OPC Classic Alarms & Events)
+1. HTTP
+1. Siemens S7 Comm
+1. Rockwell CIP (Ethernet/IP)
+1. Beckhoff ADS (TwinCAT)
+1. LoRaWAN
+1. Matter
+1. OCPP (Open Charge Point Protocol) V1.6J
+1. OCPP (Open Charge Point Protocol) V2.1 (experimental)
+1. Mitsubishi MC Protocol (experimental)
+1. Aveva PI (experimental)
+1. BACNet (experimental)
+1. IEC61850 (experimental)
+1. DMTF Redfish (experimental)
 
 Other southbound asset interfaces can easily be added by implementing the IAsset interface (for runtime interaction with the asset) as well as the IProtocolDriver interface (for asset onboarding). 
 
