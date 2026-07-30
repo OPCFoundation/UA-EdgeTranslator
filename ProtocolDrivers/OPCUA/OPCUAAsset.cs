@@ -276,9 +276,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 return Task.CompletedTask;
             }
 
+            // Resolve exactly as the read path does — new NodeId(string) ignores ns= prefixes.
+            NodeId nodeId = ExpandedNodeId.ToNodeId(
+                new ExpandedNodeId(addressWithinAsset),
+                _session.NamespaceUris);
+
             WriteValue nodeToWrite = new()
             {
-                NodeId = new NodeId(addressWithinAsset),
+                NodeId = nodeId,
                 Value = new DataValue(new Variant(value))
             };
 
