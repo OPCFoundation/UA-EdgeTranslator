@@ -2292,26 +2292,58 @@ namespace Opc.Ua.Edge.Translator
                 Log.Logger.Information("Trying to reconnect to asset {AssetId} (attempt {Attempt})", assetId, state.ConsecutiveFailures + 1);
 
                 string remoteEndpoint = asset.GetRemoteEndpoint();
-                string[] endpointParts = remoteEndpoint?.Split(':');
-                if (endpointParts == null || endpointParts.Length == 0 || string.IsNullOrEmpty(endpointParts[0]))
+                string host = null;
+                int port = 0;
+
+                if (string.IsNullOrWhiteSpace(remoteEndpoint))
                 {
                     Log.Logger.Warning("Asset {AssetId} returned an empty remote endpoint; skipping reconnect.", assetId);
                     ScheduleNextReconnect(state);
                     return;
                 }
 
-                await asset.DisconnectAsync(cancellationToken).ConfigureAwait(false);
-
-                int port = 0;
-                if (endpointParts.Length > 1
-                    && !string.IsNullOrEmpty(endpointParts[1])
-                    && !int.TryParse(endpointParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out port))
+                // Prefer URI parsing for endpoints like
+                // opc.da://localhost/Matrikon.OPC.Simulation.1.
+                if (Uri.TryCreate(remoteEndpoint, UriKind.Absolute, out Uri uri)
+                    && !string.IsNullOrWhiteSpace(uri.Host))
                 {
-                    Log.Logger.Warning("Asset {AssetId} reported a non-integer port [{Port}]; defaulting to 0.", assetId, endpointParts[1]);
-                    port = 0;
+                    host = uri.Host;
+                    if (!uri.IsDefaultPort)
+                    {
+                        port = uri.Port;
+                    }
+                }
+                else if (remoteEndpoint.Contains("://", StringComparison.Ordinal))
+                {
+                    Log.Logger.Warning("Asset {AssetId} returned an invalid URI-like endpoint [{Endpoint}]; skipping reconnect.", assetId, remoteEndpoint);
+                    ScheduleNextReconnect(state);
+                    return;
+                }
+                else
+                {
+                    // Backward-compatible fallback for host[:port] endpoints.
+                    string[] endpointParts = remoteEndpoint.Split(':');
+                    host = endpointParts.Length > 0 ? endpointParts[0] : null;
+
+                    if (endpointParts.Length > 1
+                        && !string.IsNullOrEmpty(endpointParts[1])
+                        && !int.TryParse(endpointParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out port))
+                    {
+                        Log.Logger.Warning("Asset {AssetId} reported a non-integer port [{Port}]; defaulting to 0.", assetId, endpointParts[1]);
+                        port = 0;
+                    }
                 }
 
-                await asset.ConnectAsync(endpointParts[0], port, cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(host))
+                {
+                    Log.Logger.Warning("Asset {AssetId} returned an endpoint without a valid host [{Endpoint}]; skipping reconnect.", assetId, remoteEndpoint);
+                    ScheduleNextReconnect(state);
+                    return;
+                }
+
+                await asset.DisconnectAsync(cancellationToken).ConfigureAwait(false);
+
+                await asset.ConnectAsync(host, port, cancellationToken).ConfigureAwait(false);
 
                 if (asset.IsConnected)
                 {
