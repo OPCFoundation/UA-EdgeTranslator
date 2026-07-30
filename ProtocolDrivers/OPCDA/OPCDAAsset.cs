@@ -49,37 +49,60 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 _group.IsActive = true;
                 _group.UpdateRate = TimeSpan.FromMilliseconds(100);
 
-                Log.Logger.Information($"Connected to OPC DA server: {_progId} on {ipAddress}");
+                Log.Logger.Information("Connected to OPC DA server {ProgId} on {Host}", _progId, ipAddress);
             }
             catch (Exception ex)
             {
-                Log.Logger.Error($"Failed to connect to OPC DA server: {ex.Message}");
+                Log.Logger.Error(ex, "Failed to connect to OPC DA server {ProgId} on {Host}", _progId, ipAddress);
                 throw;
             }
         }
 
         public void Disconnect()
         {
+            bool cleanupFailed = false;
+
             try
             {
                 if (_group != null)
                 {
                     _server?.RemoveGroup(_group);
-                    _group = null;
                 }
-
-                if (_server != null)
-                {
-                    _server.Disconnect();
-                    _server = null;
-                }
-
-                _items.Clear();
-                Log.Logger.Information("Disconnected from OPC DA server");
             }
             catch (Exception ex)
             {
-                Log.Logger.Error($"Error disconnecting from OPC DA server: {ex.Message}");
+                // A reconnect often begins after DCOM has already dropped the
+                // underlying connection. Cleanup must still continue.
+                Log.Logger.Debug(ex, "OPC DA group removal during disconnect failed.");
+                cleanupFailed = true;
+            }
+            finally
+            {
+                _group = null;
+
+                try
+                {
+                    _server?.Disconnect();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "OPC DA server disconnect failed.");
+                    cleanupFailed = true;
+                }
+                finally
+                {
+                    _server = null;
+                    _items.Clear();
+                }
+            }
+
+            if (cleanupFailed)
+            {
+                Log.Logger.Warning("OPC DA disconnect for {ProgId} completed with cleanup errors.", _progId);
+            }
+            else
+            {
+                Log.Logger.Information("Disconnected from OPC DA server {ProgId}", _progId);
             }
         }
 
@@ -109,12 +132,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     OpcDaItem item = GetOrAddItem(tag.Address);
 
                     // Read the value synchronously
-                    var values = _group.Read(_group.Items, OpcDaDataSource.Device);
-                    var itemValue = values.FirstOrDefault(v => v.Item.ItemId == tag.Address);
+                    var values = _group.Read(new[] { item }, OpcDaDataSource.Device);
+                    var itemValue = values?.FirstOrDefault();
 
                     if (itemValue == null || itemValue.Error.Failed)
                     {
-                        Log.Logger.Warning($"Failed to read OPC DA item: {tag.Address}");
+                        Log.Logger.Warning("Failed to read OPC DA item {ItemAddress}", tag.Address);
                         return null;
                     }
 
@@ -142,7 +165,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error($"Error reading OPC DA item {tag.Address}: {ex.Message}");
+                    Log.Logger.Error(ex, "Error reading OPC DA item {ItemAddress}", tag.Address);
                     return null;
                 }
             }
@@ -189,11 +212,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         throw new Exception($"Failed to write to OPC DA item {tag.Address}: Error code {results[0]}");
                     }
 
-                    Log.Logger.Debug($"Successfully wrote value {value} to OPC DA item {tag.Address}");
+                    Log.Logger.Debug("Successfully wrote value {Value} to OPC DA item {ItemAddress}", value, tag.Address);
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error($"Error writing to OPC DA item {tag.Address}: {ex.Message}");
+                    Log.Logger.Error(ex, "Error writing to OPC DA item {ItemAddress}", tag.Address);
                     throw;
                 }
             }
