@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.Tests
     using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
     using Xunit;
 
@@ -330,11 +332,12 @@ namespace Opc.Ua.Edge.Translator.Tests
                 Base = "noscheme://device:1/1"
             };
 
-            MethodInfo m = _sut.GetMethod("AssetConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
-            object[] args = new object[] { td, (byte)0 };
-            TargetInvocationException tie = Assert.Throws<TargetInvocationException>(() => m.Invoke(nm, args));
+            MethodInfo m = _sut.GetMethod("AssetConnectionTestAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            object[] args = new object[] { td, CancellationToken.None };
+            Task<byte> task = (Task<byte>)m.Invoke(nm, args);
+            Exception ex = Assert.ThrowsAny<Exception>(() => { task.GetAwaiter().GetResult(); });
 
-            Assert.Contains("No driver installed for base URI", tie.InnerException.Message, StringComparison.Ordinal);
+            Assert.Contains("No driver installed for base URI", ex.Message, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -351,13 +354,12 @@ namespace Opc.Ua.Edge.Translator.Tests
                 Base = "mock://device:1502/3"
             };
 
-            MethodInfo m = _sut.GetMethod("AssetConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
-            object[] args = new object[] { td, (byte)0 };
-            m.Invoke(nm, args);
+            MethodInfo m = _sut.GetMethod("AssetConnectionTestAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            object[] args = new object[] { td, CancellationToken.None };
+            byte unitId = ((Task<byte>)m.Invoke(nm, args)).GetAwaiter().GetResult();
 
-            // unitId out arg is the second positional argument; MockProtocolDriver
-            // parses the trailing "/3" path segment as the unit id.
-            Assert.Equal((byte)3, (byte)args[1]);
+            // MockProtocolDriver parses the trailing "/3" path segment as the unit id.
+            Assert.Equal((byte)3, unitId);
 
             // The asset must have been recorded under td.Name.
             object assetsObj = _sut.GetField("_assets", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(nm);
@@ -434,20 +436,26 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             public bool IsConnected => true;
 
-            public void Connect(string ipAddress, int port) { }
+            public System.Threading.Tasks.Task ConnectAsync(string ipAddress, int port, System.Threading.CancellationToken cancellationToken = default)
+                => System.Threading.Tasks.Task.CompletedTask;
 
-            public void Disconnect() { }
+            public System.Threading.Tasks.Task DisconnectAsync(System.Threading.CancellationToken cancellationToken = default)
+                => System.Threading.Tasks.Task.CompletedTask;
+
+            public System.Threading.Tasks.ValueTask DisposeAsync()
+                => System.Threading.Tasks.ValueTask.CompletedTask;
 
             public string GetRemoteEndpoint() => string.Empty;
 
-            public object Read(AssetTag tag) => null;
+            public System.Threading.Tasks.Task<object> ReadAsync(AssetTag tag, System.Threading.CancellationToken cancellationToken = default)
+                => System.Threading.Tasks.Task.FromResult<object>(null);
 
-            public void Write(AssetTag tag, object value) { }
+            public System.Threading.Tasks.Task WriteAsync(AssetTag tag, object value, System.Threading.CancellationToken cancellationToken = default)
+                => System.Threading.Tasks.Task.CompletedTask;
 
-            public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+            public System.Threading.Tasks.Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, System.Threading.CancellationToken cancellationToken = default)
             {
-                outputArgs ??= new List<object>();
-                return Result;
+                return System.Threading.Tasks.Task.FromResult(AssetActionResult.FromOutputs(Result, new List<object>()));
             }
         }
     }

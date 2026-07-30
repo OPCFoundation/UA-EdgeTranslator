@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Generic;
     using System.Net.Http;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Protocol driver for DMTF Redfish (REST over HTTPS) used for out-of-band
@@ -149,9 +151,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1; // not used for Redfish
+            byte unitId = 1; // not used for Redfish
 
             Uri uri;
             try
@@ -172,9 +174,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string normalized = NormalizeBase(td.Base);
 
             RedfishAsset asset = new();
-            asset.Connect(normalized, 0);
+            await asset.ConnectAsync(normalized, 0, cancellationToken).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

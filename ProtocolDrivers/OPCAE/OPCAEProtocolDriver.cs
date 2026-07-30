@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public sealed class OPCAEProtocolDriver : IProtocolDriver
     {
@@ -50,11 +52,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(td);
             ValidateEndpoint(td.Base, out Uri endpoint);
-            unitId = 1;
+            byte unitId = 1;
 
             OpcAeEventForm form = td.Events?
                 .Values
@@ -65,8 +67,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             var asset = new OPCAEAsset();
             asset.Configure(endpoint, form);
-            asset.Connect(endpoint.Host, 0);
-            return asset;
+            await asset.ConnectAsync(endpoint.Host, 0, cancellationToken).ConfigureAwait(false);
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string mappedUAExpandedNodeId, string mappedUAFieldPath)

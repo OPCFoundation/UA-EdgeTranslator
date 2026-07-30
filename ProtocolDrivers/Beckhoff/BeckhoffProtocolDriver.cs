@@ -1,10 +1,12 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class BeckhoffProtocolDriver: IProtocolDriver
     {
@@ -35,8 +37,9 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1;
 
             string[] address = td.Base.Split([':', '/']);
@@ -47,9 +50,9 @@
 
             // check if we can reach the Beckhoff asset
             BeckhoffAsset asset = new();
-            asset.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+            await asset.ConnectAsync(address[3] + ":" + address[4], int.Parse(address[5])).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

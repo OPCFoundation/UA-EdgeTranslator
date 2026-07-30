@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
@@ -7,6 +7,7 @@
     using System.Collections.Generic;
     using System.IO.BACnet;
     using System.Threading;
+    using System.Threading.Tasks;
 
     public class BACNetProtocolDriver: IProtocolDriver
     {
@@ -71,8 +72,9 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             if (td == null)
             {
                 throw new ArgumentNullException(nameof(td));
@@ -96,9 +98,9 @@
             // BACNetAsset.Connect expects "<host>/<deviceId>"; BACnet IP always uses the
             // UDP port configured on the BacnetClient transport (0xBAC0 by default).
             BACNetAsset asset = new();
-            asset.Connect(uri.Host + "/" + deviceId, port);
+            await asset.ConnectAsync(uri.Host + "/" + deviceId, port).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

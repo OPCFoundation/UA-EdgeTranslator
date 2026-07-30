@@ -212,7 +212,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
                 => throw new NotSupportedException();
 
-            public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+            public System.Threading.Tasks.Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, System.Threading.CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
 
             public AssetTag CreateTag(

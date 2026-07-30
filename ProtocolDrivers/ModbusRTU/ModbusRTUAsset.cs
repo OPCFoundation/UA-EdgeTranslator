@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using NModbus;
     using NModbus.Serial;
@@ -8,6 +8,7 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.IO.Ports;
     using System.Threading.Tasks;
 
@@ -42,11 +43,11 @@
 
         public bool IsConnected { get; private set; } = false;
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             lock (_lock)
             {
-                Disconnect();
+                DisconnectCore();
 
                 string comPort = string.Empty;
                 int baudRate = 0;
@@ -128,7 +129,7 @@
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             lock (_lock)
             {
@@ -153,7 +154,7 @@
             }
         }
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             object value = null;
 
@@ -196,7 +197,7 @@
             return new InvalidOperationException(message);
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             bool writeCoil = tag.Entity switch
             {
@@ -222,7 +223,7 @@
             _actionTags = actionTags;
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             string actionName = method?.BrowseName?.Name;
             if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
@@ -239,7 +240,7 @@
             {
                 // An action invocation is a Modbus write: reuse the property write path
                 // (entity dispatch, encoding, read-only rejection and function-code choice).
-                Write(tag, ResolveActionValue(tag, inputArgs));
+                WriteCore(tag, ResolveActionValue(tag, inputArgs));
                 return "ok";
             }
             catch (Exception ex)
@@ -347,6 +348,42 @@
                     return Task.CompletedTask;
                 }
             }
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }

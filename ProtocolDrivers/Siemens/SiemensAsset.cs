@@ -8,6 +8,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Buffers.Binary;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Globalization;
     using System.Text;
     using S7Helpers = Sharp7.S7;
@@ -27,7 +29,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// "port" parameter from the URL is interpreted as the CPU slot. Rack
         /// defaults to whatever was last seen (0 on the very first call).
         /// </summary>
-        public void Connect(string ipAddress, int slot)
+        private void ConnectCore(string ipAddress, int slot)
         {
             Connect(ipAddress, rack: _rack, slot: slot);
         }
@@ -61,7 +63,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             if (S7 != null)
             {
@@ -89,7 +91,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return string.Concat(_endpoint, ":", _slot.ToString(CultureInfo.InvariantCulture));
         }
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             S7Form form = ParseForm(tag);
             if (form == null)
@@ -132,7 +134,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return Decode(buffer, form);
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             S7Form form = ParseForm(tag);
             if (form == null || value == null)
@@ -170,7 +172,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             return null;
         }
@@ -862,6 +864,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 return TimeSpan.FromMilliseconds(ms);
             }
             return TimeSpan.Zero;
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }

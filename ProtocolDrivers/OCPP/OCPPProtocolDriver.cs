@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using OCPPCentralSystem.Models;
@@ -7,6 +7,8 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class OCPPProtocolDriver: IProtocolDriver
     {
@@ -214,9 +216,9 @@
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1;
+            byte unitId = 1;
 
             string[] address = td.Base.Split([':', '/']);
             if ((address.Length != 4) || (address[0] != "ocpp"))
@@ -225,7 +227,7 @@
             }
 
             // in the case of OCPP, we don't check if we can reach the gateway as the gateway needs to contact us during onboarding
-            return _ocppCentralSystem;
+            return Task.FromResult(new AssetConnection(_ocppCentralSystem, unitId));
         }
 
         public AssetTag CreateTag(

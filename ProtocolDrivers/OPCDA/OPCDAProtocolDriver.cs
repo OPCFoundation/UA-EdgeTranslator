@@ -6,6 +6,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Linq;
     using TitaniumAS.Opc.Client.Common;
     using TitaniumAS.Opc.Client.Da;
@@ -89,8 +91,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1; // not used for OPC DA
 
             // Expected format: opc.da://hostname/ProgId
@@ -108,9 +111,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // Create and connect the OPC DA asset
             OPCDAAsset asset = new();
             asset.SetProgId(progId);
-            asset.Connect(host, 0); // port is not used for OPC DA
+            await asset.ConnectAsync(host, 0).ConfigureAwait(false); // port is not used for OPC DA
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

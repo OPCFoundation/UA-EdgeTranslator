@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Net.Http;
     using System.Net.Http.Headers;
     using System.Text;
@@ -22,7 +24,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public bool IsConnected { get; private set; } = false;
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             try
             {
@@ -63,7 +65,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             IsConnected = false;
         }
@@ -73,7 +75,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _baseUrl;
         }
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             try
             {
@@ -113,7 +115,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             try
             {
@@ -136,7 +138,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             try
             {
@@ -329,6 +331,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }

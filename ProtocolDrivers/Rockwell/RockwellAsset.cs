@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class RockwellAsset : IAsset
@@ -29,7 +30,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _udtDefinitions[tagAddress] = structDef;
         }
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             try
             {
@@ -56,7 +57,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             IsConnected = false;
         }
@@ -66,7 +67,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             object value = null;
 
@@ -150,7 +151,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return value;
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
 
@@ -321,7 +322,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return Task.CompletedTask;
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             return null;
         }
@@ -523,6 +524,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         break;
                 }
             }
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }

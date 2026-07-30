@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.Tests
     using System.Collections;
     using System.Collections.Generic;
     using System.Reflection;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
     using Xunit;
 
@@ -200,8 +202,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             ReconnectAsset asset = new() { Endpoint = string.Empty };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(nm, new object[] { "asset-empty", asset });
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)m.Invoke(nm, new object[] { "asset-empty", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             // Endpoint was empty, so Disconnect/Connect must NOT have been called.
             Assert.Equal(0, asset.DisconnectCalls);
@@ -226,8 +228,8 @@ namespace Opc.Ua.Edge.Translator.Tests
                 ConnectedAfterConnect = true
             };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(nm, new object[] { "asset-ok", asset });
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)m.Invoke(nm, new object[] { "asset-ok", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             Assert.Equal(1, asset.DisconnectCalls);
             Assert.Equal(1, asset.ConnectCalls);
@@ -251,8 +253,8 @@ namespace Opc.Ua.Edge.Translator.Tests
                 ConnectedAfterConnect = true
             };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(nm, new object[] { "asset-bad-port", asset });
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)m.Invoke(nm, new object[] { "asset-bad-port", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             Assert.Equal(1, asset.ConnectCalls);
             Assert.Equal("host", asset.LastConnectHost);
@@ -269,8 +271,8 @@ namespace Opc.Ua.Edge.Translator.Tests
                 ConnectedAfterConnect = true
             };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(nm, new object[] { "asset-ae", asset });
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)m.Invoke(nm, new object[] { "asset-ae", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             Assert.Equal(1, asset.ConnectCalls);
             Assert.Equal(1, asset.StartEventSubscriptionCalls);
@@ -286,8 +288,8 @@ namespace Opc.Ua.Edge.Translator.Tests
                 ConnectedAfterConnect = false
             };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(nm, new object[] { "asset-still-down", asset });
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)m.Invoke(nm, new object[] { "asset-still-down", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             FieldInfo statesField = _sut.GetField("_reconnectStates", BindingFlags.NonPublic | BindingFlags.Instance);
             object map = statesField.GetValue(nm);
@@ -306,9 +308,9 @@ namespace Opc.Ua.Edge.Translator.Tests
                 ThrowOnConnect = true
             };
 
-            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
+            MethodInfo m = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
             // The catch path swallows the exception and still schedules a retry.
-            m.Invoke(nm, new object[] { "asset-throws", asset });
+            ((Task)m.Invoke(nm, new object[] { "asset-throws", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             FieldInfo statesField = _sut.GetField("_reconnectStates", BindingFlags.NonPublic | BindingFlags.Instance);
             object map = statesField.GetValue(nm);
@@ -356,7 +358,7 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             public string GetRemoteEndpoint() => Endpoint;
 
-            public void Connect(string ipAddress, int port)
+            public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
             {
                 ConnectCalls++;
                 LastConnectHost = ipAddress;
@@ -367,12 +369,14 @@ namespace Opc.Ua.Edge.Translator.Tests
                 }
 
                 _isConnected = ConnectedAfterConnect;
+                return Task.CompletedTask;
             }
 
-            public void Disconnect()
+            public Task DisconnectAsync(CancellationToken cancellationToken = default)
             {
                 DisconnectCalls++;
                 _isConnected = false;
+                return Task.CompletedTask;
             }
 
             public void StartEventSubscription()
@@ -385,13 +389,15 @@ namespace Opc.Ua.Edge.Translator.Tests
             public void StopEventSubscription() { }
 
             public object Read(AssetTag tag) => null;
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-            public void Write(AssetTag tag, object value) { }
+            public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default) => Task.FromResult<object>(null);
 
-            public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+            public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
             {
-                outputArgs ??= new List<object>();
-                return null;
+                return Task.FromResult(AssetActionResult.FromOutputs(null, new List<object>()));
             }
         }
     }

@@ -10,6 +10,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public sealed class OPCAEAsset : IEventingAsset
     {
@@ -37,7 +39,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _form = form ?? new OpcAeEventForm { Href = endpoint.AbsoluteUri };
         }
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             if (_endpoint == null)
             {
@@ -80,7 +82,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             lock (_sync)
             {
@@ -97,13 +99,40 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
+        // The OPC Classic A&E API (OpcNetApi / OpcNetApi.Com) is a synchronous COM
+        // interop surface, so these complete synchronously. They exist to satisfy the
+        // async IAsset contract without pretending to be asynchronous (no Task.Run).
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
         public string GetRemoteEndpoint() => _endpoint?.AbsoluteUri ?? string.Empty;
 
-        public object Read(AssetTag tag) => throw new NotSupportedException("OPC A&E does not expose polling data-access tags.");
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("OPC A&E does not expose polling data-access tags.");
 
-        public void Write(AssetTag tag, object value) => throw new NotSupportedException("OPC A&E alarms are read-only in this driver.");
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException("OPC A&E alarms are read-only in this driver.");
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs) => null;
+        // OPC A&E is event-driven and exposes no callable methods; a null status maps to
+        // StatusCodes.Uncertain ("no result") in UANodeManager, matching the previous behaviour.
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+            => Task.FromResult(AssetActionResult.FromStatus(null));
 
         public void StartEventSubscription()
         {

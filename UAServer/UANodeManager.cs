@@ -838,7 +838,10 @@ namespace Opc.Ua.Edge.Translator
                     // finalization. Defensive: a faulty driver must not fail delete.
                     try
                     {
-                        removedAsset?.Disconnect();
+                        if (removedAsset != null)
+                        {
+                            AsyncBridge.RunSync(() => removedAsset.DisconnectAsync());
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1137,7 +1140,7 @@ namespace Opc.Ua.Edge.Translator
             bool requiresEventConnection = td.Events?.Count > 0;
             if (requiresEventConnection || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
             {
-                AssetConnectionTest(td, out unitId);
+                unitId = await AssetConnectionTestAsync(td).ConfigureAwait(false);
             }
 
             AttachEventingAsset(td.Name, parent);
@@ -1170,7 +1173,7 @@ namespace Opc.Ua.Edge.Translator
 
             AddActionsFromWoTFile(parent, td);
 
-            _ = Task.Factory.StartNew(ReadAssetTags, td.Name, TaskCreationOptions.LongRunning);
+            _ = Task.Run(() => ReadAssetTagsAsync(td.Name));
 
             RaiseModelChangedEvent(parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
@@ -1671,18 +1674,18 @@ namespace Opc.Ua.Edge.Translator
             _tagIndex[mappedNodeId] = (assetId, tag);
         }
 
-        private void AssetConnectionTest(ThingDescription td, out byte unitId)
+        private async Task<byte> AssetConnectionTestAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1;
-
             if (!Program.Drivers.TryGetByUri(td.Base, out var drv))
             {
                 throw new Exception($"No driver installed for base URI: {td.Base}");
             }
 
-            IAsset asset = drv.CreateAndConnectAsset(td, out unitId);
+            AssetConnection connection = await drv.CreateAndConnectAssetAsync(td, cancellationToken).ConfigureAwait(false);
 
-            _assets[td.Name] = asset;
+            _assets[td.Name] = connection.Asset;
+
+            return connection.UnitId;
         }
 
         private void AttachEventingAsset(string assetId, NodeState assetNode)
@@ -2074,7 +2077,10 @@ namespace Opc.Ua.Edge.Translator
                         }
 
                         Program.Telemetry.TagWrites.Add(1);
-                        asset.Write(tag, value);
+
+                        // 'value' is a ref parameter and cannot be captured by a lambda.
+                        object valueToWrite = value;
+                        AsyncBridge.RunSync(() => asset.WriteAsync(tag, valueToWrite));
 
                         if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
                         {
@@ -2107,7 +2113,29 @@ namespace Opc.Ua.Edge.Translator
             {
                 string assetId = method.Parent.BrowseName.Name;
 
-                string result = _assets[assetId].ExecuteAction(method, inputArguments, ref outputArguments);
+                AssetActionResult actionResult = AsyncBridge.RunSync(
+                    () => _assets[assetId].ExecuteActionAsync(method, inputArguments));
+
+                // Copy the driver's outputs into the buffer the SDK handed us.
+                // The previous 'ref IList<object> outputArgs' contract allowed a
+                // driver to *replace* the list, which silently dropped its outputs
+                // because the SDK reads back the instance it passed in.
+                if (actionResult?.Outputs != null && outputArguments != null)
+                {
+                    for (int i = 0; i < actionResult.Outputs.Count; i++)
+                    {
+                        if (i < outputArguments.Count)
+                        {
+                            outputArguments[i] = actionResult.Outputs[i];
+                        }
+                        else
+                        {
+                            outputArguments.Add(actionResult.Outputs[i]);
+                        }
+                    }
+                }
+
+                string result = actionResult?.Status;
                 if (result == null)
                 {
                     return new ServiceResult(StatusCodes.Uncertain, new Ua.LocalizedText("no result"));
@@ -2133,7 +2161,7 @@ namespace Opc.Ua.Edge.Translator
         // Per-asset reconnect state. We back off exponentially on consecutive
         // failures (1 s -> 2 -> 4 -> 8 -> … -> capped at _reconnectMaxBackoffMs)
         // and skip the asset's poll cycles until the next attempt is due.
-        private void ReadAssetTags(object assetNameObject)
+        private async Task ReadAssetTagsAsync(object assetNameObject)
         {
             string assetId = (string)assetNameObject;
             CancellationToken shutdownToken = _shutdownCts.Token;
@@ -2147,10 +2175,14 @@ namespace Opc.Ua.Edge.Translator
             while (!shutdownToken.IsCancellationRequested)
             {
                 // 1 second is the minimum supported polling interval.
-                // WaitOne(...) on the cancellation handle lets the polling task
-                // exit promptly when the host is shutting down instead of
-                // waiting up to a full second for the next iteration.
-                if (shutdownToken.WaitHandle.WaitOne(1000))
+                // Awaiting Task.Delay releases the thread between polls (the loop
+                // used to occupy a dedicated long-running thread) and still exits
+                // promptly when the host is shutting down.
+                try
+                {
+                    await Task.Delay(1000, shutdownToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
                 {
                     break;
                 }
@@ -2195,7 +2227,7 @@ namespace Opc.Ua.Edge.Translator
                         // read the tag once per poll cycle and reuse the value
                         // for both variable and property updates to halve asset I/O.
                         Program.Telemetry.TagReads.Add(1);
-                        object value = asset.Read(tag);
+                        object value = await asset.ReadAsync(tag, shutdownToken).ConfigureAwait(false);
                         bool connected = asset.IsConnected;
                         UpdateUAServerVariable(tag, value, connected);
                         UpdateUAServerProperty(tag, value, connected);
@@ -2212,8 +2244,12 @@ namespace Opc.Ua.Edge.Translator
                             // asset stuck "disconnected forever". Drive the same
                             // backoff/reconnect cycle the catch block uses.
                             Program.Telemetry.TagReadErrors.Add(1);
-                            TryReconnect(assetId, asset);
+                            await TryReconnectAsync(assetId, asset, shutdownToken).ConfigureAwait(false);
                         }
+                    }
+                    catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
+                    {
+                        return;
                     }
                     catch (Exception ex)
                     {
@@ -2222,7 +2258,7 @@ namespace Opc.Ua.Edge.Translator
                         UpdateUAServerProperty(tag, 0, false);
                         Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", tag.Name, assetId);
 
-                        TryReconnect(assetId, asset);
+                        await TryReconnectAsync(assetId, asset, shutdownToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -2243,7 +2279,7 @@ namespace Opc.Ua.Edge.Translator
             _reconnectStates.TryRemove(assetId, out _);
         }
 
-        private void TryReconnect(string assetId, IAsset asset)
+        private async Task TryReconnectAsync(string assetId, IAsset asset, CancellationToken cancellationToken = default)
         {
             ReconnectState state = _reconnectStates.AddOrUpdate(
                 assetId,
@@ -2264,7 +2300,7 @@ namespace Opc.Ua.Edge.Translator
                     return;
                 }
 
-                asset.Disconnect();
+                await asset.DisconnectAsync(cancellationToken).ConfigureAwait(false);
 
                 int port = 0;
                 if (endpointParts.Length > 1
@@ -2275,7 +2311,7 @@ namespace Opc.Ua.Edge.Translator
                     port = 0;
                 }
 
-                asset.Connect(endpointParts[0], port);
+                await asset.ConnectAsync(endpointParts[0], port, cancellationToken).ConfigureAwait(false);
 
                 if (asset.IsConnected)
                 {

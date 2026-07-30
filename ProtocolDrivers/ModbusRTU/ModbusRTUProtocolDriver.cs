@@ -1,10 +1,12 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class ModbusRTUProtocolDriver: IProtocolDriver
     {
@@ -35,8 +37,9 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             string[] address = td.Base.Split([':', '/']);
             if ((address.Length != 9) || (address[0] != "modbus+rtu"))
             {
@@ -48,12 +51,12 @@
             ModbusRTUAsset asset = new();
 
             // check if we can reach the Modbus RTU asset
-            asset.Connect(td.Base, 0);
+            await asset.ConnectAsync(td.Base, 0).ConfigureAwait(false);
 
             // Register any WoT actions so that invoking them issues a Modbus write.
             asset.SetActionTags(BuildActionTags(td, unitId));
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         private Dictionary<string, AssetTag> BuildActionTags(ThingDescription td, byte unitId)

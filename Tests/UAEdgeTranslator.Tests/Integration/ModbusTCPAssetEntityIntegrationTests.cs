@@ -35,11 +35,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         [InlineData("InputRegister", ReadInputRegisters)]
         [InlineData("Coil", ReadCoilStatus)]
         [InlineData("DiscreteInput", ReadInputStatus)]
-        public void Read_dispatches_expected_function_code_for_each_entity(string entity, byte expectedFunctionCode)
+        public async Task Read_dispatches_expected_function_code_for_each_entity(string entity, byte expectedFunctionCode)
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
 
             try
             {
@@ -53,7 +53,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     Address = isRegister ? "0?quantity=2" : "0?quantity=1"
                 };
 
-                object value = asset.Read(tag);
+                object value = await asset.ReadAsync(tag);
 
                 Assert.Contains(expectedFunctionCode, server.ReceivedFunctionCodes);
 
@@ -68,12 +68,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void Read_throws_for_unknown_entity()
+        public async Task Read_throws_for_unknown_entity()
         {
             ModbusTCPAsset asset = new();
             AssetTag tag = new()
@@ -85,13 +85,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 Address = "0?quantity=2"
             };
 
-            Assert.Throws<ArgumentException>(() => asset.Read(tag));
+            await Assert.ThrowsAsync<ArgumentException>(() => asset.ReadAsync(tag));
         }
 
         [Theory]
         [InlineData("InputRegister")]
         [InlineData("DiscreteInput")]
-        public void Write_rejects_read_only_entities(string entity)
+        public async Task Write_rejects_read_only_entities(string entity)
         {
             ModbusTCPAsset asset = new();
             AssetTag tag = new()
@@ -103,11 +103,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 Address = "0?quantity=2"
             };
 
-            Assert.Throws<InvalidOperationException>(() => asset.Write(tag, 1.0f));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => asset.WriteAsync(tag, 1.0f));
         }
 
         [Fact]
-        public void Write_throws_for_unknown_entity()
+        public async Task Write_throws_for_unknown_entity()
         {
             ModbusTCPAsset asset = new();
             AssetTag tag = new()
@@ -119,15 +119,15 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 Address = "0?quantity=2"
             };
 
-            Assert.Throws<ArgumentException>(() => asset.Write(tag, 1.0f));
+            await Assert.ThrowsAsync<ArgumentException>(() => asset.WriteAsync(tag, 1.0f));
         }
 
         [Fact]
-        public void Write_dispatches_force_single_coil_for_coil_entity()
+        public async Task Write_dispatches_force_single_coil_for_coil_entity()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
 
             try
             {
@@ -140,22 +140,22 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     Address = "0?quantity=1"
                 };
 
-                asset.Write(tag, true);
+                await asset.WriteAsync(tag, true);
 
                 Assert.Contains(ForceSingleCoil, server.ReceivedFunctionCodes);
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void Write_dispatches_preset_multiple_registers_for_holding_register_entity()
+        public async Task Write_dispatches_preset_multiple_registers_for_holding_register_entity()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
 
             try
             {
@@ -168,24 +168,24 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     Address = "0?quantity=2"
                 };
 
-                asset.Write(tag, 42.0f);
+                await asset.WriteAsync(tag, 42.0f);
 
                 Assert.Contains(PresetMultipleRegisters, server.ReceivedFunctionCodes);
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void Read_short_at_quantity_1_reads_a_single_register()
+        public async Task Read_short_at_quantity_1_reads_a_single_register()
         {
             // A native 16-bit register value; the driver must read exactly one register
             // (no zero-padded neighbour / quantity=2 workaround required).
             using MockModbusTcpServer server = new(registerReadData: BitConverter.GetBytes((short)1234));
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
 
             try
             {
@@ -198,7 +198,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     Address = "0?quantity=1"
                 };
 
-                object value = asset.Read(tag);
+                object value = await asset.ReadAsync(tag);
 
                 Assert.Contains(ReadHoldingRegisters, server.ReceivedFunctionCodes);
                 // Default multiplier (1.0) projects the 16-bit reading onto the Float-typed node.
@@ -206,16 +206,16 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void Write_short_dispatches_preset_single_register()
+        public async Task Write_short_dispatches_preset_single_register()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
 
             try
             {
@@ -228,23 +228,23 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     Address = "0?quantity=1"
                 };
 
-                asset.Write(tag, 4321.0f);
+                await asset.WriteAsync(tag, 4321.0f);
 
                 Assert.Contains(PresetSingleRegister, server.ReceivedFunctionCodes);
                 Assert.DoesNotContain(PresetMultipleRegisters, server.ReceivedFunctionCodes);
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void ExecuteAction_coil_pulse_issues_write_single_coil()
+        public async Task ExecuteAction_coil_pulse_issues_write_single_coil()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
             asset.SetActionTags(new Dictionary<string, AssetTag>
             {
                 ["motorStart"] = new AssetTag { Name = "motorStart", UnitID = 1, Entity = "Coil", Type = "Boolean", Address = "3?quantity=1" }
@@ -252,26 +252,26 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             try
             {
-                IList<object> outputArgs = new List<object>();
 
                 // A nullary coil action defaults to writing "true" (coil ON = 0xFF00).
-                string result = asset.ExecuteAction(ActionMethod("motorStart"), new List<object>(), ref outputArgs);
+                AssetActionResult actionResult = await asset.ExecuteActionAsync(ActionMethod("motorStart"), new List<object>());
+                string result = actionResult.Status;
 
                 Assert.Equal("ok", result);
                 Assert.Contains(server.Writes, w => w.FunctionCode == ForceSingleCoil && w.Address == 3 && w.Value == 0xFF00);
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void ExecuteAction_holding_register_setpoint_writes_value_via_fc6()
+        public async Task ExecuteAction_holding_register_setpoint_writes_value_via_fc6()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
             asset.SetActionTags(new Dictionary<string, AssetTag>
             {
                 ["setTankHighLevel"] = new AssetTag { Name = "setTankHighLevel", UnitID = 1, Entity = "HoldingRegister", Type = "Short", Address = "0?quantity=1" }
@@ -279,25 +279,25 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             try
             {
-                IList<object> outputArgs = new List<object>();
 
-                string result = asset.ExecuteAction(ActionMethod("setTankHighLevel"), new List<object> { 1234 }, ref outputArgs);
+                AssetActionResult actionResult = await asset.ExecuteActionAsync(ActionMethod("setTankHighLevel"), new List<object> { 1234 });
+                string result = actionResult.Status;
 
                 Assert.Equal("ok", result);
                 Assert.Contains(server.Writes, w => w.FunctionCode == PresetSingleRegister && w.Address == 0 && w.Value == 1234);
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void ExecuteAction_on_read_only_entity_returns_error_and_writes_nothing()
+        public async Task ExecuteAction_on_read_only_entity_returns_error_and_writes_nothing()
         {
             using MockModbusTcpServer server = new();
             ModbusTCPAsset asset = new();
-            asset.Connect(IPAddress.Loopback.ToString(), server.Port);
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
             asset.SetActionTags(new Dictionary<string, AssetTag>
             {
                 ["badAction"] = new AssetTag { Name = "badAction", UnitID = 1, Entity = "InputRegister", Type = "Short", Address = "0?quantity=1" }
@@ -305,9 +305,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             try
             {
-                IList<object> outputArgs = new List<object>();
 
-                string result = asset.ExecuteAction(ActionMethod("badAction"), new List<object> { 5 }, ref outputArgs);
+                AssetActionResult actionResult = await asset.ExecuteActionAsync(ActionMethod("badAction"), new List<object> { 5 });
+                string result = actionResult.Status;
 
                 Assert.NotEqual("ok", result);
                 Assert.Contains("read-only", result, StringComparison.OrdinalIgnoreCase);
@@ -315,17 +315,17 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             }
             finally
             {
-                asset.Disconnect();
+                await asset.DisconnectAsync();
             }
         }
 
         [Fact]
-        public void ExecuteAction_unknown_action_returns_error()
+        public async Task ExecuteAction_unknown_action_returns_error()
         {
             ModbusTCPAsset asset = new();
-            IList<object> outputArgs = new List<object>();
 
-            string result = asset.ExecuteAction(ActionMethod("noSuchAction"), new List<object>(), ref outputArgs);
+            AssetActionResult actionResult = await asset.ExecuteActionAsync(ActionMethod("noSuchAction"), new List<object>());
+                string result = actionResult.Status;
 
             Assert.NotEqual("ok", result);
             Assert.Contains("No Modbus form", result, StringComparison.OrdinalIgnoreCase);

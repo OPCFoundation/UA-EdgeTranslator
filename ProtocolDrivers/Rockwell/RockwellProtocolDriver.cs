@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using libplctag;
     using Newtonsoft.Json;
@@ -7,6 +7,8 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Linq;
     using System.Net;
     using System.Net.Sockets;
@@ -854,8 +856,9 @@
             return true;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1;
 
             string[] address = td.Base.Split([':', '/']);
@@ -865,11 +868,11 @@
             }
 
             RockwellAsset asset = new();
-            asset.Connect(address[3], 0);
+            await asset.ConnectAsync(address[3], 0).ConfigureAwait(false);
 
             _assets[td.Name] = asset;
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

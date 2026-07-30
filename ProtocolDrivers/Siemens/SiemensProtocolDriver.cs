@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Sharp7;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Globalization;
 
     public class SiemensProtocolDriver : IProtocolDriver
@@ -93,22 +95,25 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             finally
             {
-                asset.Disconnect();
+                AsyncBridge.RunSync(() => asset.DisconnectAsync());
             }
 
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1; // S7 does not use unit IDs
+            byte unitId = 1; // S7 does not use unit IDs
 
             (string ip, int rack, int slot) = ParseEndpoint(td.Base);
 
             SiemensAsset asset = new();
+
+            // The S7 client library is synchronous; Connect(ip, rack, slot) is the
+            // driver-specific overload that carries the rack in addition to the slot.
             asset.Connect(ip, rack, slot);
 
-            return asset;
+            return Task.FromResult(new AssetConnection(asset, unitId));
         }
 
         public AssetTag CreateTag(

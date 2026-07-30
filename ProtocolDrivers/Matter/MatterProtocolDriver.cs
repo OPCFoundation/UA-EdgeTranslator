@@ -1,10 +1,12 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Linq;
 
     public class MatterProtocolDriver: IProtocolDriver
@@ -37,8 +39,9 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1;
 
             string[] address = td.Base.Split(['/']);
@@ -48,10 +51,9 @@
             }
 
             // check if we can reach the Matter asset
-            _matterController.Connect(td.Base, 0);
+            await _matterController.ConnectAsync(td.Base, 0, cancellationToken).ConfigureAwait(false);
 
-
-            return _matterController;
+            return new AssetConnection(_matterController, unitId);
         }
 
         public AssetTag CreateTag(

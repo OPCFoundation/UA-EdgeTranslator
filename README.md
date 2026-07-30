@@ -406,6 +406,36 @@ To build your own protocol driver, create a new .NET10 Class Library project and
 ```
 Then implement the IProtocolDriver and IAsset interface and publish your project into the `..\..\UAServer\drivers\<yourdrivername>` folder and restart UA Edge Translator to load your new protocol driver.
 
+### Asynchronous driver interfaces (breaking change)
+
+`IAsset` and `IProtocolDriver` are asynchronous. This removes the sync-over-async blocking
+(`.GetAwaiter().GetResult()` / `.Result`) that drivers previously needed when their transport was
+async, and deliberately mirrors `IWotAssetProvider` in the OPC Foundation's
+[`Opc.Ua.WotCon.Server`](https://github.com/OPCFoundation/UA-.NETStandard/tree/master/src/Opc.Ua.WotCon.Server)
+library so that a future migration to it is an adapter rather than a rewrite.
+
+If you maintain an out-of-tree driver, update it as follows:
+
+| Old (synchronous) | New (asynchronous) |
+| --- | --- |
+| `void Connect(string ipAddress, int port)` | `Task ConnectAsync(string ipAddress, int port, CancellationToken)` |
+| `void Disconnect()` | `Task DisconnectAsync(CancellationToken)` |
+| `object Read(AssetTag tag)` | `Task<object> ReadAsync(AssetTag tag, CancellationToken)` |
+| `void Write(AssetTag tag, object value)` | `Task WriteAsync(AssetTag tag, object value, CancellationToken)` |
+| `string ExecuteAction(MethodState, IList<object>, ref IList<object> outputArgs)` | `Task<AssetActionResult> ExecuteActionAsync(MethodState, IList<object>, CancellationToken)` |
+| `IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)` | `Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken)` |
+
+Notes:
+
+* `IAsset` now also derives from `IAsyncDisposable`, so implement `DisposeAsync()` to release the
+  southbound connection.
+* `IsConnected` and `GetRemoteEndpoint()` stay synchronous: they are pure in-memory state
+  accessors and must never perform I/O.
+* `ref`/`out` parameters are not allowed on async methods. Action outputs are returned in
+  `AssetActionResult.Outputs` and the protocol unit id in `AssetConnection.UnitId`.
+* Drivers whose transport is genuinely synchronous can simply wrap their existing code, e.g.
+  `return Task.FromResult(value);` / `return Task.CompletedTask;`.
+
 ## Protocol driver allow-list (trust manifest)
 
 Protocol drivers are loaded as in-process .NET assemblies and therefore run with the same privileges as UA Edge Translator itself. To prevent an attacker (or a misconfigured deployment) from dropping an arbitrary DLL into `/app/drivers` and having it executed, the loader supports an **opt-in SHA-256 allow-list manifest** that is itself **signed with [Sigstore](https://www.sigstore.dev/) (cosign keyless)** and verified at startup against the GitHub Actions identity that produced the driver pack.

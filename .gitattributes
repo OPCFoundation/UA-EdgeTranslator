@@ -34,6 +34,9 @@ Dockerfile text eol=lf
 *.dll      binary
 *.pdb      binary
 *.exe      binary
+*.so       binary
+*.dylib    binary
+*.der      binary
 *.snk      binary
 *.pfx      binary
 

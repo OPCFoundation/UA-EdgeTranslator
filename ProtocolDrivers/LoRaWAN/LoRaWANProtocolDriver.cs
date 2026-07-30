@@ -1,10 +1,12 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class LoRaWANProtocolDriver: IProtocolDriver
     {
@@ -37,8 +39,9 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1;
 
             string[] address = td.Base.Split([':', '/']);
@@ -47,9 +50,9 @@
                 throw new Exception("Expected LoRaWAN address in the format lorawan://deviceeui/appkey/device or lorawan://deviceeui/gatewaymodel/routerconfig!");
             }
 
-            _lorawanNetworkServer.Connect(td.Base, 0);
+            await _lorawanNetworkServer.ConnectAsync(td.Base, 0, cancellationToken).ConfigureAwait(false);
 
-            return _lorawanNetworkServer;
+            return new AssetConnection(_lorawanNetworkServer, unitId);
         }
 
         public AssetTag CreateTag(

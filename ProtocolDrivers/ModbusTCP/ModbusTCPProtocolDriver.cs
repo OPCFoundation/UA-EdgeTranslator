@@ -5,6 +5,8 @@
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class ModbusTCPProtocolDriver : IProtocolDriver
     {
@@ -35,7 +37,7 @@
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
             string[] address = td.Base.Split([':', '/']);
             if ((address.Length != 6) || (address[0] != "modbus+tcp"))
@@ -43,17 +45,17 @@
                 throw new Exception("Expected Modbus server address in the format modbus+tcp://ipaddress:port/unitID!");
             }
 
-            unitId = byte.Parse(address[5]);
+            byte unitId = byte.Parse(address[5]);
 
             ModbusTCPAsset asset = new();
 
             // check if we can reach the Modbus asset
-            asset.Connect(address[3], int.Parse(address[4]));
+            await asset.ConnectAsync(address[3], int.Parse(address[4]), cancellationToken).ConfigureAwait(false);
 
             // Register any WoT actions so that invoking them issues a Modbus write.
             asset.SetActionTags(BuildActionTags(td, unitId));
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         private Dictionary<string, AssetTag> BuildActionTags(ThingDescription td, byte unitId)

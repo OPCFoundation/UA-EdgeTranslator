@@ -40,23 +40,28 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public bool IsConnected => _session != null && _session.Connected;
 
-        public void Connect(string ipAddress, int port)
+        public async Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
         {
             _endpoint = ipAddress + ":" + port;
             string url = BuildEndpointUrl(ipAddress, port);
 
             var username = Environment.GetEnvironmentVariable("OPCUA_CLIENT_USERNAME");
             var password = Environment.GetEnvironmentVariable("OPCUA_CLIENT_PASSWORD");
-            ConnectSessionAsync(url, username, password).GetAwaiter().GetResult();
+            await ConnectSessionAsync(url, username, password).ConfigureAwait(false);
         }
 
-        public void Disconnect()
+        public async Task DisconnectAsync(CancellationToken cancellationToken = default)
         {
             if (_session != null)
             {
-                _session.CloseAsync().GetAwaiter().GetResult();
+                await _session.CloseAsync().ConfigureAwait(false);
                 _session = null;
             }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisconnectAsync().ConfigureAwait(false);
         }
 
         public string GetRemoteEndpoint()
@@ -89,11 +94,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 : "opc.tcp://" + ipAddress;
         }
 
-        public object Read(AssetTag tag)
+        public async Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
         {
             object value = null;
 
-            byte[] tagBytes = Read(tag.Address, 0, null, 0).GetAwaiter().GetResult();
+            byte[] tagBytes = await Read(tag.Address, 0, null, 0).ConfigureAwait(false);
 
             if ((tagBytes != null) && (tagBytes.Length > 0))
             {
@@ -155,7 +160,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return value;
         }
 
-        public void Write(AssetTag tag, object value)
+        public async Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
         {
             object typedValue;
             if (tag.Type == "Float")
@@ -211,7 +216,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new ArgumentException("Type not supported by OPC UA.");
             }
 
-            WriteValue(tag.Address, typedValue).GetAwaiter().GetResult();
+            await WriteValue(tag.Address, typedValue).ConfigureAwait(false);
         }
 
         private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
@@ -470,7 +475,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             reconnectHandler.Dispose();
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
             CallMethodRequestCollection requests = new CallMethodRequestCollection
             {
@@ -491,22 +496,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
             }
 
-            CallResponse response = _session.CallAsync(
+            CallResponse response = await _session.CallAsync(
                 null,
                 requests,
-                CancellationToken.None).GetAwaiter().GetResult();
+                cancellationToken).ConfigureAwait(false);
 
             ClientBase.ValidateResponse(response.Results, requests);
             ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, requests);
 
             StatusCode status = new StatusCode(0);
+            IList<object> outputArgs = null;
             if ((response.Results != null) && (response.Results.Count > 0))
             {
                 status = response.Results[0].StatusCode;
 
                 if (StatusCode.IsBad(response.Results[0].StatusCode) && (response.ResponseHeader.StringTable != null) && (response.ResponseHeader.StringTable.Count > 0))
                 {
-                    return response.ResponseHeader.StringTable[0];
+                    return AssetActionResult.FromStatus(response.ResponseHeader.StringTable[0]);
                 }
 
                 if ((response.Results[0].OutputArguments != null) && (response.Results[0].OutputArguments.Count > 0))
@@ -520,7 +526,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
             }
 
-            return "Action executed successfully.";
+            return AssetActionResult.FromOutputs("Action executed successfully.", outputArgs);
         }
 
         /// <summary>

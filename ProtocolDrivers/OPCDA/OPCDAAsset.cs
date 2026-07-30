@@ -5,6 +5,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Linq;
     using TitaniumAS.Opc.Client.Da;
 
@@ -28,7 +30,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _progId = progId;
         }
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             // For OPC DA, the ipAddress contains the hostname
             // The ProgId should be set via SetProgId() before calling Connect()
@@ -58,7 +60,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             try
             {
@@ -88,7 +90,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             if (_server == null || !_server.IsConnected)
             {
@@ -148,7 +150,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             if (_server == null || !_server.IsConnected)
             {
@@ -199,7 +201,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             // OPC DA does not support method calls directly
             // Actions would need to be mapped to writes or other mechanisms
@@ -236,6 +238,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             _items[itemId] = addedItem;
             return addedItem;
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }

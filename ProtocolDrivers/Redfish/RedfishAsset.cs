@@ -9,6 +9,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Net.Http;
     using System.Net.Http.Headers;
     using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Runtime asset for DMTF Redfish managed devices (servers, BMCs, chassis).
@@ -23,7 +25,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public bool IsConnected { get; private set; } = false;
 
-        public void Connect(string ipAddress, int port)
+        public async Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -49,8 +51,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 ApplyAuthFromEnvironment(_client);
 
                 // Verify connectivity by reading the Redfish service root.
-                var request = new HttpRequestMessage(HttpMethod.Get, _baseUrl + "/redfish/v1/");
-                var response = _client.Send(request);
+                using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, _baseUrl + "/redfish/v1/");
+                using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 IsConnected = true;
@@ -63,9 +65,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Disconnect()
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
         {
             IsConnected = false;
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            IsConnected = false;
+            _client.Dispose();
+            return ValueTask.CompletedTask;
         }
 
         public string GetRemoteEndpoint()
@@ -73,7 +83,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _baseUrl;
         }
 
-        public object Read(AssetTag tag)
+        public async Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -87,11 +97,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 string url = _baseUrl.TrimEnd('/') + "/" + resourcePath.TrimStart('/');
 
-                var request = new HttpRequestMessage(HttpMethod.Get, url);
-                var response = _client.Send(request);
+                using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+                using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                string content = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
                 JToken token;
                 try
@@ -120,7 +130,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public void Write(AssetTag tag, object value)
+        public async Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -141,9 +151,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // Build the smallest patch document covering only the addressed field.
                 JObject patch = BuildPatchDocument(jsonPointer, value, tag.Type);
 
-                var content = new StringContent(patch.ToString(Newtonsoft.Json.Formatting.None), Encoding.UTF8, "application/json");
-                var request = new HttpRequestMessage(new HttpMethod("PATCH"), url) { Content = content };
-                var response = _client.Send(request);
+                using StringContent content = new StringContent(patch.ToString(Newtonsoft.Json.Formatting.None), Encoding.UTF8, "application/json");
+                using HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("PATCH"), url) { Content = content };
+                using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
             }
             catch (Exception ex)
@@ -152,7 +162,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -174,20 +184,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     body = "{}";
                 }
 
-                var content = new StringContent(body, Encoding.UTF8, "application/json");
-                var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
-                var response = _client.Send(request);
+                using StringContent content = new StringContent(body, Encoding.UTF8, "application/json");
+                using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+                using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                string result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                outputArgs = new List<object> { result };
+                string result = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-                return result;
+                return AssetActionResult.FromOutputs(result, new List<object> { result });
             }
             catch (Exception ex)
             {
                 Log.Logger.Error(ex.Message, ex);
-                return null;
+                return AssetActionResult.FromStatus(null);
             }
         }
 

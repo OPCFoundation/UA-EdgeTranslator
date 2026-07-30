@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator.ProtocolDrivers
+namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
     using IEC61850.Client;
     using IEC61850.Common;
@@ -8,6 +8,8 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class IEC61850ProtocolDriver: IProtocolDriver
     {
@@ -134,8 +136,9 @@
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             unitId = 1;
 
             string[] address = td.Base.Split([':', '/']);
@@ -146,9 +149,9 @@
 
             // check if we can reach the IEC61850 asset
             IEC61850Asset asset = new();
-            asset.Connect(address[3] + ":" + address[4], int.Parse(address[5]));
+            await asset.ConnectAsync(address[3] + ":" + address[4], int.Parse(address[5])).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

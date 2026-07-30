@@ -7,6 +7,8 @@ namespace Opc.Ua.Edge.Translator.Tests
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Reflection;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
     using Xunit;
 
@@ -144,8 +146,8 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             FakeAsset asset = new() { RemoteEndpoint = string.Empty };
 
-            MethodInfo reconnect = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            reconnect.Invoke(nm, new object[] { "asset-empty", asset });
+            MethodInfo reconnect = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)reconnect.Invoke(nm, new object[] { "asset-empty", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             // ScheduleNextReconnect must have populated the per-asset state.
             object dict = _sut.GetField("_reconnectStates", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(nm);
@@ -160,8 +162,8 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             ThrowingAsset asset = new();
 
-            MethodInfo reconnect = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
-            reconnect.Invoke(nm, new object[] { "asset-throw", asset });
+            MethodInfo reconnect = _sut.GetMethod("TryReconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((Task)reconnect.Invoke(nm, new object[] { "asset-throw", asset, CancellationToken.None })).GetAwaiter().GetResult();
 
             object dict = _sut.GetField("_reconnectStates", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(nm);
             Assert.True(((IDictionary)dict).Contains("asset-throw"));
@@ -193,23 +195,27 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             public bool IsConnected => false;
 
-            public void Connect(string ipAddress, int port) { }
-            public void Disconnect() { }
+            public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
             public string GetRemoteEndpoint() => RemoteEndpoint;
-            public object Read(AssetTag tag) => null;
-            public void Write(AssetTag tag, object value) { }
-            public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs) => "ok";
+            public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default) => Task.FromResult<object>(null);
+            public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+                => Task.FromResult(AssetActionResult.FromStatus("ok"));
         }
 
         private sealed class ThrowingAsset : Opc.Ua.Edge.Translator.Interfaces.IAsset
         {
             public bool IsConnected => false;
-            public void Connect(string ipAddress, int port) => throw new InvalidOperationException("connect blew up");
-            public void Disconnect() { }
+            public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default) => throw new InvalidOperationException("connect blew up");
+            public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
             public string GetRemoteEndpoint() => "host:1502";
-            public object Read(AssetTag tag) => null;
-            public void Write(AssetTag tag, object value) { }
-            public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs) => "ok";
+            public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default) => Task.FromResult<object>(null);
+            public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+                => Task.FromResult(AssetActionResult.FromStatus("ok"));
         }
     }
 }

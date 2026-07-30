@@ -6,12 +6,13 @@ namespace Opc.Ua.Edge.Translator.Tests
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using System.Threading.Tasks;
     using Xunit;
 
     public class MockProtocolDriverTests
     {
         [Fact]
-        public void Driver_advertises_scheme_and_binding_uri()
+        public async Task Driver_advertises_scheme_and_binding_uri()
         {
             MockProtocolDriver driver = new();
 
@@ -20,7 +21,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void Discover_returns_deterministic_endpoints()
+        public async Task Discover_returns_deterministic_endpoints()
         {
             MockProtocolDriver driver = new();
             List<string> first = new(driver.Discover());
@@ -32,7 +33,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void BrowseAndGenerateTD_returns_well_formed_td_with_properties_and_actions()
+        public async Task BrowseAndGenerateTD_returns_well_formed_td_with_properties_and_actions()
         {
             MockProtocolDriver driver = new();
 
@@ -54,7 +55,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         [InlineData("", "mock://x:1/1")]
         [InlineData("device1", null)]
         [InlineData("device1", "")]
-        public void BrowseAndGenerateTD_rejects_invalid_arguments(string assetName, string assetEndpoint)
+        public async Task BrowseAndGenerateTD_rejects_invalid_arguments(string assetName, string assetEndpoint)
         {
             MockProtocolDriver driver = new();
 
@@ -63,70 +64,71 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void CreateAndConnectAsset_returns_connected_asset_with_parsed_unitId()
+        public async Task CreateAndConnectAsset_returns_connected_asset_with_parsed_unitId()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/7");
 
-            IAsset asset = driver.CreateAndConnectAsset(td, out byte unitId);
+            AssetConnection connection = await driver.CreateAndConnectAssetAsync(td);
+            IAsset asset = connection.Asset;
 
             Assert.NotNull(asset);
             Assert.True(asset.IsConnected);
-            Assert.Equal(7, unitId);
+            Assert.Equal(7, connection.UnitId);
             Assert.Equal("mock://device1:1502", asset.GetRemoteEndpoint());
         }
 
         [Fact]
-        public void CreateAndConnectAsset_defaults_unitId_when_path_is_not_numeric()
+        public async Task CreateAndConnectAsset_defaults_unitId_when_path_is_not_numeric()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/main");
 
-            _ = driver.CreateAndConnectAsset(td, out byte unitId);
+            AssetConnection connection = await driver.CreateAndConnectAssetAsync(td);
 
-            Assert.Equal(1, unitId);
+            Assert.Equal(1, connection.UnitId);
         }
 
         [Fact]
-        public void CreateAndConnectAsset_rejects_wrong_scheme()
+        public async Task CreateAndConnectAsset_rejects_wrong_scheme()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "modbus+tcp://1.2.3.4:502/1");
 
-            Assert.Throws<System.ArgumentException>(() => driver.CreateAndConnectAsset(td, out _));
+            await Assert.ThrowsAsync<System.ArgumentException>(() => driver.CreateAndConnectAssetAsync(td));
         }
 
         [Fact]
-        public void CreateAndConnectAsset_rejects_null_td()
+        public async Task CreateAndConnectAsset_rejects_null_td()
         {
             MockProtocolDriver driver = new();
 
-            Assert.Throws<System.ArgumentNullException>(() => driver.CreateAndConnectAsset(null, out _));
+            await Assert.ThrowsAsync<System.ArgumentNullException>(() => driver.CreateAndConnectAssetAsync(null));
         }
 
         [Theory]
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void CreateAndConnectAsset_rejects_missing_base_uri(string baseUri)
+        public async Task CreateAndConnectAsset_rejects_missing_base_uri(string baseUri)
         {
             MockProtocolDriver driver = new();
             ThingDescription td = new() { Base = baseUri, Name = "x", Title = "x", Id = "urn:x" };
 
-            Assert.Throws<System.ArgumentException>(() => driver.CreateAndConnectAsset(td, out _));
+            await Assert.ThrowsAsync<System.ArgumentException>(() => driver.CreateAndConnectAssetAsync(td));
         }
 
         [Fact]
-        public void CreateAndConnectAsset_rejects_relative_base_uri()
+        public async Task CreateAndConnectAsset_rejects_relative_base_uri()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = new() { Base = "not-a-uri", Name = "x", Title = "x", Id = "urn:x" };
 
-            Assert.Throws<System.ArgumentException>(() => driver.CreateAndConnectAsset(td, out _));
+            await Assert.ThrowsAsync<System.ArgumentException>(() => driver.CreateAndConnectAssetAsync(td));
         }
 
         [Fact]
-        public void CreateTag_throws_when_form_payload_cannot_be_deserialized_as_MockForm()
+        public async Task CreateTag_throws_when_form_payload_cannot_be_deserialized_as_MockForm()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/1");
@@ -137,7 +139,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void CreateTag_round_trips_form_payload_into_AssetTag()
+        public async Task CreateTag_round_trips_form_payload_into_AssetTag()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/1");
@@ -165,31 +167,30 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void Asset_records_reads_writes_and_actions()
+        public async Task Asset_records_reads_writes_and_actions()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/1");
-            MockAsset asset = (MockAsset)driver.CreateAndConnectAsset(td, out _);
+            MockAsset asset = (MockAsset)(await driver.CreateAndConnectAssetAsync(td)).Asset;
 
             AssetTag tag = new() { Name = "temperature", UnitID = 1, Type = "xsd:float" };
 
             // pre-seed and read
             asset.Seed("temperature", 21.5f);
-            object read = asset.Read(tag);
+            object read = await asset.ReadAsync(tag);
             Assert.Equal(21.5f, read);
 
             // write and re-read; the new value should win
-            asset.Write(tag, 99.9f);
-            Assert.Equal(99.9f, asset.Read(tag));
+            await asset.WriteAsync(tag, 99.9f);
+            Assert.Equal(99.9f, await asset.ReadAsync(tag));
 
             // execute an action
             MethodState method = new(parent: null) { BrowseName = new QualifiedName("reset") };
-            IList<object> outputs = new List<object>();
-            string result = asset.ExecuteAction(method, new List<object> { "arg" }, ref outputs);
+            AssetActionResult result = await asset.ExecuteActionAsync(method, new List<object> { "arg" });
 
-            Assert.Equal("mock:reset:ok", result);
-            Assert.Single(outputs);
-            Assert.Equal("mock:reset:ok", outputs[0]);
+            Assert.Equal("mock:reset:ok", result.Status);
+            Assert.Single(result.Outputs);
+            Assert.Equal("mock:reset:ok", result.Outputs[0]);
 
             // recorded interactions
             Assert.Equal(2, asset.Reads.Count);
@@ -199,24 +200,24 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
-        public void Asset_disconnect_blocks_subsequent_io()
+        public async Task Asset_disconnect_blocks_subsequent_io()
         {
             MockProtocolDriver driver = new();
             ThingDescription td = driver.BrowseAndGenerateTD("device1", "mock://device1:1502/1");
-            MockAsset asset = (MockAsset)driver.CreateAndConnectAsset(td, out _);
+            MockAsset asset = (MockAsset)(await driver.CreateAndConnectAssetAsync(td)).Asset;
 
-            asset.Disconnect();
+            await asset.DisconnectAsync();
 
             Assert.False(asset.IsConnected);
             Assert.Equal(1, asset.DisconnectCount);
 
             AssetTag tag = new() { Name = "temperature", UnitID = 1, Type = "xsd:float" };
-            Assert.Throws<System.InvalidOperationException>(() => asset.Read(tag));
-            Assert.Throws<System.InvalidOperationException>(() => asset.Write(tag, 1.0f));
+            await Assert.ThrowsAsync<System.InvalidOperationException>(() => asset.ReadAsync(tag));
+            await Assert.ThrowsAsync<System.InvalidOperationException>(() => asset.WriteAsync(tag, 1.0f));
         }
 
         [Fact]
-        public void Driver_routes_through_ProtocolDriverRegistry()
+        public async Task Driver_routes_through_ProtocolDriverRegistry()
         {
             // Contract test: a freshly registered mock driver must be reachable
             // via TryGetByUri using the base URI it advertises in its TDs.

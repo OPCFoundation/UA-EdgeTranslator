@@ -5,6 +5,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Test-only protocol driver. Backs every IProtocolDriver / IAsset method with
@@ -91,8 +93,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
+            byte unitId = 1;
             ArgumentNullException.ThrowIfNull(td);
 
             if (string.IsNullOrWhiteSpace(td.Base))
@@ -124,8 +127,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             MockAsset asset = new();
-            asset.Connect(uri.Host, uri.Port);
-            return asset;
+            await asset.ConnectAsync(uri.Host, uri.Port).ConfigureAwait(false);
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

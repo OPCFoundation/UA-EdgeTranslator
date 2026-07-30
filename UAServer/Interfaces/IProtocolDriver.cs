@@ -2,6 +2,8 @@
 {
     using Opc.Ua.Edge.Translator.Models;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public interface IProtocolDriver
     {
@@ -13,7 +15,11 @@
 
         public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint);
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId);
+        /// <summary>
+        /// Creates the asset for the given Thing Description and connects it.
+        /// </summary>
+        /// <returns>The connected asset together with its protocol unit id.</returns>
+        public Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default);
 
         public AssetTag CreateTag(
             ThingDescription td,

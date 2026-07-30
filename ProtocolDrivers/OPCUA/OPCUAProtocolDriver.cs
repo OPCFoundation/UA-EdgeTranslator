@@ -8,6 +8,8 @@
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class OPCUAProtocolDriver: IProtocolDriver
     {
@@ -67,7 +69,7 @@
             OPCUAAsset asset = new();
             try
             {
-                asset.Connect(address[3], int.Parse(address[4]));
+                AsyncBridge.RunSync(() => asset.ConnectAsync(address[3], int.Parse(address[4])));
 
                 List<BrowsedNode> nodes = asset.BrowseObjectsFolder();
                 foreach (BrowsedNode node in nodes)
@@ -104,15 +106,15 @@
             }
             finally
             {
-                asset.Disconnect();
+                AsyncBridge.RunSync(() => asset.DisconnectAsync());
             }
 
             return td;
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1; // not used for OPC UA
+            byte unitId = 1; // not used for OPC UA
 
             string[] address = td.Base.Split([':', '/']);
             if ((address.Length != 5) || (address[0] != "opc.tcp"))
@@ -122,9 +124,9 @@
 
             // check if we can reach the OPC UA asset
             OPCUAAsset asset = new();
-            asset.Connect(address[3], int.Parse(address[4]));
+            await asset.ConnectAsync(address[3], int.Parse(address[4]), cancellationToken).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

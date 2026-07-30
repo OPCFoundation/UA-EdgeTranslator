@@ -5,6 +5,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Opc.Ua.Edge.Translator.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class HTTPClientProtocolDriver : IProtocolDriver
     {
@@ -35,9 +37,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             };
         }
 
-        public IAsset CreateAndConnectAsset(ThingDescription td, out byte unitId)
+        public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
-            unitId = 1;
+            byte unitId = 1;
 
             Uri uri;
             try
@@ -55,9 +57,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             HTTPClientAsset asset = new();
-            asset.Connect(uri.GetLeftPart(UriPartial.Authority), 0);
+            await asset.ConnectAsync(uri.GetLeftPart(UriPartial.Authority), 0, cancellationToken).ConfigureAwait(false);
 
-            return asset;
+            return new AssetConnection(asset, unitId);
         }
 
         public AssetTag CreateTag(

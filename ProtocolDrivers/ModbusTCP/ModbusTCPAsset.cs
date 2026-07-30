@@ -7,6 +7,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -47,21 +48,26 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public bool IsConnected { get; private set; } = false;
 
-        public void Connect(string ipAddress, int port)
+        public async Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
         {
+            // Tear down any previous connection first (no I/O wait involved).
+            DisconnectCore();
+
+            TcpClient client = new TcpClient();
+            await client.ConnectAsync(ipAddress, port, cancellationToken).ConfigureAwait(false);
+
+            client.GetStream().ReadTimeout = _timeout;
+            client.GetStream().WriteTimeout = _timeout;
+
+            ModbusFactory factory = new ModbusFactory();
+            IModbusMaster master = factory.CreateMaster(client);
+            master.Transport.ReadTimeout = _timeout;
+            master.Transport.WriteTimeout = _timeout;
+
             lock (_lock)
             {
-                Disconnect();
-
-                _tcpClient = new TcpClient(ipAddress, port);
-                _tcpClient.GetStream().ReadTimeout = _timeout;
-                _tcpClient.GetStream().WriteTimeout = _timeout;
-
-                var factory = new ModbusFactory();
-                _master = factory.CreateMaster(_tcpClient);
-                _master.Transport.ReadTimeout = _timeout;
-                _master.Transport.WriteTimeout = _timeout;
-
+                _tcpClient = client;
+                _master = master;
                 _endpoint = ipAddress + ":" + port.ToString();
 
                 IsConnected = true;
@@ -73,7 +79,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _endpoint;
         }
 
-        public void Disconnect()
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        private void DisconnectCore()
         {
             lock (_lock)
             {
@@ -90,7 +108,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        public object Read(AssetTag tag)
+        public async Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
         {
             object value = null;
 
@@ -108,7 +126,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if ((addressParts.Length == 3) && (addressParts[1] == "quantity"))
             {
                 ushort quantity = ushort.Parse(addressParts[2]);
-                byte[] tagBytes = Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).GetAwaiter().GetResult();
+                byte[] tagBytes = await Read(addressParts[0], tag.UnitID, functionCode.ToString(), quantity).ConfigureAwait(false);
 
                 if ((tagBytes != null) && (tagBytes.Length > 0))
                 {
@@ -133,7 +151,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return new InvalidOperationException(message);
         }
 
-        public void Write(AssetTag tag, object value)
+        public async Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
         {
             bool writeCoil = tag.Entity switch
             {
@@ -147,7 +165,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
-            Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
+            await Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -159,30 +177,30 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _actionTags = actionTags;
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
             string actionName = method?.BrowseName?.Name;
             if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
             {
-                return $"No Modbus form found for action '{actionName}'.";
+                return AssetActionResult.FromStatus($"No Modbus form found for action '{actionName}'.");
             }
 
             if (string.IsNullOrEmpty(tag.Address))
             {
-                return $"Modbus action '{actionName}' has no target address.";
+                return AssetActionResult.FromStatus($"Modbus action '{actionName}' has no target address.");
             }
 
             try
             {
                 // An action invocation is a Modbus write: reuse the property write path
                 // (entity dispatch, encoding, read-only rejection and function-code choice).
-                Write(tag, ResolveActionValue(tag, inputArgs));
-                return "ok";
+                await WriteAsync(tag, ResolveActionValue(tag, inputArgs), cancellationToken).ConfigureAwait(false);
+                return AssetActionResult.FromStatus("ok");
             }
             catch (Exception ex)
             {
                 Log.Logger.Error(ex, "Failed to execute Modbus action '{Action}'.", actionName);
-                return ex.Message;
+                return AssetActionResult.FromStatus(ex.Message);
             }
         }
 

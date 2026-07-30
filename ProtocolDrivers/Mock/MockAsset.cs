@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// In-memory IAsset implementation paired with <see cref="MockProtocolDriver"/>.
@@ -55,7 +56,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _values[tagName] = value;
         }
 
-        public void Connect(string ipAddress, int port)
+        private void ConnectCore(string ipAddress, int port)
         {
             // Match the real driver behavior: missing host should be a hard failure
             // so a bad TD doesn't silently bring up a half-initialized asset.
@@ -72,7 +73,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Interlocked.Increment(ref _connectCount);
         }
 
-        public void Disconnect()
+        private void DisconnectCore()
         {
             IsConnected = false;
             Interlocked.Increment(ref _disconnectCount);
@@ -80,7 +81,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string GetRemoteEndpoint() => _baseUrl;
 
-        public object Read(AssetTag tag)
+        private object ReadCore(AssetTag tag)
         {
             ArgumentNullException.ThrowIfNull(tag);
 
@@ -93,7 +94,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return _values.TryGetValue(tag.Name, out object value) ? value : null;
         }
 
-        public void Write(AssetTag tag, object value)
+        private void WriteCore(AssetTag tag, object value)
         {
             ArgumentNullException.ThrowIfNull(tag);
 
@@ -106,7 +107,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _writes.Enqueue((tag.Name, value));
         }
 
-        public string ExecuteAction(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
+        private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
             ArgumentNullException.ThrowIfNull(method);
 
@@ -123,6 +124,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _actions.Enqueue((actionName, inputsCopy));
             outputArgs = new List<object> { $"mock:{actionName}:ok" };
             return $"mock:{actionName}:ok";
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            ConnectCore(ipAddress, port);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        {
+            DisconnectCore();
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisconnectCore();
+            return ValueTask.CompletedTask;
+        }
+
+        public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ReadCore(tag));
+        }
+
+        public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default)
+        {
+            WriteCore(tag, value);
+            return Task.CompletedTask;
+        }
+
+        public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
+        {
+            IList<object> outputArgs = null;
+            string status = ExecuteActionCore(method, inputArgs, ref outputArgs);
+            return Task.FromResult(AssetActionResult.FromOutputs(status, outputArgs));
         }
     }
 }
