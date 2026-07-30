@@ -18,6 +18,7 @@ namespace Opc.Ua.Edge.Translator
     using System.Linq;
     using System.Text;
     using System.Threading;
+    using System.Threading.Channels;
     using System.Threading.Tasks;
 
     public class UANodeManager : CustomNodeManager2
@@ -46,6 +47,22 @@ namespace Opc.Ua.Edge.Translator
         private readonly ConcurrentDictionary<string, IAsset> _assets = new();
 
         private readonly ConcurrentDictionary<string, List<AssetTag>> _tags = new();
+
+        private readonly ConcurrentDictionary<string, BaseObjectState> _eventSources = new();
+
+        private readonly ConcurrentDictionary<string, AlarmConditionState> _alarmConditions = new();
+
+        private readonly ConcurrentDictionary<string, (IEventingAsset Asset, EventHandler<AlarmEvent> Handler)> _eventSubscriptions = new();
+
+        private sealed class AlarmProjectionQueue
+        {
+            public required Channel<AlarmEvent> Channel { get; init; }
+            public required CancellationTokenSource Cancellation { get; init; }
+            public required Task Worker { get; init; }
+            public int DroppedEvents;
+        }
+
+        private readonly ConcurrentDictionary<string, AlarmProjectionQueue> _alarmProjectionQueues = new();
 
         // Reverse index: maps the OPC UA NodeId of a translated tag to its
         // owning asset and tag, so OnReadValue / OnWriteValue can resolve a
@@ -158,26 +175,58 @@ namespace Opc.Ua.Edge.Translator
                 // Signal all per-asset polling tasks to exit before tearing down
                 // the rest of the address space; otherwise they would race against
                 // the disposed file managers and disposed lock.
-                try
+                if (_shutdownCts != null)
                 {
-                    _shutdownCts.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // already disposed — nothing to do
+                    try
+                    {
+                        _shutdownCts.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // already disposed — nothing to do
+                    }
                 }
 
-                lock (Lock)
+                if (_eventSubscriptions != null)
                 {
-                    foreach (FileManager manager in _fileManagers.Values)
+                    foreach (var eventSubscription in _eventSubscriptions.Values)
                     {
-                        manager.Dispose();
+                        try
+                        {
+                            eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
+                            eventSubscription.Asset.StopEventSubscription();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to stop event subscription during server shutdown.");
+                        }
                     }
 
-                    _fileManagers.Clear();
+                    _eventSubscriptions.Clear();
                 }
 
-                _shutdownCts.Dispose();
+                if (_alarmProjectionQueues != null)
+                {
+                    foreach (string assetId in _alarmProjectionQueues.Keys.ToArray())
+                    {
+                        StopAlarmProjectionQueue(assetId);
+                    }
+                }
+
+                if (_fileManagers != null && Lock != null)
+                {
+                    lock (Lock)
+                    {
+                        foreach (FileManager manager in _fileManagers.Values)
+                        {
+                            manager.Dispose();
+                        }
+
+                        _fileManagers.Clear();
+                    }
+                }
+
+                _shutdownCts?.Dispose();
             }
         }
 
@@ -769,6 +818,21 @@ namespace Opc.Ua.Edge.Translator
 
                 if (_assets.TryRemove(assetName, out IAsset removedAsset))
                 {
+                    if (_eventSubscriptions.TryRemove(assetName, out var eventSubscription))
+                    {
+                        try
+                        {
+                            eventSubscription.Asset.AlarmReceived -= eventSubscription.Handler;
+                            eventSubscription.Asset.StopEventSubscription();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to stop event subscription for asset {AssetId} during delete.", assetName);
+                        }
+                    }
+
+                    StopAlarmProjectionQueue(assetName);
+
                     // Release the southbound connection (socket/stream) the driver
                     // holds. Dropping only the dictionary reference leaks it until
                     // finalization. Defensive: a faulty driver must not fail delete.
@@ -783,6 +847,11 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 _reconnectStates.TryRemove(assetName, out _);
+                _eventSources.TryRemove(assetName, out _);
+                foreach (var entry in _alarmConditions.Where(e => e.Key.StartsWith(assetName + ":", StringComparison.Ordinal)).ToArray())
+                {
+                    _alarmConditions.TryRemove(entry.Key, out _);
+                }
 
                 // Drop NodeId -> tag entries for this asset from the reverse index.
                 foreach (var entry in _tagIndex.Where(e => e.Value.AssetId == assetName).ToArray())
@@ -1065,10 +1134,13 @@ namespace Opc.Ua.Edge.Translator
             }
 
             byte unitId = 1;
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
+            bool requiresEventConnection = td.Events?.Count > 0;
+            if (requiresEventConnection || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_ASSET_CONNECTION_TEST")))
             {
                 AssetConnectionTest(td, out unitId);
             }
+
+            AttachEventingAsset(td.Name, parent);
 
             // create nodes for each TD property
             if ((td.Properties != null) && (td.Properties.Count > 0))
@@ -1613,6 +1685,163 @@ namespace Opc.Ua.Edge.Translator
             _assets[td.Name] = asset;
         }
 
+        private void AttachEventingAsset(string assetId, NodeState assetNode)
+        {
+            if (!_assets.TryGetValue(assetId, out IAsset asset) || asset is not IEventingAsset eventingAsset)
+            {
+                return;
+            }
+
+            string namespaceUri = "http://opcfoundation.org/UA/" + assetId + "/";
+            ushort namespaceIndex = (ushort)Server.NamespaceUris.GetIndexOrAppend(namespaceUri);
+            BaseObjectState source = _nodeFactory.CreateObject(assetNode as BaseObjectState, "Alarms", ObjectTypeIds.BaseObjectType, namespaceIndex, assetId + "_Alarms");
+            source.EventNotifier = EventNotifiers.SubscribeToEvents;
+            AddPredefinedNode(SystemContext, source);
+            _eventSources[assetId] = source;
+
+            AlarmProjectionQueue projectionQueue = CreateAlarmProjectionQueue(assetId);
+
+            EventHandler<AlarmEvent> handler = (_, alarm) =>
+            {
+                if (alarm == null)
+                {
+                    return;
+                }
+
+                if (!projectionQueue.Channel.Writer.TryWrite(alarm))
+                {
+                    int dropped = Interlocked.Increment(ref projectionQueue.DroppedEvents);
+                    if (dropped == 1 || dropped % 100 == 0)
+                    {
+                        Log.Logger.Warning(
+                            "Dropped OPC A&E alarm for asset {AssetId} because projection queue is full. Total dropped={DroppedCount}.",
+                            assetId,
+                            dropped);
+                    }
+                }
+            };
+
+            try
+            {
+                eventingAsset.AlarmReceived += handler;
+                _eventSubscriptions[assetId] = (eventingAsset, handler);
+                eventingAsset.StartEventSubscription();
+            }
+            catch
+            {
+                eventingAsset.AlarmReceived -= handler;
+                _eventSubscriptions.TryRemove(assetId, out _);
+                StopAlarmProjectionQueue(assetId);
+                throw;
+            }
+        }
+
+        private AlarmProjectionQueue CreateAlarmProjectionQueue(string assetId)
+        {
+            var queue = Channel.CreateBounded<AlarmEvent>(new BoundedChannelOptions(512)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.DropWrite
+            });
+
+            var cancellation = new CancellationTokenSource();
+            Task worker = Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (AlarmEvent alarm in queue.Reader.ReadAllAsync(cancellation.Token).ConfigureAwait(false))
+                    {
+                        try
+                        {
+                            ReportReadOnlyAlarm(assetId, alarm);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Warning(ex, "Failed to project alarm event for asset {AssetId}", assetId);
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected during delete/shutdown
+                }
+            }, cancellation.Token);
+
+            var projectionQueue = new AlarmProjectionQueue
+            {
+                Channel = queue,
+                Cancellation = cancellation,
+                Worker = worker
+            };
+
+            _alarmProjectionQueues[assetId] = projectionQueue;
+            return projectionQueue;
+        }
+
+        private void StopAlarmProjectionQueue(string assetId)
+        {
+            if (!_alarmProjectionQueues.TryRemove(assetId, out AlarmProjectionQueue queue))
+            {
+                return;
+            }
+
+            try
+            {
+                queue.Channel.Writer.TryComplete();
+                queue.Cancellation.Cancel();
+                queue.Worker.Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Failed to stop alarm projection queue for asset {AssetId}.", assetId);
+            }
+            finally
+            {
+                queue.Cancellation.Dispose();
+            }
+        }
+
+        private void ReportReadOnlyAlarm(string assetId, AlarmEvent alarm)
+        {
+            if (!_eventSources.TryGetValue(assetId, out BaseObjectState source))
+            {
+                return;
+            }
+
+            lock (Lock)
+            {
+                string conditionKey = string.IsNullOrWhiteSpace(alarm.ConditionKey)
+                    ? assetId + ":" + alarm.Source + ":" + alarm.ConditionName
+                    : assetId + ":" + alarm.ConditionKey;
+
+                AlarmConditionState condition = _alarmConditions.GetOrAdd(conditionKey, _ =>
+                {
+                    var created = new AlarmConditionState(source);
+                    created.Initialize(SystemContext, null, EventSeverity.Medium, new Ua.LocalizedText("Alarm condition"));
+                    return created;
+                });
+
+                condition.SetChildValue(SystemContext, BrowseNames.SourceNode, source.NodeId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.SourceName, alarm.Source ?? assetId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.ConditionName, alarm.ConditionName ?? alarm.Source ?? assetId, false);
+                condition.SetChildValue(SystemContext, BrowseNames.Severity, (ushort)Math.Clamp(alarm.Severity, 0, ushort.MaxValue), false);
+                condition.SetChildValue(SystemContext, BrowseNames.Message, new Ua.LocalizedText(alarm.Message ?? string.Empty), false);
+                condition.SetChildValue(SystemContext, BrowseNames.Time, alarm.Time == default ? DateTime.UtcNow : alarm.Time, false);
+                condition.SetChildValue(SystemContext, BrowseNames.ReceiveTime, DateTime.UtcNow, false);
+                condition.SetChildValue(SystemContext, BrowseNames.Retain, alarm.Active || !alarm.Acknowledged, false);
+                condition.SetChildValue(SystemContext, BrowseNames.EnabledState, new Ua.LocalizedText(alarm.Enabled ? "Enabled" : "Disabled"), false);
+                condition.SetChildValue(SystemContext, BrowseNames.ActiveState, new Ua.LocalizedText(alarm.Active ? "Active" : "Inactive"), false);
+                condition.SetChildValue(SystemContext, BrowseNames.AckedState, new Ua.LocalizedText(alarm.Acknowledged ? "Acknowledged" : "Unacknowledged"), false);
+
+                condition.EnabledState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Enabled, false);
+                condition.ActiveState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Active, false);
+                condition.AckedState?.SetChildValue(SystemContext, BrowseNames.Id, alarm.Acknowledged, false);
+
+                Server.ReportEvent(condition);
+            }
+        }
+
         private ExpandedNodeId ParseExpandedNodeId(string nodeString)
         {
             if (!string.IsNullOrEmpty(nodeString))
@@ -2082,6 +2311,11 @@ namespace Opc.Ua.Edge.Translator
 
                 if (asset.IsConnected)
                 {
+                    if (asset is IEventingAsset eventingAsset)
+                    {
+                        eventingAsset.StartEventSubscription();
+                    }
+
                     Log.Logger.Information("Reconnected to asset {AssetId}.", assetId);
                     ResetReconnectState(assetId);
                     return;

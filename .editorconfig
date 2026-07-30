@@ -19,7 +19,7 @@ indent_style                                                                    
 tab_width                                                                                      = 4
 
 # New line preferences
-end_of_line                                                                                    = crlf
+end_of_line                                                                                    = lf
 insert_final_newline                                                                           = false
 
 #### .NET Coding Conventions ####
@@ -312,7 +312,7 @@ csharp_style_prefer_local_over_anonymous_function = true:suggestion
 dotnet_style_operator_placement_when_wrapping = beginning_of_line
 tab_width = 4
 indent_size = 4
-end_of_line = crlf
+end_of_line = lf
 dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
@@ -329,3 +329,25 @@ dotnet_style_prefer_compound_assignment = true:suggestion
 dotnet_style_prefer_simplified_interpolation = true:suggestion
 dotnet_style_namespace_match_folder = true:suggestion
 insert_final_newline = true
+
+# ---------------------------------------------------------------------------
+# CA2007: Do not directly await a Task
+#
+# UAServer and the protocol drivers are library / plugin code: drivers are loaded
+# as DLLs into a host this repository does not control, so their continuations
+# must not be forced back onto whatever SynchronizationContext that host installs
+# (ASP.NET Framework, WinForms, WPF). Every await in these projects must
+# therefore specify .ConfigureAwait(false). Combined with TreatWarningsAsErrors
+# in Directory.Build.props, this is enforced at build time.
+#
+# Deliberately NOT enabled for UA-WoTMapper: Blazor Server installs a
+# SynchronizationContext that component code must resume on, so ConfigureAwait
+# (false) there causes "current thread is not associated with the Dispatcher"
+# failures. Also left off for the test project, which is not library code.
+# ---------------------------------------------------------------------------
+
+[UAServer/**.cs]
+dotnet_diagnostic.CA2007.severity = warning
+
+[ProtocolDrivers/**.cs]
+dotnet_diagnostic.CA2007.severity = warning

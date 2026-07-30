@@ -349,6 +349,7 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 *.jsonld
+!Samples/Matrikon OPC A&E Simulation Server.td.jsonld
 /*.nodeset2.xml
 /UA-WoTGenerator/Mondelez
 /UA-WoTGenerator/MCC1_V33_20240810_Tags.csv
@@ -358,3 +359,4 @@ MigrationBackup/
 /UAServer/settings
 /UA-WoTMapper/pki
 /UA-WoTMapper/App_Data
+/dist/

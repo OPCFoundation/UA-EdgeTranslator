@@ -89,6 +89,8 @@ jobs:
         driver:
           - name: opcda
             csproj: ProtocolDrivers/OPCDA/OPCDA.csproj
+          - name: opcae
+            csproj: ProtocolDrivers/OPCAE/OPCAE.csproj
 
     steps:
       - name: Checkout
@@ -102,7 +104,7 @@ jobs:
       - name: Publish driver (self-contained folder with deps)
         run: |
           New-Item -ItemType Directory -Force -Path drivers/_driverpack/${{ matrix.driver.name }}
-          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows -r win-x86
+          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows -r win-x86 -p:Platform=x86
 
       - name: Upload staged drivers as artifact (debug aid)
         uses: actions/upload-artifact@v7

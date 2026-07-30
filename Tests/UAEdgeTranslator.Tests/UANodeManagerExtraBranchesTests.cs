@@ -280,6 +280,23 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void TryReconnect_restarts_event_subscription_after_successful_reconnect()
+        {
+            UANodeManager nm = NewBareInstance();
+            ReconnectAsset asset = new()
+            {
+                Endpoint = "opc.ae://localhost/Matrikon.AE.Simulation.1",
+                ConnectedAfterConnect = true
+            };
+
+            MethodInfo m = _sut.GetMethod("TryReconnect", BindingFlags.NonPublic | BindingFlags.Instance);
+            m.Invoke(nm, new object[] { "asset-ae", asset });
+
+            Assert.Equal(1, asset.ConnectCalls);
+            Assert.Equal(1, asset.StartEventSubscriptionCalls);
+        }
+
+        [Fact]
         public void TryReconnect_increments_failure_counter_when_asset_remains_disconnected()
         {
             UANodeManager nm = NewBareInstance();
@@ -336,15 +353,22 @@ namespace Opc.Ua.Edge.Translator.Tests
             throw new InvalidOperationException("ReconnectState type not found.");
         }
 
-        private sealed class ReconnectAsset : IAsset
+        private sealed class ReconnectAsset : IEventingAsset
         {
             public string Endpoint { get; set; }
             public bool ConnectedAfterConnect { get; set; }
             public bool ThrowOnConnect { get; set; }
             public int ConnectCalls { get; private set; }
             public int DisconnectCalls { get; private set; }
+            public int StartEventSubscriptionCalls { get; private set; }
             public string LastConnectHost { get; private set; }
             public int LastConnectPort { get; private set; }
+
+            public event EventHandler<AlarmEvent> AlarmReceived
+            {
+                add { }
+                remove { }
+            }
 
             private bool _isConnected;
 
@@ -370,6 +394,15 @@ namespace Opc.Ua.Edge.Translator.Tests
                 DisconnectCalls++;
                 _isConnected = false;
             }
+
+            public void StartEventSubscription()
+            {
+                StartEventSubscriptionCalls++;
+            }
+
+            public void RefreshEventSubscription() { }
+
+            public void StopEventSubscription() { }
 
             public object Read(AssetTag tag) => null;
 
