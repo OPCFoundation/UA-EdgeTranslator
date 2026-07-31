@@ -5,6 +5,8 @@
 @inject DiagnosticsService Diagnostics
 @implements IDisposable
 
+<PageTitle>WoT Files &middot; UA Edge Translator</PageTitle>
+
 <PageHeader Title="WoT Files" Subtitle="Loaded Thing Descriptions" OnRefresh="Reload">
     <Actions>
         <label class="btn-refresh import-wot-btn @(_importing ? "is-busy" : null)" title="Import a Thing Description (.jsonld) file">
