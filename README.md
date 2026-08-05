@@ -3,7 +3,7 @@
 ## CI, Code Quality and Build Status
 
 [![CI](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
-[![Coverage (Edge Translator & Drivers' Interfaces)](https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslator/badges/coverage.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
+[![Code Coverage - Edge Translator & Drivers' Interfaces](https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslator/badges/coverage.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml)
 [![Docker](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml)
 [![Docker (WoT Mapper)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml/badge.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml)
