@@ -1,4 +1,4 @@
-name: Build & Push Driver Pack Image
+name: Docker (Driver Pack)
 
 on:
   workflow_dispatch:

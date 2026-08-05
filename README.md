@@ -3,11 +3,11 @@
 ## CI, Code Quality and Build Status
 
 [![CI](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
-[![Coverage (UA Edge Translator server)](https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslator/badges/coverage.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
+[![Coverage (UA Edge Translator)](https://raw.githubusercontent.com/OPCFoundation/UA-EdgeTranslator/badges/coverage.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/codeql.yml)
 [![Docker (UA Edge Translator)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish.yml)
 [![Docker (WoT Mapper)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml/badge.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/docker-publish-wotmapper.yml)
-[![Docker (Driver Pack Image)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml)
+[![Docker (Driver Pack)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml/badge.svg?branch=main)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/driver-pack.yml)
 [![Helm Chart](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/helm-publish.yml/badge.svg)](https://github.com/OPCFoundation/UA-EdgeTranslator/actions/workflows/helm-publish.yml)
 
 > **What the coverage badge measures:** the UA Edge Translator **server** assembly. The protocol drivers are built and their `IProtocolDriver` implementations are contract-tested (scheme, WoT binding URI, registry resolution and structure-type registration for every driver), but they are excluded from the coverage *percentage*. See [coverage.runsettings](coverage.runsettings).
