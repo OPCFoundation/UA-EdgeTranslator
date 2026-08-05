@@ -63,7 +63,7 @@ jobs:
         run: dotnet build UAEdgeTranslator.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --collect:"XPlat Code Coverage"
 
       - name: Upload test results
         if: always()
@@ -71,4 +71,24 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: '**/TestResults/*.trx'
+          if-no-files-found: warn
+
+      # Coverage is reported from the Linux leg only. Both matrix legs run the
+      # same test project, so uploading from each would just double-count the
+      # same lines in Codecov's merge.
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v7
+        with:
+          files: '**/TestResults/**/coverage.cobertura.xml'
+          flags: unittests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: '**/TestResults/**/coverage.cobertura.xml'
           if-no-files-found: warn
