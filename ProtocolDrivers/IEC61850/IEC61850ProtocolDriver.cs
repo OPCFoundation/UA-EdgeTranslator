@@ -17,7 +17,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string WoTBindingUri => "https://www.w3.org/2019/wot/iec61850";
 
-        private IedConnection _client = new();
+        // Created lazily rather than in a field initialiser: constructing an
+        // IedConnection P/Invokes into the native 'iec61850' library, so an
+        // eager initialiser made merely *loading* this driver throw
+        // EntryPointNotFoundException wherever that native library is absent.
+        // DriverLoadContext instantiates every driver via
+        // Activator.CreateInstance at startup, so the failure took the driver
+        // out entirely instead of only failing an actual browse.
+        private IedConnection _client;
+
+        private IedConnection Client => _client ??= new IedConnection();
 
         public IEnumerable<string> Discover()
         {
@@ -45,11 +54,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             try
             {
-                _client.Connect(address[1], 102);
+                Client.Connect(address[1], 102);
 
                 Log.Logger.Information("Connected to IEC61850 at " + address[1]);
 
-                var mmsCon = _client.GetMmsConnection();
+                var mmsCon = Client.GetMmsConnection();
 
                 var identity = mmsCon.GetServerIdentity();
 
@@ -57,13 +66,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Log.Logger.Information("Model:    " + identity.modelName);
                 Log.Logger.Information("Revision: " + identity.revision);
 
-                var serverDirectory = _client.GetServerDirectory(false);
+                var serverDirectory = Client.GetServerDirectory(false);
 
                 foreach (var ldName in serverDirectory)
                 {
                     Log.Logger.Information("LD: " + ldName);
 
-                    var lnNames = _client.GetLogicalDeviceDirectory(ldName);
+                    var lnNames = Client.GetLogicalDeviceDirectory(ldName);
 
                     foreach (var lnName in lnNames)
                     {
@@ -72,20 +81,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         var logicalNodeReference = ldName + "/" + lnName;
 
                         // discover data objects
-                        var dataObjects = _client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_DATA_OBJECT);
+                        var dataObjects = Client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_DATA_OBJECT);
 
                         foreach (var dataObject in dataObjects)
                         {
                             Log.Logger.Information("    DO: " + dataObject);
 
-                            var dataDirectory = _client.GetDataDirectoryFC(logicalNodeReference + "." + dataObject);
+                            var dataDirectory = Client.GetDataDirectoryFC(logicalNodeReference + "." + dataObject);
 
                             foreach (var dataDirectoryElement in dataDirectory)
                             {
                                 var daReference = logicalNodeReference + "." + dataObject + "." + ObjectReference.getElementName(dataDirectoryElement);
 
                                 // get the type specification of a variable
-                                var specification = _client.GetVariableSpecification(daReference, ObjectReference.getFC(dataDirectoryElement));
+                                var specification = Client.GetVariableSpecification(daReference, ObjectReference.getFC(dataDirectoryElement));
 
                                 Log.Logger.Information("      DA/SDO: [" + ObjectReference.getFC(dataDirectoryElement) + "] " +
                                                    ObjectReference.getElementName(dataDirectoryElement) + " : " + specification.GetType()
@@ -102,14 +111,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
 
                         // discover data sets
-                        var dataSets = _client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_DATA_SET);
+                        var dataSets = Client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_DATA_SET);
                         foreach (var dataSet in dataSets)
                         {
                             Log.Logger.Information("    Dataset: " + dataSet);
                         }
 
                         // discover unbuffered report control blocks
-                        var urcbs = _client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_URCB);
+                        var urcbs = Client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_URCB);
 
                         foreach (var urcb in urcbs)
                         {
@@ -117,7 +126,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
 
                         // discover buffered report control blocks
-                        var brcbs = _client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_BRCB);
+                        var brcbs = Client.GetLogicalNodeDirectory(logicalNodeReference, ACSIClass.ACSI_CLASS_BRCB);
 
                         foreach (var brcb in brcbs)
                         {
@@ -126,7 +135,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     }
                 }
 
-                _client.Abort();
+                Client.Abort();
             }
             catch (IedConnectionException e)
             {

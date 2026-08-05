@@ -63,7 +63,7 @@ jobs:
         run: dotnet build UAEdgeTranslator.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --collect:"XPlat Code Coverage"
+        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
       - name: Upload test results
         if: always()
@@ -130,7 +130,7 @@ jobs:
         run: dotnet build UAEdgeTranslator.sln -c Release --no-restore
 
       - name: Test with coverage
-        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: dotnet test UAEdgeTranslator.sln -c Release --no-build --no-restore --collect:"XPlat Code Coverage" --settings coverage.runsettings --results-directory TestResults
 
       - name: Generate badge
         run: |

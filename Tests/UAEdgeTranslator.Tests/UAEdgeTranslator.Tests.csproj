@@ -20,8 +20,39 @@
   <ItemGroup>
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj" />
     <ProjectReference Include="..\..\ProtocolDrivers\Mock\Mock.csproj" />
+    <!--
+      Every protocol driver is referenced so it is instrumented for code
+      coverage and exercised by the shared ProtocolDriverContractTests suite.
+      Without these the drivers are absent from the coverage denominator
+      entirely, which silently overstates repo-wide coverage.
+    -->
+    <ProjectReference Include="..\..\ProtocolDrivers\BACNet\BACNetDriver.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Beckhoff\Beckhoff.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\HTTPClient\HTTPClient.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\IEC61850\IEC61850.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\LoRaWAN\LoRaWAN.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Matter\Matter.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Mitsubishi\Mitsubishi.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\ModbusRTU\ModbusRTU.csproj" />
     <ProjectReference Include="..\..\ProtocolDrivers\ModbusTCP\ModbusTCP.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\OCPP\OCPP.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\OPCUA\OPCUA.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\AvevaPI\PIClient.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Redfish\Redfish.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Rockwell\Rockwell.csproj" />
+    <ProjectReference Include="..\..\ProtocolDrivers\Siemens\Siemens.csproj" />
   </ItemGroup>
+
+  <!--
+    NOT referenced: OPCDA and OPCAE. Both target net10.0-windows (they wrap
+    OPC Classic COM interop), and a net10.0 project cannot reference a
+    net10.0-windows one regardless of the host OS (NU1201) — an OS condition
+    is not sufficient. Covering them would require multi-targeting this
+    project to net10.0;net10.0-windows, which doubles the runtime of the
+    entire suite for two drivers. They are therefore deliberately excluded
+    from code coverage; see ProtocolDriverContractTests for the full list of
+    drivers under contract test.
+  -->
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -34,6 +65,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="bunit" />
   </ItemGroup>
 
 </Project>

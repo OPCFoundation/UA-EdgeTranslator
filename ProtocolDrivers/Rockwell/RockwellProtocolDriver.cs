@@ -309,7 +309,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// </summary>
         public void RegisterStructureTypes(ThingDescription td, UANodeManager nodeManager)
         {
-            if (td.Properties == null || td.Properties.Count == 0)
+            if (td?.Properties == null || td.Properties.Count == 0)
             {
                 return;
             }
