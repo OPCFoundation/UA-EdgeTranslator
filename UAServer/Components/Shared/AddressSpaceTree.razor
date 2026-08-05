@@ -1,0 +1,159 @@
+@*
+    Recursive, lazily-loaded tree over the OPC UA address space. Modelled on the
+    UA Cloud Library explorer tree, but specialised to AddressSpaceNode so the
+    Explorer can highlight nodes by namespace without a generic type parameter.
+
+    Children are fetched through OnNodeExpand the first time a node is opened,
+    which keeps the (very large) core namespace from being walked up front.
+*@
+
+<ul class="as-tree">
+    @foreach (AddressSpaceNode node in Nodes ?? Enumerable.Empty<AddressSpaceNode>())
+    {
+        bool expanded = ExpandedNodes.Contains(node.Id);
+        bool selected = string.Equals(SelectedNodeId, node.Id, StringComparison.Ordinal);
+        bool loading = _loadingNodes.Contains(node.Id);
+        bool inNamespace = HighlightNamespaceIndex.HasValue && node.NamespaceIndex == HighlightNamespaceIndex.Value;
+
+        <li class="as-tree-item" @key="node.Id">
+            <div class="as-tree-row">
+                @if (node.HasChildren)
+                {
+                    <button type="button"
+                            class="as-tree-toggle @(expanded ? "is-expanded" : null)"
+                            title="@(expanded ? "Collapse" : "Expand")"
+                            aria-label="@(expanded ? "Collapse" : "Expand")"
+                            @onclick="() => ToggleAsync(node)">
+                        @if (loading)
+                        {
+                            <span class="as-tree-spinner"></span>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 18l6-6-6-6" />
+                            </svg>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <span class="as-tree-toggle as-tree-toggle-empty"></span>
+                }
+
+                <span class="as-node-badge as-node-@node.NodeClass.ToLowerInvariant()" title="@node.NodeClass">@NodeClassAbbreviation(node.NodeClass)</span>
+
+                <span class="as-tree-label @(selected ? "is-selected" : null) @(inNamespace ? "is-in-namespace" : null)"
+                      title="@node.Id"
+                      @onclick="() => SelectAsync(node)">
+                    @node.Text
+                </span>
+
+                @if (TryGetValue(node, out string liveValue))
+                {
+                    <span class="as-tree-value" title="@liveValue">@liveValue</span>
+                }
+            </div>
+
+            @if (expanded && node.Children is not null && node.Children.Count > 0)
+            {
+                <div class="as-tree-children">
+                    <AddressSpaceTree Nodes="node.Children"
+                                      ExpandedNodes="ExpandedNodes"
+                                      SelectedNodeId="SelectedNodeId"
+                                      HighlightNamespaceIndex="HighlightNamespaceIndex"
+                                      NodeValues="NodeValues"
+                                      OnNodeExpand="OnNodeExpand"
+                                      OnNodeSelect="OnNodeSelect" />
+                </div>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    /// <summary>The nodes rendered at this level.</summary>
+    [Parameter] public IEnumerable<AddressSpaceNode> Nodes { get; set; }
+
+    /// <summary>Ids of every expanded node, shared across the whole tree.</summary>
+    [Parameter] public HashSet<string> ExpandedNodes { get; set; } = new();
+
+    /// <summary>Id of the currently selected node.</summary>
+    [Parameter] public string SelectedNodeId { get; set; }
+
+    /// <summary>When set, nodes in this namespace are rendered bold.</summary>
+    [Parameter] public int? HighlightNamespaceIndex { get; set; }
+
+    /// <summary>Live variable values, keyed by node id, refreshed by the page timer.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string> NodeValues { get; set; }
+
+    /// <summary>Invoked to lazily load a node's children.</summary>
+    [Parameter] public EventCallback<AddressSpaceNode> OnNodeExpand { get; set; }
+
+    /// <summary>Invoked when a node is clicked.</summary>
+    [Parameter] public EventCallback<AddressSpaceNode> OnNodeSelect { get; set; }
+
+    private readonly HashSet<string> _loadingNodes = new(StringComparer.Ordinal);
+
+    private async Task ToggleAsync(AddressSpaceNode node)
+    {
+        if (ExpandedNodes.Contains(node.Id))
+        {
+            ExpandedNodes.Remove(node.Id);
+            return;
+        }
+
+        // Only hit the address space the first time a node is opened; the
+        // children are cached on the node itself afterwards.
+        if (node.Children is null && OnNodeExpand.HasDelegate)
+        {
+            _loadingNodes.Add(node.Id);
+
+            try
+            {
+                await OnNodeExpand.InvokeAsync(node);
+            }
+            finally
+            {
+                _loadingNodes.Remove(node.Id);
+            }
+        }
+
+        ExpandedNodes.Add(node.Id);
+    }
+
+    private async Task SelectAsync(AddressSpaceNode node)
+    {
+        if (OnNodeSelect.HasDelegate)
+        {
+            await OnNodeSelect.InvokeAsync(node);
+        }
+    }
+
+    /// <summary>
+    /// Live values are only shown for Variable nodes, and only once the first
+    /// poll has produced a value for them.
+    /// </summary>
+    private bool TryGetValue(AddressSpaceNode node, out string value)
+    {
+        value = null;
+
+        return NodeValues is not null
+            && string.Equals(node.NodeClass, "Variable", StringComparison.Ordinal)
+            && NodeValues.TryGetValue(node.Id, out value)
+            && !string.IsNullOrEmpty(value);
+    }
+
+    private static string NodeClassAbbreviation(string nodeClass) => nodeClass switch
+    {
+        "Object" => "O",
+        "Variable" => "V",
+        "Method" => "M",
+        "ObjectType" => "OT",
+        "VariableType" => "VT",
+        "ReferenceType" => "RT",
+        "DataType" => "DT",
+        "View" => "VW",
+        _ => "?"
+    };
+}

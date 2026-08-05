@@ -1,0 +1,466 @@
+@page "/explorer"
+@implements IDisposable
+@inject AddressSpaceService AddressSpace
+@inject DiagnosticsService Diagnostics
+
+<PageTitle>Address Space &middot; UA Edge Translator</PageTitle>
+
+<PageHeader Title="Address Space" Subtitle="Browse the OPC UA address space" OnRefresh="ReloadAsync">
+    <Actions>
+        <div class="ns-filter">
+            <label for="ns-select">Namespace</label>
+            <select id="ns-select" class="ns-select" @bind="SelectedNamespace" @bind:after="OnNamespaceChanged">
+                <option value="-1">(none)</option>
+                @foreach (NamespaceInfo ns in _namespaces)
+                {
+                    <option value="@ns.Index">@ns.Index — @(string.IsNullOrEmpty(ns.Uri) ? "(empty)" : ns.Uri)</option>
+                }
+            </select>
+        </div>
+    </Actions>
+</PageHeader>
+
+@if (!_available)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v5M12 16h.01" />
+            </svg>
+        </div>
+        <h2>The address space is not available</h2>
+        <p>The OPC UA server is still starting up, or it failed to start. Refresh once the server is running.</p>
+    </div>
+}
+else
+{
+    @if (_tagAccessBlocked)
+    {
+        <div class="banner banner-warning">
+            <strong>Asset tag access blocked</strong> — the server is in provisioning mode and <span class="mono">IGNORE_PROVISIONING_MODE</span> is not set, so OPC UA clients cannot read or write any asset tags. Provide an issuer certificate, or set <span class="mono">IGNORE_PROVISIONING_MODE=1</span> to allow tag access.
+        </div>
+    }
+
+    @if (_selectedNamespaceIndex >= 0)
+    {
+        <div class="banner banner-namespace">
+            Nodes in namespace <span class="mono">@_selectedNamespaceIndex</span>
+            (<span class="mono">@CurrentNamespaceUri</span>) are shown in <b>bold</b>.
+        </div>
+    }
+
+    <div class="explorer-grid">
+        <div class="card explorer-tree-card">
+            <div class="as-legend">
+                @foreach ((string Code, string Name) entry in _nodeClassLegend)
+                {
+                    <span class="as-legend-item">
+                        <span class="as-node-badge as-node-@entry.Name.ToLowerInvariant()">@entry.Code</span>
+                        <span class="as-legend-label">@entry.Name</span>
+                    </span>
+                }
+            </div>
+            <div class="card-body explorer-tree-body">
+                @if (_rootNodes is null)
+                {
+                    <div class="loading">Loading&#8230;</div>
+                }
+                else if (_rootNodes.Count == 0)
+                {
+                    <div class="as-tree-empty">The address space could not be browsed.</div>
+                }
+                else
+                {
+                    <AddressSpaceTree Nodes="_rootNodes"
+                                      ExpandedNodes="_expandedNodes"
+                                      SelectedNodeId="_selectedNodeId"
+                                      HighlightNamespaceIndex="HighlightNamespaceIndex"
+                                      NodeValues="_nodeValues"
+                                      OnNodeExpand="LoadChildrenAsync"
+                                      OnNodeSelect="SelectNodeAsync" />
+                }
+            </div>
+        </div>
+
+        <div class="card explorer-detail-card">
+            <div class="card-header">
+                <h2>Node Details</h2>
+            </div>
+            <div class="card-body">
+                @if (_loadingDetail)
+                {
+                    <div class="loading">Loading&#8230;</div>
+                }
+                else if (_detail is null)
+                {
+                    <div class="as-tree-empty">Select a node in the tree to see its details.</div>
+                }
+                else if (!string.IsNullOrEmpty(_detail.Error))
+                {
+                    <div class="banner banner-warning">@_detail.Error</div>
+                }
+                else
+                {
+                    <div class="detail-title">
+                        <span class="as-node-badge as-node-@_detail.NodeClass.ToLowerInvariant()">@_detail.NodeClass</span>
+                        <span class="detail-name">@_detail.DisplayName</span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_detail.NamespaceUri))
+                    {
+                        <p class="detail-namespace mono">@_detail.NamespaceUri</p>
+                    }
+
+                    <h3 class="detail-section">Attributes</h3>
+                    <table class="data-table detail-table">
+                        <tbody>
+                            @foreach (NodeAttribute item in _detail.Attributes)
+                            {
+                                <tr>
+                                    <th>@item.Name</th>
+                                    <td class="mono">@(string.IsNullOrEmpty(item.Value) ? "—" : item.Value)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    @if (_detail.ValueAttributes.Count > 0)
+                    {
+                        <h3 class="detail-section">Value</h3>
+                        <table class="data-table detail-table">
+                            <tbody>
+                                @foreach (NodeAttribute item in _detail.ValueAttributes)
+                                {
+                                    <tr>
+                                        <th>@item.Name</th>
+                                        <td class="mono">@(string.IsNullOrEmpty(item.Value) ? "—" : item.Value)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (_detail.Fields.Count > 0)
+                    {
+                        <h3 class="detail-section">Structure Fields (@_detail.Fields.Count)</h3>
+                        <table class="data-table detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (StructureFieldValue field in _detail.Fields)
+                                {
+                                    <tr>
+                                        <td>@field.Name</td>
+                                        <td class="mono">@field.DataType</td>
+                                        <td class="mono">@(string.IsNullOrEmpty(field.Value) ? "—" : field.Value)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (_detail.References.Count > 0)
+                    {
+                        <h3 class="detail-section">References (@_detail.References.Count)</h3>
+                        <table class="data-table detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Direction</th>
+                                    <th>Target</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (NodeReferenceInfo reference in _detail.References)
+                                {
+                                    <tr>
+                                        <td>@reference.ReferenceType</td>
+                                        <td>
+                                            <span class="pill @(reference.Direction == "Forward" ? "pill-blue" : "pill-gray")">@reference.Direction</span>
+                                        </td>
+                                        <td title="@reference.TargetNodeId">@reference.TargetName</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<NamespaceInfo> _namespaces = [];
+    private List<AddressSpaceNode> _rootNodes;
+    private readonly HashSet<string> _expandedNodes = new(StringComparer.Ordinal);
+    private string _selectedNodeId;
+    private NodeDetail _detail;
+    private bool _loadingDetail;
+    private bool _available;
+    private bool _tagAccessBlocked;
+    private int _selectedNamespaceIndex = -1;
+
+    // Mirrors AddressSpaceTree.NodeClassAbbreviation so the legend and the
+    // badges in the tree can never drift apart.
+    private static readonly (string Code, string Name)[] _nodeClassLegend =
+    [
+        ("O", "Object"),
+        ("V", "Variable"),
+        ("M", "Method"),
+        ("OT", "ObjectType"),
+        ("VT", "VariableType"),
+        ("RT", "ReferenceType"),
+        ("DT", "DataType"),
+        ("VW", "View")
+    ];
+    private IReadOnlyDictionary<string, string> _nodeValues = new Dictionary<string, string>(StringComparer.Ordinal);
+    private PeriodicTimer _timer;
+
+    // Values poll every second; the tree itself is re-browsed every 10th tick
+    // (~10s) so newly onboarded assets show up without the user refreshing.
+    private const int _rebrowseIntervalTicks = 10;
+
+    /// <summary>Bound to the dropdown; kept as a string so "(none)" round-trips cleanly.</summary>
+    private string SelectedNamespace { get; set; } = "-1";
+
+    private int? HighlightNamespaceIndex => _selectedNamespaceIndex < 0 ? null : _selectedNamespaceIndex;
+
+    private string CurrentNamespaceUri =>
+        _namespaces.FirstOrDefault(n => n.Index == _selectedNamespaceIndex)?.Uri ?? string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+
+        // Live values refresh on a 1s cadence. The rest of the dashboard polls
+        // at 5s, but variable values are the one thing an operator watches
+        // change in real time.
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = RefreshValuesLoopAsync();
+    }
+
+    private async Task RefreshValuesLoopAsync()
+    {
+        int tick = 0;
+
+        try
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                // Provisioning mode can be lifted while the page is open (an
+                // issuer certificate arrives), so re-evaluate the banner with
+                // the values rather than leaving it stale until a refresh.
+                _tagAccessBlocked = Diagnostics.IsTagAccessBlocked();
+
+                // Assets can be onboarded at any time, which changes the shape
+                // of the address space. Re-browse periodically so new nodes
+                // appear on their own; every second would be needlessly heavy,
+                // so this runs on a slower cadence than the value poll.
+                if (++tick % _rebrowseIntervalTicks == 0)
+                {
+                    await ReloadAsync();
+                }
+                else
+                {
+                    await RefreshValuesAsync();
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component was disposed between ticks; stop refreshing.
+        }
+    }
+
+    /// <summary>
+    /// Reads the values of every variable currently visible in the tree in a
+    /// single batched call. Collapsed sub-trees are skipped, so the cost scales
+    /// with what is on screen rather than with the size of the address space.
+    /// </summary>
+    private async Task RefreshValuesAsync()
+    {
+        if (!_available || _rootNodes is null)
+        {
+            return;
+        }
+
+        List<string> visible = [];
+        CollectVisibleVariables(_rootNodes, visible);
+
+        if (visible.Count == 0)
+        {
+            _nodeValues = new Dictionary<string, string>(StringComparer.Ordinal);
+            return;
+        }
+
+        _nodeValues = await AddressSpace.ReadValuesAsync(visible);
+    }
+
+    private void CollectVisibleVariables(IEnumerable<AddressSpaceNode> nodes, List<string> into)
+    {
+        foreach (AddressSpaceNode node in nodes)
+        {
+            if (string.Equals(node.NodeClass, "Variable", StringComparison.Ordinal))
+            {
+                into.Add(node.Id);
+            }
+
+            // Only descend into expanded branches: anything below a collapsed
+            // node is not rendered, so reading it would be wasted work.
+            if (node.Children is not null && _expandedNodes.Contains(node.Id))
+            {
+                CollectVisibleVariables(node.Children, into);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the tree from the live address space.
+    /// <para>
+    /// Browsed children are cached on each node, so without an explicit purge
+    /// the page would keep showing the address space as it looked when it was
+    /// first opened. Assets can be onboarded at any time, which adds nodes, so
+    /// every reload throws the cache away and re-browses. Expansion and
+    /// selection are carried across so the user does not lose their place.
+    /// </para>
+    /// </summary>
+    private async Task ReloadAsync()
+    {
+        _available = AddressSpace.IsAvailable;
+        _namespaces = AddressSpace.GetNamespaces();
+        _tagAccessBlocked = Diagnostics.IsTagAccessBlocked();
+
+        // Remember where the user was before discarding the cached tree.
+        HashSet<string> previouslyExpanded = new(_expandedNodes, StringComparer.Ordinal);
+        string previouslySelected = _selectedNodeId;
+
+        _expandedNodes.Clear();
+        _rootNodes = null;
+
+        if (!_available)
+        {
+            _selectedNodeId = null;
+            _detail = null;
+
+            return;
+        }
+
+        IReadOnlyList<AddressSpaceNode> roots = await AddressSpace.GetRootNodesAsync();
+        _rootNodes = roots.ToList();
+
+        // First load: open Root and Objects so the user lands on the instance
+        // hierarchy. The tree is rooted at Root (not Objects) so the Types and
+        // Views folders are reachable, but Objects is what an operator wants to
+        // see first, and it would otherwise take two clicks to get there.
+        if (previouslyExpanded.Count == 0)
+        {
+            foreach (string id in AddressSpace.GetDefaultExpandedNodeIds())
+            {
+                previouslyExpanded.Add(id);
+            }
+        }
+
+        foreach (AddressSpaceNode root in _rootNodes)
+        {
+            // Always open the root so the user lands on something useful
+            // rather than a single collapsed folder.
+            previouslyExpanded.Add(root.Id);
+
+            await RestoreBranchAsync(root, previouslyExpanded);
+        }
+
+        // Keep the detail panel pinned to the same node when it still exists.
+        _selectedNodeId = previouslySelected;
+
+        if (!string.IsNullOrEmpty(previouslySelected))
+        {
+            _detail = await AddressSpace.GetNodeDetailAsync(previouslySelected);
+        }
+
+        await RefreshValuesAsync();
+    }
+
+    /// <summary>
+    /// Re-browses a node and recursively restores any branch the user had open
+    /// before the purge.
+    /// </summary>
+    private async Task RestoreBranchAsync(AddressSpaceNode node, HashSet<string> expanded)
+    {
+        if (!expanded.Contains(node.Id))
+        {
+            return;
+        }
+
+        // Force a fresh browse: this is the actual cache purge.
+        node.Children = null;
+        await BrowseChildrenAsync(node);
+
+        _expandedNodes.Add(node.Id);
+
+        foreach (AddressSpaceNode child in node.Children)
+        {
+            await RestoreBranchAsync(child, expanded);
+        }
+    }
+
+    /// <summary>
+    /// Expand callback for the tree: browses the node and immediately fills in
+    /// values for the newly revealed children.
+    /// </summary>
+    private async Task LoadChildrenAsync(AddressSpaceNode node)
+    {
+        await BrowseChildrenAsync(node);
+
+        // Populate values for the newly revealed nodes straight away instead of
+        // leaving them blank until the next tick.
+        await RefreshValuesAsync();
+    }
+
+    /// <summary>
+    /// Browses a node's children if they are not already cached. Kept separate
+    /// from <see cref="LoadChildrenAsync"/> so a full reload can browse many
+    /// nodes and then read all values once, rather than once per node.
+    /// </summary>
+    private async Task BrowseChildrenAsync(AddressSpaceNode node)
+    {
+        if (node.Children is not null)
+        {
+            return;
+        }
+
+        IReadOnlyList<AddressSpaceNode> children = await AddressSpace.BrowseChildrenAsync(node.Id);
+        node.Children = children.ToList();
+    }
+
+    private async Task SelectNodeAsync(AddressSpaceNode node)
+    {
+        _selectedNodeId = node.Id;
+        _loadingDetail = true;
+        _detail = null;
+
+        try
+        {
+            _detail = await AddressSpace.GetNodeDetailAsync(node.Id);
+        }
+        finally
+        {
+            _loadingDetail = false;
+        }
+    }
+
+    private void OnNamespaceChanged()
+    {
+        _selectedNamespaceIndex = int.TryParse(SelectedNamespace, out int index) ? index : -1;
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

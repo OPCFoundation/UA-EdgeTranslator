@@ -170,9 +170,13 @@ a {
 }
 
 .content-inner {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 40px 48px 64px;
+    /* Fill the space next to the sidebar instead of centring a fixed-width
+       column: with `margin: 0 auto` a wide window left a large dead gap
+       between the nav and the page content. A generous max-width still stops
+       text from running to absurd line lengths on ultra-wide displays. */
+    max-width: 1800px;
+    margin: 0;
+    padding: 28px 32px 48px;
 }
 
 /* ---------- Page header ---------- */
@@ -1042,5 +1046,299 @@ a {
 
     .list-pane {
         max-height: 260px;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Address Space Explorer
+   --------------------------------------------------------------------------- */
+
+.ns-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+    .ns-filter label {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+.ns-select {
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-md);
+    padding: 7px 10px;
+    max-width: 420px;
+}
+
+    .ns-select:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+
+.banner-namespace {
+    background: rgba(0, 113, 227, 0.08);
+    color: var(--text);
+}
+
+.explorer-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.explorer-tree-body {
+    max-height: 640px;
+    overflow: auto;
+}
+
+/* Legend explaining the node class badge codes used in the tree. */
+.as-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--separator);
+}
+
+.as-legend-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    margin-right: 2px;
+}
+
+.as-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.as-legend-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.explorer-detail-card .card-body {
+    max-height: 640px;
+    overflow: auto;
+}
+
+/* Tree ---------------------------------------------------------------------- */
+
+.as-tree {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.as-tree-children {
+    /* Indent one level and draw the guide line between parent and children. */
+    margin-left: 10px;
+    padding-left: 12px;
+    border-left: 1px solid var(--separator);
+}
+
+.as-tree-item {
+    list-style: none;
+}
+
+.as-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.as-tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+    .as-tree-toggle:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .as-tree-toggle svg {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.15s ease;
+    }
+
+    .as-tree-toggle.is-expanded svg {
+        transform: rotate(90deg);
+    }
+
+.as-tree-toggle-empty {
+    cursor: default;
+}
+
+    .as-tree-toggle-empty:hover {
+        background: transparent;
+    }
+
+.as-tree-spinner {
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--separator);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: as-spin 0.6s linear infinite;
+}
+
+@keyframes as-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.as-tree-label {
+    font-size: 13px;
+    color: var(--text);
+    padding: 2px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .as-tree-label:hover {
+        background: var(--surface-2);
+    }
+
+    /* The namespace selected in the dropdown is highlighted in bold. */
+    .as-tree-label.is-in-namespace {
+        font-weight: 700;
+    }
+
+    .as-tree-label.is-selected {
+        background: var(--accent);
+        color: #fff;
+    }
+
+.as-tree-empty {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    padding: 4px 0;
+}
+
+/* Live variable value shown inline next to the node label. */
+.as-tree-value {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--surface-2);
+    border: 1px solid var(--separator);
+    border-radius: 5px;
+    padding: 1px 6px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 0 1 auto;
+}
+
+/* Node class badge ---------------------------------------------------------- */
+
+.as-node-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--surface-2);
+    border: 1px solid var(--separator);
+    border-radius: 5px;
+    flex: 0 0 auto;
+}
+
+.as-node-variable {
+    color: #0071e3;
+    background: rgba(0, 113, 227, 0.1);
+    border-color: rgba(0, 113, 227, 0.2);
+}
+
+.as-node-method {
+    color: #ff9f0a;
+    background: rgba(255, 159, 10, 0.12);
+    border-color: rgba(255, 159, 10, 0.25);
+}
+
+.as-node-object {
+    color: #34c759;
+    background: rgba(52, 199, 89, 0.12);
+    border-color: rgba(52, 199, 89, 0.25);
+}
+
+/* Detail panel -------------------------------------------------------------- */
+
+.detail-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.detail-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+}
+
+.detail-namespace {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.detail-section {
+    margin: 20px 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.detail-table th {
+    width: 168px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: left;
+    vertical-align: top;
+}
+
+.detail-table td {
+    word-break: break-word;
+}
+
+@media (max-width: 1100px) {
+    .explorer-grid {
+        grid-template-columns: 1fr;
     }
 }

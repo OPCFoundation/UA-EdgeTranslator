@@ -52,6 +52,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
             builder.Services.AddSingleton<DiagnosticsService>();
+            builder.Services.AddSingleton<AddressSpaceService>();
 
             _app = builder.Build();
 
