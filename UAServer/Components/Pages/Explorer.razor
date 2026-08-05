@@ -270,6 +270,7 @@ else
                 else
                 {
                     await RefreshValuesAsync();
+                    await RefreshDetailAsync();
                 }
 
                 await InvokeAsync(StateHasChanged);
@@ -454,6 +455,36 @@ else
         finally
         {
             _loadingDetail = false;
+        }
+    }
+
+    /// <summary>
+    /// Re-reads the selected node so the detail panel tracks live data at the
+    /// same cadence as the inline values in the tree.
+    /// <para>
+    /// Without this the panel showed whatever the value happened to be at the
+    /// moment the node was clicked, which is misleading next to a tree that is
+    /// visibly updating every second.
+    /// </para>
+    /// </summary>
+    private async Task RefreshDetailAsync()
+    {
+        // Nothing selected, or an initial load is already in flight — leave it
+        // to complete rather than racing it and clobbering the result.
+        if (string.IsNullOrEmpty(_selectedNodeId) || _loadingDetail)
+        {
+            return;
+        }
+
+        string nodeId = _selectedNodeId;
+
+        NodeDetail detail = await AddressSpace.GetNodeDetailAsync(nodeId);
+
+        // The user may have selected a different node while the read was in
+        // flight; discard a result that is no longer for the current selection.
+        if (string.Equals(_selectedNodeId, nodeId, StringComparison.Ordinal))
+        {
+            _detail = detail;
         }
     }
 
