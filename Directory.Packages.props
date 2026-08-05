@@ -59,5 +59,14 @@
 	<PackageVersion Include="coverlet.collector" Version="10.0.1" />
 	<!-- Blazor component testing for the diagnostics dashboard pages. -->
 	<PackageVersion Include="bunit" Version="1.40.0" />
+	<!--
+		bUnit 1.40.0 pulls AngleSharp 1.2.0 transitively, which is affected by
+		GHSA-pgww-w46g-26qg (mXSS via annotation-xml HTML integration point
+		bypass; affects < 1.5.0). NuGet audit runs as an error here because
+		TreatWarningsAsErrors is on, so the transitive version is overridden with
+		a direct reference to a patched release. Remove this pin once a bUnit
+		release depends on AngleSharp >= 1.5.0 by itself.
+	-->
+	<PackageVersion Include="AngleSharp" Version="1.5.2" />
 	</ItemGroup>
 </Project>

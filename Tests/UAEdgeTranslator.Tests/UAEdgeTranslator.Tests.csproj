@@ -66,6 +66,11 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="bunit" />
+    <!--
+      Direct reference purely to override bUnit's vulnerable transitive
+      AngleSharp 1.2.0 (GHSA-pgww-w46g-26qg). See Directory.Packages.props.
+    -->
+    <PackageReference Include="AngleSharp" />
   </ItemGroup>
 
 </Project>
