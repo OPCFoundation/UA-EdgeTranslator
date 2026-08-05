@@ -339,6 +339,12 @@ The effective server configuration as resolved by the OPC UA stack: endpoints, e
 
 ![UA Edge Translator — OPC UA Settings page](docs/screenshots/diagnostics-opcua-settings.png)
 
+### Address Space (`/explorer`)
+
+An OPC UA address-space browser for the running server. The left pane is a tree rooted at the server's `Root` folder, so both the instance hierarchy (`Objects`) and the type hierarchy (`Types` — ObjectTypes, VariableTypes, DataTypes and ReferenceTypes) are browsable, alongside `Views`. Each node carries a badge indicating its NodeClass, explained by the legend above the tree, and variable nodes show their **current value inline, refreshed every second**. Complex values (structures/UDTs) are decoded into their named fields rather than shown as raw bytes. A **namespace** dropdown highlights every node belonging to the selected namespace in bold, which makes it easy to see exactly what a given asset or companion specification contributes to the address space. Selecting a node shows its details on the right: attributes, the value block (value, status, timestamps, data type, value rank and access levels), decoded structure fields, and the node's forward and inverse references. The tree is re-browsed periodically so assets onboarded while the page is open appear automatically.
+
+![UA Edge Translator — Address Space page](docs/screenshots/diagnostics-addressspace.png)
+
 ### Connected Devices (`/devices`)
 
 The southbound asset connection status — one row per onboarded asset, showing its name, detected protocol, remote endpoint, mapped tag count and a connected/disconnected status pill.
