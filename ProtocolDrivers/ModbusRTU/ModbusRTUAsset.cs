@@ -211,7 +211,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
-            Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).GetAwaiter().GetResult();
+            Write(addressParts[0], tag.UnitID, tagBytes, writeCoil, tag.IsBigEndian).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        private Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        private Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly, bool valuesAreWireOrder)
         {
             lock (_lock)
             {
@@ -320,7 +320,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else
                 {
-                    // interpret incoming byte[] as host-endian UInt16 values, then send them as Modbus registers.
                     if (values == null) values = Array.Empty<byte>();
 
                     if ((values.Length % 2) != 0)
@@ -331,7 +330,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     ushort[] regs = new ushort[values.Length / 2];
                     for (int i = 0; i < regs.Length; i++)
                     {
-                        regs[i] = BitConverter.ToUInt16(values, i * 2);
+                        int offset = i * 2;
+                        regs[i] = valuesAreWireOrder
+                            ? (ushort)((values[offset] << 8) | values[offset + 1])
+                            : BitConverter.ToUInt16(values, offset);
                     }
 
                     if (regs.Length == 1)

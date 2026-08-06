@@ -179,6 +179,40 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task Write_big_endian_two_register_integer_uses_read_compatible_register_order()
+        {
+            using MockModbusTcpServer server = new();
+            ModbusTCPAsset asset = new();
+            await asset.ConnectAsync(IPAddress.Loopback.ToString(), server.Port);
+
+            try
+            {
+                AssetTag tag = new()
+                {
+                    Name = "boardCount",
+                    UnitID = 1,
+                    Entity = "HoldingRegister",
+                    Type = "Integer",
+                    Address = "0?quantity=2",
+                    IsBigEndian = true,
+                    SwapPerWord = true,
+                    Multiplier = 0.0f
+                };
+
+                await asset.WriteAsync(tag, 1234567);
+
+                Assert.Contains(PresetMultipleRegisters, server.ReceivedFunctionCodes);
+                ushort[] writtenRegisters = Assert.Single(server.RegisterWrites);
+                byte[] wireBytes = ModbusValueCodec.RegistersToWireBytes(writtenRegisters);
+                Assert.Equal(1234567, Assert.IsType<int>(ModbusValueCodec.Decode(tag, wireBytes)));
+            }
+            finally
+            {
+                await asset.DisconnectAsync();
+            }
+        }
+
+        [Fact]
         public async Task Read_short_at_quantity_1_reads_a_single_register()
         {
             // A native 16-bit register value; the driver must read exactly one register
@@ -373,6 +407,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         // value (first register / coil word) so tests can assert the exact Modbus write.
         public ConcurrentQueue<(byte FunctionCode, ushort Address, ushort Value)> Writes { get; } = new();
 
+        public ConcurrentQueue<ushort[]> RegisterWrites { get; } = new();
+
         public void Dispose()
         {
             _cts.Cancel();
@@ -479,6 +515,21 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                         ? (payload.Length >= 7 ? (ushort)((payload[5] << 8) | payload[6]) : (ushort)0)
                         : (payload.Length >= 4 ? (ushort)((payload[2] << 8) | payload[3]) : (ushort)0);
                     Writes.Enqueue((functionCode, address, value));
+                    if (functionCode == 16 && payload.Length >= 6)
+                    {
+                        int registerCount = (payload[2] << 8) | payload[3];
+                        ushort[] registers = new ushort[registerCount];
+                        for (int i = 0; i < registerCount; i++)
+                        {
+                            int offset = 5 + (i * 2);
+                            if (offset + 1 < payload.Length)
+                            {
+                                registers[i] = (ushort)((payload[offset] << 8) | payload[offset + 1]);
+                            }
+                        }
+
+                        RegisterWrites.Enqueue(registers);
+                    }
                     return BuildWriteEcho(transactionId, unitId, functionCode, payload);
                 }
 
