@@ -165,7 +165,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             string[] addressParts = tag.Address.Split(['?', '&', '=']);
             byte[] tagBytes = ModbusValueCodec.Encode(tag, value);
 
-            await Write(addressParts[0], tag.UnitID, tagBytes, writeCoil).ConfigureAwait(false);
+            await Write(addressParts[0], tag.UnitID, tagBytes, writeCoil, tag.IsBigEndian).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
-        private async Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly)
+        private async Task Write(string addressWithinAsset, byte unitID, byte[] values, bool singleBitOnly, bool valuesAreWireOrder)
         {
             // Deliberately throttle writes so a small / single-threaded Modbus server
             // is not overwhelmed by back-to-back writes.
@@ -290,7 +290,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 ushort[] regs = new ushort[values.Length / 2];
                 for (int i = 0; i < regs.Length; i++)
                 {
-                    regs[i] = BitConverter.ToUInt16(values, i * 2);
+                    int offset = i * 2;
+                    regs[i] = valuesAreWireOrder
+                        ? (ushort)((values[offset] << 8) | values[offset + 1])
+                        : BitConverter.ToUInt16(values, offset);
                 }
 
                 if (regs.Length == 1)
