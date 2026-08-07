@@ -58,7 +58,7 @@
 	<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
 	<PackageVersion Include="coverlet.collector" Version="10.0.1" />
 	<!-- Blazor component testing for the diagnostics dashboard pages. -->
-	<PackageVersion Include="bunit" Version="1.40.0" />
+	<PackageVersion Include="bunit" Version="2.9.0" />
 	<!--
 		bUnit 1.40.0 pulls AngleSharp 1.2.0 transitively, which is affected by
 		GHSA-pgww-w46g-26qg (mXSS via annotation-xml HTML integration point
@@ -67,6 +67,6 @@
 		a direct reference to a patched release. Remove this pin once a bUnit
 		release depends on AngleSharp >= 1.5.0 by itself.
 	-->
-	<PackageVersion Include="AngleSharp" Version="1.5.2" />
+	<PackageVersion Include="AngleSharp" Version="1.7.0" />
 	</ItemGroup>
 </Project>
