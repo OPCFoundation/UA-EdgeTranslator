@@ -1,6 +1,6 @@
 Summary
-  Generated on: 08/05/2026 - 11:31:09
-  Coverage date: 08/05/2026 - 11:31:06
+  Generated on: 08/08/2026 - 22:29:04
+  Coverage date: 08/08/2026 - 22:29:01
   Parser: Cobertura
   Assemblies: 1
   Classes: 38
