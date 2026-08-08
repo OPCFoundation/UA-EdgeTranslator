@@ -20,7 +20,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
     /// </para>
     /// </summary>
     [Collection(WorkingDirectoryCollection.Name)]
-    public sealed class ExplorerDetailRefreshTests : TestContext, IAsyncLifetime
+    public sealed class ExplorerDetailRefreshTests : BunitContext, IAsyncLifetime
     {
         private const BindingFlags _privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -51,7 +51,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public async Task Detail_panel_picks_up_a_changed_value_on_refresh()
         {
-            IRenderedComponent<Explorer> page = RenderComponent<Explorer>();
+            IRenderedComponent<Explorer> page = Render<Explorer>();
 
             // Select the seeded variable, as clicking it in the tree would.
             await SelectAsync(page, _variableNodeId.ToString());
@@ -75,7 +75,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public async Task Detail_refresh_is_a_no_op_when_nothing_is_selected()
         {
-            IRenderedComponent<Explorer> page = RenderComponent<Explorer>();
+            IRenderedComponent<Explorer> page = Render<Explorer>();
 
             // No selection: refreshing must not populate or throw.
             await RefreshDetailAsync(page);
@@ -86,7 +86,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public async Task Detail_refresh_keeps_the_panel_on_the_selected_node()
         {
-            IRenderedComponent<Explorer> page = RenderComponent<Explorer>();
+            IRenderedComponent<Explorer> page = Render<Explorer>();
 
             await SelectAsync(page, _variableNodeId.ToString());
             await RefreshDetailAsync(page);

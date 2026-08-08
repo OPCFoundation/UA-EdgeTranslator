@@ -14,12 +14,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
     /// default.
     /// </para>
     /// </summary>
-    public class JsonTreeViewTests : TestContext
+    public class JsonTreeViewTests : BunitContext
     {
         [Fact]
         public void Renders_nothing_for_a_null_node()
         {
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, (JToken)null));
 
             Assert.Empty(component.Markup.Trim());
@@ -30,7 +30,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("""{ "title": "Pump", "count": 3 }""");
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node));
 
             Assert.Contains("title", component.Markup, System.StringComparison.Ordinal);
@@ -43,7 +43,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("\"hello\"");
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node)
                 .Add(c => c.Name, "greeting"));
 
@@ -56,7 +56,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("[1, 2, 3]");
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node)
                 .Add(c => c.Name, "values"));
 
@@ -69,7 +69,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("""{ "outer": { "inner": 1 } }""");
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node));
 
             int before = component.FindAll(".jtn-row").Count;
@@ -94,7 +94,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse(json);
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node)
                 .Add(c => c.Name, "value"));
 
@@ -106,7 +106,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("""{ "a": { "b": { "c": { "d": "leaf" } } } }""");
 
-            IRenderedComponent<JsonTreeView> component = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> component = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node));
 
             Assert.Contains("a", component.Markup, System.StringComparison.Ordinal);
@@ -117,11 +117,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             JToken node = JToken.Parse("""{ "k": "v" }""");
 
-            IRenderedComponent<JsonTreeView> shallow = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> shallow = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node)
                 .Add(c => c.Depth, 0));
 
-            IRenderedComponent<JsonTreeView> deep = RenderComponent<JsonTreeView>(p => p
+            IRenderedComponent<JsonTreeView> deep = Render<JsonTreeView>(p => p
                 .Add(c => c.Node, node)
                 .Add(c => c.Depth, 3));
 

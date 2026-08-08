@@ -20,7 +20,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
     /// </para>
     /// </summary>
     [Collection(WorkingDirectoryCollection.Name)]
-    public sealed class DashboardPageTests : TestContext, IAsyncLifetime
+    public sealed class DashboardPageTests : BunitContext, IAsyncLifetime
     {
         private OpcUaServerFixture _fixture;
 
@@ -46,7 +46,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void Overview_renders_the_application_identity_and_counters()
         {
-            IRenderedComponent<Overview> page = RenderComponent<Overview>();
+            IRenderedComponent<Overview> page = Render<Overview>();
 
             Assert.Contains("UAEdgeTranslatorTest", page.Markup, System.StringComparison.Ordinal);
             Assert.Contains("Overview", page.Markup, System.StringComparison.Ordinal);
@@ -58,7 +58,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void OpcUaSettings_renders_security_policies_and_limits()
         {
-            IRenderedComponent<OpcUaSettings> page = RenderComponent<OpcUaSettings>();
+            IRenderedComponent<OpcUaSettings> page = Render<OpcUaSettings>();
 
             Assert.Contains("OPC UA Settings", page.Markup, System.StringComparison.Ordinal);
 
@@ -69,7 +69,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void Drivers_page_lists_the_registered_driver()
         {
-            IRenderedComponent<Drivers> page = RenderComponent<Drivers>();
+            IRenderedComponent<Drivers> page = Render<Drivers>();
 
             Assert.Contains("Protocol Drivers", page.Markup, System.StringComparison.Ordinal);
 
@@ -81,7 +81,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         public void Devices_page_renders_without_any_onboarded_asset()
         {
             // The empty state is the first thing a new operator sees.
-            IRenderedComponent<Devices> page = RenderComponent<Devices>();
+            IRenderedComponent<Devices> page = Render<Devices>();
 
             Assert.Contains("Connected Devices", page.Markup, System.StringComparison.Ordinal);
         }
@@ -89,7 +89,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void Certificates_page_renders_the_application_certificate()
         {
-            IRenderedComponent<Certificates> page = RenderComponent<Certificates>();
+            IRenderedComponent<Certificates> page = Render<Certificates>();
 
             Assert.Contains("Certificates", page.Markup, System.StringComparison.Ordinal);
 
@@ -100,7 +100,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void WotFiles_page_renders_its_empty_state()
         {
-            IRenderedComponent<WotFiles> page = RenderComponent<WotFiles>();
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
 
             Assert.Contains("WoT Files", page.Markup, System.StringComparison.Ordinal);
         }
@@ -110,10 +110,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             // The dashboard re-renders on a timer; a page that only survives its
             // first render would fail seconds after being opened.
-            IRenderedComponent<Overview> overview = RenderComponent<Overview>();
+            IRenderedComponent<Overview> overview = Render<Overview>();
             overview.Render();
 
-            IRenderedComponent<Drivers> drivers = RenderComponent<Drivers>();
+            IRenderedComponent<Drivers> drivers = Render<Drivers>();
             drivers.Render();
 
             Assert.NotEmpty(overview.Markup);
@@ -125,9 +125,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         {
             // Overview / Devices / Certificates own a PeriodicTimer; disposing
             // must not throw or the circuit teardown breaks.
-            IRenderedComponent<Overview> overview = RenderComponent<Overview>();
-            IRenderedComponent<Devices> devices = RenderComponent<Devices>();
-            IRenderedComponent<Certificates> certificates = RenderComponent<Certificates>();
+            IRenderedComponent<Overview> overview = Render<Overview>();
+            IRenderedComponent<Devices> devices = Render<Devices>();
+            IRenderedComponent<Certificates> certificates = Render<Certificates>();
 
             overview.Instance.Dispose();
             devices.Instance.Dispose();
@@ -140,7 +140,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [InlineData("", "")]
         public void StatusPill_renders_its_label(string status, string label)
         {
-            IRenderedComponent<StatusPill> pill = RenderComponent<StatusPill>(p => p
+            IRenderedComponent<StatusPill> pill = Render<StatusPill>(p => p
                 .Add(c => c.Status, status)
                 .Add(c => c.Label, label));
 
@@ -155,7 +155,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void PageHeader_renders_title_subtitle_and_refresh_button()
         {
-            IRenderedComponent<PageHeader> header = RenderComponent<PageHeader>(p => p
+            IRenderedComponent<PageHeader> header = Render<PageHeader>(p => p
                 .Add(c => c.Title, "A Title")
                 .Add(c => c.Subtitle, "A subtitle")
                 .Add(c => c.OnRefresh, () => { }));
@@ -168,7 +168,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         [Fact]
         public void PageHeader_omits_the_refresh_button_when_no_handler_is_supplied()
         {
-            IRenderedComponent<PageHeader> header = RenderComponent<PageHeader>(p => p
+            IRenderedComponent<PageHeader> header = Render<PageHeader>(p => p
                 .Add(c => c.Title, "No Refresh"));
 
             Assert.Contains("No Refresh", header.Markup, System.StringComparison.Ordinal);
