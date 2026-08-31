@@ -67,6 +67,6 @@
 		a direct reference to a patched release. Remove this pin once a bUnit
 		release depends on AngleSharp >= 1.5.0 by itself.
 	-->
-	<PackageVersion Include="AngleSharp" Version="1.7.0" />
+	<PackageVersion Include="AngleSharp" Version="1.7.2" />
 	</ItemGroup>
 </Project>
