@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Makaretu.Dns.Multicast.New" />
     <PackageReference Include="Linux.Bluetooth" />
-    <PackageReference Include="Portable.BouncyCastle" />
+    <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="Tmds.DBus" />
   </ItemGroup>
 

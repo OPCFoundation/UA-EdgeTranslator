@@ -28,7 +28,7 @@
 	<PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
 	<!-- Supply chain / signature verification (driver allow-list manifest) -->
-	<PackageVersion Include="Sigstore" Version="0.5.0" />
+	<PackageVersion Include="Sigstore" Version="1.0.1" />
 
 	<!-- Engineering tool integration -->
 	<PackageVersion Include="Aml.Engine" Version="4.5.2" />
@@ -39,7 +39,7 @@
 	<!-- Protocol drivers -->
 	<PackageVersion Include="BACnet" Version="4.0.0" />
 	<PackageVersion Include="Viscon.Communication.Ads" Version="0.2.0" />
-	<PackageVersion Include="Portable.BouncyCastle" Version="1.9.0" />
+	<PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
 	<PackageVersion Include="Linux.Bluetooth" Version="5.67.1" />
 	<PackageVersion Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
 	<PackageVersion Include="Tmds.DBus" Version="0.92.0" />
@@ -67,6 +67,6 @@
 		a direct reference to a patched release. Remove this pin once a bUnit
 		release depends on AngleSharp >= 1.5.0 by itself.
 	-->
-	<PackageVersion Include="AngleSharp" Version="1.7.3" />
+	<PackageVersion Include="AngleSharp" Version="1.7.2" />
 	</ItemGroup>
 </Project>
