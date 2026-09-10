@@ -42,6 +42,19 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("events")]
         public Dictionary<string, TDEvent> Events { get; set; }
+
+        /// <summary>
+        /// Thing-level terms contributed by protocol bindings, e.g. the W3C WoT
+        /// LoRaWAN binding's <c>lorav:devEUI</c> and <c>lorav:joinEUI</c>.
+        /// <para>
+        /// Bindings define their own thing-level vocabulary, so these cannot be
+        /// enumerated here without the model needing an edit for every binding.
+        /// Capturing them keeps round-tripping lossless and lets a driver read
+        /// the terms it understands.
+        /// </para>
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, object> AdditionalData { get; set; }
     }
 
     public class Property
@@ -148,14 +161,42 @@ namespace Opc.Ua.Edge.Translator.Models
 
     public class SecurityDefinitions
     {
-        [JsonProperty("nosec_sc")]
+        [JsonProperty("nosec_sc", NullValueHandling = NullValueHandling.Ignore)]
         public NosecSc NosecSc { get; set; }
+
+        /// <summary>
+        /// OTAA security scheme used by the W3C WoT LoRaWAN binding, which
+        /// requires root keys to be declared as <c>apikey</c> schemes (named
+        /// <c>appKey</c>, and <c>nwkKey</c> for LoRaWAN 1.1.x) with their values
+        /// injected at runtime rather than written into the Thing Description.
+        /// </summary>
+        [JsonProperty("otaa_sc", NullValueHandling = NullValueHandling.Ignore)]
+        public ApiKeySc OtaaSc { get; set; }
     }
 
     public class NosecSc
     {
         [JsonProperty("scheme")]
         public string Scheme { get; set; }
+    }
+
+    /// <summary>
+    /// A WoT <c>apikey</c> security scheme. It names the credential but never
+    /// carries its value.
+    /// </summary>
+    public class ApiKeySc
+    {
+        [JsonProperty("scheme")]
+        public string Scheme { get; set; }
+
+        [JsonProperty("in", NullValueHandling = NullValueHandling.Ignore)]
+        public string In { get; set; }
+
+        [JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
+        public string Name { get; set; }
+
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string Description { get; set; }
     }
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
@@ -168,7 +209,13 @@ namespace Opc.Ua.Edge.Translator.Models
         Readproperty,
 
         [EnumMember(Value = "writeproperty")]
-        Writeproperty
+        Writeproperty,
+
+        [EnumMember(Value = "subscribeevent")]
+        Subscribeevent,
+
+        [EnumMember(Value = "unsubscribeevent")]
+        Unsubscribeevent
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

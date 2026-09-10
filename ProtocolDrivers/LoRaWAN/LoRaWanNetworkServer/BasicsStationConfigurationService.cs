@@ -10,12 +10,21 @@ namespace LoRaWan.NetworkServer.BasicsStation
     {
         public string GetRouterConfigMessage(string devEui)
         {
-            if (!SearchDevicesResult.DeviceList.ContainsKey(devEui))
+            if (SearchDevicesResult.DeviceList.ContainsKey(devEui))
             {
-                throw new Exception($"Gateway with DevEui {devEui} not found.");
+                return SearchDevicesResult.DeviceList[devEui];
             }
 
-            return SearchDevicesResult.DeviceList[devEui];
+            // A gateway can connect before any asset is onboarded, so fall back
+            // to the configurations loaded from the settings folder at startup.
+            string routerConfig = Opc.Ua.Edge.Translator.ProtocolDrivers.RouterConfigStore.Get(devEui);
+
+            if (routerConfig == null)
+            {
+                throw new Exception($"No router configuration is available for gateway with DevEui {devEui}.");
+            }
+
+            return routerConfig;
         }
 
         public Region GetRegion(ulong frequencyHz)

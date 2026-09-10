@@ -1173,6 +1173,8 @@ namespace Opc.Ua.Edge.Translator
 
             AddActionsFromWoTFile(parent, td);
 
+            AddNodesForWoTEvents(parent, td, unitId);
+
             _ = Task.Run(() => ReadAssetTagsAsync(td.Name));
 
             RaiseModelChangedEvent(parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
@@ -1428,6 +1430,99 @@ namespace Opc.Ua.Edge.Translator
                     AddPredefinedNode(SystemContext, method);
                 }
             }
+        }
+
+        /// <summary>
+        /// Creates OPC UA variables for a Thing Description's event affordances.
+        /// <para>
+        /// Push-oriented bindings describe their values as events rather than as
+        /// readable properties. The W3C WoT LoRaWAN binding is explicit about
+        /// this: a LoRaWAN device transmits on its own schedule, so "a consumer
+        /// does not poll a sensor on demand; instead it subscribes to uplinks",
+        /// and the binding therefore "models uplink values as WoT events, not
+        /// readable properties".
+        /// </para>
+        /// <para>
+        /// Each such event still carries exactly one decoded value, which maps
+        /// cleanly onto a single OPC UA variable. Rather than duplicating the
+        /// node-creation logic, every event affordance is projected onto the
+        /// equivalent <see cref="Property"/> and pushed through the same
+        /// <see cref="AddNodeForWoTForm"/> path the property affordances use, so
+        /// type mapping, complex types and tag creation behave identically.
+        /// </para>
+        /// </summary>
+        private void AddNodesForWoTEvents(NodeState assetFolder, ThingDescription td, byte unitId)
+        {
+            if ((td.Events == null) || (td.Events.Count == 0))
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<string, TDEvent> tdEvent in td.Events)
+            {
+                if ((tdEvent.Value?.Forms == null) || (tdEvent.Value.Forms.Length == 0))
+                {
+                    continue;
+                }
+
+                Property property = ProjectEventOntoProperty(tdEvent.Value);
+
+                foreach (object form in tdEvent.Value.Forms)
+                {
+                    try
+                    {
+                        AddNodeForWoTForm(assetFolder, td, new KeyValuePair<string, Property>(tdEvent.Key, property), form, td.Name, unitId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Error(ex, "Failed to add node for WoT event: {EventKey}", tdEvent.Key);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Projects an event affordance onto the property shape the node-creation
+        /// path expects. The event's <c>data</c> schema describes what the value
+        /// means, so its type and OPC UA mapping hints are lifted from there.
+        /// </summary>
+        private static Property ProjectEventOntoProperty(TDEvent tdEvent)
+        {
+            Property property = new()
+            {
+                // An event value is pushed by the device and cannot be written
+                // back through this binding.
+                ReadOnly = true,
+                Observable = true,
+                Forms = tdEvent.Forms
+            };
+
+            if (tdEvent.Data is null)
+            {
+                return property;
+            }
+
+            // The data schema is a plain JSON schema object; read the same
+            // mapping hints a property would carry.
+            try
+            {
+                JObject data = JObject.FromObject(tdEvent.Data);
+
+                if (data["type"] is JToken type && Enum.TryParse(type.ToString(), true, out TypeEnum parsed))
+                {
+                    property.Type = parsed;
+                }
+
+                property.OpcUaNodeId = data["uav:mapToNodeId"]?.ToString();
+                property.OpcUaType = data["uav:mapToType"]?.ToString();
+                property.OpcUaFieldPath = data["uav:mapByFieldPath"]?.ToString();
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Debug(ex, "Failed to read the data schema of a WoT event; falling back to defaults.");
+            }
+
+            return property;
         }
 
         private void AddNodeForWoTForm(NodeState assetFolder, ThingDescription td, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)

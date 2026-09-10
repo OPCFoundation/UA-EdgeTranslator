@@ -1,58 +1,80 @@
 ﻿{
   "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1"
+    "https://www.w3.org/2022/wot/td/v1.1",
+    { "lorav": "https://www.w3.org/2026/wot/lorawan#" }
   ],
   "id": "urn:milesight-em300-th",
   "securityDefinitions": {
-    "nosec_sc": {
-      "scheme": "nosec"
+    "otaa_sc": {
+      "scheme": "apikey",
+      "in": "header",
+      "name": "appKey",
+      "description": "LoRaWAN OTAA AppKey. Injected at runtime via the LORAWAN_APPKEY_24E124136E440353 environment variable; never stored in this file."
     }
   },
   "security": [
-    "nosec_sc"
+    "otaa_sc"
   ],
   "@type": [
     "Thing"
   ],
   "name": "Milesight EM300-TH 24E124136E440353",
-  "base": "lorawan://24E124136E440353/5572404c696e6b4c6f52613230313823/device",
+  "base": "lorawan://localhost/24E124136E440353/",
   "title": "Milesight EM300-TH",
-  "properties": {
+  "lorav:payloadLayout": "ctv",
+  "lorav:devEUI": "24E124136E440353",
+  "lorav:joinEUI": "0000000000000000",
+  "lorav:macVersion": "1.0.3",
+  "lorav:brand": "Milesight",
+  "lorav:model": "EM300-TH",
+  "events": {
     "batteryLevel": {
-      "type": "number",
-      "uav:mapToNodeId": "s=24E124136E440353_BatteryLevel",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=24E124136E440353_BatteryLevel"
+      },
       "forms": [
         {
-          "href": "24E124136E440353/1/117?quantity=1",
-          "type": "xsd:byte"
+          "href": "1/117?quantity=1",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
+          "type": "xsd:byte",
+          "lorav:wireType": "xsd:unsignedByte",
+          "lorav:endian": "big",
+          "lorav:unece": "P1"
         }
       ]
     },
     "temperature": {
-      "type": "number",
-      "uav:mapToNodeId": "s=24E124136E440353_Temperature",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=24E124136E440353_Temperature"
+      },
       "forms": [
         {
-          "href": "24E124136E440353/3/103?quantity=2",
+          "href": "3/103?quantity=2",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
-          "lorav:multiplier": 0.1
+          "lorav:wireType": "xsd:short",
+          "lorav:endian": "big",
+          "lorav:divisor": 10,
+          "lorav:unece": "CEL"
         }
       ]
     },
     "humidity": {
-      "type": "number",
-      "uav:mapToNodeId": "s=24E124136E440353_Humidity",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=24E124136E440353_Humidity"
+      },
       "forms": [
         {
-          "href": "24E124136E440353/4/104?quantity=1",
+          "href": "4/104?quantity=1",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:byte",
-          "lorav:multiplier": 0.5
+          "lorav:wireType": "xsd:unsignedByte",
+          "lorav:endian": "big",
+          "lorav:divisor": 2,
+          "lorav:unece": "P1"
         }
       ]
     }

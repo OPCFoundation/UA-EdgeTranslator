@@ -1,76 +1,102 @@
-﻿{
+{
   "@context": [
-    "https://www.w3.org/2022/wot/td/v1.1"
+    "https://www.w3.org/2022/wot/td/v1.1",
+    { "lorav": "https://www.w3.org/2026/wot/lorawan#" }
   ],
   "id": "urn:dragino-lht-65n-e3",
   "securityDefinitions": {
-    "nosec_sc": {
-      "scheme": "nosec"
+    "otaa_sc": {
+      "scheme": "apikey",
+      "in": "header",
+      "name": "appKey",
+      "description": "LoRaWAN OTAA AppKey. Injected at runtime via the LORAWAN_APPKEY_A84041B98D5CB233 environment variable; never stored in this file."
     }
   },
   "security": [
-    "nosec_sc"
+    "otaa_sc"
   ],
   "@type": [
     "Thing"
   ],
   "name": "Dragino LHT65N-E3 A84041B98D5CB233",
-  "base": "lorawan://A84041B98D5CB233/569F632C48146DBB92E7ECA0859F12A7/device",
+  "base": "lorawan://localhost/A84041B98D5CB233/",
   "title": "Dragino LHT65N-E3",
-  "properties": {
+  "lorav:payloadLayout": "fixed",
+  "lorav:devEUI": "A84041B98D5CB233",
+  "lorav:joinEUI": "0000000000000000",
+  "lorav:macVersion": "1.0.3",
+  "lorav:brand": "Dragino",
+  "lorav:model": "LHT65N-E3",
+  "events": {
     "batteryLevel": {
-      "type": "number",
-      "uav:mapToNodeId": "s=A84041B98D5CB233_BatteryLevel",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=A84041B98D5CB233_BatteryLevel"
+      },
       "forms": [
         {
-          "href": "A84041B98D5CB233/0?quantity=2",
+          "href": "uplink",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
-          "lorav:mostSignificantByte": true,
+          "lorav:byteOffset": 0,
+          "lorav:byteLength": 2,
+          "lorav:wireType": "xsd:unsignedShort",
+          "lorav:endian": "big",
           "lorav:bitmask": "0x3FFF",
           "lorav:multiplier": 0.001
         }
       ]
     },
     "temperature": {
-      "type": "number",
-      "uav:mapToNodeId": "s=A84041B98D5CB233_Temperature",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=A84041B98D5CB233_Temperature"
+      },
       "forms": [
         {
-          "href": "A84041B98D5CB233/2?quantity=2",
+          "href": "uplink",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
-          "lorav:mostSignificantByte": true,
+          "lorav:byteOffset": 2,
+          "lorav:byteLength": 2,
+          "lorav:wireType": "xsd:short",
+          "lorav:endian": "big",
           "lorav:multiplier": 0.01
         }
       ]
     },
     "humidity": {
-      "type": "number",
-      "uav:mapToNodeId": "s=A84041B98D5CB233_Humidity",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=A84041B98D5CB233_Humidity"
+      },
       "forms": [
         {
-          "href": "A84041B98D5CB233/4?quantity=2",
+          "href": "uplink",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
-          "lorav:mostSignificantByte": true,
+          "lorav:byteOffset": 4,
+          "lorav:byteLength": 2,
+          "lorav:wireType": "xsd:unsignedShort",
+          "lorav:endian": "big",
           "lorav:multiplier": 0.1
         }
       ]
     },
     "extTemperature": {
-      "type": "number",
-      "uav:mapToNodeId": "s=A84041B98D5CB233_ExternalTemperature",
-      "readOnly": true,
-      "observable": true,
+      "data": {
+        "type": "number",
+        "uav:mapToNodeId": "s=A84041B98D5CB233_ExternalTemperature"
+      },
       "forms": [
         {
-          "href": "A84041B98D5CB233/7?quantity=2",
+          "href": "uplink",
+          "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
-          "lorav:mostSignificantByte": true,
+          "lorav:byteOffset": 7,
+          "lorav:byteLength": 2,
+          "lorav:wireType": "xsd:short",
+          "lorav:endian": "big",
           "lorav:multiplier": 0.01
         }
       ]

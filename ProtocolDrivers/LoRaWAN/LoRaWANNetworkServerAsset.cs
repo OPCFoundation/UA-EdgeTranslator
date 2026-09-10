@@ -4,6 +4,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using LoRaWan.NetworkServer;
     using LoRaWan.NetworkServer.BasicsStation;
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
     using Serilog;
@@ -21,29 +22,44 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public LoRaWANNetworkServerAsset()
         {
+            // Router configurations are loaded up front rather than when an
+            // asset is onboarded: a gateway may send its 'version' message as
+            // soon as the server is listening, and it must be answered with a
+            // router_config immediately or it will drop the connection.
+            RouterConfigStore.LoadAll(Path.Combine(Directory.GetCurrentDirectory(), "settings"));
+
             _ = Task.Run(() => BasicsStationNetworkServer.RunServerAsync());
         }
 
         private void ConnectCore(string ipAddress, int port)
         {
-            string[] addressParts = ipAddress.Split('/');
             try
             {
-                // register the device with the LoRaWAN Network Server
-                var devEui = DevEui.Parse(addressParts[2]);
+                LoRaWANUri uri = LoRaWANUri.Parse(ipAddress);
+                DevEui devEui = DevEui.Parse(uri.DevEUI);
 
-                if (addressParts[4] == "routerconfig")
+                if (uri.IsRouterConfig)
                 {
-                    // parse the router configuration from the WoT Thing Description
-                    ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(
-                        File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings") + "/" + addressParts[3] + ".jsonld"));
+                    // The configuration itself was already loaded at startup;
+                    // onboarding only binds it to this specific gateway so the
+                    // gateway is served its own config rather than the default.
+                    string routerConfig = RouterConfigStore.Get(devEui.ToString());
 
-                    string payload = td.Properties["routerConfig"].Forms[0].ToString();
-                    SearchDevicesResult.AddDevice(devEui, payload);
+                    if (routerConfig == null)
+                    {
+                        throw new InvalidOperationException(
+                            $"No Basic Station router configuration was found for gateway '{devEui}'. Place its router_config JSON in the settings folder, named either '{devEui}.json' or after the gateway model.");
+                    }
+
+                    RouterConfigStore.Add(devEui.ToString(), routerConfig);
+
+                    SearchDevicesResult.AddDevice(devEui, routerConfig);
                 }
                 else
                 {
-                    SearchDevicesResult.AddDevice(devEui, addressParts[3]);
+                    // The OTAA root key is a secret and is therefore never taken
+                    // from the Thing Description; it is injected at runtime.
+                    SearchDevicesResult.AddDevice(devEui, ResolveAppKey(uri.DevEUI));
                 }
             }
             catch (Exception ex)
@@ -52,6 +68,38 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             IsConnected = true;
+        }
+
+        /// <summary>
+        /// Resolves a device's OTAA AppKey from the environment.
+        /// <para>
+        /// The W3C WoT LoRaWAN binding requires that root keys are declared as
+        /// security schemes and their values "injected at runtime", never
+        /// written into the Thing Description. The key is looked up per device
+        /// as <c>LORAWAN_APPKEY_&lt;devEUI&gt;</c>, falling back to a single
+        /// <c>LORAWAN_APPKEY</c> for one-device deployments.
+        /// </para>
+        /// </summary>
+        private static string ResolveAppKey(string devEui)
+        {
+            string perDevice = Environment.GetEnvironmentVariable("LORAWAN_APPKEY_" + devEui.ToUpperInvariant());
+
+            if (!string.IsNullOrWhiteSpace(perDevice))
+            {
+                return perDevice;
+            }
+
+            string shared = Environment.GetEnvironmentVariable("LORAWAN_APPKEY");
+
+            if (!string.IsNullOrWhiteSpace(shared))
+            {
+                return shared;
+            }
+
+            // Failing loudly beats registering the device with a null key and
+            // leaving the operator to work out why every uplink fails to decrypt.
+            throw new InvalidOperationException(
+                $"No OTAA AppKey was supplied for LoRaWAN device '{devEui}'. Set LORAWAN_APPKEY_{devEui.ToUpperInvariant()} (or LORAWAN_APPKEY) in the environment; the W3C WoT LoRaWAN binding forbids storing the key in the Thing Description.");
         }
 
         private void DisconnectCore()
@@ -76,7 +124,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     if (SearchDevicesResult.DeviceList.ContainsKey(addressParts[2].ToUpper()))
                     {
-                        // read the router configuration from the stored WoT Thing Description
+                        // read the router configuration cached at connect time
                         value = SearchDevicesResult.DeviceList[addressParts[2].ToUpper()];
                     }
                 }
