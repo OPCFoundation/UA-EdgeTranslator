@@ -1458,6 +1458,18 @@ namespace Opc.Ua.Edge.Translator
                 return;
             }
 
+            // An eventing asset (OPC A&E) delivers its events as a push stream
+            // through the Alarms folder created by AttachEventingAsset, and its
+            // driver has no pollable tag to offer. Projecting those events onto
+            // variables as well would both duplicate them in the address space
+            // and fault on every form, so only non-eventing assets — such as
+            // LoRaWAN, whose binding models sensor readings as events rather
+            // than properties — take the variable path.
+            if (_assets.TryGetValue(td.Name, out IAsset asset) && asset is IEventingAsset)
+            {
+                return;
+            }
+
             foreach (KeyValuePair<string, TDEvent> tdEvent in td.Events)
             {
                 if ((tdEvent.Value?.Forms == null) || (tdEvent.Value.Forms.Length == 0))
