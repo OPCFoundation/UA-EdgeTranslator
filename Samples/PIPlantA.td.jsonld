@@ -3,6 +3,7 @@
     "https://www.w3.org/2022/wot/td/v1.1"
   ],
   "id": "urn:pi:af:PlantA",
+  "name": "PlantA",
   "title": "PlantA",
   "description": "Sample Thing Description for AVEVA PI Web API (AF hierarchy -> dot notation).",
   "securityDefinitions": {

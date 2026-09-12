@@ -13,8 +13,15 @@ namespace Opc.Ua.Edge.Translator.Tests
     /// configuration therefore has to be in memory when the server is
     /// instantiated, not only once an asset happens to be onboarded.
     /// </para>
+    /// <para>
+    /// <see cref="RouterConfigStore"/> is process-global, and constructing a
+    /// <c>LoRaWANNetworkServerAsset</c> repopulates it from the current working
+    /// directory. These tests therefore join the serialized
+    /// <see cref="WorkingDirectoryCollection"/> so no parallel class can reload
+    /// the store mid-assertion.
+    /// </para>
     /// </summary>
-    [Collection("RouterConfigStore")]
+    [Collection(WorkingDirectoryCollection.Name)]
     public class RouterConfigStoreTests : IDisposable
     {
         private readonly string _folder;

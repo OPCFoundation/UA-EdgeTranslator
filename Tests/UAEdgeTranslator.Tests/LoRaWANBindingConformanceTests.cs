@@ -495,6 +495,49 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void Every_router_config_declares_the_radio_abstraction_layer_hwspec()
+        {
+            // 'hwspec' names Basics Station's radio abstraction layer, not the
+            // concentrator chip. A station built for an SX1302 (platform=corecell)
+            // still expects 'sx1301/1' and rejects 'sx1302/1' outright with
+            // "Unsupported hwspec", leaving the gateway reconnecting in a loop
+            // with a valid-looking configuration.
+            foreach (string path in Directory.EnumerateFiles(FindSamplesFolder(), "*.json"))
+            {
+                JObject config = JObject.Parse(File.ReadAllText(path));
+
+                if (!string.Equals(config["msgtype"]?.ToString(), "router_config", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.Equal("sx1301/1", config["hwspec"]?.ToString());
+
+                // The channel plan key is named after the same abstraction layer.
+                Assert.NotNull(config["sx1301_conf"]);
+            }
+        }
+
+        private static string FindSamplesFolder()
+        {
+            DirectoryInfo directory = new(AppContext.BaseDirectory);
+
+            while (directory is not null)
+            {
+                string candidate = Path.Combine(directory.FullName, "Samples");
+
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                directory = directory.Parent;
+            }
+
+            throw new DirectoryNotFoundException("Could not locate the 'Samples' folder.");
+        }
+
+        [Fact]
         public void No_router_config_thing_description_remains()
         {
             // A .jsonld file in the settings folder is auto-onboarded as an

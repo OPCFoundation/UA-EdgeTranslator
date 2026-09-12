@@ -14,7 +14,7 @@
   "@type": [
     "Thing"
   ],
-  "name": "Matrikon OPC DA Simulation Server",
+  "name": "Matrikon-OPC-DA",
   "base": "opc.da://localhost/Matrikon.OPC.Simulation.1",
   "title": "Matrikon OPC DA Simulation Server",
   "properties": {

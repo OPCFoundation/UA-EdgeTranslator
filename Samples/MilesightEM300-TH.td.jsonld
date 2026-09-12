@@ -18,7 +18,7 @@
   "@type": [
     "Thing"
   ],
-  "name": "Milesight EM300-TH 24E124136E440353",
+  "name": "Milesight-EM300-TH-24E124136E440353",
   "base": "lorawan://localhost/24E124136E440353/",
   "title": "Milesight EM300-TH",
   "lorav:payloadLayout": "ctv",

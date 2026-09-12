@@ -222,7 +222,18 @@ namespace LoRaWan.NetworkServer
             {
                 if (gatewayName != "router-info")
                 {
-                    if (ConnectedGateways.TryRemove(StationEui.Parse(gatewayName), out GatewayConnection gateway))
+                    StationEui stationEui = StationEui.Parse(gatewayName);
+
+                    // Only remove the entry if it still refers to this socket. A
+                    // station that reconnects replaces the socket first, so
+                    // removing unconditionally here would delete the live
+                    // connection when the superseded one is torn down.
+                    if (ConnectedGateways.TryGetValue(stationEui, out GatewayConnection existing)
+                        && !ReferenceEquals(existing.WebSocket, webSocket))
+                    {
+                        Log.Logger.Information($"Ignoring close of superseded websocket for {gatewayName}");
+                    }
+                    else if (ConnectedGateways.TryRemove(stationEui, out GatewayConnection gateway))
                     {
                         Log.Logger.Information($"Removed gateway {gatewayName}");
                     }
@@ -347,7 +358,34 @@ namespace LoRaWan.NetworkServer
 
                                     Log.Logger.Information("Received 'version' message for station '{StationVersion}' with package '{StationPackage}'.", versionMessage.MessageType, versionMessage.Package);
 
-                                    PendingMessages.Enqueue(new QueuedMessage { Destination = gatewayName, Payload = _basicsStationConfigurationService.GetRouterConfigMessage(gatewayName) });
+                                    // The router configuration is a direct reply on this
+                                    // very socket, so send it here rather than queueing it.
+                                    // ProcessPendingMessages polls every 10ms and drops any
+                                    // message whose gateway is not in ConnectedGateways, so a
+                                    // queued reply is lost whenever the socket is replaced or
+                                    // removed in between - which leaves the station waiting
+                                    // for a router_config that never arrives, timing out and
+                                    // reconnecting in a loop.
+                                    try
+                                    {
+                                        string routerConfig = _basicsStationConfigurationService.GetRouterConfigMessage(gatewayName);
+
+                                        await webSocket.SendAsync(
+                                            Encoding.UTF8.GetBytes(routerConfig),
+                                            WebSocketMessageType.Text,
+                                            true,
+                                            cancellationToken).ConfigureAwait(false);
+
+                                        Log.Logger.Information("Sent 'router_config' to station {GatewayName}.", gatewayName);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Without a router configuration the station cannot
+                                        // start its radio, so make the reason explicit rather
+                                        // than letting it fail as a silent connection drop.
+                                        Log.Logger.Error(ex, "Could not send 'router_config' to station {GatewayName}.", gatewayName);
+                                    }
+
                                     break;
 
                                 case LnsMessageType.JoinRequest:

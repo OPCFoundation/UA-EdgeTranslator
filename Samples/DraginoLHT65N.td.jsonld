@@ -18,7 +18,7 @@
   "@type": [
     "Thing"
   ],
-  "name": "Dragino LHT65N-E3 A84041B98D5CB233",
+  "name": "Dragino-LHT65N-E3-A84041B98D5CB233",
   "base": "lorawan://localhost/A84041B98D5CB233/",
   "title": "Dragino LHT65N-E3",
   "lorav:payloadLayout": "fixed",
