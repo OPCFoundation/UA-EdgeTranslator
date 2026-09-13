@@ -91,7 +91,7 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 
 > **Note**: The LoRaWAN Network Server is available on port 5000 (not secure) and port 5001 (secure), which needs to be mapped to the Docker host for access. If you need a LoRaWAN Gateway, you can use the open-source [Basic Station](https://github.com/lorabasics/basicstation) together with a [LoRaWAN HAT for Raspberry Pi](https://www.waveshare.com/wiki/SX1302_LoRaWAN_Gateway_HAT). The base URI follows the binding's ABNF, `lorawan://<host>/<devEUI>/<uplink|downlink>`, where `<host>` is the network-facing interface and `<devEUI>` is 16 hex digits; forms then use the relative target `uplink`, and the device identity is also declared as the thing-level term `lorav:devEUI`.
 
-> **Note**: One binding term is **not decoded yet**. A Thing Description using it is **rejected at onboarding** rather than silently mis-decoded, naming the offending term:
+> **Note**: One LoRaWAN binding term is **not decoded yet**. A Thing Description using it is **rejected at onboarding** rather than silently mis-decoded, naming the offending term:
 >
 > | Term | Purpose | Why not decoded |
 > | --- | --- | --- |
