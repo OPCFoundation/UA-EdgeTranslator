@@ -269,11 +269,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Theory]
-        [InlineData("lorav:compute")]
         [InlineData("lorav:derived")]
-        [InlineData("lorav:switchField")]
-        [InlineData("lorav:presentWhen")]
-        [InlineData("lorav:presenceBit")]
         public void Unsupported_binding_terms_are_rejected_rather_than_ignored(string term)
         {
             // These change how the payload must be read. Ignoring them would
@@ -294,6 +290,90 @@ namespace Opc.Ua.Edge.Translator.Tests
                 () => driver.CreateTag(td, JToken.Parse(form), "asset", 1, "value", "nsu=x;i=1", null));
 
             Assert.Contains(term, ex.Message, StringComparison.Ordinal);
+        }
+
+        [Theory]
+        [InlineData("lorav:switchField", "lorav:presentWhen")]
+        [InlineData("lorav:presenceBit", "lorav:presentWhen")]
+        [InlineData("lorav:compute", "lorav:derived")]
+        [InlineData("lorav:var", "lorav:alias")]
+        [InlineData("lorav:enum", "lorav:valueMap")]
+        [InlineData("lorav:brand", "schema:manufacturer")]
+        public void Withdrawn_terms_are_rejected_and_name_their_replacement(string term, string replacement)
+        {
+            // The binding withdrew these before 0.3. They are not silently
+            // treated as their successor, because the replacements are not
+            // plain renames and guessing would change what a payload means.
+            LoRaWANProtocolDriver driver = new();
+            ThingDescription td = new() { Base = "lorawan://0000000000000001/appkey/device" };
+
+            string form = $$"""
+            {
+              "href": "uplink",
+              "type": "Float",
+              "lorav:byteOffset": 0,
+              "{{term}}": "something"
+            }
+            """;
+
+            NotSupportedException ex = Assert.Throws<NotSupportedException>(
+                () => driver.CreateTag(td, JToken.Parse(form), "asset", 1, "value", "nsu=x;i=1", null));
+
+            Assert.Contains(term, ex.Message, StringComparison.Ordinal);
+
+            // Naming the replacement is the point: the author has to know what
+            // to write instead.
+            Assert.Contains(replacement, ex.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void A_withdrawn_term_is_not_matched_inside_a_current_term()
+        {
+            // A withdrawn term can be a substring of a current one - the JSON
+            // text "lorav:byteOffset" contains the withdrawn "offset" - so the
+            // match has to be on the whole quoted JSON key rather than on any
+            // occurrence of the term's characters.
+            LoRaWANProtocolDriver driver = new();
+            ThingDescription td = new() { Base = "lorawan://0000000000000001/appkey/device" };
+
+            string form = """
+            {
+              "href": "uplink",
+              "type": "Float",
+              "lorav:byteOffset": 0,
+              "lorav:wireType": "xsd:short",
+              "lorav:byteLength": 2
+            }
+            """;
+
+            // Every term here is current; none may be rejected.
+            AssetTag tag = driver.CreateTag(td, JToken.Parse(form), "asset", 1, "value", "nsu=x;i=1", null);
+
+            Assert.NotNull(tag);
+        }
+
+        [Fact]
+        public void A_form_using_present_when_and_value_map_is_accepted()
+        {
+            // Both are current binding terms and are now decoded, so a form
+            // using them must onboard rather than be rejected.
+            LoRaWANProtocolDriver driver = new();
+            ThingDescription td = new() { Base = "lorawan://0000000000000001/appkey/device" };
+
+            string form = """
+            {
+              "href": "uplink",
+              "type": "Float",
+              "lorav:byteOffset": 4,
+              "lorav:wireType": "xsd:short",
+              "lorav:presentWhen": { "field": "reportType", "value": 1 },
+              "lorav:valueMap": [ { "wireValue": 0, "value": "idle" } ]
+            }
+            """;
+
+            AssetTag tag = driver.CreateTag(td, JToken.Parse(form), "asset", 1, "value", "nsu=x;i=1", null);
+
+            Assert.NotNull(tag);
         }
 
         [Fact]

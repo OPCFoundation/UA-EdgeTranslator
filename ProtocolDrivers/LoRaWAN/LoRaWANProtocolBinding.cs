@@ -72,9 +72,45 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("lorav:addend")]
         public float? Addend { get; set; }
 
-        /// <summary>UN/CEFACT unit code for the decoded value.</summary>
-        [JsonProperty("lorav:unece")]
-        public string Unece { get; set; }
+        // ----- Conditional presence and grouping ----------------------------
+
+        /// <summary>
+        /// Name under which other conditional blocks reference this value.
+        /// A <see cref="PresentWhen"/> gate names its discriminator by alias.
+        /// </summary>
+        [JsonProperty("lorav:alias")]
+        public string Alias { get; set; }
+
+        /// <summary>
+        /// Condition gating this value by flag bit or discriminator value:
+        /// <c>{"field": "flags", "bit": n}</c> or
+        /// <c>{"field": "kind", "value": n}</c>.
+        /// </summary>
+        [JsonProperty("lorav:presentWhen")]
+        public PresentWhenCondition PresentWhen { get; set; }
+
+        /// <summary>
+        /// Mapping from wire integers to decoded values, as
+        /// <c>[{"wireValue": n, "value": ...}]</c>.
+        /// </summary>
+        [JsonProperty("lorav:valueMap")]
+        public ValueMapEntry[] ValueMap { get; set; }
+
+        /// <summary>The LoRaWAN application port this form decodes.</summary>
+        [JsonProperty("lorav:fPort")]
+        public int? FPort { get; set; }
+
+        /// <summary>
+        /// Tag values that select this field in a <c>tlv</c> or <c>ctv</c>
+        /// layout, e.g. <c>[1, 117]</c> for channel 1, type 117.
+        /// <para>
+        /// A tagged field is found by scanning the payload for the tag bytes
+        /// rather than by a fixed <c>lorav:byteOffset</c>, because a device may
+        /// omit a measurement or reorder them between uplinks.
+        /// </para>
+        /// </summary>
+        [JsonProperty("lorav:tag")]
+        public int[] Tag { get; set; }
 
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
@@ -124,27 +160,102 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>
         /// Terms defined by the binding that this driver does not yet decode.
         /// <para>
-        /// These describe conditional presence, branching layouts and a derived
-        /// value expression language. Silently ignoring them would mis-decode a
-        /// payload rather than fail, so callers surface them instead.
+        /// <c>lorav:derived</c> is a container for an expression language whose
+        /// keys (<c>compute</c>, <c>polynomial</c>, <c>transform</c>,
+        /// <c>guard</c>, <c>ref</c>) the specification names but does not define
+        /// a schema or worked example for. Implementing it would mean inventing
+        /// a syntax and then silently disagreeing with whatever the binding
+        /// settles on, so it stays rejected until the specification pins it
+        /// down.
+        /// </para>
+        /// <para>
+        /// Rejecting is the conservative choice: silently ignoring the term
+        /// would mis-decode a payload and report a plausible-looking wrong
+        /// value.
         /// </para>
         /// </summary>
         public static IReadOnlyList<string> UnsupportedTerms { get; } =
         [
-            "lorav:compute",
-            "lorav:derived",
-            "lorav:transform",
-            "lorav:polynomial",
-            "lorav:switchField",
-            "lorav:switchValue",
-            "lorav:presentWhen",
-            "lorav:presenceBit",
-            "lorav:presenceField",
-            "lorav:guard",
-            "lorav:tagFields",
-            "lorav:ref",
-            "lorav:var"
+            "lorav:derived"
         ];
+
+        /// <summary>
+        /// Terms withdrawn by the binding before 0.3, mapped to the term that
+        /// replaces them.
+        /// <para>
+        /// These are rejected rather than silently accepted: the replacements
+        /// are not merely renames, so decoding an old term as though it were
+        /// its successor would change the meaning of a payload.
+        /// </para>
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> WithdrawnTerms { get; } =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["lorav:type"] = "lorav:wireType",
+                ["lorav:offset"] = "lorav:addend",
+                ["lorav:length"] = "lorav:byteLength",
+                ["lorav:enum"] = "lorav:valueMap",
+                ["lorav:presenceField"] = "lorav:presentWhen with field/bit",
+                ["lorav:presenceBit"] = "lorav:presentWhen with field/bit",
+                ["lorav:switchField"] = "lorav:presentWhen with field/value",
+                ["lorav:switchValue"] = "lorav:presentWhen with field/value",
+                ["lorav:var"] = "lorav:alias",
+                ["lorav:ref"] = "keys inside lorav:derived",
+                ["lorav:polynomial"] = "keys inside lorav:derived",
+                ["lorav:compute"] = "keys inside lorav:derived",
+                ["lorav:guard"] = "keys inside lorav:derived",
+                ["lorav:transform"] = "keys inside lorav:derived",
+                ["lorav:validRange"] = "the TD core terms minimum / maximum",
+                ["lorav:unece"] = "the TD core term unit",
+                ["lorav:brand"] = "schema:manufacturer",
+                ["lorav:model"] = "schema:mpn",
+                ["lorav:hardwareVersion"] = "schema:version",
+                ["lorav:softwareVersion"] = "schema:softwareVersion"
+            };
+    }
+
+    /// <summary>
+    /// A <c>lorav:presentWhen</c> condition. The referenced field is named by
+    /// its <c>lorav:alias</c>; exactly one of <see cref="Bit"/> or
+    /// <see cref="Value"/> selects the test.
+    /// </summary>
+    public class PresentWhenCondition
+    {
+        [JsonProperty("field")]
+        public string Field { get; set; }
+
+        /// <summary>Bit index that must be set in the referenced field.</summary>
+        [JsonProperty("bit")]
+        public int? Bit { get; set; }
+
+        /// <summary>Discriminator value the referenced field must equal.</summary>
+        [JsonProperty("value")]
+        public long? Value { get; set; }
+    }
+
+    /// <summary>A single <c>lorav:valueMap</c> entry.</summary>
+    public class ValueMapEntry
+    {
+        [JsonProperty("wireValue")]
+        public long WireValue { get; set; }
+
+        [JsonProperty("value")]
+        public object Value { get; set; }
+    }
+
+    /// <summary>
+    /// One position in a <c>tlv</c>/<c>ctv</c> tag, from
+    /// <c>lorav:tagFields</c>.
+    /// </summary>
+    public class TagFieldDefinition
+    {
+        /// <summary>Name of this tag position, e.g. <c>channel_id</c>.</summary>
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        /// <summary>Wire type of this tag position, e.g. <c>u8</c>.</summary>
+        [JsonProperty("type")]
+        public string Type { get; set; }
     }
 
     /// <summary>
@@ -156,6 +267,18 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>Payload codec family, e.g. <c>"fixed"</c> or <c>"ctv"</c>.</summary>
         [JsonProperty("lorav:payloadLayout")]
         public string PayloadLayout { get; set; }
+
+        /// <summary>
+        /// Definitions of the leading fields that make up a tag in a
+        /// <c>tlv</c> or <c>ctv</c> layout, e.g.
+        /// <c>[{"name":"channel_id","type":"u8"},{"name":"channel_type","type":"u8"}]</c>.
+        /// <para>
+        /// This names what each position in a form's <c>lorav:tag</c> means, so
+        /// it also fixes how many elements that array must have.
+        /// </para>
+        /// </summary>
+        [JsonProperty("lorav:tagFields")]
+        public TagFieldDefinition[] TagFields { get; set; }
 
         [JsonProperty("lorav:devEUI")]
         public string DevEUI { get; set; }
@@ -172,16 +295,24 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("lorav:frequencyPlan")]
         public string FrequencyPlan { get; set; }
 
-        [JsonProperty("lorav:brand")]
-        public string Brand { get; set; }
+        // ----- Device description -------------------------------------------
+        //
+        // The binding withdrew lorav:brand, lorav:model, lorav:hardwareVersion
+        // and lorav:softwareVersion in favour of schema.org terms, so the
+        // device description now reuses the vocabulary the wider WoT ecosystem
+        // already understands rather than a LoRaWAN-specific duplicate.
 
-        [JsonProperty("lorav:model")]
-        public string Model { get; set; }
+        [JsonProperty("schema:manufacturer")]
+        public string Manufacturer { get; set; }
 
-        [JsonProperty("lorav:hardwareVersion")]
-        public string HardwareVersion { get; set; }
+        /// <summary>Manufacturer part number (schema.org <c>mpn</c>).</summary>
+        [JsonProperty("schema:mpn")]
+        public string Mpn { get; set; }
 
-        [JsonProperty("lorav:softwareVersion")]
+        [JsonProperty("schema:version")]
+        public string Version { get; set; }
+
+        [JsonProperty("schema:softwareVersion")]
         public string SoftwareVersion { get; set; }
     }
 }

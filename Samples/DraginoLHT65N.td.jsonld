@@ -1,7 +1,10 @@
 {
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1",
-    { "lorav": "https://www.w3.org/2026/wot/lorawan#" }
+    {
+      "lorav": "https://www.w3.org/2026/wot/lorawan#",
+      "schema": "https://schema.org/"
+    }
   ],
   "id": "urn:dragino-lht-65n-e3",
   "securityDefinitions": {
@@ -25,8 +28,8 @@
   "lorav:devEUI": "A84041B98D5CB233",
   "lorav:joinEUI": "0000000000000000",
   "lorav:macVersion": "1.0.3",
-  "lorav:brand": "Dragino",
-  "lorav:model": "LHT65N-E3",
+  "schema:manufacturer": "Dragino",
+  "schema:mpn": "LHT65N-E3",
   "events": {
     "batteryLevel": {
       "data": {

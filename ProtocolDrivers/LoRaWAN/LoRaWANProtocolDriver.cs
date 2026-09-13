@@ -181,9 +181,89 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                     MappedUAFieldPath = mappedUAFieldPath
                 };
+
+                // lorav:alias, lorav:presentWhen and lorav:valueMap do not fit
+                // the asset's address scheme, so they travel alongside the tag
+                // instead of inside its address string.
+                RegisterFieldRule(tag, lorawanForm, td);
             }
 
             return tag;
+        }
+
+        /// <summary>
+        /// Records a field's conditional-presence and value-mapping rules, and
+        /// resolves any <c>lorav:presentWhen</c> discriminator to a byte offset.
+        /// <para>
+        /// The gate names its discriminator by <c>lorav:alias</c>, which only
+        /// the Thing Description can resolve. Doing it here means the read path
+        /// never has to search the Thing Description again.
+        /// </para>
+        /// </summary>
+        private void RegisterFieldRule(AssetTag tag, LoRaWANForm form, ThingDescription td)
+        {
+            if ((form.Alias is null) && (form.PresentWhen is null) && (form.ValueMap is null))
+            {
+                return;
+            }
+
+            int? discriminatorOffset = null;
+            int discriminatorLength = 1;
+
+            if (form.PresentWhen?.Field != null)
+            {
+                (discriminatorOffset, discriminatorLength) = FindAliasedField(td, form.PresentWhen.Field);
+            }
+
+            _lorawanNetworkServer.FieldRules.Register(
+                tag.Name,
+                new LoRaWANFieldRule
+                {
+                    Alias = form.Alias,
+                    PresentWhen = form.PresentWhen,
+                    ValueMap = form.ValueMap,
+                    DiscriminatorOffset = discriminatorOffset,
+                    DiscriminatorLength = discriminatorLength
+                });
+        }
+
+        /// <summary>
+        /// Finds the byte offset and length of the form published under
+        /// <paramref name="alias"/>, searching the Thing Description's events.
+        /// </summary>
+        private static (int? Offset, int Length) FindAliasedField(ThingDescription td, string alias)
+        {
+            if ((td?.Events is null) || string.IsNullOrEmpty(alias))
+            {
+                return (null, 1);
+            }
+
+            foreach (KeyValuePair<string, TDEvent> tdEvent in td.Events)
+            {
+                foreach (object formObject in tdEvent.Value?.Forms ?? [])
+                {
+                    LoRaWANForm candidate;
+
+                    try
+                    {
+                        candidate = JsonConvert.DeserializeObject<LoRaWANForm>(formObject.ToString());
+                    }
+                    catch (JsonException)
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(candidate?.Alias, alias, StringComparison.Ordinal)
+                        && candidate.ByteOffset.HasValue)
+                    {
+                        return (
+                            candidate.ByteOffset,
+                            candidate.ByteLength ?? WireTypeLength(candidate.WireType));
+                    }
+                }
+            }
+
+            return (null, 1);
         }
 
         /// <summary>
@@ -201,6 +281,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         private static string BuildAddress(LoRaWANForm form, ThingDescription td)
         {
             string href = ResolveHref(form.Href, td);
+
+            // A tlv/ctv field is found by scanning for its tag bytes, not at a
+            // fixed offset, so it takes the asset's tag-matching address form.
+            if (form.Tag is { Length: > 0 })
+            {
+                return BuildTagAddress(form, td, href);
+            }
 
             if (form.ByteOffset is null)
             {
@@ -226,6 +313,100 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return string.Create(
                 CultureInfo.InvariantCulture,
                 $"{prefix}/{form.ByteOffset.Value}?quantity={quantity}");
+        }
+
+        /// <summary>
+        /// Builds the tag-matching address for a <c>tlv</c>/<c>ctv</c> field.
+        /// <para>
+        /// The asset locates a tagged field by scanning the payload for the tag
+        /// bytes and reading the value that follows, which is the
+        /// <c>&lt;devEUI&gt;/&lt;tag0&gt;/&lt;tag1&gt;?quantity=&lt;len&gt;</c>
+        /// form of its address scheme. Translating <c>lorav:tag</c> here means a
+        /// conformant Thing Description works without the author hand-encoding
+        /// the tag into the href.
+        /// </para>
+        /// </summary>
+        private static string BuildTagAddress(LoRaWANForm form, ThingDescription td, string href)
+        {
+            // The asset matches exactly two tag bytes (payload[i], payload[i+1]).
+            // A longer or shorter tag cannot be honoured, and quietly reading the
+            // first two elements would select the wrong field, so it is refused.
+            if (form.Tag.Length != 2)
+            {
+                throw new NotSupportedException(
+                    $"A LoRaWAN 'lorav:tag' must have exactly 2 elements (channel and type); this form declares {form.Tag.Length}.");
+            }
+
+            ValidateTagArity(td, form.Tag.Length);
+
+            foreach (int element in form.Tag)
+            {
+                if (element is < 0 or > 255)
+                {
+                    throw new NotSupportedException(
+                        $"The LoRaWAN tag value {element} does not fit in a byte; 'lorav:tagFields' declares byte-sized tag positions.");
+                }
+            }
+
+            // Keep only the device prefix: a tagged field has no offset, so any
+            // trailing path the author wrote is not part of its address.
+            string prefix = href.Split('?')[0].TrimEnd('/').Split('/')[0];
+
+            int quantity = form.ByteLength ?? WireTypeLength(form.WireType);
+
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"{prefix}/{form.Tag[0]}/{form.Tag[1]}?quantity={quantity}");
+        }
+
+        /// <summary>
+        /// Checks a form's tag against the Thing's <c>lorav:tagFields</c>.
+        /// <para>
+        /// <c>lorav:tagFields</c> declares what each tag position means, so a
+        /// form whose tag has a different number of elements is describing a
+        /// different layout than the Thing claims - an authoring error that
+        /// would otherwise surface as a field that silently never matches.
+        /// </para>
+        /// </summary>
+        private static void ValidateTagArity(ThingDescription td, int tagLength)
+        {
+            TagFieldDefinition[] tagFields = ReadTagFields(td);
+
+            if ((tagFields is null) || (tagFields.Length == 0))
+            {
+                // tagFields is optional; without it there is nothing to check.
+                return;
+            }
+
+            if (tagFields.Length != tagLength)
+            {
+                throw new NotSupportedException(
+                    $"The Thing declares {tagFields.Length} 'lorav:tagFields' but a form's 'lorav:tag' has {tagLength} elements.");
+            }
+        }
+
+        /// <summary>
+        /// Reads the thing-level <c>lorav:tagFields</c> from a Thing
+        /// Description's additional data.
+        /// </summary>
+        private static TagFieldDefinition[] ReadTagFields(ThingDescription td)
+        {
+            if ((td?.AdditionalData is null)
+                || !td.AdditionalData.TryGetValue("lorav:tagFields", out object value)
+                || (value is null))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<TagFieldDefinition[]>(value.ToString());
+            }
+            catch (JsonException ex)
+            {
+                Log.Logger.Debug(ex, "Failed to read lorav:tagFields from the Thing Description.");
+                return null;
+            }
         }
 
         /// <summary>
@@ -288,6 +469,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// <summary>
         /// Byte width implied by a <c>lorav:wireType</c> when
         /// <c>lorav:byteLength</c> is not given explicitly.
+        /// <para>
+        /// The binding allows "an <c>xsd:</c> alias or a native type such as
+        /// <c>u16</c> or <c>s16</c>", and its own worked examples use the native
+        /// spellings, so both forms are recognised. Falling back to two bytes
+        /// for an unrecognised native type would silently read the wrong width.
+        /// </para>
         /// </summary>
         private static int WireTypeLength(string wireType)
         {
@@ -298,6 +485,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 "xsd:int" or "xsd:unsignedint" or "xsd:float" => 4,
                 "xsd:long" or "xsd:unsignedlong" or "xsd:double" => 8,
 
+                // Native spellings used throughout the specification's examples.
+                "u8" or "s8" or "i8" or "bool" => 1,
+                "u16" or "s16" or "i16" => 2,
+                "u32" or "s32" or "i32" or "f32" or "float" => 4,
+                "u64" or "s64" or "i64" or "f64" or "double" => 8,
+
                 // Two bytes is the most common LoRaWAN field width, and is what
                 // the specification's own example uses.
                 _ => 2
@@ -305,13 +498,20 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         }
 
         /// <summary>
-        /// Throws when a form uses a binding term this driver does not decode.
+        /// Throws when a form uses a binding term this driver does not decode,
+        /// or one the binding has withdrawn.
         /// <para>
-        /// The W3C binding defines conditional-presence and derived-value terms
-        /// (branching layouts, expression-based computation) that change how a
-        /// payload must be read. Ignoring them yields a confidently wrong value,
-        /// so an unsupported Thing Description is rejected at onboarding time
-        /// instead.
+        /// The W3C binding defines derived-value terms (expression-based
+        /// computation) and tag-based layouts that change how a payload must be
+        /// read. Ignoring them yields a confidently wrong value, so an
+        /// unsupported Thing Description is rejected at onboarding time instead.
+        /// </para>
+        /// <para>
+        /// Withdrawn terms are reported with their replacement. They are not
+        /// silently treated as their successor because the replacements are not
+        /// plain renames - <c>lorav:presenceField</c> and
+        /// <c>lorav:presentWhen</c>, for instance, carry different shapes - so
+        /// guessing would change what a payload means.
         /// </para>
         /// </summary>
         private static void RejectUnsupportedTerms(object form, string variableId)
@@ -323,14 +523,36 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 return;
             }
 
+            foreach (KeyValuePair<string, string> withdrawn in LoRaWANForm.WithdrawnTerms)
+            {
+                if (ContainsTerm(json, withdrawn.Key))
+                {
+                    throw new NotSupportedException(
+                        $"The LoRaWAN form for '{variableId}' uses '{withdrawn.Key}', which the W3C WoT LoRaWAN binding withdrew. Use {withdrawn.Value} instead.");
+                }
+            }
+
             foreach (string term in LoRaWANForm.UnsupportedTerms)
             {
-                if (json.Contains(term, StringComparison.OrdinalIgnoreCase))
+                if (ContainsTerm(json, term))
                 {
                     throw new NotSupportedException(
                         $"The LoRaWAN form for '{variableId}' uses '{term}', which the W3C WoT LoRaWAN binding defines but this driver does not yet decode. Remove the term or decode the value at the application server.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Matches a binding term as a whole JSON key.
+        /// <para>
+        /// A substring test would make <c>lorav:type</c> match
+        /// <c>lorav:wireType</c> and reject a perfectly valid form, so the term
+        /// must be followed by the end of the property name.
+        /// </para>
+        /// </summary>
+        private static bool ContainsTerm(string json, string term)
+        {
+            return json.Contains("\"" + term + "\"", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

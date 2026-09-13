@@ -10,6 +10,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Threading;
     using System.IO;
     using System.Text;
@@ -19,6 +20,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     public class LoRaWANNetworkServerAsset : IAsset
     {
         public bool IsConnected { get; private set; } = false;
+
+        /// <summary>
+        /// Conditional-presence and value-mapping rules for this asset's fields,
+        /// registered by the driver when each tag is created.
+        /// </summary>
+        public LoRaWANFieldRules FieldRules { get; } = new();
 
         public LoRaWANNetworkServerAsset()
         {
@@ -160,6 +167,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             if ((tagBytes != null) && (tagBytes.Length > 0))
             {
+                LoRaWANFieldRule rule = FieldRules.Get(tag.Name);
+
+                // A gated field is absent unless its discriminator says
+                // otherwise. Returning null rather than a decoded value keeps an
+                // absent field distinguishable from one that genuinely read
+                // zero, which is the whole point of lorav:presentWhen.
+                if ((rule?.PresentWhen != null) && !IsFieldPresent(tag, rule))
+                {
+                    return null;
+                }
+
                 if (tag.Type == "Float")
                 {
                     value = BitConverter.ToSingle(tagBytes) * tag.Multiplier;
@@ -188,9 +206,81 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     throw new ArgumentException("Type not supported by LoRaWAN.");
                 }
+
+                if (rule?.ValueMap != null)
+                {
+                    value = LoRaWANFieldRules.ApplyValueMap(rule.ValueMap, value);
+                }
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// Evaluates a <c>lorav:presentWhen</c> gate by re-reading the
+        /// discriminator field from the same payload.
+        /// <para>
+        /// The discriminator's offset was resolved from its
+        /// <c>lorav:alias</c> when the tag was created, so this only has to pull
+        /// the bytes and compare.
+        /// </para>
+        /// </summary>
+        private bool IsFieldPresent(AssetTag tag, LoRaWANFieldRule rule)
+        {
+            if (rule.DiscriminatorOffset is null)
+            {
+                // The gate names a field that does not exist in this Thing
+                // Description. Treating the value as present would invent data,
+                // so it is reported absent and the reason logged once per read.
+                Log.Logger.Warning(
+                    "LoRaWAN field '{Tag}' is gated on '{Field}', which no form publishes under that lorav:alias.",
+                    tag.Name,
+                    rule.PresentWhen.Field);
+
+                return false;
+            }
+
+            string[] addressParts = tag.Address.Split(['?', '&', '=', '/']);
+
+            if (addressParts.Length < 4)
+            {
+                return false;
+            }
+
+            // The discriminator is located by byte offset within the same
+            // payload, which is the 4-part form of the address scheme
+            // regardless of how the gated field itself is addressed.
+            byte[] bytes = Read(
+                addressParts[0],
+                rule.DiscriminatorOffset.Value.ToString(CultureInfo.InvariantCulture),
+                null,
+                (ushort)rule.DiscriminatorLength);
+
+            if ((bytes is null) || (bytes.Length == 0))
+            {
+                return false;
+            }
+
+            long discriminator = 0;
+
+            // Big-endian: the binding's default byte order.
+            foreach (byte b in bytes)
+            {
+                discriminator = (discriminator << 8) | b;
+            }
+
+            if (rule.PresentWhen.Bit.HasValue)
+            {
+                return ((discriminator >> rule.PresentWhen.Bit.Value) & 1) == 1;
+            }
+
+            if (rule.PresentWhen.Value.HasValue)
+            {
+                return discriminator == rule.PresentWhen.Value.Value;
+            }
+
+            // A condition with neither 'bit' nor 'value' constrains nothing.
+            return true;
         }
 
         private byte[] HexToBytes(string hex)
