@@ -112,6 +112,26 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("lorav:tag")]
         public int[] Tag { get; set; }
 
+        /// <summary>
+        /// Order of this value within its group, when several values share one
+        /// locator (the same <c>lorav:tag</c> or <c>lorav:byteOffset</c>).
+        /// </summary>
+        [JsonProperty("lorav:slot")]
+        public int? Slot { get; set; }
+
+        /// <summary>
+        /// Reserved bytes consumed before this value within its group.
+        /// </summary>
+        [JsonProperty("lorav:padBefore")]
+        public int? PadBefore { get; set; }
+
+        /// <summary>
+        /// Descriptor for a value computed from already-decoded values rather
+        /// than read from the wire.
+        /// </summary>
+        [JsonProperty("lorav:derived")]
+        public DerivedDescriptor Derived { get; set; }
+
         [JsonProperty("pollingTime")]
         public long PollingTime { get; set; }
 
@@ -160,24 +180,12 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>
         /// Terms defined by the binding that this driver does not yet decode.
         /// <para>
-        /// <c>lorav:derived</c> is a container for an expression language whose
-        /// keys (<c>compute</c>, <c>polynomial</c>, <c>transform</c>,
-        /// <c>guard</c>, <c>ref</c>) the specification names but does not define
-        /// a schema or worked example for. Implementing it would mean inventing
-        /// a syntax and then silently disagreeing with whatever the binding
-        /// settles on, so it stays rejected until the specification pins it
-        /// down.
-        /// </para>
-        /// <para>
-        /// Rejecting is the conservative choice: silently ignoring the term
-        /// would mis-decode a payload and report a plausible-looking wrong
-        /// value.
+        /// Empty: every term the binding defines is now decoded. Withdrawn
+        /// terms are handled separately by <see cref="WithdrawnTerms"/>, which
+        /// rejects them naming their replacement.
         /// </para>
         /// </summary>
-        public static IReadOnlyList<string> UnsupportedTerms { get; } =
-        [
-            "lorav:derived"
-        ];
+        public static IReadOnlyList<string> UnsupportedTerms { get; } = [];
 
         /// <summary>
         /// Terms withdrawn by the binding before 0.3, mapped to the term that
@@ -259,6 +267,115 @@ namespace Opc.Ua.Edge.Translator.Models
     }
 
     /// <summary>
+    /// A <c>lorav:derived</c> descriptor: where a computed value comes from.
+    /// <para>
+    /// The keys apply in the order they are declared here. <see cref="Ref"/>,
+    /// <see cref="Polynomial"/>, <see cref="Compute"/> and <see cref="Guard"/>
+    /// describe a value that is never transmitted, which is why such a form
+    /// declares <c>lorav:wireType: "number"</c> and occupies no payload bytes.
+    /// <see cref="Transform"/> is the exception: it post-processes a value that
+    /// <em>was</em> read from the wire, so it sits alongside a real wire type
+    /// and byte offset rather than replacing them.
+    /// </para>
+    /// </summary>
+    public class DerivedDescriptor
+    {
+        /// <summary>The input: <c>$name</c> of the value this is computed from.</summary>
+        [JsonProperty("ref")]
+        public string Ref { get; set; }
+
+        /// <summary>
+        /// Coefficients <c>[c0, c1, c2, …]</c> applied to the input as
+        /// <c>c0 + c1·x + c2·x² + …</c>.
+        /// </summary>
+        [JsonProperty("polynomial")]
+        public double[] Polynomial { get; set; }
+
+        /// <summary>A binary operation over two values or constants.</summary>
+        [JsonProperty("compute")]
+        public ComputeOperation Compute { get; set; }
+
+        /// <summary>A precondition, with a fallback when it is not met.</summary>
+        [JsonProperty("guard")]
+        public GuardCondition Guard { get; set; }
+
+        /// <summary>Ordered post-processing steps.</summary>
+        [JsonProperty("transform")]
+        public TransformStep[] Transform { get; set; }
+
+        /// <summary>
+        /// True when this descriptor replaces the wire value entirely, rather
+        /// than post-processing one. Such a value reads no payload bytes.
+        /// </summary>
+        public bool ReplacesWireValue =>
+            (Ref != null) || (Polynomial != null) || (Compute != null) || (Guard != null);
+    }
+
+    /// <summary>A <c>compute</c> operation, e.g. <c>{"op":"div","a":…,"b":…}</c>.</summary>
+    public class ComputeOperation
+    {
+        [JsonProperty("op")]
+        public string Op { get; set; }
+
+        [JsonProperty("a")]
+        public object A { get; set; }
+
+        [JsonProperty("b")]
+        public object B { get; set; }
+    }
+
+    /// <summary>
+    /// A <c>guard</c>: the value falls back to <see cref="Else"/> when any
+    /// <see cref="When"/> clause fails.
+    /// </summary>
+    public class GuardCondition
+    {
+        [JsonProperty("when")]
+        public GuardClause[] When { get; set; }
+
+        [JsonProperty("else")]
+        public object Else { get; set; }
+    }
+
+    /// <summary>A single comparison inside a <c>guard</c>'s <c>when</c> list.</summary>
+    public class GuardClause
+    {
+        [JsonProperty("field")]
+        public string Field { get; set; }
+
+        [JsonProperty("gt")]
+        public double? GreaterThan { get; set; }
+
+        [JsonProperty("gte")]
+        public double? GreaterThanOrEqual { get; set; }
+
+        [JsonProperty("lt")]
+        public double? LessThan { get; set; }
+
+        [JsonProperty("lte")]
+        public double? LessThanOrEqual { get; set; }
+
+        [JsonProperty("eq")]
+        public double? EqualTo { get; set; }
+    }
+
+    /// <summary>One step of a <c>transform</c> pipeline.</summary>
+    public class TransformStep
+    {
+        [JsonProperty("add")]
+        public double? Add { get; set; }
+
+        [JsonProperty("div")]
+        public double? Div { get; set; }
+
+        [JsonProperty("mult")]
+        public double? Mult { get; set; }
+
+        [JsonProperty("round")]
+        public int? Round { get; set; }
+    }
+
+    /// <summary>
     /// Thing-level vocabulary of the W3C WoT LoRaWAN binding. These terms sit
     /// on the Thing itself and identify the device and its network parameters.
     /// </summary>
@@ -294,6 +411,14 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("lorav:frequencyPlan")]
         public string FrequencyPlan { get; set; }
+
+        /// <summary>
+        /// Expected minutes between unprompted uplinks. A LoRaWAN device
+        /// transmits on its own schedule, so this is how often a value can
+        /// actually change - polling faster only re-reads the cached payload.
+        /// </summary>
+        [JsonProperty("lorav:defaultEventingFrequencyMinutes")]
+        public double? DefaultEventingFrequencyMinutes { get; set; }
 
         // ----- Device description -------------------------------------------
         //

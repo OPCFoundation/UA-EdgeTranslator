@@ -42,8 +42,28 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// <summary>Byte length of the discriminator field.</summary>
         public int DiscriminatorLength { get; init; } = 1;
 
+        /// <summary>
+        /// Bytes to skip after a tag before this value starts, because earlier
+        /// <c>lorav:slot</c> values in the same tag group occupy them.
+        /// <para>
+        /// This cannot live in the address: the asset dispatches on the number
+        /// of parts in the address string, so an extra segment would stop the
+        /// tag being matched at all.
+        /// </para>
+        /// </summary>
+        public int TagGroupOffset { get; init; }
+
+        /// <summary>
+        /// Descriptor for a computed value, from <c>lorav:derived</c>.
+        /// </summary>
+        public DerivedDescriptor Derived { get; init; }
+
         /// <summary>True when this field carries no conditional or mapping rules.</summary>
-        public bool IsEmpty => (PresentWhen is null) && ((ValueMap is null) || (ValueMap.Count == 0));
+        public bool IsEmpty =>
+            (PresentWhen is null)
+            && ((ValueMap is null) || (ValueMap.Count == 0))
+            && (TagGroupOffset == 0)
+            && (Derived is null);
     }
 
     /// <summary>
@@ -53,6 +73,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         private readonly ConcurrentDictionary<string, LoRaWANFieldRule> _rules = new(StringComparer.Ordinal);
 
+        private readonly ConcurrentDictionary<string, AssetTag> _tags = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Every tag created for this asset, so a <c>$name</c> reference in a
+        /// derived value can be resolved to the field it names.
+        /// </summary>
+        public IReadOnlyDictionary<string, AssetTag> Tags => _tags;
+
         public void Register(string tagName, LoRaWANFieldRule rule)
         {
             if (string.IsNullOrEmpty(tagName) || (rule is null) || rule.IsEmpty)
@@ -61,6 +89,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             _rules[tagName] = rule;
+        }
+
+        /// <summary>
+        /// Records a tag so derived values can reference it by name. Every tag
+        /// is recorded, not only those carrying rules, because any field may be
+        /// the input to a computation.
+        /// </summary>
+        public void RegisterTag(AssetTag tag)
+        {
+            if (!string.IsNullOrEmpty(tag?.Name))
+            {
+                _tags[tag.Name] = tag;
+            }
         }
 
         public LoRaWANFieldRule Get(string tagName)
@@ -124,6 +165,231 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             ValueMapEntry match = valueMap.FirstOrDefault(entry => entry.WireValue == raw);
 
             return match is null ? rawValue : match.Value;
+        }
+
+        /// <summary>
+        /// Evaluates a <c>lorav:derived</c> descriptor.
+        /// <para>
+        /// The keys apply in their documented order: <c>ref</c> supplies the
+        /// input, <c>polynomial</c> or <c>compute</c> produces a value from it,
+        /// <c>guard</c> can veto the result, and <c>transform</c> post-processes
+        /// whatever remains.
+        /// </para>
+        /// </summary>
+        /// <param name="derived">The descriptor to evaluate.</param>
+        /// <param name="wireValue">
+        /// The value read from the wire, for a <c>transform</c>-only descriptor.
+        /// Ignored when the descriptor replaces the wire value.
+        /// </param>
+        /// <param name="resolve">
+        /// Resolves a <c>$name</c> reference to another value's current reading,
+        /// returning <c>null</c> when it is unavailable.
+        /// </param>
+        public static object Evaluate(
+            DerivedDescriptor derived,
+            object wireValue,
+            Func<string, object> resolve)
+        {
+            ArgumentNullException.ThrowIfNull(derived);
+
+            double? value = null;
+
+            if (derived.Ref != null)
+            {
+                value = ToNumber(resolve?.Invoke(derived.Ref));
+
+                // A reference that cannot be resolved yields no value rather
+                // than a zero, which would look like a real reading.
+                if (value is null)
+                {
+                    return null;
+                }
+            }
+            else if (!derived.ReplacesWireValue)
+            {
+                // transform-only: post-process the value read from the wire.
+                value = ToNumber(wireValue);
+            }
+
+            if (derived.Polynomial is { Length: > 0 })
+            {
+                if (value is null)
+                {
+                    return null;
+                }
+
+                double x = value.Value;
+                double result = 0;
+                double power = 1;
+
+                foreach (double coefficient in derived.Polynomial)
+                {
+                    result += coefficient * power;
+                    power *= x;
+                }
+
+                value = result;
+            }
+
+            if (derived.Compute != null)
+            {
+                value = EvaluateCompute(derived.Compute, resolve);
+
+                if (value is null)
+                {
+                    return null;
+                }
+            }
+
+            if (derived.Guard != null)
+            {
+                if (!IsGuardSatisfied(derived.Guard, resolve))
+                {
+                    // The guard exists to stop a meaningless result, such as a
+                    // night-time division by zero, so its fallback wins.
+                    return derived.Guard.Else;
+                }
+            }
+
+            if (derived.Transform is { Length: > 0 })
+            {
+                if (value is null)
+                {
+                    return null;
+                }
+
+                foreach (TransformStep step in derived.Transform)
+                {
+                    value = ApplyTransform(step, value.Value);
+                }
+            }
+
+            return value;
+        }
+
+        private static double? EvaluateCompute(ComputeOperation compute, Func<string, object> resolve)
+        {
+            double? a = ResolveOperand(compute.A, resolve);
+            double? b = ResolveOperand(compute.B, resolve);
+
+            if ((a is null) || (b is null))
+            {
+                return null;
+            }
+
+            switch (compute.Op?.ToLowerInvariant())
+            {
+                case "add":
+                    return a.Value + b.Value;
+
+                case "sub":
+                    return a.Value - b.Value;
+
+                case "mult":
+                case "mul":
+                    return a.Value * b.Value;
+
+                case "div":
+                    // An unguarded division by zero would yield infinity and
+                    // propagate through the rest of the pipeline.
+                    return b.Value == 0 ? null : a.Value / b.Value;
+
+                default:
+                    throw new NotSupportedException(
+                        $"The LoRaWAN 'compute' operation '{compute.Op}' is not one of add, sub, mult or div.");
+            }
+        }
+
+        private static bool IsGuardSatisfied(GuardCondition guard, Func<string, object> resolve)
+        {
+            if (guard.When is null)
+            {
+                return true;
+            }
+
+            foreach (GuardClause clause in guard.When)
+            {
+                double? actual = ToNumber(resolve?.Invoke(clause.Field));
+
+                if (actual is null)
+                {
+                    return false;
+                }
+
+                if ((clause.GreaterThan.HasValue && !(actual.Value > clause.GreaterThan.Value))
+                    || (clause.GreaterThanOrEqual.HasValue && !(actual.Value >= clause.GreaterThanOrEqual.Value))
+                    || (clause.LessThan.HasValue && !(actual.Value < clause.LessThan.Value))
+                    || (clause.LessThanOrEqual.HasValue && !(actual.Value <= clause.LessThanOrEqual.Value))
+                    || (clause.EqualTo.HasValue && (actual.Value != clause.EqualTo.Value)))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static double ApplyTransform(TransformStep step, double value)
+        {
+            if (step.Mult.HasValue)
+            {
+                value *= step.Mult.Value;
+            }
+
+            if (step.Div.HasValue && (step.Div.Value != 0))
+            {
+                value /= step.Div.Value;
+            }
+
+            if (step.Add.HasValue)
+            {
+                value += step.Add.Value;
+            }
+
+            if (step.Round.HasValue)
+            {
+                value = Math.Round(value, step.Round.Value, MidpointRounding.AwayFromZero);
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Resolves a compute operand, which is either a <c>$name</c> reference
+        /// or a literal number.
+        /// </summary>
+        private static double? ResolveOperand(object operand, Func<string, object> resolve)
+        {
+            if (operand is null)
+            {
+                return null;
+            }
+
+            string text = operand.ToString();
+
+            if (text.StartsWith('$'))
+            {
+                return ToNumber(resolve?.Invoke(text));
+            }
+
+            return ToNumber(operand);
+        }
+
+        private static double? ToNumber(object value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+            {
+                return null;
+            }
         }
     }
 }

@@ -124,6 +124,21 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             object value = null;
             byte[] tagBytes = null;
 
+            LoRaWANFieldRule fieldRule = FieldRules.Get(tag.Name);
+
+            // A derived value that replaces the wire value occupies no payload
+            // bytes, so there is nothing to read - it is computed entirely from
+            // values other fields have already decoded.
+            if (fieldRule?.Derived?.ReplacesWireValue == true)
+            {
+                if ((fieldRule.PresentWhen != null) && !IsFieldPresent(tag, fieldRule))
+                {
+                    return null;
+                }
+
+                return EvaluateDerived(tag, fieldRule, wireValue: null);
+            }
+
             string[] addressParts = tag.Address.Split(['?', '&', '=', '/']);
             if (addressParts.Length == 5)
             {
@@ -137,7 +152,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else
                 {
-                    tagBytes = Read(addressParts[0], addressParts[1], addressParts[2], ushort.Parse(addressParts[4]));
+                    tagBytes = Read(
+                        addressParts[0],
+                        addressParts[1],
+                        addressParts[2],
+                        ushort.Parse(addressParts[4]),
+                        fieldRule?.TagGroupOffset ?? 0);
                 }
             }
             else if (addressParts.Length == 4)
@@ -211,9 +231,93 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     value = LoRaWANFieldRules.ApplyValueMap(rule.ValueMap, value);
                 }
+
+                // A transform-only lorav:derived post-processes the value that
+                // was just read, rather than replacing it.
+                if (rule?.Derived != null)
+                {
+                    value = EvaluateDerived(tag, rule, value);
+                }
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// Evaluates a <c>lorav:derived</c> descriptor, resolving any
+        /// <c>$name</c> references to the current readings of other fields.
+        /// </summary>
+        private object EvaluateDerived(AssetTag tag, LoRaWANFieldRule rule, object wireValue)
+        {
+            try
+            {
+                return LoRaWANFieldRules.Evaluate(
+                    rule.Derived,
+                    wireValue,
+                    reference => ResolveReference(tag, reference));
+            }
+            catch (NotSupportedException ex)
+            {
+                // An unknown operator is an authoring error. Report it once per
+                // read rather than failing the whole asset.
+                Log.Logger.Error(
+                    "Could not evaluate the derived value for LoRaWAN field '{Tag}': {Message}",
+                    tag.Name,
+                    ex.Message);
+
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a <c>$name</c> reference to the current value of another
+        /// field on the same asset.
+        /// <para>
+        /// References are resolved by reading the target tag, so a chain of
+        /// derived values works. A reference that names the field doing the
+        /// referencing is refused, since it could never terminate.
+        /// </para>
+        /// </summary>
+        private object ResolveReference(AssetTag source, string reference)
+        {
+            if (string.IsNullOrEmpty(reference))
+            {
+                return null;
+            }
+
+            string wanted = reference.StartsWith('$') ? reference[1..] : reference;
+
+            // The tag name is "<asset>:<field>"; a reference names just the field.
+            foreach (KeyValuePair<string, AssetTag> candidate in FieldRules.Tags)
+            {
+                string fieldName = candidate.Key.Contains(':')
+                    ? candidate.Key[(candidate.Key.LastIndexOf(':') + 1)..]
+                    : candidate.Key;
+
+                bool matchesAlias = string.Equals(
+                    FieldRules.Get(candidate.Key)?.Alias,
+                    wanted,
+                    StringComparison.Ordinal);
+
+                if (!matchesAlias && !string.Equals(fieldName, wanted, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (ReferenceEquals(candidate.Value, source)
+                    || string.Equals(candidate.Key, source.Name, StringComparison.Ordinal))
+                {
+                    Log.Logger.Warning(
+                        "The LoRaWAN derived value '{Tag}' references itself; the reference is ignored.",
+                        source.Name);
+
+                    return null;
+                }
+
+                return ReadCore(candidate.Value);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -311,7 +415,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // Writing sensor values is not supported by LoRaWAN.
         }
 
-        private byte[] Read(string devEUI, string channelId, string typeId, ushort count)
+        private byte[] Read(string devEUI, string channelId, string typeId, ushort count, int groupOffset = 0)
         {
             try
             {
@@ -344,8 +448,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                                          && (payload[i + 1] == byte.Parse(typeId))
                                          && (latestTimestamp < payloads.Value.Timestamp))
                                         {
-                                            bestMatch = payload.AsSpan(i + 2, count).ToArray();
-                                            latestTimestamp = payloads.Value.Timestamp;
+                                            // groupOffset skips the bytes of any
+                                            // earlier lorav:slot sharing this tag.
+                                            int start = i + 2 + groupOffset;
+
+                                            if (start + count <= payload.Length)
+                                            {
+                                                bestMatch = payload.AsSpan(start, count).ToArray();
+                                                latestTimestamp = payloads.Value.Timestamp;
+                                            }
                                         }
                                     }
                                 }

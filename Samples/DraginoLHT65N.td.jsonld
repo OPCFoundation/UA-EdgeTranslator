@@ -46,7 +46,7 @@
           "lorav:wireType": "xsd:unsignedShort",
           "lorav:endian": "big",
           "lorav:bitmask": "0x3FFF",
-          "lorav:multiplier": 0.001
+          "lorav:divisor": 1000
         }
       ]
     },
@@ -64,7 +64,7 @@
           "lorav:byteLength": 2,
           "lorav:wireType": "xsd:short",
           "lorav:endian": "big",
-          "lorav:multiplier": 0.01
+          "lorav:divisor": 100
         }
       ]
     },
@@ -82,7 +82,7 @@
           "lorav:byteLength": 2,
           "lorav:wireType": "xsd:unsignedShort",
           "lorav:endian": "big",
-          "lorav:multiplier": 0.1
+          "lorav:divisor": 10
         }
       ]
     },
@@ -100,7 +100,7 @@
           "lorav:byteLength": 2,
           "lorav:wireType": "xsd:short",
           "lorav:endian": "big",
-          "lorav:multiplier": 0.01
+          "lorav:divisor": 100
         }
       ]
     }

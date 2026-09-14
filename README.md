@@ -91,11 +91,9 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 
 > **Note**: The LoRaWAN Network Server is available on port 5000 (not secure) and port 5001 (secure), which needs to be mapped to the Docker host for access. If you need a LoRaWAN Gateway, you can use the open-source [Basic Station](https://github.com/lorabasics/basicstation) together with a [LoRaWAN HAT for Raspberry Pi](https://www.waveshare.com/wiki/SX1302_LoRaWAN_Gateway_HAT). The base URI follows the binding's ABNF, `lorawan://<host>/<devEUI>/<uplink|downlink>`, where `<host>` is the network-facing interface and `<devEUI>` is 16 hex digits; forms then use the relative target `uplink`, and the device identity is also declared as the thing-level term `lorav:devEUI`.
 
-> **Note**: One LoRaWAN binding term is **not decoded yet**. A Thing Description using it is **rejected at onboarding** rather than silently mis-decoded, naming the offending term:
+> **Note**: A gated LoRaWAN field whose `lorav:presentWhen` condition is not met reads as `null` rather than zero, so "absent from this uplink" stays distinguishable from "present and zero". A gate names its discriminator by event name, or by `lorav:alias` when the two differ.
 >
-> | Term | Purpose | Why not decoded |
-> | --- | --- | --- |
-> | `lorav:derived` | Value computed from already-decoded values | The specification names its keys (`compute`, `polynomial`, `transform`, `guard`, `ref`) but defines no schema or worked example for them, so implementing it would mean inventing a syntax |
+> For the `tlv` and `ctv` layouts, a value is located by scanning the uplink for its `lorav:tag` bytes rather than at a fixed offset, so a device may omit or reorder measurements between uplinks. Declare the tag composition once at thing level with `lorav:tagFields` and give each form its `lorav:tag`, as [Samples/MilesightEM300-TH.td.jsonld](Samples/MilesightEM300-TH.td.jsonld) does. A tag whose length disagrees with `lorav:tagFields` is rejected, since it would otherwise never match and the field would silently never appear. Several values may share one locator: order them with `lorav:slot` and reserve bytes between them with `lorav:padBefore`.
 
 > **Note**: LoRaWAN OTAA keys are never stored in Thing Descriptions. The binding states that root keys "are secrets and MUST NOT be embedded in `base`, `href`, or URI query strings" — they are declared as an `apikey` security scheme (conventionally named `appKey`, plus `nwkKey` for LoRaWAN 1.1.x) and their values injected at runtime. UA Edge Translator reads the key from the environment as `LORAWAN_APPKEY_<devEUI>` (or `LORAWAN_APPKEY` for a single-device deployment), and **rejects** any Thing Description that embeds a key in its base URI.
 

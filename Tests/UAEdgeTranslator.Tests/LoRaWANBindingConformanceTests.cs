@@ -268,28 +268,13 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.EndsWith($"quantity={expectedQuantity}", tag.Address, StringComparison.Ordinal);
         }
 
-        [Theory]
-        [InlineData("lorav:derived")]
-        public void Unsupported_binding_terms_are_rejected_rather_than_ignored(string term)
+        [Fact]
+        public void Every_binding_term_is_now_decoded()
         {
-            // These change how the payload must be read. Ignoring them would
-            // produce a confidently wrong value instead of an error.
-            LoRaWANProtocolDriver driver = new();
-            ThingDescription td = new() { Base = "lorawan://0000000000000001/appkey/device" };
-
-            string form = $$"""
-            {
-              "href": "uplink",
-              "type": "Float",
-              "lorav:byteOffset": 0,
-              "{{term}}": "something"
-            }
-            """;
-
-            NotSupportedException ex = Assert.Throws<NotSupportedException>(
-                () => driver.CreateTag(td, JToken.Parse(form), "asset", 1, "value", "nsu=x;i=1", null));
-
-            Assert.Contains(term, ex.Message, StringComparison.Ordinal);
+            // The driver rejects nothing as "defined but not decoded" any more.
+            // Withdrawn terms are still rejected, but they are reported with
+            // their replacement rather than as an unsupported feature.
+            Assert.Empty(LoRaWANForm.UnsupportedTerms);
         }
 
         [Theory]

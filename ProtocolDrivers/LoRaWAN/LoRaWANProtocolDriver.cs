@@ -23,6 +23,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private readonly LoRaWANNetworkServerAsset _lorawanNetworkServer = new();
 
+        /// <summary>
+        /// The network server asset this driver registers field rules against.
+        /// </summary>
+        public LoRaWANNetworkServerAsset NetworkServer => _lorawanNetworkServer;
+
         public IEnumerable<string> Discover()
         {
             // LoRaWAN does not support discovery
@@ -192,17 +197,67 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         }
 
         /// <summary>
-        /// Records a field's conditional-presence and value-mapping rules, and
-        /// resolves any <c>lorav:presentWhen</c> discriminator to a byte offset.
+        /// Reads <c>lorav:defaultEventingFrequencyMinutes</c>, the expected
+        /// interval between a device's unprompted uplinks.
         /// <para>
-        /// The gate names its discriminator by <c>lorav:alias</c>, which only
-        /// the Thing Description can resolve. Doing it here means the read path
-        /// never has to search the Thing Description again.
+        /// This is deliberately <em>not</em> used as the tag polling interval.
+        /// Uplink arrival and poll boundary are unsynchronised, so polling at
+        /// the same period means a value that lands just after a poll waits
+        /// almost a full period to be published - worst-case staleness
+        /// approaching twice the uplink interval. Reading is also cheap: the
+        /// asset serves the last decoded payload from memory rather than going
+        /// to the device, so there is nothing to save by polling slowly.
+        /// </para>
+        /// <para>
+        /// It is exposed for diagnostics and for callers that want to reason
+        /// about how stale a reading may legitimately be.
+        /// </para>
+        /// </summary>
+        public static double? ReadEventingFrequencyMinutes(ThingDescription td)
+        {
+            if ((td?.AdditionalData is null)
+                || !td.AdditionalData.TryGetValue("lorav:defaultEventingFrequencyMinutes", out object value)
+                || (value is null))
+            {
+                return null;
+            }
+
+            if (!double.TryParse(
+                    value.ToString(),
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out double minutes)
+                || (minutes <= 0))
+            {
+                return null;
+            }
+
+            return minutes;
+        }
+
+        /// <summary>
+        /// Records a field's conditional-presence, value-mapping, grouping and
+        /// derived-value rules, and resolves any <c>lorav:presentWhen</c>
+        /// discriminator to a byte offset.
+        /// <para>
+        /// A gate names its discriminator by event name or <c>lorav:alias</c>,
+        /// which only the Thing Description can resolve. Doing it here means the
+        /// read path never has to search the Thing Description again.
         /// </para>
         /// </summary>
         private void RegisterFieldRule(AssetTag tag, LoRaWANForm form, ThingDescription td)
         {
-            if ((form.Alias is null) && (form.PresentWhen is null) && (form.ValueMap is null))
+            // Every tag is recorded, whether or not it carries rules: any field
+            // may be the input to another field's derived value.
+            _lorawanNetworkServer.FieldRules.RegisterTag(tag);
+
+            bool hasGrouping = (form.Slot != null) || (form.PadBefore != null);
+
+            if ((form.Alias is null)
+                && (form.PresentWhen is null)
+                && (form.ValueMap is null)
+                && (form.Derived is null)
+                && !hasGrouping)
             {
                 return;
             }
@@ -215,6 +270,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 (discriminatorOffset, discriminatorLength) = FindAliasedField(td, form.PresentWhen.Field);
             }
 
+            // Only a tagged field needs its group offset carried separately; a
+            // byteOffset group already had it folded into the address.
+            int tagGroupOffset = form.Tag is { Length: > 0 }
+                ? GroupOffset(form, td, IsSameTagGroup)
+                : 0;
+
             _lorawanNetworkServer.FieldRules.Register(
                 tag.Name,
                 new LoRaWANFieldRule
@@ -223,20 +284,34 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     PresentWhen = form.PresentWhen,
                     ValueMap = form.ValueMap,
                     DiscriminatorOffset = discriminatorOffset,
-                    DiscriminatorLength = discriminatorLength
+                    DiscriminatorLength = discriminatorLength,
+                    TagGroupOffset = tagGroupOffset,
+                    Derived = form.Derived
                 });
         }
 
         /// <summary>
-        /// Finds the byte offset and length of the form published under
-        /// <paramref name="alias"/>, searching the Thing Description's events.
+        /// Finds the byte offset and length of the field a condition's
+        /// <c>field</c> names.
+        /// <para>
+        /// <c>lorav:alias</c> is only required "when a condition's
+        /// <c>field</c> differs from the event name", so a gate normally names
+        /// the event directly. An explicit alias wins over an event name,
+        /// because that is the reason an author would declare one.
+        /// </para>
         /// </summary>
-        private static (int? Offset, int Length) FindAliasedField(ThingDescription td, string alias)
+        private static (int? Offset, int Length) FindAliasedField(ThingDescription td, string field)
         {
-            if ((td?.Events is null) || string.IsNullOrEmpty(alias))
+            if ((td?.Events is null) || string.IsNullOrEmpty(field))
             {
                 return (null, 1);
             }
+
+            // References may be written as "$name"; the sigil is not part of
+            // the name being referenced.
+            string wanted = field.StartsWith('$') ? field[1..] : field;
+
+            (int? Offset, int Length)? byEventName = null;
 
             foreach (KeyValuePair<string, TDEvent> tdEvent in td.Events)
             {
@@ -253,17 +328,29 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continue;
                     }
 
-                    if (string.Equals(candidate?.Alias, alias, StringComparison.Ordinal)
-                        && candidate.ByteOffset.HasValue)
+                    if ((candidate is null) || !candidate.ByteOffset.HasValue)
                     {
-                        return (
-                            candidate.ByteOffset,
-                            candidate.ByteLength ?? WireTypeLength(candidate.WireType));
+                        continue;
+                    }
+
+                    int length = candidate.ByteLength ?? WireTypeLength(candidate.WireType);
+
+                    if (string.Equals(candidate.Alias, wanted, StringComparison.Ordinal))
+                    {
+                        return (candidate.ByteOffset, length);
+                    }
+
+                    // Remember the event-name match but keep looking: an
+                    // explicit alias elsewhere is the more deliberate answer.
+                    if ((byEventName is null)
+                        && string.Equals(tdEvent.Key, wanted, StringComparison.Ordinal))
+                    {
+                        byEventName = (candidate.ByteOffset, length);
                     }
                 }
             }
 
-            return (null, 1);
+            return byEventName ?? (null, 1);
         }
 
         /// <summary>
@@ -310,9 +397,101 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             int quantity = form.ByteLength ?? WireTypeLength(form.WireType);
 
+            // Values sharing one byteOffset are positioned within that group by
+            // lorav:slot and lorav:padBefore.
+            int offset = form.ByteOffset.Value + GroupOffset(form, td, IsSameOffsetGroup);
+
             return string.Create(
                 CultureInfo.InvariantCulture,
-                $"{prefix}/{form.ByteOffset.Value}?quantity={quantity}");
+                $"{prefix}/{offset}?quantity={quantity}");
+        }
+
+        /// <summary>
+        /// Bytes to skip before this value because of its position in a group.
+        /// <para>
+        /// Several values may share one locator - the same <c>lorav:tag</c> or
+        /// <c>lorav:byteOffset</c> - and are then laid out consecutively in
+        /// <c>lorav:slot</c> order. A value therefore starts after every
+        /// earlier slot's bytes, plus any <c>lorav:padBefore</c> reserved
+        /// immediately before it.
+        /// </para>
+        /// </summary>
+        private static int GroupOffset(
+            LoRaWANForm form,
+            ThingDescription td,
+            Func<LoRaWANForm, LoRaWANForm, bool> sharesGroupWith)
+        {
+            int padding = form.PadBefore ?? 0;
+
+            // Without a slot this value is not part of an ordered group, so only
+            // its own padding applies.
+            if ((form.Slot is null) || (td?.Events is null))
+            {
+                return padding;
+            }
+
+            int precedingBytes = 0;
+
+            foreach (KeyValuePair<string, TDEvent> tdEvent in td.Events)
+            {
+                foreach (object formObject in tdEvent.Value?.Forms ?? [])
+                {
+                    LoRaWANForm sibling;
+
+                    try
+                    {
+                        sibling = JsonConvert.DeserializeObject<LoRaWANForm>(formObject.ToString());
+                    }
+                    catch (JsonException)
+                    {
+                        continue;
+                    }
+
+                    if ((sibling?.Slot is null)
+                        || (sibling.Slot >= form.Slot)
+                        || !sharesGroupWith(form, sibling))
+                    {
+                        continue;
+                    }
+
+                    // A derived sibling occupies no payload bytes, so it does
+                    // not displace the values after it.
+                    if (sibling.Derived?.ReplacesWireValue == true)
+                    {
+                        continue;
+                    }
+
+                    precedingBytes += (sibling.PadBefore ?? 0)
+                        + (sibling.ByteLength ?? WireTypeLength(sibling.WireType));
+                }
+            }
+
+            return precedingBytes + padding;
+        }
+
+        /// <summary>Two forms share a group when they name the same byte offset.</summary>
+        private static bool IsSameOffsetGroup(LoRaWANForm form, LoRaWANForm sibling)
+        {
+            return sibling.ByteOffset == form.ByteOffset;
+        }
+
+        /// <summary>Two forms share a group when they carry the same tag.</summary>
+        private static bool IsSameTagGroup(LoRaWANForm form, LoRaWANForm sibling)
+        {
+            if ((sibling.Tag is null) || (form.Tag is null) || (sibling.Tag.Length != form.Tag.Length))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < form.Tag.Length; i++)
+            {
+                if (sibling.Tag[i] != form.Tag[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -354,6 +533,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             int quantity = form.ByteLength ?? WireTypeLength(form.WireType);
 
+            // NOTE: a tag group's slot offset cannot be expressed here. The
+            // asset dispatches on the number of parts in the address, so an
+            // extra segment would stop the tag being read at all; it travels
+            // through the field-rule registry instead.
             return string.Create(
                 CultureInfo.InvariantCulture,
                 $"{prefix}/{form.Tag[0]}/{form.Tag[1]}?quantity={quantity}");
