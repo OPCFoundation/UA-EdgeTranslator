@@ -360,3 +360,4 @@ MigrationBackup/
 /UA-WoTMapper/pki
 /UA-WoTMapper/App_Data
 /dist/
+/.vscode
