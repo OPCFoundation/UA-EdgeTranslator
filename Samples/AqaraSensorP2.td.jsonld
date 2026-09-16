@@ -1,4 +1,4 @@
-﻿{
+{
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1"
   ],
@@ -32,6 +32,13 @@
     }
   },
   "actions": {
-    "fetch descriptions": {}
+    "fetch descriptions": {
+      "forms": [
+        {
+          "href": "29",
+          "type": "xsd:string"
+        }
+      ]
+    }
   }
 }
