@@ -48,7 +48,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             ThingDescription td = new()
             {
                 Context = ["https://www.w3.org/2022/wot/td/v1.1"],
-                Id = "urn:" + assetName,
+                Id = ThingDescriptionId.FromAssetName(assetName),
                 SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = ["nosec_sc"],
                 Type = ["Thing"],

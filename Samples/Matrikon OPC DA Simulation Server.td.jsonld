@@ -2,7 +2,7 @@
   "@context": [
     "https://www.w3.org/2022/wot/td/v1.1"
   ],
-  "id": "urn:Matrikon OPC DA Simulation Server",
+  "id": "urn:Matrikon%20OPC%20DA%20Simulation%20Server",
   "securityDefinitions": {
     "nosec_sc": {
       "scheme": "nosec"
