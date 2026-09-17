@@ -1,23 +1,23 @@
 Summary
-  Generated on: 09/16/2026 - 06:26:32
-  Coverage date: 09/16/2026 - 06:26:30
+  Generated on: 09/17/2026 - 06:39:21
+  Coverage date: 09/17/2026 - 06:39:18
   Parser: Cobertura
   Assemblies: 1
-  Classes: 38
-  Files: 34
+  Classes: 39
+  Files: 35
   Line coverage: 73.4%
-  Covered lines: 2713
-  Uncovered lines: 979
-  Coverable lines: 3692
-  Total lines: 9708
-  Branch coverage: 64.3% (1475 of 2292)
-  Covered branches: 1475
-  Total branches: 2292
-  Method coverage: 90.6% (271 of 299)
-  Full method coverage: 57.5% (172 of 299)
-  Covered methods: 271
+  Covered lines: 2719
+  Uncovered lines: 982
+  Coverable lines: 3701
+  Total lines: 9757
+  Branch coverage: 64.1% (1481 of 2310)
+  Covered branches: 1481
+  Total branches: 2310
+  Method coverage: 90.6% (272 of 300)
+  Full method coverage: 57.3% (172 of 300)
+  Covered methods: 272
   Fully covered methods: 172
-  Total methods: 299
+  Total methods: 300
 
 UAEdgeTranslator                                                  73.4%
   Opc.Ua.Cloud.ConsoleTelemetry                                    100%
@@ -52,6 +52,7 @@ UAEdgeTranslator                                                  73.4%
   Opc.Ua.Edge.Translator.ModbusValueCodec                         92.3%
   Opc.Ua.Edge.Translator.Models.AssetActionResult                  100%
   Opc.Ua.Edge.Translator.Models.AssetConnection                    100%
+  Opc.Ua.Edge.Translator.Models.ThingDescriptionId                66.6%
   Opc.Ua.Edge.Translator.NodeFactory                               100%
   Opc.Ua.Edge.Translator.Program                                  33.9%
   Opc.Ua.Edge.Translator.ProtocolDrivers.ProtocolDriverRegistry    100%
