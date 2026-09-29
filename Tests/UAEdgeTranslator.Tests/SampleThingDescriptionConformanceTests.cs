@@ -167,7 +167,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                         ? formType.Substring(4)
                         : formType).ToLowerInvariant();
 
-                    bool numeric = bare is "float" or "double" or "short" or "integer"
+                    bool numeric = bare is "float" or "double" or "short" or "unsignedshort" or "integer"
                         or "byte" or "long" or "unsignedlong";
                     bool boolean = bare is "boolean";
 

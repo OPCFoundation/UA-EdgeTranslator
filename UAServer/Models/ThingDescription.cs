@@ -255,6 +255,9 @@ namespace Opc.Ua.Edge.Translator.Models
         [EnumMember(Value = "xsd:short")]
         Short,
 
+        [EnumMember(Value = "xsd:unsignedShort")]
+        UnsignedShort,
+
         [EnumMember(Value = "xsd:integer")]
         Integer,
 

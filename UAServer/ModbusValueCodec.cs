@@ -46,6 +46,10 @@ namespace Opc.Ua.Edge.Translator
                     RequireWireLength(tag, wireBytes, 2);
                     return Scale(tag, BitConverter.ToInt16(Ordered(tag, wireBytes), 0));
 
+                case "UnsignedShort":
+                    RequireWireLength(tag, wireBytes, 2);
+                    return Scale(tag, BitConverter.ToUInt16(Ordered(tag, wireBytes), 0));
+
                 case "Integer":
                     RequireWireLength(tag, wireBytes, 4);
                     return Scale(tag, BitConverter.ToInt32(Ordered(tag, wireBytes), 0));
@@ -98,6 +102,10 @@ namespace Opc.Ua.Edge.Translator
 
                 case "Short":
                     raw = BitConverter.GetBytes(Convert.ToInt16(value, CultureInfo.InvariantCulture));
+                    break;
+
+                case "UnsignedShort":
+                    raw = BitConverter.GetBytes(Convert.ToUInt16(value, CultureInfo.InvariantCulture));
                     break;
 
                 case "Integer":
@@ -219,6 +227,11 @@ namespace Opc.Ua.Edge.Translator
             return tag.Multiplier != 0.0f ? (object)((float)raw * tag.Multiplier) : raw;
         }
 
+        private static object Scale(AssetTag tag, ushort raw)
+        {
+            return tag.Multiplier != 0.0f ? (object)((float)raw * tag.Multiplier) : raw;
+        }
+
         private static object Scale(AssetTag tag, int raw)
         {
             return tag.Multiplier != 0.0f ? (object)((float)raw * tag.Multiplier) : raw;
@@ -256,7 +269,7 @@ namespace Opc.Ua.Edge.Translator
 
         private static Exception UnsupportedType(AssetTag tag)
         {
-            string message = $"Modbus type '{tag.Type ?? "(null)"}' for tag '{tag.Name}' is not supported. Expected one of: Boolean, Byte, Short, Integer, Long, UnsignedLong, Float, Double, String.";
+            string message = $"Modbus type '{tag.Type ?? "(null)"}' for tag '{tag.Name}' is not supported. Expected one of: Boolean, Byte, Short, UnsignedShort, Integer, Long, UnsignedLong, Float, Double, String.";
             Log.Logger.Error(message);
             return new ArgumentException(message);
         }

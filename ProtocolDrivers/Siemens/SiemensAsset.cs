@@ -246,6 +246,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 "Boolean" => TypeString.Boolean,
                 "Integer" => TypeString.Integer,
                 "Short" => TypeString.Short,
+                "UnsignedShort" => TypeString.UnsignedShort,
                 "Byte" => TypeString.Byte,
                 "Long" => TypeString.Long,
                 "UnsignedLong" => TypeString.UnsignedLong,
@@ -302,6 +303,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 TypeString.Boolean => 1,
                 TypeString.Byte => 1,
                 TypeString.Short => 2,
+                TypeString.UnsignedShort => 2,
                 TypeString.Integer => 4,
                 TypeString.Long => 8,
                 TypeString.UnsignedLong => 8,
@@ -363,6 +365,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     return S7Helpers.GetByteAt(buffer, 0);
                 case TypeString.Short:
                     return S7Helpers.GetIntAt(buffer, 0);
+                case TypeString.UnsignedShort:
+                    return BinaryPrimitives.ReadUInt16BigEndian(buffer);
                 case TypeString.Integer:
                     return S7Helpers.GetDIntAt(buffer, 0);
                 case TypeString.Long:
@@ -597,6 +601,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     break;
                 case TypeString.Short:
                     S7Helpers.SetIntAt(buffer, 0, Convert.ToInt16(value, CultureInfo.InvariantCulture));
+                    break;
+                case TypeString.UnsignedShort:
+                    BinaryPrimitives.WriteUInt16BigEndian(buffer, Convert.ToUInt16(value, CultureInfo.InvariantCulture));
                     break;
                 case TypeString.Integer:
                     S7Helpers.SetDIntAt(buffer, 0, Convert.ToInt32(value, CultureInfo.InvariantCulture));

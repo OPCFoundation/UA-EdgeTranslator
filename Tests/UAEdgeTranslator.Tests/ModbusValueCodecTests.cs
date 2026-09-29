@@ -49,6 +49,24 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void UnsignedShort_decodes_values_above_short_max_without_sign_wrap()
+        {
+            byte[] wire = { 0xC3, 0x50 }; // 50000 in Modbus wire order [Hi][Lo]
+
+            object value = ModbusValueCodec.Decode(Tag("UnsignedShort", bigEndian: true), wire);
+
+            Assert.Equal((ushort)50000, Assert.IsType<ushort>(value));
+        }
+
+        [Fact]
+        public void UnsignedShort_encodes_to_a_single_register()
+        {
+            byte[] bytes = ModbusValueCodec.Encode(Tag("UnsignedShort", bigEndian: true), (ushort)50000);
+
+            Assert.Equal(new byte[] { 0xC3, 0x50 }, bytes);
+        }
+
+        [Fact]
         public void Byte_decodes_low_byte_of_register()
         {
             byte[] wire = BitConverter.GetBytes((ushort)0x00AB);
