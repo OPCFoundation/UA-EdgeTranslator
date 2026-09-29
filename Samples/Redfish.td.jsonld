@@ -482,7 +482,9 @@
       "forms": [
         {
           "href": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
-          "op": null,
+          "op": [
+            "invokeaction"
+          ],
           "type": "xsd:string",
           "pollingTime": 0
         }
@@ -510,7 +512,9 @@
       "forms": [
         {
           "href": "/redfish/v1/Managers/1/Actions/Manager.Reset",
-          "op": null,
+          "op": [
+            "invokeaction"
+          ],
           "type": "xsd:string",
           "pollingTime": 0
         }

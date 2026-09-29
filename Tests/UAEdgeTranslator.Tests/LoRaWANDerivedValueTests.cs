@@ -41,6 +41,95 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void The_specs_volumetric_water_content_example_evaluates()
+        {
+            // Verbatim from the W3C binding, which absorbed the lorav:derived
+            // definition in a later revision. Its examples use camelCase
+            // references, so this also pins down that the $name convention is
+            // not sensitive to the naming style an author happens to use.
+            DerivedDescriptor derived = Parse("""
+            {
+              "ref": "$dielectricPermittivity",
+              "polynomial": [ 4.3e-06, -0.00055, 0.0292, -0.053 ]
+            }
+            """);
+
+            object result = LoRaWANFieldRules.Evaluate(
+                derived, null, Resolver(("dielectricPermittivity", 20.0)));
+
+            double expected = 4.3e-06 + (-0.00055 * 20) + (0.0292 * 400) + (-0.053 * 8000);
+
+            Assert.Equal(expected, Assert.IsType<double>(result), 6);
+        }
+
+        [Fact]
+        public void The_specs_albedo_example_guards_its_division()
+        {
+            // Also verbatim from the W3C binding: reflected over incoming
+            // radiation, guarded so a night-time reading cannot divide by zero.
+            DerivedDescriptor derived = Parse("""
+            {
+              "compute": { "op": "div", "a": "$reflectedRadiation", "b": "$incomingRadiation" },
+              "guard": {
+                "when": [
+                  { "field": "$incomingRadiation", "gt": 0 },
+                  { "field": "$reflectedRadiation", "gte": 0 }
+                ],
+                "else": 0
+              }
+            }
+            """);
+
+            object daylight = LoRaWANFieldRules.Evaluate(
+                derived, null, Resolver(("reflectedRadiation", 200.0), ("incomingRadiation", 800.0)));
+
+            Assert.Equal(0.25, Assert.IsType<double>(daylight), 6);
+
+            object night = LoRaWANFieldRules.Evaluate(
+                derived, null, Resolver(("reflectedRadiation", 0.0), ("incomingRadiation", 0.0)));
+
+            // Assert on the value itself, not a conversion: Convert.ToInt64(null)
+            // is also 0, so a null would pass a converted comparison and hide a
+            // guard that never ran.
+            Assert.NotNull(night);
+            Assert.Equal(0L, Convert.ToInt64(night));
+        }
+
+        [Fact]
+        public void A_guard_is_checked_before_the_value_is_computed()
+        {
+            // The guard is a precondition. If the computation ran first, a
+            // division by zero would fail on its own terms and return nothing,
+            // never reaching the fallback the guard exists to provide.
+            DerivedDescriptor derived = Parse("""
+            {
+              "compute": { "op": "div", "a": "$a", "b": "$b" },
+              "guard": { "when": [ { "field": "$b", "gt": 0 } ], "else": -1 }
+            }
+            """);
+
+            object result = LoRaWANFieldRules.Evaluate(
+                derived, null, Resolver(("a", 5.0), ("b", 0.0)));
+
+            Assert.NotNull(result);
+            Assert.Equal(-1L, Convert.ToInt64(result));
+        }
+
+        [Fact]
+        public void A_derived_descriptor_carrying_only_transform_keeps_its_wire_type()
+        {
+            // The spec states this as the distinguishing rule: "If lorav:derived
+            // only carries transform, keep the wire type of the source value; if
+            // it carries ref, polynomial, compute, or guard, use number."
+            Assert.False(Parse("""{ "transform": [ { "add": 1 } ] }""").ReplacesWireValue);
+
+            Assert.True(Parse("""{ "ref": "$x" }""").ReplacesWireValue);
+            Assert.True(Parse("""{ "polynomial": [ 1 ] }""").ReplacesWireValue);
+            Assert.True(Parse("""{ "compute": { "op": "div", "a": 1, "b": 2 } }""").ReplacesWireValue);
+            Assert.True(Parse("""{ "guard": { "when": [], "else": 0 } }""").ReplacesWireValue);
+        }
+
+        [Fact]
         public void A_polynomial_applies_its_coefficients_in_ascending_power()
         {
             // Decentlab 5TM: volumetric water content from raw permittivity.
@@ -96,6 +185,9 @@ namespace Opc.Ua.Edge.Translator.Tests
             object night = LoRaWANFieldRules.Evaluate(
                 derived, null, Resolver(("reflected_radiation", 0.0), ("incoming_radiation", 0.0)));
 
+            // Convert.ToInt64(null) is also 0, so assert the value is present
+            // before comparing it.
+            Assert.NotNull(night);
             Assert.Equal(0L, Convert.ToInt64(night));
         }
 

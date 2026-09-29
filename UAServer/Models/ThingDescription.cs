@@ -1,4 +1,4 @@
-﻿
+
 namespace Opc.Ua.Edge.Translator.Models
 {
     using Newtonsoft.Json;
@@ -80,7 +80,7 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("observable")]
         public bool Observable { get; set; }
 
-        [JsonProperty("forms")]
+        [JsonProperty("forms", NullValueHandling = NullValueHandling.Ignore)]
         public object[] Forms { get; set; }
     }
 
@@ -92,7 +92,7 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("output")]
         public TDArguments Output { get; set; }
 
-        [JsonProperty("forms")]
+        [JsonProperty("forms", NullValueHandling = NullValueHandling.Ignore)]
         public object[] Forms { get; set; }
     }
 
@@ -140,7 +140,7 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("dataResponse", NullValueHandling = NullValueHandling.Ignore)]
         public object DataResponse { get; set; }
 
-        [JsonProperty("forms")]
+        [JsonProperty("forms", NullValueHandling = NullValueHandling.Ignore)]
         public object[] Forms { get; set; }
     }
 
@@ -149,7 +149,7 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("href")]
         public string Href { get; set; }
 
-        [JsonProperty("op")]
+        [JsonProperty("op", NullValueHandling = NullValueHandling.Ignore)]
         public Op[] Op { get; set; }
 
         [JsonProperty("type")]
@@ -215,7 +215,10 @@ namespace Opc.Ua.Edge.Translator.Models
         Subscribeevent,
 
         [EnumMember(Value = "unsubscribeevent")]
-        Unsubscribeevent
+        Unsubscribeevent,
+
+        [EnumMember(Value = "invokeaction")]
+        Invokeaction
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

@@ -25,7 +25,7 @@
       "forms": [
         {
           "href": "ocpp://kinetos-3af8?0",
-          "op": null,
+          "op": [ "readproperty", "observeproperty" ],
           "type": "xsd:float",
           "pollingTime": 0
         }
@@ -38,8 +38,8 @@
       "forms": [
         {
           "href": "ocpp://kinetos-3af8?0",
-          "op": null,
-          "type": "xsd:float",
+          "op": [ "readproperty", "observeproperty" ],
+          "type": "xsd:string",
           "pollingTime": 0
         }
       ]
@@ -51,7 +51,7 @@
       "forms": [
         {
           "href": "ocpp://kinetos-3af8?1",
-          "op": null,
+          "op": [ "readproperty", "observeproperty" ],
           "type": "xsd:float",
           "pollingTime": 0
         }
@@ -64,8 +64,8 @@
       "forms": [
         {
           "href": "ocpp://kinetos-3af8?1",
-          "op": null,
-          "type": "xsd:float",
+          "op": [ "readproperty", "observeproperty" ],
+          "type": "xsd:string",
           "pollingTime": 0
         }
       ]
@@ -102,7 +102,12 @@
           }
         }
       },
-      "forms": null
+      "forms": [
+        {
+          "href": "ocpp://kinetos-3af8",
+          "type": "xsd:string"
+        }
+      ]
     }
   }
 }

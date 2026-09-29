@@ -104,7 +104,9 @@
       "forms": [
         {
           "href": "/api/reset",
-          "op": null,
+          "op": [
+            "invokeaction"
+          ],
           "type": "xsd:string",
           "pollingTime": 0
         }

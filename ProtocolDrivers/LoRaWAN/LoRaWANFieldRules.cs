@@ -231,6 +231,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 value = result;
             }
 
+            // The guard is a PRECONDITION, so it is checked before the value is
+            // computed rather than after. The specification's own albedo example
+            // guards against dividing by a night-time zero: evaluating the
+            // division first would fail on its own terms and never reach the
+            // fallback the guard exists to supply.
+            if ((derived.Guard != null) && !IsGuardSatisfied(derived.Guard, resolve))
+            {
+                return derived.Guard.Else;
+            }
+
             if (derived.Compute != null)
             {
                 value = EvaluateCompute(derived.Compute, resolve);
@@ -238,16 +248,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if (value is null)
                 {
                     return null;
-                }
-            }
-
-            if (derived.Guard != null)
-            {
-                if (!IsGuardSatisfied(derived.Guard, resolve))
-                {
-                    // The guard exists to stop a meaningless result, such as a
-                    // night-time division by zero, so its fallback wins.
-                    return derived.Guard.Else;
                 }
             }
 
