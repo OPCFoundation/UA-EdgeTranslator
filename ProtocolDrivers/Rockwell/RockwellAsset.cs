@@ -102,7 +102,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                         else if (tag.Type == "SINT")
                         {
-                            value = BitConverter.ToChar(tagBytes);
+                            value = (sbyte)tagBytes[0];
                         }
                         else if (tag.Type == "INT")
                         {
@@ -118,7 +118,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                         else if (tag.Type == "USINT")
                         {
-                            value = BitConverter.ToChar(tagBytes);
+                            value = tagBytes[0];
                         }
                         else if (tag.Type == "UINT")
                         {
@@ -126,7 +126,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         }
                         else if (tag.Type == "UDINT")
                         {
-                            value = BitConverter.ToInt32(tagBytes);
+                            value = BitConverter.ToUInt32(tagBytes);
                         }
                         else if (tag.Type == "ULINT")
                         {
@@ -179,7 +179,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             else if (tag.Type == "SINT")
             {
-                tagBytes = BitConverter.GetBytes(char.Parse(value.ToString()));
+                tagBytes = [(byte)sbyte.Parse(value.ToString())];
             }
             else if (tag.Type == "INT")
             {
@@ -195,7 +195,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             else if (tag.Type == "USINT")
             {
-                tagBytes = BitConverter.GetBytes(char.Parse(value.ToString()));
+                tagBytes = [byte.Parse(value.ToString())];
             }
             else if (tag.Type == "UINT")
             {
@@ -304,7 +304,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             switch (function)
             {
                 case "BOOL": tag.SetBit(offset, BitConverter.ToBoolean(values)); break;
-                case "SINT": tag.SetInt8(offset, (sbyte)BitConverter.ToChar(values)); break;
+                case "SINT": tag.SetInt8(offset, (sbyte)values[0]); break;
                 case "INT": tag.SetInt16(offset, BitConverter.ToInt16(values)); break;
                 case "DINT": tag.SetInt32(offset, BitConverter.ToInt32(values)); break;
                 case "LINT": tag.SetInt64(offset, BitConverter.ToInt64(values)); break;
