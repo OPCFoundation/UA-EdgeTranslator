@@ -668,9 +668,19 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        // Reads a method argument as a string with the same semantics as the pre-2.0.0
+        // `object?.ToString()`: a missing/null argument yields null. Do not replace this
+        // with Variant.ToString(): it renders a null value as the literal "<null>",
+        // which is non-empty and would slip past the IsNullOrEmpty argument guards,
+        // so missing arguments would no longer be rejected with BadInvalidArgument.
+        private static string ArgumentAsString(ArrayOf<Variant> arguments, int index)
+        {
+            return arguments[index].AsBoxedObject()?.ToString();
+        }
+
         public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            string assetName = inputArguments[0].ToString();
+            string assetName = ArgumentAsString(inputArguments, 0);
             if (!IsSafeAssetName(assetName))
             {
                 Log.Logger.Warning("Rejecting CreateAsset: invalid asset name [{AssetName}]", assetName);
@@ -760,8 +770,10 @@ namespace Opc.Ua.Edge.Translator
             var ev = new GeneralModelChangeEventState(null);
 
             ev.Initialize(SystemContext, null, EventSeverity.Medium, new Ua.LocalizedText("Model change"));
-            ev.Changes = new PropertyState<ModelChangeStructureDataType[]>(ev);
-            ev.Changes.Value = changes;
+            // PropertyState<T> is abstract in SDK 2.0.0; use the event's typed factory,
+            // which builds the correctly-typed PropertyState<ArrayOf<...>> child.
+            ev.Changes = ev.CreateOrReplaceChanges(SystemContext, null, false);
+            ev.Changes.Value = new ArrayOf<ModelChangeStructureDataType>(changes);
 
             ev.SetChildValue(SystemContext, BrowseNames.SourceNode, _assetManagement, false);
             ev.SetChildValue(SystemContext, BrowseNames.SourceName, "AssetManagement", false);
@@ -771,7 +783,7 @@ namespace Opc.Ua.Edge.Translator
 
         public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
+            if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
                 return StatusCodes.BadInvalidArgument;
             }
@@ -916,10 +928,11 @@ namespace Opc.Ua.Edge.Translator
 
             if (assetId.IsNull)
             {
-                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);                return false;
+                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);
+                return false;
             }
 
-            ServiceResult result = OnDeleteAsset(SystemContext, null, new ArrayOf<Variant>([Variant.From(assetId)]), new List<Variant>());
+            ServiceResult result = OnDeleteAsset(SystemContext, null, new ArrayOf<Variant>(new[] { Variant.From(assetId) }), new List<Variant>());
 
             bool success = result.StatusCode == StatusCodes.Good;
             if (success)
@@ -976,19 +989,19 @@ namespace Opc.Ua.Edge.Translator
                 return new ServiceResult(StatusCodes.BadTimeout);
             }
 
-            outputArguments[0] = allAddresses.ToArray();
+            outputArguments[0] = Variant.From(allAddresses.ToArray());
 
             return ServiceResult.Good;
         }
 
         private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()) || string.IsNullOrEmpty(inputArguments[1]?.ToString()))
+            if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)) || string.IsNullOrEmpty(ArgumentAsString(inputArguments, 1)))
             {
                 return StatusCodes.BadInvalidArgument;
             }
 
-            string assetName = inputArguments[0].ToString();
+            string assetName = ArgumentAsString(inputArguments, 0);
             if (!IsSafeAssetName(assetName))
             {
                 Log.Logger.Warning("Rejecting CreateAssetForEndpoint: invalid asset name [{AssetName}]", assetName);
@@ -1005,7 +1018,7 @@ namespace Opc.Ua.Edge.Translator
                 outputArguments[0] = assetNode.NodeId;
 
                 // generate WoT File contents
-                string assetEndpoint = inputArguments[1].ToString();
+                string assetEndpoint = ArgumentAsString(inputArguments, 1);
                 if (!Program.Drivers.TryGetByUri(assetEndpoint, out var drv))
                 {
                     return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText($"No driver installed for endpoint: {assetEndpoint}"));
@@ -1029,12 +1042,12 @@ namespace Opc.Ua.Edge.Translator
 
         private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
+            if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
                 return StatusCodes.BadInvalidArgument;
             }
 
-            string endpoint = inputArguments[0].ToString().Trim();
+            string endpoint = ArgumentAsString(inputArguments, 0).Trim();
 
             // Use a TCP probe instead of ICMP. Ping requires CAP_NET_RAW which
             // is not granted to a non-root container by default, so the SDK's
@@ -1258,7 +1271,16 @@ namespace Opc.Ua.Edge.Translator
 
             if (Server.ServerObject != null)
             {
-                lock (Server.CoreNodeManager.DataLock)
+                // SDK 2.0.0 removed ICoreNodeManager.DataLock, which used to guard these
+                // writes to nodes owned by the core node manager, and exposes no public
+                // replacement. Reads are unaffected: NamespaceArray is now served by
+                // ServerInternalData.OnReadNamespaceArray, which returns a copy of the
+                // live namespace table, so readers never observe a partial update here.
+                // These writes still matter for subscribers, which are notified through
+                // the change masks and the UrisVersion bump below. Serialise them on this
+                // node manager's lock, taken separately (never nested inside the lock
+                // above) to keep the original lock-ordering guarantee.
+                lock (Lock)
                 {
                     // update the NamespaceArray variable with the new list of namespaces
                     var nsArrayVar = Server.ServerObject.NamespaceArray;
@@ -1578,7 +1600,11 @@ namespace Opc.Ua.Edge.Translator
                                 // Check if we already created this object instance for a previous field
                                 BaseObjectState objectInstance;
                                 NodeState childVariable = null;
-                                var existingNode = FindNodeInAddressSpace(new NodeId(variableId, assetNamespaceIndex));
+                                // This node manager creates the instance itself (AddPredefinedNode
+                                // below), so look it up locally. FindNodeInAddressSpace is obsolete
+                                // in SDK 2.0.0 and points at the async master node manager, which
+                                // would force sync-over-async here for a node we own.
+                                var existingNode = Find(new NodeId(variableId, assetNamespaceIndex));
                                 if (existingNode == null)
                                 {
                                     // Give the object instance the same asset-namespaced NodeId
@@ -1950,8 +1976,8 @@ namespace Opc.Ua.Edge.Translator
                 condition.SetChildValue(SystemContext, BrowseNames.ConditionName, alarm.ConditionName ?? alarm.Source ?? assetId, false);
                 condition.SetChildValue(SystemContext, BrowseNames.Severity, (ushort)Math.Clamp(alarm.Severity, 0, ushort.MaxValue), false);
                 condition.SetChildValue(SystemContext, BrowseNames.Message, new Ua.LocalizedText(alarm.Message ?? string.Empty), false);
-                condition.SetChildValue(SystemContext, BrowseNames.Time, alarm.Time == default ? DateTime.UtcNow : alarm.Time, false);
-                condition.SetChildValue(SystemContext, BrowseNames.ReceiveTime, DateTime.UtcNow, false);
+                condition.SetChildValue(SystemContext, BrowseNames.Time, (DateTimeUtc)(alarm.Time == default ? DateTime.UtcNow : alarm.Time), false);
+                condition.SetChildValue(SystemContext, BrowseNames.ReceiveTime, (DateTimeUtc)DateTime.UtcNow, false);
                 condition.SetChildValue(SystemContext, BrowseNames.Retain, alarm.Active || !alarm.Acknowledged, false);
                 condition.SetChildValue(SystemContext, BrowseNames.EnabledState, new Ua.LocalizedText(alarm.Enabled ? "Enabled" : "Disabled"), false);
                 condition.SetChildValue(SystemContext, BrowseNames.ActiveState, new Ua.LocalizedText(alarm.Active ? "Active" : "Inactive"), false);
@@ -2135,8 +2161,12 @@ namespace Opc.Ua.Edge.Translator
 
                 if (node.DisplayName.Text == "License")
                 {
-                    // validate license key provided
-                    if (value == null || string.IsNullOrEmpty(value.ToString()))
+                    // validate license key provided. Read the value once with the same
+                    // semantics as the pre-2.0.0 `object?.ToString()`: Variant.ToString()
+                    // renders a null value as the non-empty "<null>", which would slip past
+                    // this guard. The same string feeds the comparison below.
+                    string providedLicenseKey = value.AsBoxedObject()?.ToString();
+                    if (string.IsNullOrEmpty(providedLicenseKey))
                     {
                         return new ServiceResult(StatusCodes.BadInvalidArgument, new Ua.LocalizedText("License key cannot be empty!"));
                     }
@@ -2151,7 +2181,7 @@ namespace Opc.Ua.Edge.Translator
                         return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText("License validation is not configured on this server."));
                     }
 
-                    byte[] providedBytes = Encoding.UTF8.GetBytes(value.ToString());
+                    byte[] providedBytes = Encoding.UTF8.GetBytes(providedLicenseKey);
                     byte[] expectedBytes = Encoding.UTF8.GetBytes(expectedLicenseKey);
                     if (providedBytes.Length != expectedBytes.Length
                      || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes))
@@ -2239,7 +2269,7 @@ namespace Opc.Ua.Edge.Translator
                 List<object> driverInputs = new(inputArguments.Count);
                 foreach (Variant inputArgument in inputArguments)
                 {
-                    driverInputs.Add(inputArgument.Value);
+                    driverInputs.Add(inputArgument.AsBoxedObject());
                 }
 
                 AssetActionResult actionResult = AsyncBridge.RunSync(

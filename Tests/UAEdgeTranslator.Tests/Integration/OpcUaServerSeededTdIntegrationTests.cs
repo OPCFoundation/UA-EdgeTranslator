@@ -110,9 +110,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             SetProgramProperty(nameof(Program.OpcUaUsername), "integration-test");
             SetProgramProperty(nameof(Program.OpcUaPassword), "integration-test");
 
-            await _app.StartAsync(new UAServer()).ConfigureAwait(false);
+            await _app.StartAsync(new UAServer(_telemetry)).ConfigureAwait(false);
 
-            DetachImpersonateUserHandler();
+            IntegrationTestIdentity.AllowAnonymousSessions(_app);
 
             _session = await CreateClientSessionAsync().ConfigureAwait(false);
         }
@@ -764,44 +764,6 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             if (driversField?.GetValue(registry) is System.Collections.IDictionary driversMap)
             {
                 driversMap.Clear();
-            }
-        }
-
-        private void DetachImpersonateUserHandler()
-        {
-            try
-            {
-                var serverProperty = _app.Server.GetType().GetProperty(
-                    "CurrentInstance",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                object serverInternal = serverProperty?.GetValue(_app.Server) ?? _app.Server;
-                object sessionManager = serverInternal?.GetType()
-                    .GetProperty("SessionManager")?.GetValue(serverInternal);
-
-                if (sessionManager == null) return;
-
-                Type smType = sessionManager.GetType();
-                while (smType != null)
-                {
-                    foreach (System.Reflection.FieldInfo field in smType.GetFields(
-                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public))
-                    {
-                        if (typeof(Delegate).IsAssignableFrom(field.FieldType))
-                        {
-                            object value = field.GetValue(sessionManager);
-                            if (value is Opc.Ua.Server.ImpersonateEventHandler)
-                            {
-                                field.SetValue(sessionManager, null);
-                            }
-                        }
-                    }
-                    smType = smType.BaseType;
-                }
-            }
-            catch
-            {
-                // best-effort
             }
         }
 

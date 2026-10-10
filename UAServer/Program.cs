@@ -111,7 +111,7 @@
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
             // start the server
-            await App.StartAsync(new UAServer()).ConfigureAwait(false);
+            await App.StartAsync(new UAServer(Telemetry)).ConfigureAwait(false);
 
             Log.Logger.Information("UA Edge Translator is running.");
 

@@ -205,7 +205,7 @@ namespace Opc.Ua.Edge.Translator
         NodeId _objectId,
         uint fileHandle,
         int length,
-        ref byte[] data)
+        ref ByteString data)
         {
             lock (_handles)
             {
@@ -220,17 +220,17 @@ namespace Opc.Ua.Edge.Translator
                 {
                     byte[] buffer = new byte[length];
                     int bytesRead = handle.Stream.Read(buffer, 0, length);
-                    
+
                     // Return only the bytes actually read
                     if (bytesRead < length)
                     {
                         Array.Resize(ref buffer, bytesRead);
                     }
-                    data = buffer;
+                    data = (ByteString)buffer;
                 }
                 else
                 {
-                    data = new byte[0];
+                    data = (ByteString)Array.Empty<byte>();
                 }
             }
 
@@ -242,7 +242,7 @@ namespace Opc.Ua.Edge.Translator
             MethodState _method,
             NodeId _objectId,
             uint fileHandle,
-            byte[] data)
+            ByteString data)
         {
             lock (_handles)
             {
@@ -253,7 +253,7 @@ namespace Opc.Ua.Edge.Translator
                     return StatusCodes.BadInvalidState;
                 }
 
-                if (data != null && data.Length > 0)
+                if (!data.IsNull && data.Length > 0)
                 {
                     // enforce a per-handle upload cap to prevent unbounded
                     // memory growth via repeated chunked Write() calls.
@@ -264,7 +264,7 @@ namespace Opc.Ua.Edge.Translator
                         return new ServiceResult(StatusCodes.BadOutOfMemory, new Opc.Ua.LocalizedText($"Upload exceeds maximum allowed size of {_maxFileBytes} bytes."));
                     }
 
-                    handle.Stream.Write(data, 0, data.Length);
+                    handle.Stream.Write(data.Span);
                 }
             }
 
