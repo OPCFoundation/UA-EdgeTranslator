@@ -510,7 +510,7 @@ namespace Opc.Ua.Edge.Translator
 
             // create file node to upload local nodeset files to the server
             FileState fileNode = new(_assetManagement);
-            fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFileUpload"), null, false);
+            fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFileUpload"), Ua.LocalizedText.Null, false);
             _assetManagement.AddChild(fileNode);
 
             FileManager fileManager = new(this, fileNode);
@@ -697,7 +697,7 @@ namespace Opc.Ua.Edge.Translator
             lock (Lock)
             {
                 // check if the asset node already exists
-                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, null, null, true);
+                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, QualifiedName.Null, null, true);
 
                 for (IReference reference = browser.Next(); reference != null; reference = browser.Next())
                 {
@@ -720,7 +720,7 @@ namespace Opc.Ua.Edge.Translator
                 asset.AddReference(ReferenceTypeIds.HasInterface, false, iWoTAssetTypeId);
 
                 FileState fileNode = new(asset);
-                fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile", WoTConNamespaceIndex), null, true);
+                fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile", WoTConNamespaceIndex), Ua.LocalizedText.Null, true);
                 fileNode.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cWoTAssetFileType, _cWotCon), Server.NamespaceUris);
                 asset.AddChild(fileNode);
 
@@ -914,10 +914,9 @@ namespace Opc.Ua.Edge.Translator
                 assetId = FindAssetNodeIdByName(assetName);
             }
 
-            if (assetId == null)
+            if (assetId.IsNull)
             {
-                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);
-                return false;
+                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);                return false;
             }
 
             ServiceResult result = OnDeleteAsset(SystemContext, null, new ArrayOf<Variant>([Variant.From(assetId)]), new List<Variant>());
@@ -941,10 +940,10 @@ namespace Opc.Ua.Edge.Translator
         {
             if (_assetManagement == null || string.IsNullOrEmpty(assetName))
             {
-                return null;
+                return NodeId.Null;
             }
 
-            INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, null, null, true);
+            INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, QualifiedName.Null, null, true);
 
             for (IReference reference = browser.Next(); reference != null; reference = browser.Next())
             {
@@ -955,7 +954,7 @@ namespace Opc.Ua.Edge.Translator
                 }
             }
 
-            return null;
+            return NodeId.Null;
         }
 
         public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
@@ -1009,7 +1008,7 @@ namespace Opc.Ua.Edge.Translator
                 string assetEndpoint = inputArguments[1].ToString();
                 if (!Program.Drivers.TryGetByUri(assetEndpoint, out var drv))
                 {
-                    return new ServiceResult(StatusCodes.BadNotSupported, $"No driver installed for endpoint: {assetEndpoint}");
+                    return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText($"No driver installed for endpoint: {assetEndpoint}"));
                 }
 
                 ThingDescription td = drv.BrowseAndGenerateTD(assetName, assetEndpoint);
@@ -1977,7 +1976,7 @@ namespace Opc.Ua.Edge.Translator
 
                     if (!NamespaceUris.Contains(namespaceUri))
                     {
-                        return null;
+                        return ExpandedNodeId.Null;
                     }
 
                     switch (parentNodeDetails[2])
@@ -1989,12 +1988,12 @@ namespace Opc.Ua.Edge.Translator
                             return new ExpandedNodeId(parentNodeDetails[3],
                                 (ushort)Server.NamespaceUris.GetIndex(namespaceUri));
                         default:
-                            return null;
+                            return ExpandedNodeId.Null;
                     }
                 }
             }
 
-            return null;
+            return ExpandedNodeId.Null;
         }
 
         // Returns whether the server is in provisioning mode (no issuer certificates
@@ -2019,7 +2018,7 @@ namespace Opc.Ua.Edge.Translator
             bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
-                return new ServiceResult(StatusCodes.BadNotReadable, "Access to UA Edge Translator is limited while in provisioning mode!");
+                return new ServiceResult(StatusCodes.BadNotReadable, new Ua.LocalizedText("Access to UA Edge Translator is limited while in provisioning mode!"));
             }
 
             PropertyState property = node as PropertyState;
@@ -2114,7 +2113,7 @@ namespace Opc.Ua.Edge.Translator
             bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
             {
-                return new ServiceResult(StatusCodes.BadNotWritable, "Access to UA Edge Translator is limited while in provisioning mode!");
+                return new ServiceResult(StatusCodes.BadNotWritable, new Ua.LocalizedText("Access to UA Edge Translator is limited while in provisioning mode!"));
             }
 
             PropertyState property = node as PropertyState;
@@ -2139,7 +2138,7 @@ namespace Opc.Ua.Edge.Translator
                     // validate license key provided
                     if (value == null || string.IsNullOrEmpty(value.ToString()))
                     {
-                        return new ServiceResult(StatusCodes.BadInvalidArgument, "License key cannot be empty!");
+                        return new ServiceResult(StatusCodes.BadInvalidArgument, new Ua.LocalizedText("License key cannot be empty!"));
                     }
 
                     // The expected license key must be supplied out-of-band via the LICENSE_KEY
@@ -2149,7 +2148,7 @@ namespace Opc.Ua.Edge.Translator
                     if (string.IsNullOrEmpty(expectedLicenseKey))
                     {
                         Log.Logger.Warning("License write rejected: LICENSE_KEY environment variable is not configured on the server.");
-                        return new ServiceResult(StatusCodes.BadNotSupported, "License validation is not configured on this server.");
+                        return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText("License validation is not configured on this server."));
                     }
 
                     byte[] providedBytes = Encoding.UTF8.GetBytes(value.ToString());
@@ -2157,7 +2156,7 @@ namespace Opc.Ua.Edge.Translator
                     if (providedBytes.Length != expectedBytes.Length
                      || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes))
                     {
-                        return new ServiceResult(StatusCodes.BadInvalidArgument, "Invalid license key!");
+                        return new ServiceResult(StatusCodes.BadInvalidArgument, new Ua.LocalizedText("Invalid license key!"));
                     }
 
                     _uaProperties["License"].Value = value;
@@ -2760,7 +2759,7 @@ namespace Opc.Ua.Edge.Translator
             NodeState childVar = null;
 
             // Browse the object type for child variables and replicate them on the instance
-            var browser = objectType.CreateBrowser(SystemContext, null, null, true, BrowseDirection.Forward, null, null, true);
+            var browser = objectType.CreateBrowser(SystemContext, null, NodeId.Null, true, BrowseDirection.Forward, QualifiedName.Null, null, true);
 
             IReference reference = browser.Next();
             while (reference != null)

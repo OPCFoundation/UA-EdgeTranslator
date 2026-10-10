@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Edge.Translator
+namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Export;
@@ -86,7 +86,7 @@
         {
             if (context is ServerSystemContext serverContext)
             {
-                return serverContext.SessionId;
+                return serverContext.SessionId ?? NodeId.Null;
             }
 
             return NodeId.Null;
@@ -261,7 +261,7 @@
                     if (projected > _maxFileBytes)
                     {
                         Log.Logger.Warning("Rejecting WoT file upload: size {Projected} exceeds configured cap {Cap} bytes.", projected, _maxFileBytes);
-                        return new ServiceResult(StatusCodes.BadOutOfMemory, new LocalizedText($"Upload exceeds maximum allowed size of {_maxFileBytes} bytes."));
+                        return new ServiceResult(StatusCodes.BadOutOfMemory, new Opc.Ua.LocalizedText($"Upload exceeds maximum allowed size of {_maxFileBytes} bytes."));
                     }
 
                     handle.Stream.Write(data, 0, data.Length);
