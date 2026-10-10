@@ -24,7 +24,7 @@
     <!-- Serialization -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Supply chain / signature verification (driver allow-list manifest) -->
-    <PackageVersion Include="Sigstore" Version="1.1.0" />
+    <PackageVersion Include="Sigstore" Version="1.1.1" />
     <!-- Engineering tool integration -->
     <PackageVersion Include="Aml.Engine" Version="4.5.2" />
     <!-- Tooling / build -->
