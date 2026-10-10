@@ -48,7 +48,7 @@
             {
                 NodeId = new NodeId(nodeIdentifier ?? name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
-                DisplayName = name,
+                DisplayName = new LocalizedText(name),
                 TypeDefinitionId = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris)
             };
 
@@ -57,12 +57,20 @@
             return obj;
         }
 
+        // The well-known DataTypes.* / DataTypeIds.* constants are uint identifiers.
+        // SDK 2.0.0 made NodeId a struct with no implicit conversion from uint, so these
+        // overloads keep the numeric call sites working without wrapping at each one.
+        public PropertyState CreateProperty(NodeState parent, string name, uint dataType, ushort namespaceIndex, bool writeable = false, object value = null)
+        {
+            return CreateProperty(parent, name, new NodeId(dataType), namespaceIndex, writeable, value);
+        }
+
         public PropertyState CreateProperty(NodeState parent, string name, NodeId dataType, ushort namespaceIndex, bool writeable = false, object value = null)
         {
             PropertyState property = new(parent)
             {
                 SymbolicName = name,
-                ReferenceTypeId = ReferenceTypes.Organizes,
+                ReferenceTypeId = new NodeId(ReferenceTypes.Organizes),
                 TypeDefinitionId = VariableTypeIds.PropertyType,
                 NodeId = new NodeId(name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
@@ -71,7 +79,16 @@
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
                 DataType = dataType,
-                Value = value,
+                // Variant.From requires a compile-time type (its generic overload is
+                // constrained to value types) but this factory is deliberately
+                // runtime-typed: callers pass string, double, int, bool and IEncodeable
+                // instances through the same object parameter. The (object, TypeInfo)
+                // constructor is the only API that accepts a runtime-typed value, so the
+                // obsoletion is suppressed narrowly here rather than repeated at every
+                // call site. Revisit if the SDK adds a non-obsolete equivalent.
+#pragma warning disable CS0618 // Type or member is obsolete
+                Value = new Variant(value, TypeInfo.Construct(value)),
+#pragma warning restore CS0618
                 OnReadValue = _manager.OnReadValue
             };
 
@@ -89,7 +106,7 @@
             return property;
         }
 
-        public PropertyState<Argument[]> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId[] type, bool input, bool array = false, NodeId nodeId = null)
+        public PropertyState<ArrayOf<Argument>> CreateMethodArguments(MethodState methodState, string[] names, string[] descriptions, ExpandedNodeId[] type, bool input, bool array = false, NodeId nodeId = default)
         {
             string browseName = methodState.BrowseName.Name;
             if (input)
@@ -107,25 +124,38 @@
                 argumentsList.Add(new Argument()
                 {
                     Name = names[i],
-                    Description = descriptions[i],
+                    Description = new LocalizedText(descriptions[i]),
                     DataType = ExpandedNodeId.ToNodeId(type[i], _manager.Server.NamespaceUris),
                     ValueRank = array ? ValueRanks.OneDimension : ValueRanks.Scalar
                 });
             }
 
-            PropertyState<Argument[]> arguments = new(methodState)
-            {
-                NodeId = (nodeId == null) ? new NodeId(browseName, methodState.NodeId.NamespaceIndex) : nodeId,
-                BrowseName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                DisplayName = input ? BrowseNames.InputArguments : BrowseNames.OutputArguments,
-                TypeDefinitionId = VariableTypeIds.PropertyType,
-                ReferenceTypeId = ReferenceTypeIds.HasProperty,
-                DataType = DataTypeIds.Argument,
-                ValueRank = ValueRanks.OneDimension,
-                Value = argumentsList.ToArray()
-            };
+            // PropertyState<T> became abstract in SDK 2.0.0 and the InputArguments /
+            // OutputArguments properties are now strongly typed as
+            // PropertyState<ArrayOf<Argument>>. MethodState exposes dedicated factories
+            // that build the correctly-typed child, so use those instead of constructing
+            // the property directly. assignInstanceNodeIds is false because this method
+            // assigns the NodeId itself (either the caller-supplied one or a derived
+            // browse-name based id), matching the previous behaviour.
+            PropertyState<ArrayOf<Argument>> arguments = input
+                ? methodState.CreateOrReplaceInputArguments(_manager.SystemContext, null, false)
+                : methodState.CreateOrReplaceOutputArguments(_manager.SystemContext, null, false);
+
+            arguments.NodeId = nodeId.IsNull ? new NodeId(browseName, methodState.NodeId.NamespaceIndex) : nodeId;
+            arguments.BrowseName = new QualifiedName(input ? BrowseNames.InputArguments : BrowseNames.OutputArguments);
+            arguments.DisplayName = new LocalizedText(input ? BrowseNames.InputArguments : BrowseNames.OutputArguments);
+            arguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+            arguments.ReferenceTypeId = ReferenceTypeIds.HasProperty;
+            arguments.DataType = DataTypeIds.Argument;
+            arguments.ValueRank = ValueRanks.OneDimension;
+            arguments.Value = new ArrayOf<Argument>(argumentsList.ToArray());
 
             return arguments;
+        }
+
+        public BaseDataVariableState CreateVariable(NodeState parent, string name, uint dataType, ushort namespaceIndex, bool writeable = false, object value = null)
+        {
+            return CreateVariable(parent, name, new NodeId(dataType), namespaceIndex, writeable, value);
         }
 
         public BaseDataVariableState CreateVariable(NodeState parent, string name, NodeId dataType, ushort namespaceIndex, bool writeable = false, object value = null)
@@ -133,7 +163,7 @@
             BaseDataVariableState variable = new(parent)
             {
                 SymbolicName = name,
-                ReferenceTypeId = ReferenceTypes.Organizes,
+                ReferenceTypeId = new NodeId(ReferenceTypes.Organizes),
                 NodeId = new NodeId(name, namespaceIndex),
                 TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 BrowseName = new QualifiedName(name, namespaceIndex),
@@ -142,7 +172,11 @@
                 UserWriteMask = AttributeWriteMask.None,
                 AccessLevel = AccessLevels.CurrentRead,
                 DataType = dataType,
-                Value = value,
+                // See the comment in CreateProperty: this factory is runtime-typed, so the
+                // obsolete (object, TypeInfo) constructor is the only applicable overload.
+#pragma warning disable CS0618 // Type or member is obsolete
+                Value = new Variant(value, TypeInfo.Construct(value)),
+#pragma warning restore CS0618
                 OnReadValue = _manager.OnReadValue
             };
 

@@ -251,7 +251,7 @@ namespace Opc.Ua.Edge.Translator
         // children and are handled via MethodState.MethodDeclarationId instead.)
         public override void Call(
             OperationContext context,
-            IList<CallMethodRequest> methodsToCall,
+            ArrayOf<CallMethodRequest> methodsToCall,
             IList<CallMethodResult> results,
             IList<ServiceResult> errors)
         {
@@ -668,9 +668,9 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            string assetName = inputArguments[0]?.ToString();
+            string assetName = inputArguments[0].ToString();
             if (!IsSafeAssetName(assetName))
             {
                 Log.Logger.Warning("Rejecting CreateAsset: invalid asset name [{AssetName}]", assetName);
@@ -684,7 +684,7 @@ namespace Opc.Ua.Edge.Translator
             }
             else
             {
-                outputArguments[0] = assetNode.NodeId;
+                outputArguments[0] = Variant.From(assetNode.NodeId);
 
                 RaiseModelChangedEvent(assetNode.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 
@@ -769,9 +769,9 @@ namespace Opc.Ua.Edge.Translator
             Server.ReportEvent(ev);
         }
 
-        public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
+            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
@@ -920,7 +920,7 @@ namespace Opc.Ua.Edge.Translator
                 return false;
             }
 
-            ServiceResult result = OnDeleteAsset(SystemContext, null, new List<object> { assetId }, new List<object>());
+            ServiceResult result = OnDeleteAsset(SystemContext, null, new ArrayOf<Variant>([Variant.From(assetId)]), new List<Variant>());
 
             bool success = result.StatusCode == StatusCodes.Good;
             if (success)
@@ -958,7 +958,7 @@ namespace Opc.Ua.Edge.Translator
             return null;
         }
 
-        public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
             List<string> allAddresses = new();
 
@@ -982,7 +982,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
             if (string.IsNullOrEmpty(inputArguments[0]?.ToString()) || string.IsNullOrEmpty(inputArguments[1]?.ToString()))
             {
@@ -1028,9 +1028,9 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
-            if (string.IsNullOrEmpty(inputArguments[0]?.ToString()))
+            if (string.IsNullOrEmpty(inputArguments[0].ToString()))
             {
                 return StatusCodes.BadInvalidArgument;
             }
@@ -1613,27 +1613,24 @@ namespace Opc.Ua.Edge.Translator
                                     fieldPath = property.Value.OpcUaFieldPath;
                                 }
                             }
-                            else if ((dataType?.DataTypeDefinition?.Body is StructureDefinition) && (((StructureDefinition)dataType?.DataTypeDefinition?.Body)?.Fields?.Count > 0))
+                            else if (TryGetStructureDefinition(dataType, out StructureDefinition structureDefinition))
                             {
                                 // Data Structure type path: instantiate a new extension object once, then map WoT properties to fields
                                 NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
-                                if (defaultBinaryEncodingId == null)
+                                if (defaultBinaryEncodingId.IsNull)
                                 {
                                     throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
                                 }
 
-                                ExtensionObject complexTypeInstance = new()
+                                // ExtensionObject is an immutable struct in SDK 2.0.0 and
+                                // ServiceMessageContext takes its Factory via the constructor, so
+                                // encode the body first and build the extension object from it.
+                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry, Server.Factory)
                                 {
-                                    TypeId = defaultBinaryEncodingId
-                                };
-
-                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
-                                {
-                                    NamespaceUris = Server.NamespaceUris,
-                                    Factory = Server.Factory
+                                    NamespaceUris = Server.NamespaceUris
                                 });
 
-                                foreach (StructureField field in ((StructureDefinition)dataType?.DataTypeDefinition?.Body).Fields)
+                                foreach (StructureField field in structureDefinition.Fields)
                                 {
                                     EncodeField(encoder, field, null);
 
@@ -1644,7 +1641,7 @@ namespace Opc.Ua.Edge.Translator
                                     }
                                 }
 
-                                complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+                                ExtensionObject complexTypeInstance = new(defaultBinaryEncodingId, new ByteString(encoder.CloseAndReturnBuffer()));
 
                                 // check if we are creating this variable for the first time, or if it's already been created as part of a previous field mapping for this asset
                                 if (!_uaVariables.ContainsKey(variableId))
@@ -1665,21 +1662,16 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // No field path — check if it's a structure type that needs an initialized ExtensionObject, or a simple built-in type.
-                            if ((dataType?.DataTypeDefinition?.Body is StructureDefinition structDef) && (structDef.Fields?.Count > 0))
+                            if (TryGetStructureDefinition(dataType, out StructureDefinition structDef))
                             {
                                 NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
-                                if (defaultBinaryEncodingId == null)
+                                if (defaultBinaryEncodingId.IsNull)
                                 {
                                     throw new InvalidOperationException($"No 'Default Binary' encoding found for DataType {dataType.BrowseName} ({dataType.NodeId}).");
                                 }
 
-                                ExtensionObject complexTypeInstance = new() {
-                                    TypeId = defaultBinaryEncodingId
-                                };
-
-                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry) {
-                                    NamespaceUris = Server.NamespaceUris,
-                                    Factory = Server.Factory
+                                using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry, Server.Factory) {
+                                    NamespaceUris = Server.NamespaceUris
                                 });
 
                                 foreach (StructureField field in structDef.Fields)
@@ -1687,7 +1679,7 @@ namespace Opc.Ua.Edge.Translator
                                     EncodeField(encoder, field, null);
                                 }
 
-                                complexTypeInstance.Body = encoder.CloseAndReturnBuffer();
+                                ExtensionObject complexTypeInstance = new(defaultBinaryEncodingId, new ByteString(encoder.CloseAndReturnBuffer()));
 
                                 BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
                                 _uaVariables.TryAdd(variableId, variable);
@@ -1745,13 +1737,35 @@ namespace Opc.Ua.Edge.Translator
                 var targetId = ExpandedNodeId.ToNodeId(r.TargetId, SystemContext.NamespaceUris);
                 var targetNode = Find(targetId);
 
-                if (targetNode?.BrowseName?.Name == "Default Binary")
+                if (targetNode?.BrowseName.Name == "Default Binary")
                 {
                     return targetNode.NodeId;
                 }
             }
 
-            return null;
+            return NodeId.Null;
+        }
+
+        // DataTypeDefinition is an ExtensionObject whose Body property became obsolete in
+        // SDK 2.0.0 in favour of the type-safe TryGetValue<T> accessor. Centralised here
+        // because the structure definition is needed on several node-creation paths.
+        private bool TryGetStructureDefinition(DataTypeState dataType, out StructureDefinition structureDefinition)
+        {
+            structureDefinition = null;
+
+            if (dataType == null || dataType.DataTypeDefinition.IsNull)
+            {
+                return false;
+            }
+
+            if (!dataType.DataTypeDefinition.TryGetValue(out StructureDefinition definition, Server.MessageContext))
+            {
+                return false;
+            }
+
+            structureDefinition = definition;
+
+            return structureDefinition != null && structureDefinition.Fields.Count > 0;
         }
 
         private void AddTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string fieldPath)
@@ -2000,7 +2014,7 @@ namespace Opc.Ua.Edge.Translator
             return _provisioningModeCached;
         }
 
-        public ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        public ServiceResult OnReadValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref Variant value, ref StatusCode statusCode, ref DateTimeUtc timestamp)
         {
             bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
@@ -2013,10 +2027,10 @@ namespace Opc.Ua.Edge.Translator
             {
                 if (node.DisplayName.Text == "SupportedWoTBindings")
                 {
-                    value = Program.Drivers.AllDrivers
+                    value = Variant.From(Program.Drivers.AllDrivers
                         .Select(d => d.WoTBindingUri)
                         .Where(u => !string.IsNullOrWhiteSpace(u))
-                        .ToArray();
+                        .ToArray());
 
                     timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
@@ -2026,7 +2040,7 @@ namespace Opc.Ua.Edge.Translator
 
                 if (node.DisplayName.Text == "SupportedOPCUAInfoModels")
                 {
-                    value = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
+                    value = Variant.From(Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "nodesets")));
 
                     timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
@@ -2051,7 +2065,7 @@ namespace Opc.Ua.Edge.Translator
                 if (node.DisplayName.Text == "MemoryWorkingSet(MB)")
                 {
                     using Process currentProcess = Process.GetCurrentProcess();
-                    value = currentProcess.WorkingSet64 / (1024 * 1024);
+                    value = Variant.From(currentProcess.WorkingSet64 / (1024 * 1024));
                     timestamp = DateTime.UtcNow;
                     statusCode = StatusCodes.Good;
 
@@ -2095,7 +2109,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        public ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref object value, ref StatusCode statusCode, ref DateTime timestamp)
+        public ServiceResult OnWriteValue(ISystemContext context, NodeState node, NumericRange indexRange, QualifiedName dataEncoding, ref Variant value, ref StatusCode statusCode, ref DateTimeUtc timestamp)
         {
             bool provisioningMode = IsInProvisioningMode();
             if (provisioningMode && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
@@ -2214,14 +2228,23 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnTDActionCalled(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        private ServiceResult OnTDActionCalled(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
             try
             {
                 string assetId = method.Parent.BrowseName.Name;
 
+                // The SDK now hands method arguments over as Variant, but the driver-facing
+                // IAsset contract is still object-based so protocol drivers do not have to
+                // take a dependency on the OPC UA value model. Marshal across the boundary.
+                List<object> driverInputs = new(inputArguments.Count);
+                foreach (Variant inputArgument in inputArguments)
+                {
+                    driverInputs.Add(inputArgument.Value);
+                }
+
                 AssetActionResult actionResult = AsyncBridge.RunSync(
-                    () => _assets[assetId].ExecuteActionAsync(method, inputArguments));
+                    () => _assets[assetId].ExecuteActionAsync(method, driverInputs));
 
                 // Copy the driver's outputs into the buffer the SDK handed us.
                 // The previous 'ref IList<object> outputArgs' contract allowed a
@@ -2231,13 +2254,20 @@ namespace Opc.Ua.Edge.Translator
                 {
                     for (int i = 0; i < actionResult.Outputs.Count; i++)
                     {
+                        object output = actionResult.Outputs[i];
+
+                        // Driver outputs are runtime-typed: see NodeFactory.CreateVariable.
+#pragma warning disable CS0618 // Type or member is obsolete
+                        Variant outputVariant = new(output, TypeInfo.Construct(output));
+#pragma warning restore CS0618
+
                         if (i < outputArguments.Count)
                         {
-                            outputArguments[i] = actionResult.Outputs[i];
+                            outputArguments[i] = outputVariant;
                         }
                         else
                         {
-                            outputArguments.Add(actionResult.Outputs[i]);
+                            outputArguments.Add(outputVariant);
                         }
                     }
                 }
@@ -2491,12 +2521,11 @@ namespace Opc.Ua.Edge.Translator
             }
 
             // check for complex type
-            if (variable.Value is ExtensionObject oldEo)
+            if (variable.Value.TryGetValue(out ExtensionObject oldEo) && !oldEo.IsNull)
             {
                 var opcuaType = (DataTypeState)Find(variable.DataType);
 
-                var structDef = opcuaType?.DataTypeDefinition?.Body as StructureDefinition;
-                if (structDef == null || structDef.Fields == null || structDef.Fields.Count == 0)
+                if (!TryGetStructureDefinition(opcuaType, out StructureDefinition structDef))
                 {
                     throw new InvalidOperationException($"DataTypeDefinition for {variable.DataType} is missing or not a structure.");
                 }
@@ -2506,10 +2535,9 @@ namespace Opc.Ua.Edge.Translator
                     // Whole-UDT update: driver returns decoded field values
                     if (value is Dictionary<string, object> fieldValues)
                     {
-                        using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry)
+                        using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry, Server.Factory)
                         {
-                            NamespaceUris = Server.NamespaceUris,
-                            Factory = Server.Factory
+                            NamespaceUris = Server.NamespaceUris
                         });
 
                         foreach (StructureField field in structDef.Fields)
@@ -2518,29 +2546,32 @@ namespace Opc.Ua.Edge.Translator
                             EncodeField(encoder, field, fieldVal);
                         }
 
-                        variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
+                        variable.Value = Variant.From(new ExtensionObject(oldEo.TypeId, new ByteString(encoder.CloseAndReturnBuffer())));
                     }
                 }
                 else
                 {
                     // Single-field update: decode all existing values, overwrite the
                     // matching field, and re-encode the entire structure.
-                    var oldBody = oldEo.Body as byte[];
-                    using var decoder = new BinaryDecoder(oldBody, new ServiceMessageContext(Program.Telemetry) {
-                        NamespaceUris = Server.NamespaceUris,
-                        Factory = Server.Factory
+                    ByteString oldBody = default;
+                    oldEo.TryGetAsBinary(out oldBody, Server.MessageContext);
+
+                    using var decoder = new BinaryDecoder(oldBody.ToArray(), new ServiceMessageContext(Program.Telemetry, Server.Factory) {
+                        NamespaceUris = Server.NamespaceUris
                     });
 
-                    using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry) {
-                        NamespaceUris = Server.NamespaceUris,
-                        Factory = Server.Factory
+                    using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry, Server.Factory) {
+                        NamespaceUris = Server.NamespaceUris
                     });
 
                     foreach (StructureField field in structDef.Fields)
                     {
                         bool isTargetField = field.Name == tag.MappedUAFieldPath;
 
-                        switch ((uint)field.DataType.Identifier)
+                        uint fieldDataType = 0;
+                        field.DataType.TryGetValue(out fieldDataType);
+
+                        switch (fieldDataType)
                         {
                             case DataTypes.Float:
                             {
@@ -2630,7 +2661,7 @@ namespace Opc.Ua.Edge.Translator
                         }
                     }
 
-                    variable.Value = new ExtensionObject(oldEo.TypeId, encoder.CloseAndReturnBuffer());
+                    variable.Value = Variant.From(new ExtensionObject(oldEo.TypeId, new ByteString(encoder.CloseAndReturnBuffer())));
                 }
             }
             else
@@ -2646,7 +2677,10 @@ namespace Opc.Ua.Edge.Translator
                     value = dto.UtcDateTime;
                 }
 
-                variable.Value = value;
+                // Runtime-typed southbound value: see the note in NodeFactory.CreateVariable.
+#pragma warning disable CS0618 // Type or member is obsolete
+                variable.Value = new Variant(value, TypeInfo.Construct(value));
+#pragma warning restore CS0618
             }
 
             variable.StatusCode = connected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
@@ -2661,7 +2695,10 @@ namespace Opc.Ua.Edge.Translator
                 return;
             }
 
-            property.Value = value;
+            // Runtime-typed southbound value: see the note in NodeFactory.CreateVariable.
+#pragma warning disable CS0618 // Type or member is obsolete
+            property.Value = new Variant(value, TypeInfo.Construct(value));
+#pragma warning restore CS0618
             property.StatusCode = connected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
             property.Timestamp = DateTime.UtcNow;
             property.ClearChangeMasks(SystemContext, true);
@@ -2673,7 +2710,10 @@ namespace Opc.Ua.Edge.Translator
         /// </summary>
         private void EncodeField(BinaryEncoder encoder, StructureField field, object value)
         {
-            switch ((uint)field.DataType.Identifier)
+            uint fieldDataType = 0;
+            field.DataType.TryGetValue(out fieldDataType);
+
+            switch (fieldDataType)
             {
                 case DataTypes.Float:
                     encoder.WriteFloat(field.Name, value is float f ? f : 0f);

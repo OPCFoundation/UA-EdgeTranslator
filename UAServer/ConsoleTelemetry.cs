@@ -35,6 +35,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Opc.Ua.Cloud
@@ -178,7 +179,16 @@ namespace Opc.Ua.Cloud
 
         public Meter CreateMeter() => _meter;
 
+        // 2.0.0 added per-assembly overloads. We intentionally ignore the
+        // assembly and hand back the same shared instances: creating a Meter
+        // or ActivitySource per calling assembly would orphan the registered
+        // instruments and publish under several names, which is exactly what
+        // the single-instance design above avoids.
+        public Meter CreateMeter(Assembly assembly) => _meter;
+
         public ActivitySource ActivitySource { get; } = new("UA cloud app", "1.0.0");
+
+        public ActivitySource GetActivitySource(Assembly assembly) => ActivitySource;
 
         public void Dispose()
         {

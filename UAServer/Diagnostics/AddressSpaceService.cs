@@ -477,16 +477,16 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     return null;
                 }
 
-                ReadValueIdCollection reads = [NewRead(nodeId, Attributes.DisplayName), NewRead(nodeId, Attributes.NodeClass)];
-                DataValueCollection values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+                ArrayOf<ReadValueId> reads = new ReadValueId[] { NewRead(nodeId, Attributes.DisplayName), NewRead(nodeId, Attributes.NodeClass) };
+                ArrayOf<DataValue> values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
 
-                string text = values is { Count: 2 } ? FormatValue(values[0]) : string.Empty;
+                string text = values.Count == 2 ? FormatValue(values[0]) : string.Empty;
 
                 return new AddressSpaceNode
                 {
                     Id = nodeId.ToString(),
                     Text = string.IsNullOrEmpty(text) ? nodeId.ToString() : text,
-                    NodeClass = values is { Count: 2 } ? FormatNodeClass(values[1]) : NodeClass.Object.ToString(),
+                    NodeClass = values.Count == 2 ? FormatNodeClass(values[1]) : NodeClass.Object.ToString(),
                     NamespaceIndex = nodeId.NamespaceIndex,
                     HasChildren = true
                 };
@@ -507,7 +507,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             {
                 // Both directions, all reference types, so the panel shows the
                 // node's full relationship set rather than just its children.
-                ReferenceDescriptionCollection references = await BrowseAsync(
+                ArrayOf<ReferenceDescription> references = await BrowseAsync(
                     server,
                     nodeId,
                     cancellationToken,
@@ -520,7 +520,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                         GetReferenceTypeName(server, reference.ReferenceTypeId),
                         reference.IsForward ? "Forward" : "Inverse",
                         GetNodeText(reference),
-                        reference.NodeId?.ToString() ?? string.Empty));
+                        reference.NodeId.IsNull ? string.Empty : reference.NodeId.ToString()));
                 }
             }
             catch (Exception ex)
@@ -531,44 +531,46 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             return result;
         }
 
-        private static async Task<ReferenceDescriptionCollection> BrowseAsync(
+        private static async Task<ArrayOf<ReferenceDescription>> BrowseAsync(
             IServerInternal server,
             NodeId nodeId,
             CancellationToken cancellationToken,
-            NodeId referenceTypeId = null,
+            NodeId referenceTypeId = default,
             BrowseDirection direction = BrowseDirection.Forward)
         {
-            BrowseDescriptionCollection nodesToBrowse =
-            [
+            ArrayOf<BrowseDescription> nodesToBrowse = new BrowseDescription[]
+            {
                 new BrowseDescription
                 {
                     NodeId = nodeId,
                     BrowseDirection = direction,
-                    ReferenceTypeId = referenceTypeId ?? ReferenceTypeIds.HierarchicalReferences,
+                    ReferenceTypeId = referenceTypeId.IsNull ? ReferenceTypeIds.HierarchicalReferences : referenceTypeId,
                     IncludeSubtypes = true,
                     NodeClassMask = 0,
                     ResultMask = (uint)BrowseResultMask.All
                 }
-            ];
+            };
 
-            (BrowseResultCollection results, _) = await server.NodeManager.BrowseAsync(
+            var browseResponse = await server.NodeManager.BrowseAsync(
                 CreateContext(),
                 null,
                 _maxReferencesPerNode,
                 nodesToBrowse,
                 cancellationToken).ConfigureAwait(false);
 
-            if (results is null || results.Count == 0 || StatusCode.IsBad(results[0].StatusCode))
+            ArrayOf<BrowseResult> results = browseResponse.Item1;
+
+            if (results.IsNull || results.Count == 0 || StatusCode.IsBad(results[0].StatusCode))
             {
-                return [];
+                return ArrayOf<ReferenceDescription>.Empty;
             }
 
-            return results[0].References ?? [];
+            return results[0].References.IsNull ? ArrayOf<ReferenceDescription>.Empty : results[0].References;
         }
 
-        private static async Task<DataValueCollection> ReadAsync(IServerInternal server, ReadValueIdCollection reads, CancellationToken cancellationToken)
+        private static async Task<ArrayOf<DataValue>> ReadAsync(IServerInternal server, ArrayOf<ReadValueId> reads, CancellationToken cancellationToken)
         {
-            (DataValueCollection values, _) = await server.NodeManager.ReadAsync(
+            (ArrayOf<DataValue> values, _) = await server.NodeManager.ReadAsync(
                 CreateContext(),
                 0,
                 TimestampsToReturn.Both,
@@ -617,13 +619,13 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static bool TryParseNodeId(string nodeId, out NodeId parsed)
         {
-            parsed = null;
+            parsed = NodeId.Null;
 
             try
             {
                 parsed = NodeId.Parse(nodeId);
 
-                return !NodeId.IsNull(parsed);
+                return !parsed.IsNull;
             }
             catch (Exception)
             {
@@ -633,19 +635,19 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string GetNodeText(ReferenceDescription reference)
         {
-            string text = reference.DisplayName?.Text;
+            string text = reference.DisplayName.Text;
 
             if (string.IsNullOrEmpty(text))
             {
-                text = reference.BrowseName?.Name;
+                text = reference.BrowseName.Name;
             }
 
-            return string.IsNullOrEmpty(text) ? reference.NodeId?.ToString() ?? string.Empty : text;
+            return string.IsNullOrEmpty(text) ? (reference.NodeId.IsNull ? string.Empty : reference.NodeId.ToString()) : text;
         }
 
         private static string GetReferenceTypeName(IServerInternal server, NodeId referenceTypeId)
         {
-            if (NodeId.IsNull(referenceTypeId))
+            if (referenceTypeId.IsNull)
             {
                 return string.Empty;
             }

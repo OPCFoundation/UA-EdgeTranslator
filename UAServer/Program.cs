@@ -5,6 +5,7 @@
     using Opc.Ua.Configuration;
     using Opc.Ua.Edge.Translator.Diagnostics;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using Opc.Ua.Security.Certificates;
     using Serilog;
     using System;
     using System.IO;
@@ -77,10 +78,12 @@
 
             await App.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
 
-            // create OPC UA cert validator
-            App.ApplicationConfiguration.CertificateValidator = new CertificateValidator(Telemetry);
-            App.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAClientCertificateValidationCallback);
-            await App.ApplicationConfiguration.CertificateValidator.UpdateAsync(App.ApplicationConfiguration).ConfigureAwait(false);
+            // Hook certificate validation. In SDK 2.0.0 the CertificateValidator type and its
+            // CertificateValidation event were replaced by ICertificateValidatorEx.AcceptError:
+            // a per-error callback consulted for each suppressible validation error. The
+            // manager itself is created and populated by CheckApplicationInstanceCertificatesAsync
+            // above, so we only attach the hook here.
+            App.ApplicationConfiguration.CertificateManager.AcceptError = OPCUAClientCertificateAcceptError;
 
             string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             if (!Directory.Exists(issuerPath))
@@ -217,11 +220,15 @@
                 RuntimeInformation.OSArchitecture);
         }
 
-        private static void OPCUAClientCertificateValidationCallback(CertificateValidator sender, CertificateValidationEventArgs e)
+        // AcceptError hook for ICertificateValidatorEx (SDK 2.0.0). Returning true accepts
+        // the error, false rejects it. This replaces the old CertificateValidation event,
+        // where acceptance was signalled by setting e.Accept and rejection by leaving it
+        // alone; the decision logic below is otherwise unchanged.
+        private static bool OPCUAClientCertificateAcceptError(Certificate certificate, ServiceResult error)
         {
-            if (e.Error.StatusCode != StatusCodes.BadCertificateUntrusted)
+            if (error.StatusCode != StatusCodes.BadCertificateUntrusted)
             {
-                return;
+                return false;
             }
 
             string issuerCertsDir = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
@@ -238,9 +245,8 @@
             {
                 // No issuer cert on disk yet — accept everything during initial setup
                 // so a GDS can push the first issuer/trust list.
-                Log.Logger.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", e.Certificate?.Subject);
-                e.Accept = true;
-                return;
+                Log.Logger.Warning("Auto-accepting certificate in provisioning mode: [{Subject}]", certificate?.Subject);
+                return true;
             }
 
             // Reject the untrusted client. We reach here in two cases:
@@ -256,19 +262,21 @@
             //     operator opted out of provisioning auto-accept and trusts clients
             //     manually, so an empty issuer store no longer means "accept all".
             //
-            // In both cases we leave e.Accept untouched (false) and let the SDK reject,
-            // since AutoAcceptUntrustedCertificates is false in the configuration.
+            // In both cases we return false and let the SDK reject, since
+            // AutoAcceptUntrustedCertificates is false in the configuration.
             if (provisioningMode)
             {
                 Log.Logger.Warning(
                     "Rejecting untrusted client certificate [{Subject}] (Issuer: [{Issuer}]): IGNORE_PROVISIONING_MODE is set, so provisioning auto-accept is suppressed. Trust the certificate via the Certificates dashboard or by copying it from pki/rejected/certs to pki/trusted/certs.",
-                    e.Certificate?.Subject, e.Certificate?.Issuer);
-                return;
+                    certificate?.Subject, certificate?.Issuer);
+                return false;
             }
 
             Log.Logger.Warning(
                 "Rejecting untrusted client certificate [{Subject}] (Issuer: [{Issuer}]). Trust the certificate via the GDS or by copying it from pki/rejected/certs to pki/trusted/certs.",
-                e.Certificate?.Subject, e.Certificate?.Issuer);
+                certificate?.Subject, certificate?.Issuer);
+
+            return false;
         }
     }
 }
