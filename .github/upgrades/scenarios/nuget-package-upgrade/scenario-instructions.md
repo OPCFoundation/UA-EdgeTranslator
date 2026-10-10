@@ -16,6 +16,11 @@ Unified bump of both OPC UA packages to 2.0.0 centrally via CPM, then migrate th
 - **Breaking-change scan**: Quick (API diff only)
 - **Package management**: Central Package Management via `Directory.Packages.props`
 
+## Decisions
+- Continue straight through all task-02 subtasks, including the 02.05 identity/authentication rewrite. No pause before the identity rewrite (user chose option 1).
+- Pre-existing working-tree 2.0.0 migration edits (UAServer code + Newtonsoft.Json refs) are kept and built upon, not reverted.
+- Obsolete APIs must be replaced, not suppressed (`TreatWarningsAsErrors=true`).
+
 ## Source Control
 - **Source Branch**: main
 - **Working Branch**: upgrade-opcua-stack

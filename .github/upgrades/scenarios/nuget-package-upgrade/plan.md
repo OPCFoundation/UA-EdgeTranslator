@@ -17,9 +17,23 @@ Update both `PackageVersion` entries in `Directory.Packages.props` from `1.5.378
 
 ---
 
-### 02-migrate-complextypes-usages: Migrate ComplexTypes API usages
+### 02-migrate-complextypes-usages: Restore Newtonsoft.Json refs and fix core Opc.Ua breaks
 
-Fix the code that consumes the removed and signature-changed ComplexTypes APIs. Known sites: `ProtocolDrivers/OPCUA/OPCUAAsset.cs` (uses `ComplexTypeSystem` with a `Dictionary<ISession, ComplexTypeSystem>` and `LoadAsync()`), and `UA-WoTMapper/UAClientLib/UAClient.cs` (constructs `ComplexTypeSystem(_session)` and calls `LoadTypeAsync`). Replace these with the 2.0.0 replacement APIs, adjusting for `object` → `Variant` and `System.Type` → `IType`/`IEncodeableType` return-type changes.
+> Scope revised after task 01. This task was originally scoped to the ComplexTypes migration, but the build halts in `UAServer` long before those errors are reachable — the core-stack breaks must be cleared first. The ComplexTypes work moved to task 03.
+
+Opc.Ua 1.5 carried
+
+Then fix the genuine 2.0.0 core-stack breaks that the apidiff missed: unresolved collection and certificate types (`DataValueCollection`, `ReadValueIdCollection`, `ReferenceDescriptionCollection`, `CertificateValidator`, `CertificateValidationEventArgs` in `AddressSpaceService.cs` and `Program.cs`), the removed `UANodeManager.Call` override (CS0115), the new `ITelemetryContext.CreateMeter`/`GetActivitySource` members `ConsoleTelemetry` must implement (CS0535), and `NodeId` no longer accepting a `null` default parameter (CS1750).
+
+**Done when**: `UAServer` and all protocol drivers compile, with no errors and no new warnings.
+
+---
+
+### 03-fix-core-stack-usages: Migrate ComplexTypes API usages
+
+> Scope revised after task 01 — this task now carries the ComplexTypes migration originally planned as task 02.
+
+Fix the code that consumes
 
 Migrate by default. Only accept a finding without change if the build proves it unaffected.
 
@@ -27,15 +41,7 @@ Migrate by default. Only accept a finding without change if the build proves it 
 
 ---
 
-### 03-fix-core-stack-usages: Fix remaining core Opc.Ua build breaks
-
-The core package diff reported no source-breaking public API changes, but a major version bump may still surface behavioral or implicit breaks (obsoletions, changed defaults, nullable annotations) in `UAServer`, `UA-WoTGenerator`, `UA-WoTMapper`, and the protocol drivers. Resolve any remaining compile errors and all new warnings across the solution.
-
-**Done when**: The full solution builds with zero errors and zero warnings.
-
----
-
-### 04-validate: Validate build and tests
+### 04-validate
 
 Run a clean solution build and execute `Tests/UAEdgeTranslator.Tests` to confirm no regressions from the stack upgrade.
 

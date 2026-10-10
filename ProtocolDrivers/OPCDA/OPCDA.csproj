@@ -17,6 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="TitaniumAS.Opc.Client.NetCore" />
   </ItemGroup>
 
