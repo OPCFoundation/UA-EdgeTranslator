@@ -218,7 +218,7 @@ namespace WotOpcUaMapper.UAClientLib
                 mask |= (uint)(NodeClass.DataType | NodeClass.VariableType | NodeClass.ObjectType);
             }
 
-            ReferenceDescriptionCollection references;
+            List<ReferenceDescription> references;
             try
             {
                 references = await Browse(new BrowseDescription
@@ -254,22 +254,37 @@ namespace WotOpcUaMapper.UAClientLib
             return nodes;
         }
 
-        private async Task<ReferenceDescriptionCollection> Browse(BrowseDescription nodeToBrowse)
+        private async Task<List<ReferenceDescription>> Browse(BrowseDescription nodeToBrowse)
         {
-            (_, byte[]? continuationPoints, ReferenceDescriptionCollection referencesList) = await _session!.BrowseAsync(
-                null, null, nodeToBrowse.NodeId, 0, BrowseDirection.Forward, nodeToBrowse.ReferenceTypeId ?? ReferenceTypeIds.HierarchicalReferences, true, nodeToBrowse.NodeClassMask).ConfigureAwait(false);
+            // NodeId is a struct in SDK 2.0.0, so `??` no longer applies; IsNull is the
+            // equivalent of the old null fallback.
+            NodeId referenceTypeId = nodeToBrowse.ReferenceTypeId.IsNull
+                ? ReferenceTypeIds.HierarchicalReferences
+                : nodeToBrowse.ReferenceTypeId;
 
-            while (referencesList.Count > 0 && continuationPoints != null)
+            var (_, continuationPoints, firstReferences) = await _session!.BrowseAsync(
+                null, null, nodeToBrowse.NodeId, 0, BrowseDirection.Forward, referenceTypeId, true, nodeToBrowse.NodeClassMask).ConfigureAwait(false);
+
+            // ArrayOf<T> is not IEnumerable<T>, so accumulate into a list.
+            List<ReferenceDescription> referencesList = new();
+            foreach (ReferenceDescription reference in firstReferences)
             {
-                (_, byte[]? continuationPointsNext, ReferenceDescriptionCollection referencesListNext) =
+                referencesList.Add(reference);
+            }
+
+            // The continuation point is a ByteString struct now; IsNull mirrors the old
+            // `!= null` test on byte[] exactly.
+            while (referencesList.Count > 0 && !continuationPoints.IsNull)
+            {
+                var (_, continuationPointsNext, referencesListNext) =
                     await _session!.BrowseNextAsync(null, false, continuationPoints).ConfigureAwait(false);
 
-                if (referencesListNext.Count > 0)
+                foreach (ReferenceDescription reference in referencesListNext)
                 {
-                    referencesList.AddRange(referencesListNext);
+                    referencesList.Add(reference);
                 }
 
-                if (continuationPointsNext == null)
+                if (continuationPointsNext.IsNull)
                 {
                     break;
                 }
