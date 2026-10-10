@@ -22,7 +22,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         private static readonly Type _sut = typeof(FileManager);
         private static readonly Type _handleType = _sut.GetNestedType("Handle", BindingFlags.NonPublic);
 
-        private const uint StatusCodeGood = StatusCodes.Good;
+        private static readonly uint StatusCodeGood = (uint)StatusCodes.Good;
 
         private static FileManager NewBareFileManager(int maxBytes = 16)
         {
@@ -40,12 +40,12 @@ namespace Opc.Ua.Edge.Translator.Tests
             return fm;
         }
 
-        private static uint AddHandle(FileManager fm, MemoryStream stream, bool writing, NodeId session = null)
+        private static uint AddHandle(FileManager fm, MemoryStream stream, bool writing, NodeId session = default)
         {
             object handle = Activator.CreateInstance(_handleType);
             _handleType.GetField("Stream").SetValue(handle, stream);
             _handleType.GetField("Writing").SetValue(handle, writing);
-            _handleType.GetField("SessionId").SetValue(handle, session ?? NodeId.Null);
+            _handleType.GetField("SessionId").SetValue(handle, session);
             _handleType.GetField("Position").SetValue(handle, 0u);
 
             FieldInfo handlesField = _sut.GetField("_handles", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -66,8 +66,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             ServiceResult sr = (ServiceResult)onRead.Invoke(fm, args);
             Assert.Equal(StatusCodeGood, (uint)sr.StatusCode);
 
-            byte[] data = (byte[])args[5];
-            Assert.NotNull(data);
+            byte[] data = ReadOutputData(args[5]);
             Assert.Empty(data);
         }
 
@@ -94,7 +93,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             ServiceResult sr = (ServiceResult)onRead.Invoke(fm, args);
             Assert.Equal(StatusCodeGood, (uint)sr.StatusCode);
 
-            byte[] data = (byte[])args[5];
+            byte[] data = ReadOutputData(args[5]);
             Assert.Equal(new byte[] { 9, 8, 7 }, data);
         }
 
@@ -109,8 +108,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             ServiceResult sr = (ServiceResult)onRead.Invoke(fm, args);
             Assert.Equal(StatusCodeGood, (uint)sr.StatusCode);
 
-            byte[] data = (byte[])args[5];
-            Assert.NotNull(data);
+            byte[] data = ReadOutputData(args[5]);
             Assert.Empty(data);
         }
 
@@ -121,7 +119,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             uint h = AddHandle(fm, new MemoryStream(), writing: false);
 
             MethodInfo onWrite = _sut.GetMethod("OnWrite", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, new byte[] { 0xAA } });
+            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, (ByteString)new byte[] { 0xAA } });
             Assert.Equal((StatusCode)StatusCodes.BadInvalidState, sr.StatusCode);
         }
 
@@ -132,7 +130,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             uint h = AddHandle(fm, new MemoryStream(), writing: true);
 
             MethodInfo onWrite = _sut.GetMethod("OnWrite", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, new byte[64] });
+            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, (ByteString)new byte[64] });
             Assert.Equal((StatusCode)StatusCodes.BadOutOfMemory, sr.StatusCode);
         }
 
@@ -144,12 +142,21 @@ namespace Opc.Ua.Edge.Translator.Tests
             uint h = AddHandle(fm, ms, writing: true);
 
             MethodInfo onWrite = _sut.GetMethod("OnWrite", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, new byte[] { 1, 2, 3, 4 } });
+            ServiceResult sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, (ByteString)new byte[] { 1, 2, 3, 4 } });
             Assert.Equal(StatusCodeGood, (uint)sr.StatusCode);
             Assert.Equal(new byte[] { 1, 2, 3, 4 }, ms.ToArray());
 
-            sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, (byte[])null });
+            sr = (ServiceResult)onWrite.Invoke(fm, new object[] { null, null, null, h, default(ByteString) });
             Assert.Equal(StatusCodeGood, (uint)sr.StatusCode);
+        }
+
+        // OnRead's 'ref ByteString data' comes back boxed in the reflection args array.
+        // Asserting the ByteString is non-null preserves the previous NotNull(byte[]) check.
+        private static byte[] ReadOutputData(object value)
+        {
+            ByteString data = Assert.IsType<ByteString>(value);
+            Assert.False(data.IsNull);
+            return data.ToArray();
         }
 
         [Fact]

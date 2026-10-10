@@ -53,7 +53,7 @@ namespace OCPPCentralSystem
                                                     OCPPClientCertificateValidatorService clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
-            https.ServerCertificate = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+            https.ServerCertificate = TlsServerCertificates.GetApplicationCertificate(Program.App.ApplicationConfiguration);
 
             if (secureComms)
             {

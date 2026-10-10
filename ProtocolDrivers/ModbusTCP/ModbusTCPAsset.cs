@@ -179,7 +179,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
-            string actionName = method?.BrowseName?.Name;
+            string actionName = method?.BrowseName.Name;
             if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
             {
                 return AssetActionResult.FromStatus($"No Modbus form found for action '{actionName}'.");

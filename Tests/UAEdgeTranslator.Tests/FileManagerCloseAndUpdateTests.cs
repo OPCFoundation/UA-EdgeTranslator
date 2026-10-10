@@ -39,12 +39,13 @@ namespace Opc.Ua.Edge.Translator.Tests
             return fm;
         }
 
-        private static uint AddHandle(FileManager fm, MemoryStream stream, NodeId session = null)
+        private static uint AddHandle(FileManager fm, MemoryStream stream, NodeId session = default)
         {
             object handle = Activator.CreateInstance(_handleType);
             _handleType.GetField("Stream").SetValue(handle, stream);
             _handleType.GetField("Writing").SetValue(handle, true);
-            _handleType.GetField("SessionId").SetValue(handle, session ?? NodeId.Null);
+            // NodeId is a struct in SDK 2.0.0; its default value is NodeId.Null.
+            _handleType.GetField("SessionId").SetValue(handle, session);
             _handleType.GetField("Position").SetValue(handle, 0u);
 
             FieldInfo handlesField = _sut.GetField("_handles", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -80,7 +81,8 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             FileState fs = new(parent)
             {
-                OpenCount = new PropertyState<ushort>(null)
+                // PropertyState<T> is abstract in SDK 2.0.0; build it through its factory.
+                OpenCount = PropertyState<ushort>.With<VariantBuilder>(null)
             };
 
             SetFile(fm, fs);

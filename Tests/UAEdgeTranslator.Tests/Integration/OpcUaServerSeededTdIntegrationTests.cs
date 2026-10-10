@@ -246,7 +246,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             Assert.True(StatusCode.IsGood(response.Results[0]), $"Write returned {response.Results[0]}");
 
             // Read it back: OnReadValue should now surface the value we just wrote
@@ -384,7 +384,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             return response.Results[0];
         }
 
@@ -800,7 +800,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return ExpandedNodeId.ToNodeId(am.NodeId, _session.NamespaceUris);
         }
 
-        private async Task<ReferenceDescriptionCollection> BrowseChildrenAsync(NodeId parent)
+        private async Task<List<ReferenceDescription>> BrowseChildrenAsync(NodeId parent)
         {
             BrowseDescription browse = new BrowseDescription
             {
@@ -816,11 +816,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 null,
                 0,
-                new BrowseDescriptionCollection { browse },
+                new ArrayOf<BrowseDescription>(new[] { browse }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
-            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+            Assert.True(response.Results.Count > 0);
+            return response.Results[0].References.ToList();
         }
     }
 }

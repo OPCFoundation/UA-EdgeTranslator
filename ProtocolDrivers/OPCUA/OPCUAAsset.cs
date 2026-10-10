@@ -223,7 +223,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             if (_session != null)
             {
-                var nodeId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(addressWithinAsset), _session.NamespaceUris);
+                var nodeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(addressWithinAsset), _session.NamespaceUris);
 
                 DataValue value;
                 try
@@ -239,12 +239,16 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     return Task.FromResult(Array.Empty<byte>());
                 }
 
-                if (value?.Value == null)
+                // Unwrap to the CLR value before switching. Pattern-matching the Variant
+                // itself would never match (it is a struct, not a float/int/...), so every
+                // reading would silently fall through to the text-encoding default branch.
+                object rawValue = VariantConversion.ToClrValue(value.WrappedValue);
+                if (rawValue == null)
                 {
                     return Task.FromResult(Array.Empty<byte>());
                 }
 
-                byte[] bytes = value.Value switch
+                byte[] bytes = rawValue switch
                 {
                     float f    => BitConverter.GetBytes(f),
                     double d   => BitConverter.GetBytes(d),
@@ -258,7 +262,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     byte by    => new[] { by },
                     string str => Encoding.UTF8.GetBytes(str),
                     byte[] arr => arr,
-                    _          => Encoding.UTF8.GetBytes(value.Value.ToString() ?? string.Empty)
+                    _          => Encoding.UTF8.GetBytes(rawValue.ToString() ?? string.Empty)
                 };
 
                 return Task.FromResult(bytes);
@@ -278,16 +282,23 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             // Resolve exactly as the read path does — new NodeId(string) ignores ns= prefixes.
             NodeId nodeId = ExpandedNodeId.ToNodeId(
-                new ExpandedNodeId(addressWithinAsset),
+                ExpandedNodeId.Parse(addressWithinAsset),
                 _session.NamespaceUris);
+
+            // The value is runtime-typed (it arrives as object from the driver contract),
+            // so the (object, TypeInfo) constructor is the only applicable overload; see
+            // NodeFactory.CreateVariable for the rationale.
+#pragma warning disable CS0618 // Type or member is obsolete
+            Variant variant = new(value, TypeInfo.Construct(value));
+#pragma warning restore CS0618
 
             WriteValue nodeToWrite = new()
             {
                 NodeId = nodeId,
-                Value = new DataValue(new Variant(value))
+                Value = new DataValue(variant)
             };
 
-            WriteValueCollection nodesToWrite = new() { nodeToWrite };
+            ArrayOf<WriteValue> nodesToWrite = new(new[] { nodeToWrite });
 
             RequestHeader requestHeader = new()
             {
@@ -343,7 +354,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     Program.App.ApplicationConfiguration.ApplicationName,
                     timeout,
                     userIdentity,
-                    null
+                    default
                 ).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -368,7 +379,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 if (!_complexTypeList.ContainsKey(_session))
                 {
-                    _complexTypeList.Add(_session, new ComplexTypeSystem(_session));
+                    // SDK 2.0.0 moved ComplexTypeSystem to Opc.Ua.Core.Schema; it now resolves
+                    // types through an IComplexTypeResolver rather than the session directly.
+                    _complexTypeList.Add(_session, new ComplexTypeSystem(new NodeCacheResolver(_session, Program.Telemetry), Program.Telemetry));
                 }
 
                 await _complexTypeList[_session].LoadAsync().ConfigureAwait(false);
@@ -482,24 +495,30 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
-            CallMethodRequestCollection requests = new CallMethodRequestCollection
+            // NodeId is a value type in SDK 2.0.0, so assignment already copies it (the old
+            // NodeId(NodeId) copy constructor is gone).
+            CallMethodRequest request = new()
             {
-                new CallMethodRequest
-                {
-                    ObjectId = new NodeId(method.Parent.NodeId),
-                    MethodId = method.NodeId
-                }
+                ObjectId = method.Parent.NodeId,
+                MethodId = method.NodeId
             };
 
             if (inputArgs != null)
             {
-                requests[0].InputArguments = new VariantCollection();
+                List<Variant> inputArguments = new(inputArgs.Count);
 
                 foreach (var arg in inputArgs)
                 {
-                    requests[0].InputArguments.Add(new Variant(arg));
+                    // Driver inputs are runtime-typed; see NodeFactory.CreateVariable.
+#pragma warning disable CS0618 // Type or member is obsolete
+                    inputArguments.Add(new Variant(arg, TypeInfo.Construct(arg)));
+#pragma warning restore CS0618
                 }
+
+                request.InputArguments = new ArrayOf<Variant>(inputArguments.ToArray());
             }
+
+            ArrayOf<CallMethodRequest> requests = new(new[] { request });
 
             CallResponse response = await _session.CallAsync(
                 null,
@@ -511,22 +530,25 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             StatusCode status = new StatusCode(0);
             IList<object> outputArgs = null;
-            if ((response.Results != null) && (response.Results.Count > 0))
+            if (response.Results.Count > 0)
             {
                 status = response.Results[0].StatusCode;
 
-                if (StatusCode.IsBad(response.Results[0].StatusCode) && (response.ResponseHeader.StringTable != null) && (response.ResponseHeader.StringTable.Count > 0))
+                if (StatusCode.IsBad(response.Results[0].StatusCode) && (response.ResponseHeader.StringTable.Count > 0))
                 {
                     return AssetActionResult.FromStatus(response.ResponseHeader.StringTable[0]);
                 }
 
-                if ((response.Results[0].OutputArguments != null) && (response.Results[0].OutputArguments.Count > 0))
+                ArrayOf<Variant> outputArguments = response.Results[0].OutputArguments;
+                if (outputArguments.Count > 0)
                 {
-                    outputArgs = new List<object>(response.Results[0].OutputArguments.Count);
+                    outputArgs = new List<object>(outputArguments.Count);
 
-                    for (int i = 0; i < response.Results[0].OutputArguments.Count; i++)
+                    for (int i = 0; i < outputArguments.Count; i++)
                     {
-                        outputArgs.Add(response.Results[0].OutputArguments[i].Value);
+                        // Outputs go back through the object-based AssetActionResult, so
+                        // unwrap to the CLR value rather than boxing the Variant itself.
+                        outputArgs.Add(VariantConversion.ToClrValue(outputArguments[i]));
                     }
                 }
             }
@@ -556,7 +578,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private void BrowseRecursive(NodeId nodeId, string parentPath, List<BrowsedNode> results, HashSet<NodeId> visited)
         {
-            if (nodeId == null || NodeId.IsNull(nodeId))
+            if (nodeId.IsNull)
             {
                 return;
             }
@@ -577,9 +599,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 ResultMask = (uint)BrowseResultMask.All
             };
 
-            BrowseDescriptionCollection nodesToBrowse = new() { nodeToBrowse };
+            ArrayOf<BrowseDescription> nodesToBrowse = new(new[] { nodeToBrowse });
 
-            ReferenceDescriptionCollection references = new();
+            List<ReferenceDescription> references = new();
 
             try
             {
@@ -590,8 +612,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     nodesToBrowse,
                     CancellationToken.None).GetAwaiter().GetResult();
 
-                BrowseResultCollection browseResults = browseResponse.Results;
-                if (browseResults == null || browseResults.Count == 0)
+                // A null ArrayOf reports Count == 0, so this covers the old null check.
+                ArrayOf<BrowseResult> browseResults = browseResponse.Results;
+                if (browseResults.Count == 0)
                 {
                     return;
                 }
@@ -604,13 +627,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     return;
                 }
 
-                references.AddRange(browseResults[0].References);
+                AddReferences(references, browseResults[0].References);
 
-                // follow continuation points to make sure the browse is exhaustive
-                byte[] continuationPoint = browseResults[0].ContinuationPoint;
-                while (continuationPoint != null && continuationPoint.Length > 0)
+                // follow continuation points to make sure the browse is exhaustive.
+                // ContinuationPoint is a ByteString struct now; a null one has Length 0, so
+                // this matches the old `!= null && Length > 0` exactly.
+                ByteString continuationPoint = browseResults[0].ContinuationPoint;
+                while (continuationPoint.Length > 0)
                 {
-                    ByteStringCollection continuationPoints = new() { continuationPoint };
+                    ArrayOf<ByteString> continuationPoints = new(new[] { continuationPoint });
 
                     BrowseNextResponse browseNextResponse = _session.BrowseNextAsync(
                         null,
@@ -618,13 +643,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         continuationPoints,
                         CancellationToken.None).GetAwaiter().GetResult();
 
-                    BrowseResultCollection nextResults = browseNextResponse.Results;
-                    if (nextResults == null || nextResults.Count == 0 || StatusCode.IsBad(nextResults[0].StatusCode))
+                    ArrayOf<BrowseResult> nextResults = browseNextResponse.Results;
+                    if (nextResults.Count == 0 || StatusCode.IsBad(nextResults[0].StatusCode))
                     {
                         break;
                     }
 
-                    references.AddRange(nextResults[0].References);
+                    AddReferences(references, nextResults[0].References);
                     continuationPoint = nextResults[0].ContinuationPoint;
                 }
             }
@@ -636,12 +661,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             foreach (ReferenceDescription reference in references)
             {
-                if (reference.NodeId == null)
+                if (reference.NodeId.IsNull)
                 {
                     continue;
                 }
 
-                string browseName = reference.BrowseName?.Name ?? reference.DisplayName?.Text ?? string.Empty;
+                // QualifiedName/LocalizedText are structs; a default one has a null
+                // Name/Text, so the ?? fallback chain behaves as it did before.
+                string browseName = reference.BrowseName.Name ?? reference.DisplayName.Text ?? string.Empty;
                 if (string.IsNullOrEmpty(browseName))
                 {
                     continue;
@@ -687,16 +714,25 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
         }
 
+        // ArrayOf<T> does not implement IEnumerable<T>, so List.AddRange cannot take it.
+        private static void AddReferences(List<ReferenceDescription> target, ArrayOf<ReferenceDescription> source)
+        {
+            foreach (ReferenceDescription reference in source)
+            {
+                target.Add(reference);
+            }
+        }
+
         private BrowsedNode BuildBrowsedNode(NodeId nodeId, string browsePath)
         {
             try
             {
-                ReadValueIdCollection nodesToRead = new()
+                ArrayOf<ReadValueId> nodesToRead = new(new[]
                 {
                     new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.DataType },
                     new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.ValueRank },
                     new ReadValueId() { NodeId = nodeId, AttributeId = Attributes.AccessLevel }
-                };
+                });
 
                 ReadResponse readResponse = _session.ReadAsync(
                     null,
@@ -705,15 +741,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     nodesToRead,
                     CancellationToken.None).GetAwaiter().GetResult();
 
-                DataValueCollection values = readResponse.Results;
-                if (values == null || values.Count < 3)
+                // A null ArrayOf reports Count == 0, so this covers the old null check.
+                ArrayOf<DataValue> values = readResponse.Results;
+                if (values.Count < 3)
                 {
                     return null;
                 }
 
-                NodeId dataTypeId = values[0].Value as NodeId;
-                int valueRank = values[1].Value is int rank ? rank : ValueRanks.Scalar;
-                byte accessLevel = values[2].Value is byte access ? access : (byte)0;
+                // Unwrap each Variant before pattern matching; matching the Variant struct
+                // itself would never succeed and every node would map to TypeEnum.Object.
+                NodeId dataTypeId = VariantConversion.ToClrValue(values[0].WrappedValue) is NodeId id ? id : NodeId.Null;
+                int valueRank = VariantConversion.ToClrValue(values[1].WrappedValue) is int rank ? rank : ValueRanks.Scalar;
+                byte accessLevel = VariantConversion.ToClrValue(values[2].WrappedValue) is byte access ? access : (byte)0;
 
                 // Skip nodes the server has marked as not readable; otherwise every polling
                 // cycle would throw BadNotReadable on Read.

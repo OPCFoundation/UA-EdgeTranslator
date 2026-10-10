@@ -175,7 +175,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, response.Results[0]);
             }
             finally
@@ -208,7 +208,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.True(StatusCode.IsGood(response.Results[0]),
                     $"License write should succeed, got {response.Results[0]}");
 
@@ -246,7 +246,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadNotSupported, response.Results[0]);
             }
             finally
@@ -279,7 +279,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, response.Results[0]);
             }
             finally
@@ -418,7 +418,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             // Server may reject with Bad due to access level; accept either Good
             // or Bad as long as the call did not throw — the tested code path is
             // the OnWriteValue switch on DisplayName.
@@ -489,7 +489,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return ExpandedNodeId.ToNodeId(licenseRef.NodeId, _session.NamespaceUris);
         }
 
-        private async Task<ReferenceDescriptionCollection> BrowseChildrenAsync(NodeId parent)
+        private async Task<List<ReferenceDescription>> BrowseChildrenAsync(NodeId parent)
         {
             BrowseDescription browse = new BrowseDescription
             {
@@ -505,12 +505,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 null,
                 0,
-                new BrowseDescriptionCollection { browse },
+                new ArrayOf<BrowseDescription>(new[] { browse }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             Assert.True(StatusCode.IsGood(response.Results[0].StatusCode));
-            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+            return response.Results[0].References.ToList();
         }
 
         private async Task<IList<object>> CallMethodAsync(NodeId objectId, NodeId methodId, object[] inputArgs = null)
@@ -529,7 +529,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 new CallMethodRequestCollection { request },
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             Assert.True(StatusCode.IsGood(response.Results[0].StatusCode), $"Method call returned {response.Results[0].StatusCode}.");
 
             return response.Results[0].OutputArguments.Select(v => v.Value).ToList();
@@ -551,7 +551,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 new CallMethodRequestCollection { request },
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             return response.Results[0];
         }
     }

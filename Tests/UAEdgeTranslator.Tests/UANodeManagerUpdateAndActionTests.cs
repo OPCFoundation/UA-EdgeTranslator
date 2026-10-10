@@ -267,29 +267,33 @@ namespace Opc.Ua.Edge.Translator.Tests
                 DisplayName = new LocalizedText("en", "reset")
             };
 
-            IList<object> inputs = new List<object>();
-            IList<object> outputs = new List<object>();
+            ArrayOf<Variant> inputs = default;
+            List<Variant> outputs = new();
 
             MethodInfo m = _sut.GetMethod("OnTDActionCalled", BindingFlags.NonPublic | BindingFlags.Instance);
             object result = m.Invoke(nm, new object[] { null, method, inputs, outputs });
 
             ServiceResult sr = (ServiceResult)result;
-            Assert.Equal(StatusCodes.BadInternalError, sr.StatusCode.Code);
+            // Compare uint to uint: StatusCodes.* is a StatusCode in SDK 2.0.0, and mixing it
+            // with the uint Code would compare boxed values of different types.
+            Assert.Equal((uint)StatusCodes.BadInternalError, sr.StatusCode.Code);
         }
 
         [Theory]
-        [InlineData("ok", StatusCodes.Good)]
-        [InlineData("OK", StatusCodes.Good)]
-        [InlineData("success", StatusCodes.Good)]
-        [InlineData("Success", StatusCodes.Good)]
-        public void OnTDActionCalled_returns_Good_when_asset_returns_ok_or_success(string actionResult, uint expectedStatus)
+        [InlineData("ok")]
+        [InlineData("OK")]
+        [InlineData("success")]
+        [InlineData("Success")]
+        public void OnTDActionCalled_returns_Good_when_asset_returns_ok_or_success(string actionResult)
         {
             UANodeManager nm = NewBareInstance();
             AddAsset(nm, "asset-1", new ActionAsset { Result = actionResult });
 
             ServiceResult sr = InvokeOnTdAction(nm, "asset-1");
 
-            Assert.Equal(expectedStatus, sr.StatusCode.Code);
+            // Every case expected StatusCodes.Good, which is no longer a compile-time
+            // constant and so cannot be passed through InlineData.
+            Assert.Equal((uint)StatusCodes.Good, sr.StatusCode.Code);
         }
 
         [Fact]
@@ -404,8 +408,8 @@ namespace Opc.Ua.Edge.Translator.Tests
                 DisplayName = new LocalizedText("en", "act")
             };
 
-            IList<object> inputs = new List<object>();
-            IList<object> outputs = new List<object>();
+            ArrayOf<Variant> inputs = default;
+            List<Variant> outputs = new();
 
             MethodInfo m = _sut.GetMethod("OnTDActionCalled", BindingFlags.NonPublic | BindingFlags.Instance);
             return (ServiceResult)m.Invoke(nm, new object[] { null, method, inputs, outputs });

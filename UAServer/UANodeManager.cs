@@ -2229,7 +2229,9 @@ namespace Opc.Ua.Edge.Translator
                         Program.Telemetry.TagWrites.Add(1);
 
                         // 'value' is a ref parameter and cannot be captured by a lambda.
-                        object valueToWrite = value;
+                        // Unwrap the Variant to the CLR value drivers have always received;
+                        // see VariantConversion for why a plain object assignment is wrong.
+                        object valueToWrite = VariantConversion.ToClrValue(value);
                         AsyncBridge.RunSync(() => asset.WriteAsync(tag, valueToWrite));
 
                         if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
@@ -2269,7 +2271,7 @@ namespace Opc.Ua.Edge.Translator
                 List<object> driverInputs = new(inputArguments.Count);
                 foreach (Variant inputArgument in inputArguments)
                 {
-                    driverInputs.Add(inputArgument.AsBoxedObject());
+                    driverInputs.Add(VariantConversion.ToClrValue(inputArgument));
                 }
 
                 AssetActionResult actionResult = AsyncBridge.RunSync(

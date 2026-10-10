@@ -116,7 +116,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 throw new InvalidOperationException("MockAsset is not connected.");
             }
 
-            string actionName = method.BrowseName?.Name ?? string.Empty;
+            string actionName = method.BrowseName.Name ?? string.Empty;
             var inputsCopy = inputArgs == null
                 ? (IList<object>)new List<object>()
                 : new List<object>(inputArgs);

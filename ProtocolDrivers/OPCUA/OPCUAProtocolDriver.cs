@@ -30,7 +30,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 var client = AsyncBridge.RunSync(() =>
                     DiscoveryClient.CreateAsync(new Uri(Environment.GetEnvironmentVariable("OPC_UA_GDS_ENDPOINT_URL")), Program.Telemetry));
 
-                var servers = AsyncBridge.RunSync(() => client.FindServersAsync(null));
+                var servers = AsyncBridge.RunSync(() => client.FindServersAsync(default));
                 foreach (var server in servers)
                 {
                     Log.Logger.Information($"Server: {server.ApplicationName}");

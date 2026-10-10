@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
     using Opc.Ua.Edge.Translator;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using Xunit;
@@ -139,7 +140,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             return response.Results[0];
         }
 
@@ -153,7 +154,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return ExpandedNodeId.ToNodeId(assetManagement.NodeId, _session.NamespaceUris);
         }
 
-        private async Task<ReferenceDescriptionCollection> BrowseChildrenAsync(NodeId parent)
+        private async Task<List<ReferenceDescription>> BrowseChildrenAsync(NodeId parent)
         {
             BrowseDescription browse = new BrowseDescription
             {
@@ -169,13 +170,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 null,
                 0,
-                new BrowseDescriptionCollection { browse },
+                new ArrayOf<BrowseDescription>(new[] { browse }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
 
-            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+            return response.Results[0].References.ToList();
         }
 
         private async Task<ISession> CreateClientSessionAsync()

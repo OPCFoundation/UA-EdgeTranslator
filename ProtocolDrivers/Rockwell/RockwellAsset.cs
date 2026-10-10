@@ -165,7 +165,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     throw new ArgumentException($"No UDT definition registered for tag '{tag.Address}'.");
                 }
 
-                byte[] body = ((ExtensionObject)value).Body as byte[];
+                // ExtensionObject.Body is obsolete in SDK 2.0.0; read the binary encoding
+                // through the type-safe accessor. A null/empty body maps to null, as before.
+                ExtensionObject extensionObject = (ExtensionObject)value;
+                byte[] body = extensionObject.TryGetAsBinary(out ByteString encodedBody, ServiceMessageContext.CreateEmpty(Program.Telemetry))
+                    && !encodedBody.IsNull
+                    ? encodedBody.ToArray()
+                    : null;
 
                 WriteUdtFromBinaryBody(tag.Address, body, structDef);
 
