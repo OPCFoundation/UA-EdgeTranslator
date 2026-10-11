@@ -267,6 +267,99 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task SeededAsset_setpoint_write_reaches_the_device_exactly_once()
+        {
+            // The write path awaits the driver instead of bridging; the device must
+            // still see exactly one write carrying the client's value.
+            MockAsset asset = GetSeededMockAsset();
+            int writesBefore = asset.Writes.Count(w => w.TagName == "seededasset:setpoint");
+
+            NodeId setpointId = await ResolveAssetChildNodeIdAsync("seededasset", "setpoint").ConfigureAwait(false);
+            WriteResponse response = await WriteValueAsync(setpointId, 17.25f).ConfigureAwait(false);
+
+            Assert.True(StatusCode.IsGood(response.Results[0]), $"Write returned {response.Results[0]}");
+            var setpointWrites = asset.Writes.Where(w => w.TagName == "seededasset:setpoint").ToList();
+            Assert.Equal(writesBefore + 1, setpointWrites.Count);
+            Assert.Equal(17.25f, Convert.ToSingle(setpointWrites[^1].Value));
+        }
+
+        [Fact]
+        public async Task SeededAsset_read_only_tag_write_is_rejected_before_reaching_the_device()
+        {
+            // Access checks must run before any southbound I/O: a write the server
+            // rejects must never be sent to the device.
+            MockAsset asset = GetSeededMockAsset();
+            int writesBefore = asset.Writes.Count;
+
+            NodeId temperatureId = await ResolveAssetChildNodeIdAsync("seededasset", "temperature").ConfigureAwait(false);
+            WriteResponse response = await WriteValueAsync(temperatureId, 99.0f).ConfigureAwait(false);
+
+            Assert.False(StatusCode.IsGood(response.Results[0]), $"Write to a read-only tag returned {response.Results[0]}");
+            Assert.Equal(writesBefore, asset.Writes.Count);
+        }
+
+        [Fact]
+        public async Task SeededAsset_setpoint_write_reaches_the_device_for_a_username_session()
+        {
+            // Real clients authenticate with username/password, which yields a
+            // SystemConfigurationIdentity rather than the anonymous identity the other
+            // tests use. A pre-check that only passed for anonymous sessions once
+            // silently stopped driver writes for every real client.
+            MockAsset asset = GetSeededMockAsset();
+            int writesBefore = asset.Writes.Count(w => w.TagName == "seededasset:setpoint");
+
+            ISession userSession = await CreateClientSessionAsync(new UserIdentity("integration-test", System.Text.Encoding.UTF8.GetBytes("integration-test"))).ConfigureAwait(false);
+            try
+            {
+                NodeId setpointId = await ResolveAssetChildNodeIdAsync("seededasset", "setpoint").ConfigureAwait(false);
+
+                WriteValue writeValue = new WriteValue
+                {
+                    NodeId = setpointId,
+                    AttributeId = Attributes.Value,
+                    Value = new DataValue(new Variant(33.5f))
+                };
+
+                WriteResponse response = await userSession.WriteAsync(
+                    null,
+                    new ArrayOf<WriteValue>(new[] { writeValue }),
+                    System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+                Assert.True(StatusCode.IsGood(response.Results[0]), $"Write returned {response.Results[0]}");
+                var setpointWrites = asset.Writes.Where(w => w.TagName == "seededasset:setpoint").ToList();
+                Assert.Equal(writesBefore + 1, setpointWrites.Count);
+                Assert.Equal(33.5f, Convert.ToSingle(setpointWrites[^1].Value));
+            }
+            finally
+            {
+                await userSession.CloseAsync().ConfigureAwait(false);
+                userSession.Dispose();
+            }
+        }
+
+        private Task<WriteResponse> WriteValueAsync(NodeId nodeId, float value)
+        {
+            WriteValue writeValue = new WriteValue
+            {
+                NodeId = nodeId,
+                AttributeId = Attributes.Value,
+                Value = new DataValue(new Variant(value))
+            };
+
+            return _session.WriteAsync(
+                null,
+                new ArrayOf<WriteValue>(new[] { writeValue }),
+                System.Threading.CancellationToken.None).AsTask();
+        }
+
+        private static MockAsset GetSeededMockAsset()
+        {
+            System.Reflection.FieldInfo field = typeof(UANodeManager).GetField("_assets", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var assets = (System.Collections.Concurrent.ConcurrentDictionary<string, Opc.Ua.Edge.Translator.Interfaces.IAsset>)field.GetValue(UANodeManager.Instance);
+            return Assert.IsType<MockAsset>(assets["seededasset"]);
+        }
+
+        [Fact]
         public async Task SeededAsset_reset_action_dispatches_through_OnTDActionCalled()
         {
             // The seeded TD declares a "reset" action. Calling it via the OPC UA
@@ -685,6 +778,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
     <MaxQueuedRequestCount>500</MaxQueuedRequestCount>
     <UserTokenPolicies>
       <ua:UserTokenPolicy><ua:PolicyId>Anonymous</ua:PolicyId><ua:TokenType>Anonymous_0</ua:TokenType></ua:UserTokenPolicy>
+      <ua:UserTokenPolicy><ua:PolicyId>UserName</ua:PolicyId><ua:TokenType>UserName_1</ua:TokenType><ua:SecurityPolicyUri>http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256</ua:SecurityPolicyUri></ua:UserTokenPolicy>
     </UserTokenPolicies>
     <DiagnosticsEnabled>false</DiagnosticsEnabled>
     <MaxSessionCount>32</MaxSessionCount>
@@ -775,7 +869,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             }
         }
 
-        private async Task<ISession> CreateClientSessionAsync()
+        private Task<ISession> CreateClientSessionAsync() => CreateClientSessionAsync(new UserIdentity());
+
+        private async Task<ISession> CreateClientSessionAsync(IUserIdentity identity)
         {
             EndpointDescription selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(
                 _app.ApplicationConfiguration,
@@ -795,7 +891,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 checkDomain: false,
                 "UAEdgeTranslator seeded TD integration tests",
                 30_000,
-                new UserIdentity(),
+                identity,
                 default).ConfigureAwait(false);
         }
 

@@ -25,7 +25,7 @@ namespace Opc.Ua.Edge.Translator
     // which runs the MethodState.OnCallMethod2Async handlers. CustomNodeManager2
     // already provides CallAsync but does not declare the interface, so without
     // it the server falls back to the synchronous Call path, which ignores them.
-    public class UANodeManager : CustomNodeManager2, ICallAsyncNodeManager
+    public class UANodeManager : CustomNodeManager2, ICallAsyncNodeManager, IWriteAsyncNodeManager
     {
         private uint _lastUsedId = 0;
 
@@ -33,7 +33,7 @@ namespace Opc.Ua.Edge.Translator
         // for "server is shutting down, exit gracefully" and lets us cancel the per-tag
         // sleep without waiting up to a full second for the next iteration.
         private readonly CancellationTokenSource _shutdownCts = new();
-
+ 
         private readonly NodeFactory _nodeFactory;
 
         private BaseObjectState _assetManagement;
@@ -274,6 +274,105 @@ namespace Opc.Ua.Edge.Translator
         {
             RemapTypeDeclarationMethodIds(methodsToCall);
             return base.CallAsync(context, methodsToCall, results, errors, cancellationToken);
+        }
+
+        // Southbound write outcomes for the client Write currently being processed,
+        // keyed by variable NodeId. WriteAsync awaits the driver writes first (with no
+        // lock held) and records the outcome here; the SDK's synchronous Write then
+        // calls OnWriteValue, which applies the recorded outcome instead of doing the
+        // I/O itself. AsyncLocal keeps concurrent client writes isolated.
+        private static readonly AsyncLocal<Dictionary<NodeId, DriverWriteOutcome>> s_pendingDriverWrites = new();
+
+        // Error is set when the write must fail (unknown asset or driver exception);
+        // otherwise Connected decides the value's status code, as before.
+        private readonly record struct DriverWriteOutcome(ServiceResult Error, bool Connected);
+
+        // Declaring IWriteAsyncNodeManager makes the server dispatch Write here, so the
+        // driver I/O is awaited rather than bridged. Everything else (access checks,
+        // range and type validation, auditing, value update) still runs in base.Write.
+        public async ValueTask WriteAsync(
+            OperationContext context,
+            ArrayOf<WriteValue> nodesToWrite,
+            IList<ServiceResult> errors,
+            CancellationToken cancellationToken = default)
+        {
+            Dictionary<NodeId, DriverWriteOutcome> outcomes = null;
+
+            for (int i = 0; i < nodesToWrite.Count; i++)
+            {
+                WriteValue nodeToWrite = nodesToWrite[i];
+                if (nodeToWrite == null
+                    || nodeToWrite.Processed
+                    || nodeToWrite.AttributeId != Attributes.Value
+                    || !_tagIndex.TryGetValue(nodeToWrite.NodeId, out var indexed)
+                    || Find(nodeToWrite.NodeId) is not BaseDataVariableState variable
+                    || !IsDriverWriteAllowed(variable, nodeToWrite))
+                {
+                    continue;
+                }
+
+                outcomes ??= new Dictionary<NodeId, DriverWriteOutcome>();
+                outcomes[nodeToWrite.NodeId] = await WriteToDriverAsync(indexed.AssetId, indexed.Tag, nodeToWrite.Value.WrappedValue, cancellationToken).ConfigureAwait(false);
+            }
+
+            Dictionary<NodeId, DriverWriteOutcome> previous = s_pendingDriverWrites.Value;
+            s_pendingDriverWrites.Value = outcomes;
+            try
+            {
+                base.Write(context, nodesToWrite, errors);
+            }
+            finally
+            {
+                s_pendingDriverWrites.Value = previous;
+            }
+        }
+
+        // Mirrors the checks the SDK's own Write applies before it calls OnWriteValue,
+        // so a write the server will reject is never sent to the device. Only checks
+        // base.Write really performs belong here: an extra check would silently drop
+        // writes the server would otherwise accept.
+        private bool IsDriverWriteAllowed(BaseDataVariableState variable, WriteValue nodeToWrite)
+        {
+            if (IsInProvisioningMode() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IGNORE_PROVISIONING_MODE")))
+            {
+                return false;
+            }
+
+            if ((variable.AccessLevel & AccessLevels.CurrentWrite) == 0
+                || (variable.UserAccessLevel & AccessLevels.CurrentWrite) == 0)
+            {
+                return false;
+            }
+
+            return string.IsNullOrEmpty(nodeToWrite.IndexRange);
+        }
+
+        private async ValueTask<DriverWriteOutcome> WriteToDriverAsync(string assetId, AssetTag tag, Variant value, CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (!_assets.TryGetValue(assetId, out IAsset asset))
+                {
+                    Program.Telemetry.TagWriteErrors.Add(1);
+                    return new DriverWriteOutcome(new ServiceResult(StatusCodes.BadDataUnavailable), false);
+                }
+
+                Program.Telemetry.TagWrites.Add(1);
+
+                // Unwrap the Variant to the CLR value drivers have always received;
+                // see VariantConversion for why a plain object assignment is wrong.
+                await asset.WriteAsync(tag, VariantConversion.ToClrValue(value), cancellationToken).ConfigureAwait(false);
+
+                return new DriverWriteOutcome(null, asset.IsConnected);
+            }
+            catch (Exception ex)
+            {
+                Program.Telemetry.TagWriteErrors.Add(1);
+                // Log full exception server-side, return only a generic status to the
+                // OPC UA client to avoid leaking internal exception text or stack traces.
+                Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
+                return new DriverWriteOutcome(new ServiceResult(StatusCodes.BadDataUnavailable), false);
+            }
         }
 
         private void RemapTypeDeclarationMethodIds(ArrayOf<CallMethodRequest> methodsToCall)
@@ -2253,48 +2352,33 @@ namespace Opc.Ua.Edge.Translator
                 // of scanning every (asset, tag) pair on every write.
                 if (_tagIndex.TryGetValue(variable.NodeId, out var indexed))
                 {
-                    string assetId = indexed.AssetId;
                     AssetTag tag = indexed.Tag;
 
-                    try
+                    // The driver write was already awaited in WriteAsync (no lock held,
+                    // no sync-over-async); apply its outcome here. The server always
+                    // dispatches Write through WriteAsync (IWriteAsyncNodeManager), so a
+                    // missing outcome means the SDK pre-checks rejected the write and no
+                    // southbound I/O was attempted.
+                    if (s_pendingDriverWrites.Value is not { } pending
+                        || !pending.TryGetValue(variable.NodeId, out DriverWriteOutcome outcome))
                     {
-                        if (!_assets.TryGetValue(assetId, out IAsset asset))
-                        {
-                            Program.Telemetry.TagWriteErrors.Add(1);
-                            return new ServiceResult(StatusCodes.BadDataUnavailable);
-                        }
-
-                        Program.Telemetry.TagWrites.Add(1);
-
-                        // 'value' is a ref parameter and cannot be captured by a lambda.
-                        // Unwrap the Variant to the CLR value drivers have always received;
-                        // see VariantConversion for why a plain object assignment is wrong.
-                        object valueToWrite = VariantConversion.ToClrValue(value);
-
-                        // Still bridged: CustomNodeManager2 has only a synchronous Write, so the
-                        // SDK never calls BaseVariableState.OnWriteValueAsync on this base class.
-                        // Async writes need the AsyncCustomNodeManager base.
-                        AsyncBridge.RunSync(() => asset.WriteAsync(tag, valueToWrite));
-
-                        if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
-                        {
-                            cached.Value = value;
-                            cached.Timestamp = DateTime.UtcNow;
-                            cached.ClearChangeMasks(SystemContext, true);
-                        }
-
-                        statusCode = asset.IsConnected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
-                        return ServiceResult.Good;
+                        return new ServiceResult(StatusCodes.BadNotWritable);
                     }
-                    catch (Exception ex)
+
+                    if (outcome.Error != null)
                     {
-                        Program.Telemetry.TagWriteErrors.Add(1);
-                        // Log full exception server-side, return only a generic
-                        // status to the OPC UA client to avoid leaking internal
-                        // exception text or stack traces over the wire.
-                        Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", tag.Name);
-                        return new ServiceResult(StatusCodes.BadDataUnavailable);
+                        return outcome.Error;
                     }
+
+                    if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
+                    {
+                        cached.Value = value;
+                        cached.Timestamp = DateTime.UtcNow;
+                        cached.ClearChangeMasks(SystemContext, true);
+                    }
+
+                    statusCode = outcome.Connected ? StatusCodes.Good : StatusCodes.BadDataUnavailable;
+                    return ServiceResult.Good;
                 }
             }
 
