@@ -82,7 +82,7 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             ServiceResult sr = (ServiceResult)m.Invoke(
                 nm,
-                new object[] { null, null, new List<object> { null }, new List<object>() });
+                new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[] { null }), new List<Variant>() });
 
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
@@ -97,7 +97,7 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             ServiceResult sr = (ServiceResult)m.Invoke(
                 nm,
-                new object[] { null, null, new List<object> { null, null }, new List<object>() });
+                new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[] { null, null }), new List<Variant>() });
 
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
@@ -121,7 +121,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                 MethodInfo m = _sut.GetMethod("OnDiscoverAssets", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
                 ServiceResult sr = (ServiceResult)m.Invoke(
                     nm,
-                    new object[] { null, null, new List<object>(), new List<object> { null } });
+                    new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[0]), new List<Variant> { default } });
 
                 Assert.Equal((StatusCode)StatusCodes.BadTimeout, sr.StatusCode);
             }
@@ -178,7 +178,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             MethodInfo parse = _sut.GetMethod("ParseExpandedNodeId", BindingFlags.NonPublic | BindingFlags.Instance);
             object result = parse.Invoke(nm, new object[] { "nsu=http://not-registered/;i=42" });
 
-            Assert.Null(result);
+            NodeIdAssert.IsNullId(result);
         }
 
         // ---------------- Dispose double-cancel safety ----------------

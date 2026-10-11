@@ -75,7 +75,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = dataTypeId,
                 BrowseName = new QualifiedName(_structTypeName, ns),
-                DisplayName = _structTypeName,
+                DisplayName = new LocalizedText(_structTypeName),
                 SuperTypeId = DataTypeIds.Structure,
                 DataTypeDefinition = new ExtensionObject(definition)
             };
@@ -84,10 +84,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             // Encode an instance the same way UANodeManager.EncodeField does:
             // positional binary encoding, fields in declaration order.
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
+            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry, manager.Server.Factory)
             {
-                NamespaceUris = manager.Server.NamespaceUris,
-                Factory = manager.Server.Factory
+                NamespaceUris = manager.Server.NamespaceUris
             });
 
             encoder.WriteFloat("Speed", 12.5f);
@@ -101,13 +100,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = _variableNodeId,
                 BrowseName = new QualifiedName("ExplorerTestStructValue", ns),
-                DisplayName = "ExplorerTestStructValue",
+                DisplayName = new LocalizedText("ExplorerTestStructValue"),
                 TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 DataType = dataTypeId,
                 ValueRank = ValueRanks.Scalar,
                 AccessLevel = AccessLevels.CurrentRead,
                 UserAccessLevel = AccessLevels.CurrentRead,
-                Value = new ExtensionObject(dataTypeId, encoder.CloseAndReturnBuffer())
+                Value = Variant.From(new ExtensionObject(dataTypeId, new ByteString(encoder.CloseAndReturnBuffer())))
             };
 
             manager.AddPredefinedNodePublic(variable);
@@ -200,15 +199,14 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = dataTypeId,
                 BrowseName = new QualifiedName("UnsupportedFieldStructType", ns),
-                DisplayName = "UnsupportedFieldStructType",
+                DisplayName = new LocalizedText("UnsupportedFieldStructType"),
                 SuperTypeId = DataTypeIds.Structure,
                 DataTypeDefinition = new ExtensionObject(definition)
             });
 
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
+            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry, manager.Server.Factory)
             {
-                NamespaceUris = manager.Server.NamespaceUris,
-                Factory = manager.Server.Factory
+                NamespaceUris = manager.Server.NamespaceUris
             });
 
             encoder.WriteInt32("Ok", 7);
@@ -219,13 +217,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = nodeId,
                 BrowseName = new QualifiedName("UnsupportedFieldStructValue", ns),
-                DisplayName = "UnsupportedFieldStructValue",
+                DisplayName = new LocalizedText("UnsupportedFieldStructValue"),
                 TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 DataType = dataTypeId,
                 ValueRank = ValueRanks.Scalar,
                 AccessLevel = AccessLevels.CurrentRead,
                 UserAccessLevel = AccessLevels.CurrentRead,
-                Value = new ExtensionObject(dataTypeId, encoder.CloseAndReturnBuffer())
+                Value = Variant.From(new ExtensionObject(dataTypeId, new ByteString(encoder.CloseAndReturnBuffer())))
             });
 
             NodeDetail detail = await _service.GetNodeDetailAsync(nodeId.ToString()).ConfigureAwait(false);

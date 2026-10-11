@@ -511,6 +511,7 @@ namespace Opc.Ua.Edge.Translator
             // create file node to upload local nodeset files to the server
             FileState fileNode = new(_assetManagement);
             fileNode.Create(SystemContext, new NodeId("NodesetFileUpload", WoTConNamespaceIndex), new QualifiedName("NodesetFileUpload"), Ua.LocalizedText.Null, false);
+            fileNode.ReferenceTypeId = ReferenceTypeIds.HasComponent;
             _assetManagement.AddChild(fileNode);
 
             FileManager fileManager = new(this, fileNode);
@@ -732,6 +733,7 @@ namespace Opc.Ua.Edge.Translator
                 FileState fileNode = new(asset);
                 fileNode.Create(SystemContext, new NodeId(), new QualifiedName("WoTFile", WoTConNamespaceIndex), Ua.LocalizedText.Null, true);
                 fileNode.TypeDefinitionId = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cWoTAssetFileType, _cWotCon), Server.NamespaceUris);
+                fileNode.ReferenceTypeId = ReferenceTypeIds.HasComponent;
                 asset.AddChild(fileNode);
 
                 _assetManagement.AddReference(ReferenceTypeIds.Organizes, false, asset.NodeId);
@@ -775,7 +777,9 @@ namespace Opc.Ua.Edge.Translator
             ev.Changes = ev.CreateOrReplaceChanges(SystemContext, null, false);
             ev.Changes.Value = new ArrayOf<ModelChangeStructureDataType>(changes);
 
-            ev.SetChildValue(SystemContext, BrowseNames.SourceNode, _assetManagement, false);
+            // SourceNode is NodeId-typed (OPC UA Part 5 BaseEventType); pass the node's id,
+            // not the node object itself.
+            ev.SetChildValue(SystemContext, BrowseNames.SourceNode, _assetManagement?.NodeId ?? NodeId.Null, false);
             ev.SetChildValue(SystemContext, BrowseNames.SourceName, "AssetManagement", false);
 
             Server.ReportEvent(ev);

@@ -50,7 +50,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
             NodeId methodId = await ResolveAssetManagementChildAsync("CreateAssetForEndpoint").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(methodId));
+            Assert.False(methodId.IsNull);
 
             CallMethodResult result = await CallMethodRawAsync(
                 assetManagement,
@@ -95,7 +95,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
             NodeId methodId = await ResolveAssetManagementChildAsync("ConnectionTest").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(methodId));
+            Assert.False(methodId.IsNull);
 
             CallMethodResult result = await CallMethodRawAsync(
                 assetManagement,
@@ -142,8 +142,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     new object[] { "127.0.0.1:" + port }).ConfigureAwait(false);
 
                 Assert.True(StatusCode.IsGood(result.StatusCode), $"ConnectionTest returned {result.StatusCode}");
-                Assert.NotEmpty(result.OutputArguments);
-                Assert.True((bool)result.OutputArguments[0].Value);
+                Assert.True(result.OutputArguments.Count > 0);
+                Assert.True((bool)result.OutputArguments[0].ClrValue());
             }
             finally
             {
@@ -156,7 +156,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
             NodeId methodId = await ResolveAssetManagementChildAsync("DiscoverAssets").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(methodId));
+            Assert.False(methodId.IsNull);
 
             CallMethodResult result = await CallMethodRawAsync(
                 assetManagement,
@@ -164,9 +164,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 Array.Empty<object>()).ConfigureAwait(false);
 
             Assert.True(StatusCode.IsGood(result.StatusCode), $"DiscoverAssets returned {result.StatusCode}");
-            Assert.NotEmpty(result.OutputArguments);
+            Assert.True(result.OutputArguments.Count > 0);
 
-            string[] endpoints = result.OutputArguments[0].Value as string[];
+            string[] endpoints = result.OutputArguments[0].ClrValue() as string[];
             Assert.NotNull(endpoints);
         }
 
@@ -193,12 +193,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 "UAEdgeTranslator wot-method tests",
                 30_000,
                 new UserIdentity(),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
         }
 
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
             ReferenceDescription assetManagement = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "WoTAssetConnectionManagement", StringComparison.Ordinal));
 
@@ -209,7 +209,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveAssetManagementChildAsync(string browseName)
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             ReferenceDescription target = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, browseName, StringComparison.Ordinal));
 
@@ -249,14 +249,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 ObjectId = objectId,
                 MethodId = methodId,
-                InputArguments = inputArgs == null
-                    ? new VariantCollection()
-                    : new VariantCollection(inputArgs.Select(a => new Variant(a)))
+                InputArguments = ArrayOfTestExtensions.ToVariantArray(inputArgs)
             };
 
             CallResponse response = await _session.CallAsync(
                 null,
-                new CallMethodRequestCollection { request },
+                new ArrayOf<CallMethodRequest>(new[] { request }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);

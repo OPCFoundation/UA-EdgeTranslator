@@ -164,7 +164,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                 BrowseName = new QualifiedName("dateVar", 1),
                 DisplayName = new LocalizedText("en", "dateVar"),
                 DataType = new NodeId((uint)DataTypes.DateTime, 0),
-                Value = DateTime.MinValue
+                Value = Variant.From((DateTimeUtc)DateTime.MinValue)
             };
 
             AddUaVariable(nm, "dateVar", variable);
@@ -175,7 +175,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             MethodInfo update = _sut.GetMethod("UpdateUAServerVariable", BindingFlags.NonPublic | BindingFlags.Instance);
             update.Invoke(nm, new object[] { tag, offset, true });
 
-            Assert.Equal(offset.UtcDateTime, variable.Value);
+            Assert.Equal(offset.UtcDateTime, VariantConversion.ToClrValue(variable.Value));
         }
 
         // ---------------- UpdateUAServerProperty ----------------

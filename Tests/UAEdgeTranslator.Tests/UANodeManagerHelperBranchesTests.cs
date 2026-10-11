@@ -67,7 +67,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         {
             UANodeManager nm = NewBareInstance();
             EnsureProgramTelemetry();
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
 
             StructureField field = new()
             {
@@ -98,7 +98,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         {
             UANodeManager nm = NewBareInstance();
             EnsureProgramTelemetry();
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
 
             StructureField field = new()
             {
@@ -119,7 +119,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         {
             UANodeManager nm = NewBareInstance();
             EnsureProgramTelemetry();
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
 
             StructureField field = new()
             {

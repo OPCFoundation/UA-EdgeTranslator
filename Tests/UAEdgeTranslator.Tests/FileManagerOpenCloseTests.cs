@@ -56,7 +56,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             object handle = Activator.CreateInstance(_handleType);
             _handleType.GetField("Stream").SetValue(handle, stream);
             _handleType.GetField("Writing").SetValue(handle, writing);
-            _handleType.GetField("SessionId").SetValue(handle, session ?? NodeId.Null);
+            _handleType.GetField("SessionId").SetValue(handle, session);
             _handleType.GetField("Position").SetValue(handle, 0u);
 
             IDictionary map = GetHandles(fm);
@@ -98,7 +98,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             FileManager fm = NewBareFileManager();
             for (int i = 0; i < 10; i++)
             {
-                AddHandle(fm, new MemoryStream(), writing: false, session: null);
+                AddHandle(fm, new MemoryStream(), writing: false, session: NodeId.Null);
             }
 
             MethodInfo onOpen = _sut.GetMethod("OnOpen", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -180,7 +180,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         {
             // Use FileState (which exposes a settable OpenCount property surface).
             Opc.Ua.FileState fs = new(null);
-            fs.OpenCount = new Opc.Ua.PropertyState<ushort>(fs);
+            fs.OpenCount = Opc.Ua.PropertyState<ushort>.With<Opc.Ua.VariantBuilder>(fs);
             return fs;
         }
     }

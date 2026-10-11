@@ -42,6 +42,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 ApplicationUri = config?.ApplicationUri ?? string.Empty,
                 ProductUri = config?.ProductUri ?? string.Empty,
                 Version = GetVersion(),
+                BuildNumber = GetBuildNumber(),
                 Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
                 HostName = Environment.MachineName,
                 Endpoints = GetEndpoints(config),
@@ -728,10 +729,33 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string GetVersion()
         {
+            Version version = typeof(Program).Assembly.GetName().Version;
+            return version is null ? "unknown" : version.ToString(3);
+        }
+
+        // Build number = the 4th component of the file version (the CI run number,
+        // 0 for local builds), followed by the short commit hash when the
+        // informational version carries one ("<version>+<sha>").
+        private static string GetBuildNumber()
+        {
             Assembly assembly = typeof(Program).Assembly;
-            return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-                ?? assembly.GetName().Version?.ToString()
-                ?? "unknown";
+
+            string build = "0";
+            string fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+            if (System.Version.TryParse(fileVersion, out Version parsed) && parsed.Revision >= 0)
+            {
+                build = Num(parsed.Revision);
+            }
+
+            string informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            int plus = informational?.IndexOf('+', StringComparison.Ordinal) ?? -1;
+            if (plus >= 0 && plus < informational.Length - 1)
+            {
+                string commit = informational[(plus + 1)..];
+                return build + " (" + (commit.Length > 7 ? commit[..7] : commit) + ")";
+            }
+
+            return build;
         }
 
         private static string Num(IFormattable value)

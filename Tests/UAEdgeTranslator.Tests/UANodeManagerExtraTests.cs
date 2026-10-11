@@ -182,7 +182,7 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             // For these inputs the helper returns null because either the
             // format check fails before any namespace lookup, or input is empty.
-            Assert.Null(result);
+            NodeIdAssert.IsNullId(result);
         }
 
         // ---------------- private helpers ----------------

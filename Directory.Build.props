@@ -14,7 +14,7 @@
 	<RepositoryUrl>https://github.com/OPCFoundation/UA-EdgeTranslator</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
 
-	<VersionPrefix>1.1.0</VersionPrefix>
+	<VersionPrefix>1.2.0</VersionPrefix>
 
 	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

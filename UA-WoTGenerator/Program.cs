@@ -813,11 +813,11 @@
         {
             CAEXDocument doc = CAEXDocument.LoadFromString(File.ReadAllText(filename));
 
-            ThingDescription td = new()
+            ThingDescription td = new ThingDescription()
             {
                 Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
                 Id = "urn:" + Path.GetFileNameWithoutExtension(filename),
-                SecurityDefinitions = new() { NosecSc = new NosecSc() { Scheme = "nosec" } },
+                SecurityDefinitions = new SecurityDefinitions() { NosecSc = new NosecSc() { Scheme = "nosec" } },
                 Security = new string[1] { "nosec_sc" },
                 Type = new string[1] { "tm:ThingModel" },
                 Name = "{{name}}",

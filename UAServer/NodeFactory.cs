@@ -49,6 +49,7 @@
                 NodeId = new NodeId(nodeIdentifier ?? name, namespaceIndex),
                 BrowseName = new QualifiedName(name, namespaceIndex),
                 DisplayName = new LocalizedText(name),
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 TypeDefinitionId = ExpandedNodeId.ToNodeId(type, _manager.Server.NamespaceUris)
             };
 

@@ -158,12 +158,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 BaseDataType = DataTypeIds.Structure,
                 StructureType = StructureType.Structure,
-                Fields = new StructureFieldCollection(fields.Select(f => new StructureField
+                Fields = new ArrayOf<StructureField>(fields.Select(f => new StructureField
                 {
                     Name = f.Name,
                     DataType = new NodeId(f.DataType),
                     ValueRank = ValueRanks.Scalar
-                }))
+                }).ToArray())
             };
 
             NodeId dataTypeId = new(typeName + "Type", _namespaceIndex);
@@ -172,15 +172,14 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = dataTypeId,
                 BrowseName = new QualifiedName(typeName + "Type", _namespaceIndex),
-                DisplayName = typeName + "Type",
+                DisplayName = new LocalizedText(typeName + "Type"),
                 SuperTypeId = DataTypeIds.Structure,
                 DataTypeDefinition = new ExtensionObject(definition)
             });
 
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry)
+            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry, manager.Server.Factory)
             {
-                NamespaceUris = manager.Server.NamespaceUris,
-                Factory = manager.Server.Factory
+                NamespaceUris = manager.Server.NamespaceUris
             });
 
             foreach ((uint dataType, string name, object value, _) in fields)
@@ -209,13 +208,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = nodeId,
                 BrowseName = new QualifiedName(typeName + "Value", _namespaceIndex),
-                DisplayName = typeName + "Value",
+                DisplayName = new LocalizedText(typeName + "Value"),
                 TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 DataType = dataTypeId,
                 ValueRank = ValueRanks.Scalar,
                 AccessLevel = AccessLevels.CurrentRead,
                 UserAccessLevel = AccessLevels.CurrentRead,
-                Value = new ExtensionObject(dataTypeId, encoder.CloseAndReturnBuffer())
+                Value = Variant.From(new ExtensionObject(dataTypeId, new ByteString(encoder.CloseAndReturnBuffer())))
             });
 
             return nodeId;

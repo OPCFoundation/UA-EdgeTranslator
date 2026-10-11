@@ -40,9 +40,9 @@ namespace WotOpcUaMapper.UAClientLib
             }
 
             using Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(nodesetXml));
-            UANodeSet nodeSet = UANodeSet.Read(stream);
+            UANodeSet? nodeSet = UANodeSet.Read(stream);
 
-            if ((nodeSet.NamespaceUris == null) || (nodeSet.NamespaceUris.Length == 0))
+            if ((nodeSet?.NamespaceUris == null) || (nodeSet.NamespaceUris.Length == 0))
             {
                 return;
             }
@@ -78,7 +78,12 @@ namespace WotOpcUaMapper.UAClientLib
             using Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(nodesetXml));
 
             // import nodes
-            UANodeSet nodeSet = UANodeSet.Read(stream);
+            UANodeSet? nodeSet = UANodeSet.Read(stream);
+            if ((nodeSet?.NamespaceUris == null) || (nodeSet.NamespaceUris.Length == 0) || (nodeSet.Items == null))
+            {
+                return;
+            }
+
             NodeStateCollection predefinedNodes = new NodeStateCollection();
             nodeSet.Import(SystemContext, predefinedNodes);
 
@@ -96,7 +101,7 @@ namespace WotOpcUaMapper.UAClientLib
             }
 
             // add references for our top-level nodes to the objects folder
-            Server.NodeManager.GetManagerHandle(ObjectIds.ObjectsFolder, out INodeManager objectsFolderNodeManager);
+            Server.NodeManager.GetManagerHandle(ObjectIds.ObjectsFolder, out INodeManager? objectsFolderNodeManager);
             string namespaceUri = nodeSet.NamespaceUris[0];
 
             foreach (UANode node in nodeSet.Items)
@@ -104,7 +109,7 @@ namespace WotOpcUaMapper.UAClientLib
                 if (node is UAObject uAObject)
                 {
                     if ((uAObject.ParentNodeId == ObjectIds.ObjectsFolder.ToString())
-                     || (uAObject.References.Where(r => (r.ReferenceType == "Organizes") && (r.Value == ObjectIds.ObjectsFolder.ToString())).ToList().Count > 0))
+                     || ((uAObject.References != null) && uAObject.References.Where(r => (r.ReferenceType == "Organizes") && (r.Value == ObjectIds.ObjectsFolder.ToString())).ToList().Count > 0))
                     {
                         if ((node.DisplayName != null) && (node.DisplayName.Length > 0))
                         {
@@ -113,7 +118,7 @@ namespace WotOpcUaMapper.UAClientLib
                                 new NodeStateReference(
                                     ReferenceTypeIds.Organizes,
                                     false,
-                                    new NodeId(NodeId.Parse(uAObject.NodeId).Identifier,
+                                    NodeId.Parse(uAObject.NodeId ?? string.Empty).WithNamespaceIndex(
                                     (ushort)Server.NamespaceUris.GetIndex(namespaceUri))
                                 )
                             };
@@ -123,7 +128,7 @@ namespace WotOpcUaMapper.UAClientLib
                                 { ObjectIds.ObjectsFolder, references }
                             };
 
-                            objectsFolderNodeManager.AddReferences(dictionary);
+                            objectsFolderNodeManager?.AddReferences(dictionary);
                         }
                     }
                 }

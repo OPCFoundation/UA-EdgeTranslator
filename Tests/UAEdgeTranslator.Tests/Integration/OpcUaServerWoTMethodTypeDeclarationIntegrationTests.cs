@@ -75,8 +75,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.NotEqual((StatusCode)StatusCodes.BadMethodInvalid, result.StatusCode);
             Assert.True(StatusCode.IsGood(result.StatusCode), $"CreateAsset (form 2) returned {result.StatusCode}");
 
-            NodeId newId = Assert.IsType<NodeId>(result.OutputArguments[0].Value);
-            Assert.False(NodeId.IsNull(newId));
+            NodeId newId = Assert.IsType<NodeId>(result.OutputArguments[0].ClrValue());
+            Assert.False(newId.IsNull);
         }
 
         [Fact]
@@ -90,7 +90,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             CallMethodResult created = await CallMethodRawAsync(
                 assetManagement, createInstance, new object[] { assetName }).ConfigureAwait(false);
             Assert.True(StatusCode.IsGood(created.StatusCode), $"CreateAsset setup returned {created.StatusCode}");
-            NodeId assetId = (NodeId)created.OutputArguments[0].Value;
+            NodeId assetId = (NodeId)created.OutputArguments[0].ClrValue();
 
             NodeId methodId = TypeDeclarationNodeId(_typeDeleteAsset);
             CallMethodResult result = await CallMethodRawAsync(
@@ -161,10 +161,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             CallMethodResult created = await CallMethodRawAsync(
                 assetManagement, createInstance, new object[] { assetName }).ConfigureAwait(false);
             Assert.True(StatusCode.IsGood(created.StatusCode), $"CreateAsset setup returned {created.StatusCode}");
-            NodeId assetId = (NodeId)created.OutputArguments[0].Value;
+            NodeId assetId = (NodeId)created.OutputArguments[0].ClrValue();
 
             NodeId wotFile = await ResolveChildNodeIdAsync(assetId, "WoTFile").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(wotFile), "WoTFile component not found under the created asset.");
+            Assert.False(wotFile.IsNull, "WoTFile component not found under the created asset.");
 
             // Call CloseAndUpdate via the WoTAssetFileType declaration (i=111)
             // with an unknown file handle. The handler returns BadInvalidArgument
@@ -229,12 +229,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 "UAEdgeTranslator wot-method type-declaration tests",
                 30_000,
                 new UserIdentity(),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
         }
 
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
             ReferenceDescription assetManagement = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "WoTAssetConnectionManagement", StringComparison.Ordinal));
 
@@ -250,7 +250,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
         private async Task<NodeId> ResolveChildNodeIdAsync(NodeId parent, string browseName)
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(parent).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(parent).ConfigureAwait(false);
             ReferenceDescription target = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, browseName, StringComparison.Ordinal));
 
@@ -290,14 +290,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 ObjectId = objectId,
                 MethodId = methodId,
-                InputArguments = inputArgs == null
-                    ? new VariantCollection()
-                    : new VariantCollection(inputArgs.Select(a => new Variant(a)))
+                InputArguments = ArrayOfTestExtensions.ToVariantArray(inputArgs)
             };
 
             CallResponse response = await _session.CallAsync(
                 null,
-                new CallMethodRequestCollection { request },
+                new ArrayOf<CallMethodRequest>(new[] { request }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);

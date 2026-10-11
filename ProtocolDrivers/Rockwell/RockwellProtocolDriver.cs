@@ -520,6 +520,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 nsProperty.NodeId = new NodeId(namespaceUri + ".BinarySchema.NamespaceUri", namespaceIndex);
                 nsProperty.BrowseName = new QualifiedName("NamespaceUri", 0);
                 nsProperty.DisplayName = new LocalizedText("en", "NamespaceUri");
+                nsProperty.ReferenceTypeId = ReferenceTypeIds.HasProperty;
                 nsProperty.TypeDefinitionId = VariableTypeIds.PropertyType;
                 nsProperty.DataType = DataTypeIds.String;
                 nsProperty.ValueRank = ValueRanks.Scalar;
@@ -538,6 +539,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 NodeId = descriptionNodeId,
                 BrowseName = new QualifiedName(structDef.TypeName, namespaceIndex),
                 DisplayName = new LocalizedText("en", structDef.TypeName),
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 TypeDefinitionId = VariableTypeIds.DataTypeDescriptionType,
                 DataType = DataTypeIds.String,
                 ValueRank = ValueRanks.Scalar,

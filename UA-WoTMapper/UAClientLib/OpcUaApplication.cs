@@ -60,15 +60,7 @@ namespace WotOpcUaMapper.UAClientLib
                     throw new InvalidOperationException("OPC UA application instance certificate is invalid and could not be created.");
                 }
 
-                config.CertificateValidator = new CertificateValidator(Telemetry);
-                config.CertificateValidator.CertificateValidation += (validator, e) =>
-                {
-                    if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
-                    {
-                        e.Accept = true;
-                    }
-                };
-                await config.CertificateValidator.UpdateAsync(config).ConfigureAwait(false);
+                config.CertificateManager.AcceptError = (certificate, error) => error.StatusCode == StatusCodes.BadCertificateUntrusted;
 
                 App = app;
                 _initialized = true;

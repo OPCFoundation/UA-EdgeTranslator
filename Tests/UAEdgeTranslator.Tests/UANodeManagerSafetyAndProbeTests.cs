@@ -117,8 +117,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            IList<object> inputs = new List<object> { null };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { null });
+            List<Variant> outputs = new() { default, default };
 
             object res = m.Invoke(nm, new object[] { null, null, inputs, outputs });
             ServiceResult sr = (ServiceResult)res;
@@ -131,8 +131,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            IList<object> inputs = new List<object> { "hostonly" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "hostonly" });
+            List<Variant> outputs = new() { default, default };
 
             ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
@@ -150,8 +150,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             // throw a SocketException (ConnectionRefused) almost immediately,
             // exercising the generic catch branch -> BadNotFound. Wrap in a
             // scheme so the URI parser doesn't claim "127.0.0.1" as a scheme.
-            IList<object> inputs = new List<object> { "tcp://127.0.0.1:1" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "tcp://127.0.0.1:1" });
+            List<Variant> outputs = new() { default, default };
 
             ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
             Assert.Equal((StatusCode)StatusCodes.BadNotFound, sr.StatusCode);
@@ -175,8 +175,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             // Use a routable port that won't accept fast on most hosts so we
             // really hit the cancellation path; even loopback to a closed port
             // should still cancel before the SocketException surfaces.
-            IList<object> inputs = new List<object> { "tcp://127.0.0.1:1" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "tcp://127.0.0.1:1" });
+            List<Variant> outputs = new() { default, default };
 
             ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
             // Either the connection failed (BadNotFound) or was cancelled (BadNotFound).

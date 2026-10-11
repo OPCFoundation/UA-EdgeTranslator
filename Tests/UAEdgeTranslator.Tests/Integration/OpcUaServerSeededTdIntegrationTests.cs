@@ -151,7 +151,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // LoadLocalWoTFilesAsync -> OnboardAssetFromWoTFileAsync pipeline at
             // startup. Browse AssetManagement and verify the asset is present.
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
 
             Assert.Contains(children, r => string.Equals(r.DisplayName.Text, "seededasset", StringComparison.Ordinal));
             // The unsafe-name file must NOT have produced an asset.
@@ -162,12 +162,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         public async Task SeededAsset_temperature_node_can_be_browsed()
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             ReferenceDescription assetRef = children.First(r =>
                 string.Equals(r.DisplayName.Text, "seededasset", StringComparison.Ordinal));
 
             NodeId assetNodeId = ExpandedNodeId.ToNodeId(assetRef.NodeId, _session.NamespaceUris);
-            ReferenceDescriptionCollection assetChildren = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
+            List<ReferenceDescription> assetChildren = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
 
             Assert.Contains(assetChildren, r => string.Equals(r.BrowseName.Name, "temperature", StringComparison.Ordinal));
             Assert.Contains(assetChildren, r => string.Equals(r.BrowseName.Name, "reset", StringComparison.Ordinal));
@@ -177,7 +177,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         public async Task SeededAsset_namespace_uri_is_published()
         {
             DataValue value = await _session.ReadValueAsync(VariableIds.Server_NamespaceArray).ConfigureAwait(false);
-            string[] namespaces = Assert.IsType<string[]>(value.Value);
+            string[] namespaces = Assert.IsType<string[]>(value.ClrValue());
             Assert.Contains("http://opcfoundation.org/UA/seededasset/", namespaces);
         }
 
@@ -189,19 +189,29 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // (regression: "integer" previously fell through to String).
             NodeId methodId = await ResolveAssetChildNodeIdAsync("seededasset", "compute").ConfigureAwait(false);
 
-            ReferenceDescriptionCollection methodChildren = await BrowseChildrenAsync(methodId).ConfigureAwait(false);
+            List<ReferenceDescription> methodChildren = await BrowseChildrenAsync(methodId).ConfigureAwait(false);
             ReferenceDescription inputArgsRef = methodChildren.First(
                 r => string.Equals(r.BrowseName.Name, "InputArguments", StringComparison.Ordinal));
 
             NodeId inputArgsId = ExpandedNodeId.ToNodeId(inputArgsRef.NodeId, _session.NamespaceUris);
             DataValue value = await _session.ReadValueAsync(inputArgsId).ConfigureAwait(false);
 
-            Argument[] arguments = value.Value switch
+            Argument[] arguments = value.ClrValue() switch
             {
-                ExtensionObject[] extensions => extensions.Select(eo => (Argument)eo.Body).ToArray(),
+                ExtensionObject[] extensions => extensions.Select(DecodeArgument).ToArray(),
                 Argument[] typed => typed,
-                _ => throw new InvalidOperationException($"Unexpected InputArguments value type: {value.Value?.GetType().Name ?? "null"}")
+                _ => throw new InvalidOperationException($"Unexpected InputArguments value type: {value.ClrValue()?.GetType().Name ?? "null"}")
             };
+
+            // ExtensionObject.Body is obsolete in SDK 2.0.0; use the type-safe accessor and
+            // fail loudly if a body cannot be decoded as an Argument.
+            Argument DecodeArgument(ExtensionObject extension)
+            {
+                Assert.True(
+                    extension.TryGetValue(out Argument argument, _session.MessageContext),
+                    "InputArguments entry could not be decoded as an Argument.");
+                return argument;
+            }
 
             Argument xArgument = arguments.First(a => string.Equals(a.Name, "x", StringComparison.Ordinal));
             Assert.Equal(DataTypeIds.Int32, xArgument.DataType);
@@ -242,7 +252,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             WriteResponse response = await _session.WriteAsync(
                 null,
-                new WriteValueCollection { writeValue },
+                new ArrayOf<WriteValue>(new[] { writeValue }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
@@ -253,7 +263,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // from the cached BaseDataVariableState.
             DataValue readBack = await _session.ReadValueAsync(setpointId).ConfigureAwait(false);
             Assert.True(StatusCode.IsGood(readBack.StatusCode));
-            Assert.Equal(42.5f, Convert.ToSingle(readBack.Value));
+            Assert.Equal(42.5f, Convert.ToSingle(readBack.ClrValue()));
         }
 
         [Fact]
@@ -292,7 +302,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.True(StatusCode.IsGood(result.StatusCode), $"DeleteAsset returned {result.StatusCode}");
 
             // After deletion the asset should no longer be a child of AssetManagement.
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             Assert.DoesNotContain(children, r => string.Equals(r.DisplayName.Text, "seededasset", StringComparison.Ordinal));
         }
 
@@ -323,7 +333,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // and create a BaseDataVariableState whose BrowseName matches the
             // dictionary key.
             NodeId nodeId = await ResolveAssetChildNodeIdAsync("seededasset", "doubleByOpcUaType").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(nodeId));
+            Assert.False(nodeId.IsNull);
 
             DataValue value = await _session.ReadValueAsync(nodeId).ConfigureAwait(false);
             Assert.NotNull(value);
@@ -335,7 +345,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // OpcUaType points at a namespace URI the server doesn't know about,
             // so AddNodeForWoTForm falls back to creating a Float variable.
             NodeId nodeId = await ResolveAssetChildNodeIdAsync("seededasset", "unknownNamespace").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(nodeId));
+            Assert.False(nodeId.IsNull);
         }
 
         [Fact]
@@ -344,7 +354,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // OpcUaType doesn't match the expected nsu/i|s pattern, so
             // AddNodeForWoTForm falls back to creating a Float variable.
             NodeId nodeId = await ResolveAssetChildNodeIdAsync("seededasset", "malformedOpcUaType").ConfigureAwait(false);
-            Assert.False(NodeId.IsNull(nodeId));
+            Assert.False(nodeId.IsNull);
         }
 
         [Fact]
@@ -357,7 +367,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // beyond the well-known names — the exact derived name is left to
             // production code to decide.
             NodeId assetNodeId = await ResolveAssetNodeIdAsync("seededasset").ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
 
             // Should contain the well-known test variables AND something else
             // attributable to the explicit-id property.
@@ -373,14 +383,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 ObjectId = objectId,
                 MethodId = methodId,
-                InputArguments = inputArgs == null
-                    ? new VariantCollection()
-                    : new VariantCollection(inputArgs.Select(a => new Variant(a)))
+                InputArguments = ArrayOfTestExtensions.ToVariantArray(inputArgs)
             };
 
             CallResponse response = await _session.CallAsync(
                 null,
-                new CallMethodRequestCollection { request },
+                new ArrayOf<CallMethodRequest>(new[] { request }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
@@ -391,7 +399,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveAssetManagementChildAsync(string browseName)
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             ReferenceDescription target = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, browseName, StringComparison.Ordinal));
 
@@ -403,7 +411,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveAssetNodeIdAsync(string assetDisplayName)
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             ReferenceDescription assetRef = children.First(r =>
                 string.Equals(r.DisplayName.Text, assetDisplayName, StringComparison.Ordinal));
             return ExpandedNodeId.ToNodeId(assetRef.NodeId, _session.NamespaceUris);
@@ -412,7 +420,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveAssetChildNodeIdAsync(string assetDisplayName, string childBrowseName)
         {
             NodeId assetNodeId = await ResolveAssetNodeIdAsync(assetDisplayName).ConfigureAwait(false);
-            ReferenceDescriptionCollection assetChildren = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
+            List<ReferenceDescription> assetChildren = await BrowseChildrenAsync(assetNodeId).ConfigureAwait(false);
             ReferenceDescription target = assetChildren.First(r =>
                 string.Equals(r.BrowseName.Name, childBrowseName, StringComparison.Ordinal));
             return ExpandedNodeId.ToNodeId(target.NodeId, _session.NamespaceUris);
@@ -788,12 +796,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 "UAEdgeTranslator seeded TD integration tests",
                 30_000,
                 new UserIdentity(),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
         }
 
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
             ReferenceDescription am = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "WoTAssetConnectionManagement", StringComparison.Ordinal));
             Assert.NotNull(am);

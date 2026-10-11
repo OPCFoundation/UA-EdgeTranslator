@@ -165,14 +165,16 @@ namespace Opc.Ua.Edge.Translator.Tests
         [Fact]
         public void FixedTimeEqualsHashed_returns_true_for_equal_strings()
         {
-            UAServer server = (UAServer)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(_sut);
-            MethodInfo m = _sut.GetMethod("FixedTimeEqualsHashed", BindingFlags.NonPublic | BindingFlags.Instance);
+            // The helper became static when authentication moved to IUserTokenAuthenticator;
+            // its constant-time comparison logic is unchanged.
+            MethodInfo m = _sut.GetMethod("FixedTimeEqualsHashed", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(m);
 
-            Assert.True((bool)m.Invoke(server, new object[] { "abc", "abc" }));
-            Assert.False((bool)m.Invoke(server, new object[] { "abc", "abd" }));
-            Assert.True((bool)m.Invoke(server, new object[] { string.Empty, string.Empty }));
-            Assert.True((bool)m.Invoke(server, new object[] { null, null }));
-            Assert.False((bool)m.Invoke(server, new object[] { "x", null }));
+            Assert.True((bool)m.Invoke(null, new object[] { "abc", "abc" }));
+            Assert.False((bool)m.Invoke(null, new object[] { "abc", "abd" }));
+            Assert.True((bool)m.Invoke(null, new object[] { string.Empty, string.Empty }));
+            Assert.True((bool)m.Invoke(null, new object[] { null, null }));
+            Assert.False((bool)m.Invoke(null, new object[] { "x", null }));
         }
     }
 }

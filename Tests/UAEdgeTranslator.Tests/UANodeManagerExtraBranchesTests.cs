@@ -77,7 +77,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo encodeField = _sut.GetMethod("EncodeField", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
             StructureField field = new()
             {
                 Name = "field",
@@ -110,7 +110,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo encodeField = _sut.GetMethod("EncodeField", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
             StructureField field = new()
             {
                 Name = "field",
@@ -127,7 +127,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo encodeField = _sut.GetMethod("EncodeField", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            using BinaryEncoder encoder = new(new ServiceMessageContext(Program.Telemetry));
+            using BinaryEncoder encoder = new(ServiceMessageContext.Create(Program.Telemetry));
             StructureField field = new()
             {
                 Name = "field",
@@ -149,8 +149,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo parse = _sut.GetMethod("ParseExpandedNodeId", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            Assert.Null(parse.Invoke(nm, new object[] { null }));
-            Assert.Null(parse.Invoke(nm, new object[] { string.Empty }));
+            NodeIdAssert.IsNullId(parse.Invoke(nm, new object[] { null }));
+            NodeIdAssert.IsNullId(parse.Invoke(nm, new object[] { string.Empty }));
         }
 
         [Fact]
@@ -159,9 +159,9 @@ namespace Opc.Ua.Edge.Translator.Tests
             UANodeManager nm = NewBareInstance();
             MethodInfo parse = _sut.GetMethod("ParseExpandedNodeId", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            Assert.Null(parse.Invoke(nm, new object[] { "not-a-node-id" }));
-            Assert.Null(parse.Invoke(nm, new object[] { "ns=2;i=42" }));
-            Assert.Null(parse.Invoke(nm, new object[] { "nsu=http://x/;g=guidish" }));
+            NodeIdAssert.IsNullId(parse.Invoke(nm, new object[] { "not-a-node-id" }));
+            NodeIdAssert.IsNullId(parse.Invoke(nm, new object[] { "ns=2;i=42" }));
+            NodeIdAssert.IsNullId(parse.Invoke(nm, new object[] { "nsu=http://x/;g=guidish" }));
         }
 
         // ---------------- Reconnect helpers ----------------

@@ -122,6 +122,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         public string Version { get; init; } = string.Empty;
 
+        public string BuildNumber { get; init; } = string.Empty;
+
         public string Runtime { get; init; } = string.Empty;
 
         public string HostName { get; init; } = string.Empty;

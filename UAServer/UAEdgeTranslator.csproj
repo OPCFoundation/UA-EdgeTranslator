@@ -15,6 +15,10 @@
          central package management. -->
     <DockerfileContext>..</DockerfileContext>
     <DockerfileFile>Dockerfile</DockerfileFile>
+    <!-- Build number shown on the Overview page. CI passes /p:BuildNumber (the
+         GitHub run number); local builds default to 0. -->
+    <BuildNumber Condition="'$(BuildNumber)' == ''">0</BuildNumber>
+    <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
     <!-- F5 / "Docker" launch profile run arguments. We deliberately do NOT
          pass the privileged flag here. Drivers that need raw hardware access
          (LoRaWAN serial, Matter BLE, Modbus RTU) should add only the
