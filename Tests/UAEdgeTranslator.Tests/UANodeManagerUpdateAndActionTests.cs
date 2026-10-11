@@ -270,10 +270,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             ArrayOf<Variant> inputs = default;
             List<Variant> outputs = new();
 
-            MethodInfo m = _sut.GetMethod("OnTDActionCalled", BindingFlags.NonPublic | BindingFlags.Instance);
-            object result = m.Invoke(nm, new object[] { null, method, inputs, outputs });
-
-            ServiceResult sr = (ServiceResult)result;
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(nm, "OnTDActionCalledAsync", method, inputs, outputs);
             // Compare uint to uint: StatusCodes.* is a StatusCode in SDK 2.0.0, and mixing it
             // with the uint Code would compare boxed values of different types.
             Assert.Equal((uint)StatusCodes.BadInternalError, sr.StatusCode.Code);
@@ -411,8 +408,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             ArrayOf<Variant> inputs = default;
             List<Variant> outputs = new();
 
-            MethodInfo m = _sut.GetMethod("OnTDActionCalled", BindingFlags.NonPublic | BindingFlags.Instance);
-            return (ServiceResult)m.Invoke(nm, new object[] { null, method, inputs, outputs });
+            return AsyncHandlerInvoker.CallMethod(nm, "OnTDActionCalledAsync", method, inputs, outputs);
         }
 
         private static void ClearProgramDrivers()

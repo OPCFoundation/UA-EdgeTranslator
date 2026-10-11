@@ -150,9 +150,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnCloseAndUpdate_returns_BadInvalidArgument_for_unknown_handle()
         {
             FileManager fm = NewBareFileManager();
-            MethodInfo onClose = _sut.GetMethod("OnCloseAndUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            ServiceResult sr = (ServiceResult)onClose.Invoke(fm, new object[] { null, null, null, 12345u });
+            ServiceResult sr = AsyncHandlerInvoker.Invoke<ServiceResult>(fm, "OnCloseAndUpdateAsync", null, null, NodeId.Null, 12345u, System.Threading.CancellationToken.None);
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
 
@@ -162,8 +160,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             FileManager fm = NewBareFileManager();
             uint h = AddHandle(fm, new MemoryStream(), writing: false, session: new NodeId(99, 1));
 
-            MethodInfo onClose = _sut.GetMethod("OnCloseAndUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onClose.Invoke(fm, new object[] { null, null, null, h });
+            ServiceResult sr = AsyncHandlerInvoker.Invoke<ServiceResult>(fm, "OnCloseAndUpdateAsync", null, null, NodeId.Null, h, System.Threading.CancellationToken.None);
 
             Assert.Equal((StatusCode)StatusCodes.BadUserAccessDenied, sr.StatusCode);
         }

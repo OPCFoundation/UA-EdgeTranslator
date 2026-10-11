@@ -21,7 +21,11 @@ namespace Opc.Ua.Edge.Translator
     using System.Threading.Channels;
     using System.Threading.Tasks;
 
-    public class UANodeManager : CustomNodeManager2
+    // ICallAsyncNodeManager makes the server dispatch Call through CallAsync,
+    // which runs the MethodState.OnCallMethod2Async handlers. CustomNodeManager2
+    // already provides CallAsync but does not declare the interface, so without
+    // it the server falls back to the synchronous Call path, which ignores them.
+    public class UANodeManager : CustomNodeManager2, ICallAsyncNodeManager
     {
         private uint _lastUsedId = 0;
 
@@ -255,6 +259,25 @@ namespace Opc.Ua.Edge.Translator
             IList<CallMethodResult> results,
             IList<ServiceResult> errors)
         {
+            RemapTypeDeclarationMethodIds(methodsToCall);
+            base.Call(context, methodsToCall, results, errors);
+        }
+
+        // The server dispatches Call through this async path, which is the one that
+        // runs MethodState.OnCallMethod2Async handlers; it needs the same remap.
+        public override ValueTask CallAsync(
+            OperationContext context,
+            ArrayOf<CallMethodRequest> methodsToCall,
+            IList<CallMethodResult> results,
+            IList<ServiceResult> errors,
+            CancellationToken cancellationToken = default)
+        {
+            RemapTypeDeclarationMethodIds(methodsToCall);
+            return base.CallAsync(context, methodsToCall, results, errors, cancellationToken);
+        }
+
+        private void RemapTypeDeclarationMethodIds(ArrayOf<CallMethodRequest> methodsToCall)
+        {
             int wotConNamespaceIndex = Server.NamespaceUris.GetIndex(_cWotCon);
             if (wotConNamespaceIndex > 0 && methodsToCall != null)
             {
@@ -280,8 +303,6 @@ namespace Opc.Ua.Edge.Translator
                     }
                 }
             }
-
-            base.Call(context, methodsToCall, results, errors);
         }
 
         // Returns a point-in-time snapshot of every onboarded asset and its
@@ -485,7 +506,7 @@ namespace Opc.Ua.Edge.Translator
             createAsset.OutputArguments = _nodeFactory.CreateMethodArguments(createAsset, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false, false, new NodeId(_cWoTCreateAssetOutputArguments, WoTConNamespaceIndex));
 
             MethodState deleteAsset = FindPredefinedNode<MethodState>(new NodeId(_cWoTDeleteAsset, WoTConNamespaceIndex));
-            deleteAsset.OnCallMethod = new GenericMethodCalledEventHandler(OnDeleteAsset);
+            deleteAsset.OnCallMethod2Async = OnDeleteAssetAsync;
             deleteAsset.InputArguments = _nodeFactory.CreateMethodArguments(deleteAsset, ["AssetId"], ["The NodeId of the WoTAsset object."], [new ExpandedNodeId(DataTypes.NodeId)], true, false, new NodeId(_cWoTDeleteAssetInputArguments, WoTConNamespaceIndex));
 
             MethodState discoverAssets = _nodeFactory.CreateMethod(_assetManagement, "DiscoverAssets", WoTConNamespaceIndex);
@@ -495,14 +516,14 @@ namespace Opc.Ua.Edge.Translator
             AddPredefinedNode(SystemContext, discoverAssets);
 
             MethodState createAssetForEndpoint = _nodeFactory.CreateMethod(_assetManagement, "CreateAssetForEndpoint", WoTConNamespaceIndex);
-            createAssetForEndpoint.OnCallMethod = new GenericMethodCalledEventHandler(OnCreateAssetForEndpoint);
+            createAssetForEndpoint.OnCallMethod2Async = OnCreateAssetForEndpointAsync;
             createAssetForEndpoint.MethodDeclarationId = new NodeId(_cWoTCreateAssetForEndpointType, WoTConNamespaceIndex);
             createAssetForEndpoint.InputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetName", "AssetEndpoint"], ["The name to be assigned to the asset.", "The endpoint to the asset on the network."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], true);
             createAssetForEndpoint.OutputArguments = _nodeFactory.CreateMethodArguments(createAssetForEndpoint, ["AssetId"], ["The NodeId of the WoTAsset object, if call was successful."], [new ExpandedNodeId(DataTypes.NodeId)], false);
             AddPredefinedNode(SystemContext, createAssetForEndpoint);
 
             MethodState connectionTest = _nodeFactory.CreateMethod(_assetManagement, "ConnectionTest", WoTConNamespaceIndex);
-            connectionTest.OnCallMethod = new GenericMethodCalledEventHandler(OnConnectionTest);
+            connectionTest.OnCallMethod2Async = OnConnectionTestAsync;
             connectionTest.MethodDeclarationId = new NodeId(_cWoTConnectionTestType, WoTConNamespaceIndex);
             connectionTest.InputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["AssetEndpoint"], ["The endpoint description of the asset to test the connection to."], [new ExpandedNodeId(DataTypes.String)], true);
             connectionTest.OutputArguments = _nodeFactory.CreateMethodArguments(connectionTest, ["Success", "Status"], ["Returns TRUE if a connection could be established to the asset.", "If a connection was established successfully, an asset-specific status code string describing the current health of the asset is returned."], [new ExpandedNodeId(DataTypes.String), new ExpandedNodeId(DataTypes.String)], false);
@@ -785,7 +806,7 @@ namespace Opc.Ua.Edge.Translator
             Server.ReportEvent(ev);
         }
 
-        public ServiceResult OnDeleteAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
+        public async ValueTask<ServiceResult> OnDeleteAssetAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
@@ -793,6 +814,11 @@ namespace Opc.Ua.Edge.Translator
             }
 
             NodeId assetId = (NodeId)inputArguments[0];
+
+            // The driver's connection is released after the lock: C# cannot await
+            // inside a lock, and the asset is already unreachable by then.
+            IAsset assetToDisconnect = null;
+            string disconnectedAssetName = null;
 
             lock (Lock)
             {
@@ -849,20 +875,8 @@ namespace Opc.Ua.Edge.Translator
 
                     StopAlarmProjectionQueue(assetName);
 
-                    // Release the southbound connection (socket/stream) the driver
-                    // holds. Dropping only the dictionary reference leaks it until
-                    // finalization. Defensive: a faulty driver must not fail delete.
-                    try
-                    {
-                        if (removedAsset != null)
-                        {
-                            AsyncBridge.RunSync(() => removedAsset.DisconnectAsync());
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Logger.Warning(ex, "Failed to disconnect asset {AssetId} during delete.", assetName);
-                    }
+                    assetToDisconnect = removedAsset;
+                    disconnectedAssetName = assetName;
                 }
 
                 _reconnectStates.TryRemove(assetName, out _);
@@ -900,9 +914,24 @@ namespace Opc.Ua.Edge.Translator
                 }
 
                 RaiseModelChangedEvent(asset.NodeId, ModelChangeStructureVerbMask.NodeDeleted);
-
-                return ServiceResult.Good;
             }
+
+            // Release the southbound connection (socket/stream) the driver holds.
+            // Dropping only the dictionary reference leaks it until finalization.
+            // Defensive: a faulty driver must not fail delete.
+            if (assetToDisconnect != null)
+            {
+                try
+                {
+                    await assetToDisconnect.DisconnectAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Warning(ex, "Failed to disconnect asset {AssetId} during delete.", disconnectedAssetName);
+                }
+            }
+
+            return ServiceResult.Good;
         }
 
         /// <summary>
@@ -913,7 +942,7 @@ namespace Opc.Ua.Edge.Translator
         /// and removes the .jsonld file from the settings folder. Returns true when a
         /// matching asset was found and unloaded.
         /// </summary>
-        public bool UnloadWoTFile(string fileName)
+        public async Task<bool> UnloadWoTFileAsync(string fileName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -936,7 +965,7 @@ namespace Opc.Ua.Edge.Translator
                 return false;
             }
 
-            ServiceResult result = OnDeleteAsset(SystemContext, null, new ArrayOf<Variant>(new[] { Variant.From(assetId) }), new List<Variant>());
+            ServiceResult result = await OnDeleteAssetAsync(SystemContext, null, NodeId.Null, new ArrayOf<Variant>(new[] { Variant.From(assetId) }), new List<Variant>(), cancellationToken).ConfigureAwait(false);
 
             bool success = result.StatusCode == StatusCodes.Good;
             if (success)
@@ -998,7 +1027,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnCreateAssetForEndpoint(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
+        private async ValueTask<ServiceResult> OnCreateAssetForEndpointAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)) || string.IsNullOrEmpty(ArgumentAsString(inputArguments, 1)))
             {
@@ -1034,7 +1063,7 @@ namespace Opc.Ua.Edge.Translator
 
                 _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
 
-                AsyncBridge.RunSync(() => OnboardAssetFromWoTFileAsync(assetNode, contents));
+                await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
 
                 System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
 
@@ -1044,7 +1073,7 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
-        private ServiceResult OnConnectionTest(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
+        private async ValueTask<ServiceResult> OnConnectionTestAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
@@ -1094,10 +1123,10 @@ namespace Opc.Ua.Edge.Translator
             try
             {
                 using var tcp = new System.Net.Sockets.TcpClient();
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, cancellationToken);
                 cts.CancelAfter(probeTimeoutMs);
 
-                AsyncBridge.RunSync(() => tcp.ConnectAsync(host, port, cts.Token).AsTask());
+                await tcp.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
 
                 sw.Stop();
                 Log.Logger.Information("TCP probe to {Host}:{Port} successful in {Elapsed} ms.", host, port, sw.ElapsedMilliseconds);
@@ -1358,7 +1387,7 @@ namespace Opc.Ua.Edge.Translator
                 foreach (KeyValuePair<string, TDAction> action in td.Actions)
                 {
                     MethodState method = _nodeFactory.CreateMethod(parent, action.Key, assetNamespaceIndex);
-                    method.OnCallMethod = new GenericMethodCalledEventHandler(OnTDActionCalled);
+                    method.OnCallMethod2Async = OnTDActionCalledAsync;
 
                     if ((action.Value.Input != null) && (action.Value.Input.Properties != null) && (action.Value.Input.Properties.Count > 0))
                     {
@@ -2241,6 +2270,10 @@ namespace Opc.Ua.Edge.Translator
                         // Unwrap the Variant to the CLR value drivers have always received;
                         // see VariantConversion for why a plain object assignment is wrong.
                         object valueToWrite = VariantConversion.ToClrValue(value);
+
+                        // Still bridged: CustomNodeManager2 has only a synchronous Write, so the
+                        // SDK never calls BaseVariableState.OnWriteValueAsync on this base class.
+                        // Async writes need the AsyncCustomNodeManager base.
                         AsyncBridge.RunSync(() => asset.WriteAsync(tag, valueToWrite));
 
                         if (_uaVariables.TryGetValue(tag.Name, out BaseDataVariableState cached))
@@ -2268,7 +2301,7 @@ namespace Opc.Ua.Edge.Translator
             return ServiceResult.Good;
         }
 
-        private ServiceResult OnTDActionCalled(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
+        private async ValueTask<ServiceResult> OnTDActionCalledAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
             try
             {
@@ -2283,8 +2316,7 @@ namespace Opc.Ua.Edge.Translator
                     driverInputs.Add(VariantConversion.ToClrValue(inputArgument));
                 }
 
-                AssetActionResult actionResult = AsyncBridge.RunSync(
-                    () => _assets[assetId].ExecuteActionAsync(method, driverInputs));
+                AssetActionResult actionResult = await _assets[assetId].ExecuteActionAsync(method, driverInputs, cancellationToken).ConfigureAwait(false);
 
                 // Copy the driver's outputs into the buffer the SDK handed us.
                 // The previous 'ref IList<object> outputArgs' contract allowed a

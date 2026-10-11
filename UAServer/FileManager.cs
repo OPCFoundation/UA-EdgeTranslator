@@ -8,6 +8,8 @@ namespace Opc.Ua.Edge.Translator
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
     public class FileManager : IDisposable
     {
@@ -62,7 +64,7 @@ namespace Opc.Ua.Edge.Translator
             _file.Write.OnCall = new WriteMethodStateMethodCallHandler(OnWrite);
             _file.GetPosition.OnCall = new GetPositionMethodStateMethodCallHandler(OnGetPosition);
             _file.SetPosition.OnCall = new SetPositionMethodStateMethodCallHandler(OnSetPosition);
-            _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnCloseAndUpdate);
+            _file.Close.OnCallAsync = OnCloseAsync;
             _file.Close.DisplayName = new Opc.Ua.LocalizedText("CloseAndUpdate");
             ushort WoTConNamespaceIndex = (ushort)_nodeManager.Server.NamespaceUris.GetIndex(_cWotCon);
             _file.Close.BrowseName = new QualifiedName("CloseAndUpdate", WoTConNamespaceIndex);
@@ -271,11 +273,25 @@ namespace Opc.Ua.Edge.Translator
             return StatusCodes.Good;
         }
 
-        private ServiceResult OnCloseAndUpdate(
+        private async ValueTask<CloseMethodStateResult> OnCloseAsync(
+            ISystemContext context,
+            MethodState method,
+            NodeId objectId,
+            uint fileHandle,
+            CancellationToken cancellationToken)
+        {
+            return new CloseMethodStateResult
+            {
+                ServiceResult = await OnCloseAndUpdateAsync(context, method, objectId, fileHandle, cancellationToken).ConfigureAwait(false)
+            };
+        }
+
+        private async ValueTask<ServiceResult> OnCloseAndUpdateAsync(
             ISystemContext _context,
             MethodState _method,
             NodeId _objectId,
-            uint fileHandle)
+            uint fileHandle,
+            CancellationToken cancellationToken)
         {
             Handle handle;
 
@@ -335,9 +351,7 @@ namespace Opc.Ua.Edge.Translator
                         contents = File.ReadAllText(fallbackPath);
                     }
 
-                    // OPC UA FileType Close callback is synchronous by contract; bridge through AsyncBridge
-                    // so we never block on a captured SynchronizationContext during onboarding.
-                    AsyncBridge.RunSync(() => _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents));
+                    await _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents).ConfigureAwait(false);
 
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 

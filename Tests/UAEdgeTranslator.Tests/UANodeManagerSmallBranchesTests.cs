@@ -78,11 +78,8 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnDeleteAsset_returns_BadInvalidArgument_for_null_input()
         {
             UANodeManager nm = NewBareInstance();
-            MethodInfo m = _sut.GetMethod("OnDeleteAsset", BindingFlags.Public | BindingFlags.Instance);
-
-            ServiceResult sr = (ServiceResult)m.Invoke(
-                nm,
-                new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[] { null }), new List<Variant>() });
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(
+                nm, "OnDeleteAssetAsync", null, ArrayOfTestExtensions.ToVariantArray(new object[] { null }), new List<Variant>());
 
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
@@ -93,11 +90,8 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnCreateAssetForEndpoint_returns_BadInvalidArgument_when_inputs_are_null()
         {
             UANodeManager nm = NewBareInstance();
-            MethodInfo m = _sut.GetMethod("OnCreateAssetForEndpoint", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            ServiceResult sr = (ServiceResult)m.Invoke(
-                nm,
-                new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[] { null, null }), new List<Variant>() });
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(
+                nm, "OnCreateAssetForEndpointAsync", null, ArrayOfTestExtensions.ToVariantArray(new object[] { null, null }), new List<Variant>());
 
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }

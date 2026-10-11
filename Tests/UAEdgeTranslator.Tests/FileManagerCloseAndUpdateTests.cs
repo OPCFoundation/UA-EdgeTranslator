@@ -88,8 +88,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             SetFile(fm, fs);
             uint h = AddHandle(fm, new MemoryStream(Encoding.UTF8.GetBytes("payload")));
 
-            MethodInfo onClose = _sut.GetMethod("OnCloseAndUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onClose.Invoke(fm, new object[] { null, null, null, h });
+            ServiceResult sr = AsyncHandlerInvoker.Invoke<ServiceResult>(fm, "OnCloseAndUpdateAsync", null, null, NodeId.Null, h, System.Threading.CancellationToken.None);
 
             Assert.Equal((StatusCode)StatusCodes.BadDecodingError, sr.StatusCode);
 
