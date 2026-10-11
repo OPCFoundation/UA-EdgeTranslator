@@ -192,7 +192,14 @@
 
             parent?.AddChild(variable);
 
-            parent?.AddReference(ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cHasWoTComponent, _cWotCon), _manager.Server.NamespaceUris), false, variable.NodeId);
+            if (parent != null)
+            {
+                NodeId hasWoTComponent = ExpandedNodeId.ToNodeId(new ExpandedNodeId(_cHasWoTComponent, _cWotCon), _manager.Server.NamespaceUris);
+                if (!parent.ReferenceExists(hasWoTComponent, false, variable.NodeId))
+                {
+                    parent.AddReference(hasWoTComponent, false, variable.NodeId);
+                }
+            }
 
             return variable;
         }

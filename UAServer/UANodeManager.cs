@@ -1562,6 +1562,23 @@ namespace Opc.Ua.Edge.Translator
             return property;
         }
 
+        /// <summary>
+        /// Creates and registers the variable for a WoT property the first time
+        /// one of its forms is processed. A property with several forms (one per
+        /// operation) maps onto a single OPC UA variable, so later forms reuse it.
+        /// </summary>
+        private void AddVariableOnce(string variableId, Func<BaseDataVariableState> create)
+        {
+            if (_uaVariables.ContainsKey(variableId))
+            {
+                return;
+            }
+
+            BaseDataVariableState variable = create();
+            _uaVariables[variableId] = variable;
+            AddPredefinedNode(SystemContext, variable);
+        }
+
         private void AddNodeForWoTForm(NodeState assetFolder, ThingDescription td, KeyValuePair<string, Property> property, object form, string assetId, byte unitId)
         {
             string variableId;
@@ -1683,9 +1700,7 @@ namespace Opc.Ua.Edge.Translator
                             else
                             {
                                 // OPC UA type info not found, default to float
-                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                                _uaVariables.TryAdd(variableId, variable);
-                                AddPredefinedNode(SystemContext, variable);
+                                AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
                             }
                         }
                         else
@@ -1710,41 +1725,31 @@ namespace Opc.Ua.Edge.Translator
 
                                 ExtensionObject complexTypeInstance = new(defaultBinaryEncodingId, new ByteString(encoder.CloseAndReturnBuffer()));
 
-                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance);
-                                _uaVariables.TryAdd(variableId, variable);
-                                AddPredefinedNode(SystemContext, variable);
+                                AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly, complexTypeInstance));
                             }
                             else
                             {
                                 // it's an OPC UA built-in type
-                                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly);
-                                _uaVariables.TryAdd(variableId, variable);
-                                AddPredefinedNode(SystemContext, variable);
+                                AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, dataType.NodeId, assetNamespaceIndex, !property.Value.ReadOnly));
                             }
                         }
                     }
                     else
                     {
                         // no namespace info, default to float
-                        BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                        _uaVariables.TryAdd(variableId, variable);
-                        AddPredefinedNode(SystemContext, variable);
+                        AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
                     }
                 }
                 else
                 {
                     // can't parse type info, default to float
-                    BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                    _uaVariables.TryAdd(variableId, variable);
-                    AddPredefinedNode(SystemContext, variable);
+                    AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
                 }
             }
             else
             {
                 // no type info, default to float
-                BaseDataVariableState variable = _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly);
-                _uaVariables.TryAdd(variableId, variable);
-                AddPredefinedNode(SystemContext, variable);
+                AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
             }
 
             // check if we need to create a new asset first
@@ -2611,77 +2616,77 @@ namespace Opc.Ua.Edge.Translator
                             case DataTypes.Float:
                             {
                                 float v = decoder.ReadFloat(field.Name);
-                                if (isTargetField) v = value is float f ? f : 0f;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteFloat(field.Name, v);
                                 break;
                             }
                             case DataTypes.Double:
                             {
                                 double v = decoder.ReadDouble(field.Name);
-                                if (isTargetField) v = value is double d ? d : 0d;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteDouble(field.Name, v);
                                 break;
                             }
                             case DataTypes.Boolean:
                             {
                                 bool v = decoder.ReadBoolean(field.Name);
-                                if (isTargetField) v = value is bool b && b;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteBoolean(field.Name, v);
                                 break;
                             }
                             case DataTypes.SByte:
                             {
                                 sbyte v = decoder.ReadSByte(field.Name);
-                                if (isTargetField) v = value is sbyte sb ? sb : (sbyte)0;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteSByte(field.Name, v);
                                 break;
                             }
                             case DataTypes.Byte:
                             {
                                 byte v = decoder.ReadByte(field.Name);
-                                if (isTargetField) v = value is byte by ? by : (byte)0;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteByte(field.Name, v);
                                 break;
                             }
                             case DataTypes.Int16:
                             {
                                 short v = decoder.ReadInt16(field.Name);
-                                if (isTargetField) v = value is short s ? s : (short)0;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteInt16(field.Name, v);
                                 break;
                             }
                             case DataTypes.UInt16:
                             {
                                 ushort v = decoder.ReadUInt16(field.Name);
-                                if (isTargetField) v = value is ushort us ? us : (ushort)0;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteUInt16(field.Name, v);
                                 break;
                             }
                             case DataTypes.Int32:
                             {
                                 int v = decoder.ReadInt32(field.Name);
-                                if (isTargetField) v = value is int iv ? iv : 0;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteInt32(field.Name, v);
                                 break;
                             }
                             case DataTypes.UInt32:
                             {
                                 uint v = decoder.ReadUInt32(field.Name);
-                                if (isTargetField) v = value is uint uv ? uv : 0u;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteUInt32(field.Name, v);
                                 break;
                             }
                             case DataTypes.Int64:
                             {
                                 long v = decoder.ReadInt64(field.Name);
-                                if (isTargetField) v = value is long lv ? lv : 0L;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteInt64(field.Name, v);
                                 break;
                             }
                             case DataTypes.UInt64:
                             {
                                 ulong v = decoder.ReadUInt64(field.Name);
-                                if (isTargetField) v = value is ulong ulv ? ulv : 0UL;
+                                if (isTargetField) v = ConvertFieldValue(value, v, field.Name);
                                 encoder.WriteUInt64(field.Name, v);
                                 break;
                             }
@@ -2743,6 +2748,39 @@ namespace Opc.Ua.Edge.Translator
         /// Encodes a single structure field value for whole-UDT updates.
         /// Used by both AddNodeForWoTForm (initialization) and UpdateUAServerVariable (runtime).
         /// </summary>
+        /// <summary>
+        /// Converts a southbound value to the CLR type of a structure field.
+        /// Drivers routinely return a neighbouring numeric type (a float for a
+        /// Double field, an int for an Int16 field); those are converted rather
+        /// than silently replaced by zero. When the value cannot be represented
+        /// (wrong format or out of range) the fallback is kept and a warning is
+        /// logged, so a bad reading never overwrites good data with a fake zero.
+        /// </summary>
+        private static T ConvertFieldValue<T>(object value, T fallback, string fieldName)
+        {
+            if (value is null)
+            {
+                return fallback;
+            }
+
+            if (value is T typed)
+            {
+                return typed;
+            }
+
+            try
+            {
+                return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+            {
+                Log.Logger.Warning(
+                    "Value {Value} ({ValueType}) cannot be converted to {TargetType} for structure field {Field}; keeping the previous value.",
+                    value, value.GetType().Name, typeof(T).Name, fieldName);
+                return fallback;
+            }
+        }
+
         private void EncodeField(BinaryEncoder encoder, StructureField field, object value)
         {
             uint fieldDataType = 0;
@@ -2751,37 +2789,37 @@ namespace Opc.Ua.Edge.Translator
             switch (fieldDataType)
             {
                 case DataTypes.Float:
-                    encoder.WriteFloat(field.Name, value is float f ? f : 0f);
+                    encoder.WriteFloat(field.Name, ConvertFieldValue(value, 0f, field.Name));
                     break;
                 case DataTypes.Double:
-                    encoder.WriteDouble(field.Name, value is double d ? d : 0d);
+                    encoder.WriteDouble(field.Name, ConvertFieldValue(value, 0d, field.Name));
                     break;
                 case DataTypes.Boolean:
-                    encoder.WriteBoolean(field.Name, value is bool b && b);
+                    encoder.WriteBoolean(field.Name, ConvertFieldValue(value, false, field.Name));
                     break;
                 case DataTypes.SByte:
-                    encoder.WriteSByte(field.Name, value is sbyte sb ? sb : (sbyte)0);
+                    encoder.WriteSByte(field.Name, ConvertFieldValue(value, (sbyte)0, field.Name));
                     break;
                 case DataTypes.Byte:
-                    encoder.WriteByte(field.Name, value is byte by ? by : (byte)0);
+                    encoder.WriteByte(field.Name, ConvertFieldValue(value, (byte)0, field.Name));
                     break;
                 case DataTypes.Int16:
-                    encoder.WriteInt16(field.Name, value is short s ? s : (short)0);
+                    encoder.WriteInt16(field.Name, ConvertFieldValue(value, (short)0, field.Name));
                     break;
                 case DataTypes.UInt16:
-                    encoder.WriteUInt16(field.Name, value is ushort us ? us : (ushort)0);
+                    encoder.WriteUInt16(field.Name, ConvertFieldValue(value, (ushort)0, field.Name));
                     break;
                 case DataTypes.Int32:
-                    encoder.WriteInt32(field.Name, value is int iv ? iv : 0);
+                    encoder.WriteInt32(field.Name, ConvertFieldValue(value, 0, field.Name));
                     break;
                 case DataTypes.UInt32:
-                    encoder.WriteUInt32(field.Name, value is uint uv ? uv : 0u);
+                    encoder.WriteUInt32(field.Name, ConvertFieldValue(value, 0u, field.Name));
                     break;
                 case DataTypes.Int64:
-                    encoder.WriteInt64(field.Name, value is long lv ? lv : 0L);
+                    encoder.WriteInt64(field.Name, ConvertFieldValue(value, 0L, field.Name));
                     break;
                 case DataTypes.UInt64:
-                    encoder.WriteUInt64(field.Name, value is ulong ulv ? ulv : 0UL);
+                    encoder.WriteUInt64(field.Name, ConvertFieldValue(value, 0UL, field.Name));
                     break;
                 case DataTypes.String:
                     encoder.WriteString(field.Name, value?.ToString() ?? string.Empty);

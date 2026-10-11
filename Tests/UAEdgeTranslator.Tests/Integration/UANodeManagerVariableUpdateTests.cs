@@ -107,18 +107,73 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
-        public async Task A_single_field_update_with_a_mismatched_type_resets_the_field()
+        public async Task A_single_field_update_with_an_unconvertible_value_keeps_the_previous_value()
         {
             const string tagName = "mismatch";
             NodeId nodeId = SeedStructure(tagName, [(DataTypes.Int32, "Value", 5), (DataTypes.Double, "Other", 3.5d)]);
 
-            // A driver handing over the wrong CLR type must not corrupt the
-            // structure; the field falls back to its default.
+            // A value that cannot be represented must not overwrite good data
+            // with a fake zero, nor disturb the other fields.
             Update(new AssetTag { Name = tagName, MappedUAFieldPath = "Value" }, "not-an-int", connected: true);
 
             NodeDetail detail = await _service.GetNodeDetailAsync(nodeId.ToString()).ConfigureAwait(false);
-            Assert.Equal("0", detail.Fields[0].Value);
+            Assert.Equal("5", detail.Fields[0].Value);
             Assert.Equal("3.5", detail.Fields[1].Value);
+        }
+
+        [Fact]
+        public async Task A_single_field_update_with_an_out_of_range_value_keeps_the_previous_value()
+        {
+            const string tagName = "overflow";
+            NodeId nodeId = SeedStructure(tagName, [(DataTypes.Byte, "Small", (byte)7)]);
+
+            Update(new AssetTag { Name = tagName, MappedUAFieldPath = "Small" }, 1000, connected: true);
+
+            NodeDetail detail = await _service.GetNodeDetailAsync(nodeId.ToString()).ConfigureAwait(false);
+            Assert.Equal("7", Assert.Single(detail.Fields).Value);
+        }
+
+        public static TheoryData<string, uint, object, object, string> NeighbouringNumericTypes => new()
+        {
+            // Drivers commonly hand back a neighbouring numeric type; these used
+            // to be written as 0.
+            { "float-into-double", DataTypes.Double, 0d, 2.5f, "2.5" },
+            { "int-into-short", DataTypes.Int16, (short)0, 1234, "1234" },
+            { "int-into-long", DataTypes.Int64, 0L, 42, "42" },
+            { "double-into-float", DataTypes.Float, 0f, 1.25d, "1.25" },
+            { "short-into-int", DataTypes.Int32, 0, (short)-9, "-9" },
+            { "string-into-int", DataTypes.Int32, 0, "77", "77" },
+            { "int-into-bool", DataTypes.Boolean, false, 1, "True" }
+        };
+
+        [Theory]
+        [MemberData(nameof(NeighbouringNumericTypes))]
+        public async Task A_single_field_update_converts_neighbouring_types(string tagName, uint dataType, object initial, object value, string expected)
+        {
+            NodeId nodeId = SeedStructure(tagName, [(dataType, "Field", initial)]);
+
+            Update(new AssetTag { Name = tagName, MappedUAFieldPath = "Field" }, value, connected: true);
+
+            NodeDetail detail = await _service.GetNodeDetailAsync(nodeId.ToString()).ConfigureAwait(false);
+            Assert.Equal(expected, Assert.Single(detail.Fields).Value);
+        }
+
+        [Fact]
+        public async Task A_whole_structure_update_converts_neighbouring_types()
+        {
+            const string tagName = "whole-convert";
+            NodeId nodeId = SeedStructure(tagName, [(DataTypes.Double, "Level", 0d), (DataTypes.Int16, "Count", (short)0)]);
+
+            Dictionary<string, object> values = new()
+            {
+                ["Level"] = 4.5f,
+                ["Count"] = 12
+            };
+
+            Update(new AssetTag { Name = tagName }, values, connected: true);
+
+            NodeDetail detail = await _service.GetNodeDetailAsync(nodeId.ToString()).ConfigureAwait(false);
+            Assert.Equal(["4.5", "12"], detail.Fields.Select(f => f.Value));
         }
 
         [Fact]
@@ -196,6 +251,55 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         public void An_unknown_tag_is_ignored()
         {
             Update(new AssetTag { Name = "does-not-exist" }, 1, connected: true);
+        }
+
+        [Fact]
+        public async Task A_property_with_several_forms_creates_a_single_variable()
+        {
+            // One form per operation is normal in a Thing Description. Each form
+            // used to create the variable again, which added a duplicate
+            // HasWoTComponent reference and threw "Key already exists in dictionary".
+            const string td = """
+                {
+                  "@context": [ "https://www.w3.org/2022/wot/td/v1.1" ],
+                  "id": "urn:multiform",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": [ "nosec_sc" ],
+                  "@type": [ "Thing" ],
+                  "name": "multiform",
+                  "title": "Multi Form Asset",
+                  "base": "mock://127.0.0.1:1234/1",
+                  "properties": {
+                    "level": {
+                      "type": "number",
+                      "observable": true,
+                      "forms": [
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "readproperty" ], "type": "xsd:short", "pollingTime": 1000 },
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "writeproperty" ], "type": "xsd:short" },
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "observeproperty" ], "type": "xsd:short", "pollingTime": 1000 }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+            await UANodeManager.Instance.ImportWoTFileAsync("multiform.jsonld", td).ConfigureAwait(false);
+
+            FieldInfo field = typeof(UANodeManager).GetField("_uaVariables", _privateInstance);
+            var variables = (ConcurrentDictionary<string, BaseDataVariableState>)field.GetValue(UANodeManager.Instance);
+            BaseDataVariableState variable = Assert.Single(variables, v => v.Key.StartsWith("multiform:", StringComparison.Ordinal)).Value;
+
+            // The import catches per-form failures, so assert on their side effect:
+            // the old code added a duplicate child before the reference threw.
+            NodeState asset = variable.Parent;
+            List<BaseInstanceState> children = [];
+            asset.GetChildren(UANodeManager.Instance.SystemContext, children);
+            Assert.Single(children, c => c.NodeId == variable.NodeId);
+
+            // ...and exactly one HasWoTComponent reference to it.
+            List<IReference> references = [];
+            asset.GetReferences(UANodeManager.Instance.SystemContext, references);
+            Assert.Single(references, r => !r.IsInverse && r.TargetId == variable.NodeId && r.ReferenceTypeId != ReferenceTypeIds.Organizes && r.ReferenceTypeId != ReferenceTypeIds.HasComponent);
         }
 
         private static void Update(AssetTag tag, object value, bool connected)
