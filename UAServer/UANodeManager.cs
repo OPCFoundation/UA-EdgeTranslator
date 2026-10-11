@@ -2830,53 +2830,90 @@ namespace Opc.Ua.Edge.Translator
 
         private NodeState InstantiateObjectTypeChild(BaseObjectState objectInstance, BaseObjectTypeState objectType, ushort namespaceIndex, string parentName, string fieldName, bool writeable)
         {
-            NodeState childVar = null;
+            NodeState mappedChild = null;
 
-            // Browse the object type for child variables and replicate them on the instance
+            // Browse the object type for its variable and property declarations.
             var browser = objectType.CreateBrowser(SystemContext, null, NodeId.Null, true, BrowseDirection.Forward, QualifiedName.Null, null, true);
 
             IReference reference = browser.Next();
             while (reference != null)
             {
-                // find the target node for this reference
-                NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
-                if (target.DisplayName.Text == fieldName)
+                bool isComponent = reference.ReferenceTypeId == ReferenceTypeIds.HasComponent;
+                bool isProperty = reference.ReferenceTypeId == ReferenceTypeIds.HasProperty;
+
+                if ((isComponent || isProperty)
+                    && Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris)) is BaseVariableState declaration)
                 {
-                    // Remove angle brackets from field name if present
-                    string cleanFieldName = fieldName.Trim('<', '>');
-
-                    if (reference.ReferenceTypeId == ReferenceTypes.HasComponent)
+                    if (declaration.DisplayName.Text == fieldName)
                     {
-                        // Create a matching variable under the object instance
-                        childVar = _nodeFactory.CreateVariable(
-                            objectInstance,
-                            $"{parentName}.{cleanFieldName}",
-                            reference.ReferenceTypeId,
-                            namespaceIndex,
-                            writeable);
+                        mappedChild = CreateObjectTypeChild(objectInstance, declaration, isProperty, namespaceIndex, parentName, writeable, mapped: true);
                     }
-
-                    if (reference.ReferenceTypeId == ReferenceTypes.HasProperty)
+                    else if (declaration.ModellingRuleId == ObjectIds.ModellingRule_Mandatory)
                     {
-                        // Create a matching property under the object instance
-                        childVar = _nodeFactory.CreateProperty(
-                            objectInstance,
-                            $"{parentName}.{cleanFieldName}",
-                            reference.ReferenceTypeId,
-                            namespaceIndex,
-                            writeable);
+                        // An instance must carry every mandatory child of its type,
+                        // even when the Thing Description maps no tag onto it.
+                        CreateObjectTypeChild(objectInstance, declaration, isProperty, namespaceIndex, parentName, false, mapped: false);
                     }
-                 }
+                }
 
                 reference = browser.Next();
             }
 
-            if (childVar != null)
+            return mappedChild;
+        }
+
+        private BaseVariableState CreateObjectTypeChild(BaseObjectState objectInstance, BaseVariableState declaration, bool isProperty, ushort namespaceIndex, string parentName, bool writeable, bool mapped)
+        {
+            // Placeholder declarations are named like "<MeasurementValue>"; the
+            // instance uses the plain name, in the type's namespace.
+            string childName = declaration.BrowseName.Name.Trim('<', '>');
+            QualifiedName browseName = new(childName, declaration.BrowseName.NamespaceIndex);
+
+            // A property with several forms, or a second field mapped onto the
+            // same object, reuses the child created the first time.
+            if (objectInstance.FindChild(SystemContext, browseName) is BaseVariableState existing)
             {
-                AddPredefinedNode(SystemContext, childVar);
+                return existing;
             }
 
-            return childVar;
+            // The NodeId stays qualified by the parent name so it is unique within
+            // the asset namespace; only the browse and display names are shortened.
+            string nodeName = $"{parentName}.{childName}";
+
+            BaseVariableState child;
+            if (isProperty)
+            {
+                child = _nodeFactory.CreateProperty(objectInstance, nodeName, declaration.DataType, namespaceIndex, writeable);
+            }
+            else if (mapped)
+            {
+                child = _nodeFactory.CreateVariable(objectInstance, nodeName, declaration.DataType, namespaceIndex, writeable);
+            }
+            else
+            {
+                // Unmapped mandatory components are not WoT components, so they are
+                // created without the HasWoTComponent reference the factory adds.
+                child = new BaseDataVariableState(objectInstance)
+                {
+                    NodeId = new NodeId(nodeName, namespaceIndex),
+                    DataType = declaration.DataType,
+                    AccessLevel = AccessLevels.CurrentRead,
+                    UserAccessLevel = AccessLevels.CurrentRead,
+                    OnReadValue = OnReadValue
+                };
+                objectInstance.AddChild(child);
+            }
+
+            child.SymbolicName = childName;
+            child.BrowseName = browseName;
+            child.DisplayName = new Ua.LocalizedText("en", childName);
+            child.ReferenceTypeId = isProperty ? ReferenceTypeIds.HasProperty : ReferenceTypeIds.HasComponent;
+            child.TypeDefinitionId = declaration.TypeDefinitionId;
+            child.ValueRank = declaration.ValueRank;
+
+            AddPredefinedNode(SystemContext, child);
+
+            return child;
         }
     }
 }

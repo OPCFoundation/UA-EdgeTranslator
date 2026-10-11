@@ -254,6 +254,81 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task An_object_type_mapping_creates_a_correctly_typed_and_named_child()
+        {
+            // Mirrors a pac4200 mapping: EnergyMeasurementType from the PNEM
+            // companion spec, with the tag mapped onto <MeasurementValue>.
+            string nodesets = System.IO.Path.Combine(_fixture.WorkingDirectory, "nodesets");
+            foreach (string name in new[] { "opcfoundation.org.UA.DI.nodeset2.xml", "opcfoundation.org.UA.PNEM.nodeset2.xml" })
+            {
+                string source = FindRepositoryFile(System.IO.Path.Combine("Tests", "UAEdgeTranslator.Tests", "TestData", "nodesets", name));
+                System.IO.File.Copy(source, System.IO.Path.Combine(nodesets, name), overwrite: true);
+            }
+
+            const string td = """
+                {
+                  "@context": [ "https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/PNEM/" } ],
+                  "id": "urn:objtype",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": [ "nosec_sc" ],
+                  "@type": [ "Thing" ],
+                  "name": "objtype",
+                  "base": "mock://127.0.0.1:1234/1",
+                  "properties": {
+                    "VoltageL1-L2": {
+                      "type": "number",
+                      "readOnly": true,
+                      "uav:mapToNodeId": "s=VoltageL1-L2",
+                      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+                      "uav:mapByFieldPath": "<MeasurementValue>",
+                      "forms": [
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "readproperty" ], "type": "xsd:float", "pollingTime": 1000 },
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "observeproperty" ], "type": "xsd:float", "pollingTime": 1000 }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+            await UANodeManager.Instance.ImportWoTFileAsync("objtype.jsonld", td).ConfigureAwait(false);
+
+            FieldInfo field = typeof(UANodeManager).GetField("_uaVariables", _privateInstance);
+            var variables = (ConcurrentDictionary<string, BaseDataVariableState>)field.GetValue(UANodeManager.Instance);
+            BaseDataVariableState measurement = Assert.Single(variables, v => v.Key.StartsWith("objtype:", StringComparison.Ordinal)).Value;
+
+            // Named after the declaration, without the parent prefix or brackets.
+            Assert.Equal("MeasurementValue", measurement.DisplayName.Text);
+            Assert.Equal("MeasurementValue", measurement.BrowseName.Name);
+
+            // Typed like the declaration (Number), not like the HasComponent reference.
+            Assert.Equal(DataTypeIds.Number, measurement.DataType);
+            Assert.NotEqual(ReferenceTypeIds.HasComponent, measurement.DataType);
+
+            // The instance also carries its mandatory PeObjectNumber property.
+            NodeState instance = measurement.Parent;
+            Assert.Equal("VoltageL1-L2", instance.DisplayName.Text);
+            List<BaseInstanceState> children = [];
+            instance.GetChildren(UANodeManager.Instance.SystemContext, children);
+            Assert.Single(children, c => c.BrowseName.Name == "MeasurementValue");
+            BaseInstanceState peObjectNumber = Assert.Single(children, c => c.BrowseName.Name == "PeObjectNumber");
+            Assert.Equal(DataTypeIds.UInt16, ((BaseVariableState)peObjectNumber).DataType);
+        }
+
+        private static string FindRepositoryFile(string relativePath)
+        {
+            for (System.IO.DirectoryInfo dir = new(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+            {
+                string candidate = System.IO.Path.Combine(dir.FullName, relativePath);
+                if (System.IO.File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            throw new System.IO.FileNotFoundException(relativePath);
+        }
+
+        [Fact]
         public async Task A_property_with_several_forms_creates_a_single_variable()
         {
             // One form per operation is normal in a Thing Description. Each form
