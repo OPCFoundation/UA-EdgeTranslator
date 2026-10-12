@@ -122,6 +122,34 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task Nodes_carry_the_UA_NodeSetEditor_icon_for_their_type_family()
+        {
+            IReadOnlyList<AddressSpaceNode> root =
+                await _service.BrowseChildrenAsync(ObjectIds.RootFolder.ToString()).ConfigureAwait(false);
+
+            // Objects/Types/Views are FolderType instances.
+            Assert.Equal("folder", Assert.Single(root, c => c.Text == "Objects").Icon);
+
+            IReadOnlyList<AddressSpaceNode> objects =
+                await _service.BrowseChildrenAsync(ObjectIds.ObjectsFolder.ToString()).ConfigureAwait(false);
+            Assert.Equal("object", Assert.Single(objects, c => c.Text == "Server").Icon);
+
+            IReadOnlyList<AddressSpaceNode> server =
+                await _service.BrowseChildrenAsync(ObjectIds.Server.ToString()).ConfigureAwait(false);
+            Assert.Equal("property", Assert.Single(server, c => c.Text == "ServerArray").Icon);
+            Assert.Equal("dataVariable", Assert.Single(server, c => c.Text == "ServerStatus").Icon);
+
+            IReadOnlyList<AddressSpaceNode> objectTypes =
+                await _service.BrowseChildrenAsync(ObjectTypeIds.BaseObjectType.ToString()).ConfigureAwait(false);
+            Assert.Equal("interfaceType", Assert.Single(objectTypes, c => c.Text == "BaseInterfaceType").Icon);
+            Assert.Equal("objectType", Assert.Single(objectTypes, c => c.Text == "FolderType").Icon);
+
+            IReadOnlyList<AddressSpaceNode> referenceTypes =
+                await _service.BrowseChildrenAsync(ReferenceTypeIds.References.ToString()).ConfigureAwait(false);
+            Assert.All(referenceTypes, t => Assert.Equal("referenceType", t.Icon));
+        }
+
+        [Fact]
         public async Task Default_expansion_opens_root_and_objects()
         {
             IReadOnlyList<string> defaults = _service.GetDefaultExpandedNodeIds();

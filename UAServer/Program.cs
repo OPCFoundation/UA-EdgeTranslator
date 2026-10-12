@@ -111,7 +111,19 @@
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
             // start the server
-            await App.StartAsync(new UAServer(Telemetry)).ConfigureAwait(false);
+            UAServer server = new(Telemetry);
+            await App.StartAsync(server).ConfigureAwait(false);
+
+            // Preview (on by default): host the OPC UA WoT Connectivity 1.1 registry alongside the
+            // WoT v1.02 node manager. Its Thing Descriptions materialize through our drivers.
+            WotCon.WotRegistryHost wotRegistry = null;
+            if (WotCon.WotRegistryHost.IsEnabled)
+            {
+                wotRegistry = await WotCon.WotRegistryHost.StartAsync(
+                    server,
+                    Drivers,
+                    Path.Combine(Directory.GetCurrentDirectory(), "settings", "wot-registry")).ConfigureAwait(false);
+            }
 
             Log.Logger.Information("UA Edge Translator is running.");
 
@@ -158,6 +170,18 @@
             }
             finally
             {
+                if (wotRegistry != null)
+                {
+                    try
+                    {
+                        await wotRegistry.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Error(ex, "Error while stopping the WoT Connectivity registry.");
+                    }
+                }
+
                 try
                 {
                     if (App != null)

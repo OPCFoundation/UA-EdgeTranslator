@@ -158,13 +158,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
         }
 
         [Fact]
-        public void The_legend_lists_every_node_class()
+        public void The_legend_lists_every_node_icon()
         {
             IRenderedComponent<Explorer> page = Render<Explorer>();
 
             string[] labels = page.FindAll(".as-legend-label").Select(l => l.TextContent).ToArray();
 
-            Assert.Equal(["Object", "Variable", "Method", "ObjectType", "VariableType", "ReferenceType", "DataType", "View"], labels);
+            Assert.Equal(["Object", "Folder", "Variable", "Property", "Method", "ObjectType", "InterfaceType", "VariableType", "ReferenceType", "DataType", "View"], labels);
         }
 
         private static void ExpandToSeededFolder(IRenderedComponent<Explorer> page)

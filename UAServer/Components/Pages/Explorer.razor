@@ -53,10 +53,12 @@ else
     <div class="explorer-grid">
         <div class="card explorer-tree-card">
             <div class="as-legend">
-                @foreach ((string Code, string Name) entry in _nodeClassLegend)
+                @foreach ((string Icon, string Name) entry in _nodeIconLegend)
                 {
                     <span class="as-legend-item">
-                        <span class="as-node-badge as-node-@entry.Name.ToLowerInvariant()">@entry.Code</span>
+                        <span class="as-node-icon as-node-@entry.Name.ToLowerInvariant()">
+                            <svg aria-hidden="true"><use href="icons/ua-node-icons.svg#@entry.Icon" /></svg>
+                        </span>
                         <span class="as-legend-label">@entry.Name</span>
                     </span>
                 }
@@ -207,18 +209,21 @@ else
     private bool _tagAccessBlocked;
     private int _selectedNamespaceIndex = -1;
 
-    // Mirrors AddressSpaceTree.NodeClassAbbreviation so the legend and the
-    // badges in the tree can never drift apart.
-    private static readonly (string Code, string Name)[] _nodeClassLegend =
+    // Icon keys are the symbol ids in icons/ua-node-icons.svg, taken from the
+    // UA-NodeSetEditor icon contract that AddressSpaceTree renders.
+    private static readonly (string Icon, string Name)[] _nodeIconLegend =
     [
-        ("O", "Object"),
-        ("V", "Variable"),
-        ("M", "Method"),
-        ("OT", "ObjectType"),
-        ("VT", "VariableType"),
-        ("RT", "ReferenceType"),
-        ("DT", "DataType"),
-        ("VW", "View")
+        ("object", "Object"),
+        ("folder", "Folder"),
+        ("dataVariable", "Variable"),
+        ("property", "Property"),
+        ("method", "Method"),
+        ("objectType", "ObjectType"),
+        ("interfaceType", "InterfaceType"),
+        ("variableType", "VariableType"),
+        ("referenceType", "ReferenceType"),
+        ("dataType", "DataType"),
+        ("view", "View")
     ];
     private IReadOnlyDictionary<string, string> _nodeValues = new Dictionary<string, string>(StringComparer.Ordinal);
     private PeriodicTimer _timer;

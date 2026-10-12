@@ -44,6 +44,10 @@ namespace Opc.Ua.Edge.Translator.Tests
             }
 
             server.CurrentInstance.IdentityRegistry.Register(new AcceptAnonymousAuthenticator());
+
+            // The fixtures use SecurityPolicy None and anonymous sessions, which the
+            // WoT-Con management authorization correctly refuses in production.
+            Opc.Ua.Edge.Translator.WotCon.AssetManagementAuthorization.DisabledForTests = true;
         }
 
         private sealed class AcceptAnonymousAuthenticator : IUserTokenAuthenticator

@@ -1,0 +1,164 @@
+namespace Opc.Ua.Edge.Translator.Tests.WotCon
+{
+    using global::Opc.Ua.WotCon;
+    using global::Opc.Ua.WotCon.Bindings;
+    using Opc.Ua;
+    using Opc.Ua.Edge.Translator.Interfaces;
+    using Opc.Ua.Edge.Translator.Models;
+    using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using Opc.Ua.Edge.Translator.WotCon;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Xunit;
+
+    /// <summary>
+    /// <c>subscribeevent</c> through the driver bridge: events pushed by an
+    /// <see cref="IEventingAsset"/> reach the WoT listener, and a driver that cannot
+    /// push events reports the missing capability instead of an empty stream.
+    /// </summary>
+    public sealed class DriverWotEventTests
+    {
+        private const string EventTd = """
+            {
+              "@context": ["https://www.w3.org/2022/wot/td/v1.1"],
+              "id": "urn:evt-1",
+              "name": "evt-1",
+              "title": "evt-1",
+              "base": "mock://device-1:1502/1",
+              "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+              "security": ["nosec_sc"],
+              "events": {
+                "alarm": {
+                  "data": { "type": "object", "properties": { "Severity": { "type": "integer" }, "Message": { "type": "string" } } },
+                  "forms": [ { "href": "/alarm", "op": ["subscribeevent", "unsubscribeevent"] } ]
+                }
+              }
+            }
+            """;
+
+        private static WotCompiledForm PlanEventForm(ProtocolDriverRegistry drivers, out WotProtocolBinderRegistry registry, DriverWotBindingExecutor executor)
+        {
+            WotEndpointPolicy policy = new() { AllowLoopback = true, AllowPrivateAddresses = true };
+            policy.AllowedSchemes.Add(MockProtocolDriver.MockScheme);
+
+            registry = new([new DriverWotBinder(drivers)], [executor], endpointPolicy: policy);
+            WotBindingPlan plan = registry.Prepare(WotBindingPlanRequest.FromDocument(
+                "/groups/td/resources/evt-1", WoTDocumentKindEnum.ThingDescription, Encoding.UTF8.GetBytes(EventTd)));
+
+            Assert.True(plan.FullySupported, string.Join("; ", plan.Diagnostics.Select(d => d.Message)));
+            return plan.CompiledForms.Single(f => f.Operation == WoTBindingCapabilityEnum.SubscribeEvent);
+        }
+
+        [Fact]
+        public async Task Event_form_is_planned_and_a_non_eventing_driver_reports_not_supported()
+        {
+            ProtocolDriverRegistry drivers = new();
+            drivers.Register(new MockProtocolDriver());
+            ThingDescriptionCache cache = new();
+            cache.Set(EventTd);
+            await using DriverWotBindingExecutor executor = new(drivers, cache, () => false);
+
+            WotCompiledForm form = PlanEventForm(drivers, out WotProtocolBinderRegistry registry, executor);
+            Assert.True(form.IsExecutable);
+
+            await using IWotBindingChannel channel = await registry.OpenChannelAsync(form);
+            ServiceResultException ex = await Assert.ThrowsAsync<ServiceResultException>(
+                async () => await channel.SubscribeEventAsync(_ => { }));
+            Assert.Equal(StatusCodes.BadNotSupported, ex.StatusCode);
+        }
+
+        [Fact]
+        public async Task Pushed_alarm_reaches_the_listener_as_named_event_data()
+        {
+            FakeEventingAsset asset = new();
+            List<WotNotification> received = new();
+
+            await using (DriverEventSubscription subscription = new(null, asset, received.Add, "evt-1"))
+            {
+                Assert.Equal(1, asset.Starts);
+
+                asset.Raise(new AlarmEvent { Severity = 700, Message = "Overheating", Active = true, ConditionName = "Temp" });
+            }
+
+            WotNotification notification = Assert.Single(received);
+            Assert.True(notification.Data.Members.TryGetValue("Severity", out WotEventData severity));
+            Assert.Equal(700, severity.Value.WrappedValue.AsBoxedObject());
+            Assert.True(notification.Data.Members.TryGetValue("Message", out WotEventData message));
+            Assert.Equal("Overheating", message.Value.WrappedValue.AsBoxedObject());
+            Assert.Equal(1, asset.Stops);
+        }
+
+        [Fact]
+        public async Task Driver_subscription_is_shared_across_listeners_and_stopped_by_the_last()
+        {
+            FakeEventingAsset asset = new();
+            int first = 0;
+            int second = 0;
+
+            DriverEventSubscription a = new(null, asset, _ => Interlocked.Increment(ref first), "evt-1");
+            DriverEventSubscription b = new(null, asset, _ => Interlocked.Increment(ref second), "evt-1");
+            Assert.Equal(1, asset.Starts);
+
+            asset.Raise(new AlarmEvent { Message = "one" });
+            await a.DisposeAsync();
+            Assert.Equal(0, asset.Stops);
+
+            asset.Raise(new AlarmEvent { Message = "two" });
+            await b.DisposeAsync();
+            await b.DisposeAsync();
+
+            Assert.Equal(1, first);
+            Assert.Equal(2, second);
+            Assert.Equal(1, asset.Stops);
+        }
+
+        [Fact]
+        public async Task A_throwing_listener_does_not_break_the_driver_event_pump()
+        {
+            FakeEventingAsset asset = new();
+            await using DriverEventSubscription subscription = new(null, asset, _ => throw new InvalidOperationException("listener"), "evt-1");
+
+            asset.Raise(new AlarmEvent { Message = "ignored" });
+        }
+
+        private sealed class FakeEventingAsset : IEventingAsset
+        {
+            public event EventHandler<AlarmEvent> AlarmReceived;
+
+            public int Starts { get; private set; }
+
+            public int Stops { get; private set; }
+
+            public bool IsConnected => true;
+
+            public void Raise(AlarmEvent alarm) => AlarmReceived?.Invoke(this, alarm);
+
+            public void StartEventSubscription() => Starts++;
+
+            public void RefreshEventSubscription()
+            {
+            }
+
+            public void StopEventSubscription() => Stops++;
+
+            public string GetRemoteEndpoint() => "fake://evt";
+
+            public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default) => Task.FromResult<object>(null);
+
+            public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default) =>
+                Task.FromResult(AssetActionResult.FromStatus("ok"));
+
+            public ValueTask DisposeAsync() => default;
+        }
+    }
+}

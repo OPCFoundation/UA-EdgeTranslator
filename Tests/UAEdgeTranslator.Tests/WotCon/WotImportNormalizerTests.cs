@@ -1,0 +1,95 @@
+namespace Opc.Ua.Edge.Translator.Tests.WotCon
+{
+    using Opc.Ua.Edge.Translator.WotCon;
+    using System.Linq;
+    using System.Text;
+    using System.Text.Json.Nodes;
+    using Xunit;
+
+    public sealed class WotImportNormalizerTests
+    {
+        private static JsonObject Normalize(string json) =>
+            JsonNode.Parse(WotImportNormalizer.Normalize(Encoding.UTF8.GetBytes(json)))!.AsObject();
+
+        [Fact]
+        public void A_plain_thing_is_made_a_registry_thing_description_under_objects()
+        {
+            JsonObject td = Normalize("""
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/PNEM/" }],
+                  "@type": ["Thing"],
+                  "title": "pac",
+                  "properties": { "p": { "uav:mapToNodeId": "s=x", "forms": [ { "href": "1" } ] } }
+                }
+                """);
+
+            Assert.Equal(["Thing", "uav:object"], td["@type"]!.AsArray().Select(t => t!.GetValue<string>()));
+
+            JsonObject prefixes = td["@context"]!.AsArray().OfType<JsonObject>().Single();
+            Assert.Equal(WotImportNormalizer.BindingNamespace, prefixes["uav"]!.GetValue<string>());
+            Assert.Equal("http://opcfoundation.org/UA/PNEM/", prefixes["uav0"]!.GetValue<string>());
+
+            // Terms written against the companion namespace move with it.
+            JsonObject p = td["properties"]!["p"]!.AsObject();
+            Assert.Null(p["uav:mapToNodeId"]);
+            Assert.Equal("s=x", p["uav0:mapToNodeId"]!.GetValue<string>());
+
+            Assert.Equal(WotImportNormalizer.ObjectsFolder, td["uav:browsePathAnchor"]!.GetValue<string>());
+            JsonObject link = Assert.Single(td["links"]!.AsArray().OfType<JsonObject>());
+            Assert.Equal("uav:componentOf", link["rel"]!.GetValue<string>());
+            Assert.Equal(WotImportNormalizer.ObjectsFolder, link["href"]!.GetValue<string>());
+        }
+
+        [Fact]
+        public void A_scalar_context_and_type_are_widened()
+        {
+            JsonObject td = Normalize("""{ "@context": "https://www.w3.org/2022/wot/td/v1.1", "@type": "Thing", "title": "x" }""");
+
+            Assert.Equal("https://www.w3.org/2022/wot/td/v1.1", td["@context"]![0]!.GetValue<string>());
+            Assert.Equal(WotImportNormalizer.BindingNamespace, td["@context"]![1]!["uav"]!.GetValue<string>());
+            Assert.Contains("uav:object", td["@type"]!.AsArray().Select(t => t!.GetValue<string>()));
+        }
+
+        [Fact]
+        public void A_stated_anchor_is_kept_and_no_link_is_added()
+        {
+            JsonObject td = Normalize("""
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/WoT-Binding/" }],
+                  "@type": ["Thing", "uav:object"],
+                  "uav:browsePathAnchor": "nsu=urn:plant;s=Line1",
+                  "title": "x"
+                }
+                """);
+
+            Assert.Equal("nsu=urn:plant;s=Line1", td["uav:browsePathAnchor"]!.GetValue<string>());
+            Assert.Null(td["links"]);
+        }
+
+        [Fact]
+        public void A_conforming_document_is_returned_byte_for_byte()
+        {
+            byte[] content = Encoding.UTF8.GetBytes("""
+                {"@context":["https://www.w3.org/2022/wot/td/v1.1",{"uav":"http://opcfoundation.org/UA/WoT-Binding/"}],"@type":["Thing","uav:object"],"uav:browsePathAnchor":"nsu=http://opcfoundation.org/UA/;i=85","title":"x"}
+                """);
+
+            Assert.Same(content, WotImportNormalizer.Normalize(content));
+        }
+
+        [Fact]
+        public void Thing_models_are_not_turned_into_objects()
+        {
+            JsonObject tm = Normalize("""{ "@context": "https://www.w3.org/2022/wot/td/v1.1", "@type": "tm:ThingModel", "title": "x" }""");
+
+            Assert.DoesNotContain("uav:object", tm["@type"]!.ToJsonString());
+        }
+
+        [Fact]
+        public void Invalid_json_is_passed_through_for_the_registry_to_report()
+        {
+            byte[] content = Encoding.UTF8.GetBytes("not json");
+
+            Assert.Same(content, WotImportNormalizer.Normalize(content));
+        }
+    }
+}

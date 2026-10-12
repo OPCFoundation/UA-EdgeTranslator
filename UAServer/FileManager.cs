@@ -246,6 +246,12 @@ using System.Threading.Tasks;
             uint fileHandle,
             ByteString data)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(_context, "WoTFile.Write", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             lock (_handles)
             {
                 Handle handle = Find(_context, fileHandle);
@@ -280,6 +286,12 @@ using System.Threading.Tasks;
             uint fileHandle,
             CancellationToken cancellationToken)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CloseAndUpdate", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return new CloseMethodStateResult { ServiceResult = authorized };
+            }
+
             return new CloseMethodStateResult
             {
                 ServiceResult = await OnCloseAndUpdateAsync(context, method, objectId, fileHandle, cancellationToken).ConfigureAwait(false)
