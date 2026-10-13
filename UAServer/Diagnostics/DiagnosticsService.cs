@@ -749,7 +749,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
             string informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
             int plus = informational?.IndexOf('+', StringComparison.Ordinal) ?? -1;
-            if (plus >= 0 && plus < informational.Length - 1)
+            if (informational != null && plus >= 0 && plus < informational.Length - 1)
             {
                 string commit = informational[(plus + 1)..];
                 return build + " (" + (commit.Length > 7 ? commit[..7] : commit) + ")";
