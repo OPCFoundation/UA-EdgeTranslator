@@ -34,16 +34,25 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly IServerInternal _server;
 
+        private readonly StandardServer _standardServer;
+
+        private readonly IWotNodeSetResolver _nodeSetResolver;
+
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, NodeManagerRegistration> _companionModels = new(StringComparer.Ordinal);
+
         private NodeManagerRegistration _registration;
 
         private WotRegistryHost(
-            IServerInternal server,
+            StandardServer server,
             IWotRegistryService registry,
             WotMaterializationCoordinator coordinator,
             DriverWotBindingExecutor executor,
-            ThingDescriptionCache thingDescriptions)
+            ThingDescriptionCache thingDescriptions,
+            IWotNodeSetResolver nodeSetResolver)
         {
-            _server = server;
+            _standardServer = server;
+            _server = server.CurrentInstance;
+            _nodeSetResolver = nodeSetResolver;
             Registry = registry;
             _coordinator = coordinator;
             _executor = executor;
@@ -51,6 +60,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
         }
 
         public IWotRegistryService Registry { get; }
+
+        /// <summary>The materialization coordinator; exposed for refresh and diagnostics.</summary>
+        public WotMaterializationCoordinator Coordinator => _coordinator;
 
         public ThingDescriptionCache ThingDescriptions { get; }
 
@@ -70,6 +82,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
             IServerInternal serverInternal = server.CurrentInstance;
 
             var thingDescriptions = new ThingDescriptionCache();
+            var mappingTypes = new WotMappingTypeModel(serverInternal);
+            var targetResolver = new CreatingTargetVariableResolver(mappingTypes);
             var binder = new DriverWotBinder(drivers);
             var executor = new DriverWotBindingExecutor(drivers, thingDescriptions);
 
@@ -103,16 +117,19 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             var projectionHost = new LifecycleWotProjectionHost(
                 server.NodeManagerLifecycle,
-                new WotProjectionBindingRuntimeFactory(binderRegistry));
+                new ObjectTypeMappingRuntimeFactory(
+                    new WotProjectionBindingRuntimeFactory(binderRegistry, targetResolver),
+                    targetResolver));
 
+            var nodeSetResolver = new CloudLibraryNodeSetResolver(new UACloudLibraryClient());
             var coordinator = new WotMaterializationCoordinator(
                 registry,
                 projectionHost,
                 binderRegistry,
-                nodeSetResolver: new CloudLibraryNodeSetResolver(new UACloudLibraryClient()),
+                nodeSetResolver: nodeSetResolver,
                 viewProjectionHost: new LifecycleWotViewProjectionHost(server.NodeManagerLifecycle));
 
-            var host = new WotRegistryHost(serverInternal, registry, coordinator, executor, thingDescriptions);
+            var host = new WotRegistryHost(server, registry, coordinator, executor, thingDescriptions, nodeSetResolver);
             registry.Changed += host.OnRegistryChanged;
 
             // The registry node manager loads and materializes the registry inside its
@@ -128,6 +145,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             await deferredRegistry.LoadAsync(cancellationToken).ConfigureAwait(false);
             await host.CacheThingDescriptionsAsync(registry.Current, cancellationToken).ConfigureAwait(false);
+            await host.LoadCompanionModelsAsync(registry.Current, cancellationToken).ConfigureAwait(false);
             await coordinator.RefreshAsync(new WotRefreshRequest { RequestId = "startup" }, cancellationToken).ConfigureAwait(false);
 
             await host.ImportSettingsFilesAsync(
@@ -167,6 +185,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
                         continue;
                     }
 
+                    // A target-mapping type from a companion model must be in the address
+                    // space before the Thing is materialized against it.
+                    await LoadCompanionModelsAsync(content, cancellationToken).ConfigureAwait(false);
+
                     await Registry.UpsertResourceAsync(
                         new WotUpsertResourceRequest
                         {
@@ -201,6 +223,107 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             ByteString stored = await Registry.ReadContentAsync(version, cancellationToken).ConfigureAwait(false);
             return stored.ToArray().AsSpan().SequenceEqual(content);
+        }
+
+        private async Task LoadCompanionModelsAsync(WotRegistrySnapshot snapshot, CancellationToken cancellationToken)
+        {
+            foreach (WotResource resource in snapshot.ResourcesOfKind(WoTDocumentKindEnum.ThingDescription))
+            {
+                WotResourceVersion version = resource.DefaultVersion;
+                if (version == null || !version.HasContent)
+                {
+                    continue;
+                }
+
+                ByteString content = await Registry.ReadContentAsync(version, cancellationToken).ConfigureAwait(false);
+                await LoadCompanionModelsAsync(content.ToArray(), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Loads, through the node-set resolver, every companion model the Thing
+        /// Description names in a <c>uav:mapToType</c> (with its required models first),
+        /// as runtime NodeSets. The registry only resolves namespaces a converted NodeSet
+        /// lists as required models, which a mapping type is not, so without this the
+        /// target type would be unknown when the Thing is materialized.
+        /// </summary>
+        private async Task LoadCompanionModelsAsync(byte[] thingDescription, CancellationToken cancellationToken)
+        {
+            foreach (string namespaceUri in WotImportNormalizer.MappingTypeNamespaces(thingDescription))
+            {
+                await LoadCompanionModelAsync(namespaceUri, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task LoadCompanionModelAsync(string namespaceUri, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(namespaceUri)
+                || string.Equals(namespaceUri, Ua.Namespaces.OpcUa, StringComparison.Ordinal)
+                || _companionModels.ContainsKey(namespaceUri)
+                || _server.NamespaceUris.GetIndex(namespaceUri) >= 0)
+            {
+                return;
+            }
+
+            byte[] xml;
+            using (Stream stream = await _nodeSetResolver.TryResolveAsync(namespaceUri, cancellationToken).ConfigureAwait(false))
+            {
+                if (stream == null)
+                {
+                    Log.Logger.Warning("Companion model {NamespaceUri} named by a WoT target mapping could not be resolved.", namespaceUri);
+                    return;
+                }
+
+                using MemoryStream copy = new();
+                await stream.CopyToAsync(copy, cancellationToken).ConfigureAwait(false);
+                xml = copy.ToArray();
+            }
+
+            Ua.Export.UANodeSet nodeSet;
+            using (MemoryStream read = new(xml, writable: false))
+            {
+                nodeSet = Ua.Export.UANodeSet.Read(read);
+            }
+
+            // Required models first, so the companion's references resolve.
+            foreach (Ua.Export.ModelTableEntry model in nodeSet.Models ?? Array.Empty<Ua.Export.ModelTableEntry>())
+            {
+                foreach (Ua.Export.ModelTableEntry required in model.RequiredModel ?? Array.Empty<Ua.Export.ModelTableEntry>())
+                {
+                    await LoadCompanionModelAsync(required.ModelUri, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            string[] owned = (nodeSet.Models ?? Array.Empty<Ua.Export.ModelTableEntry>())
+                .Select(m => m.ModelUri)
+                .Where(uri => !string.IsNullOrEmpty(uri))
+                .ToArray();
+            if (owned.Length == 0)
+            {
+                owned = [namespaceUri];
+            }
+
+            Ua.Server.RuntimeNodeSet.RuntimeNodeSetOptions options = new()
+            {
+                Sources = new ArrayOf<Ua.Server.RuntimeNodeSet.RuntimeNodeSetSource>(new Ua.Server.RuntimeNodeSet.RuntimeNodeSetSource[]
+                {
+                    Ua.Server.RuntimeNodeSet.RuntimeNodeSetSource.FromStream(
+                        namespaceUri,
+                        _ => new ValueTask<Stream>(new MemoryStream(xml, writable: false)),
+                        new ArrayOf<string>(owned))
+                })
+            };
+
+            NodeManagerRegistration registration = await Ua.Server.RuntimeNodeSet.RuntimeNodeSetLifecycleExtensions
+                .AddRuntimeNodeSetAsync(_standardServer.NodeManagerLifecycle, options, null, cancellationToken)
+                .ConfigureAwait(false);
+
+            foreach (string uri in owned)
+            {
+                _companionModels[uri] = registration;
+            }
+
+            Log.Logger.Information("Loaded companion model {NamespaceUri} for WoT target mappings.", namespaceUri);
         }
 
         private void OnRegistryChanged(object sender, WotRegistryChangedEventArgs e)
@@ -240,11 +363,23 @@ namespace Opc.Ua.Edge.Translator.WotCon
         {
             Registry.Changed -= OnRegistryChanged;
 
+            // Remove the projected Things first. Removing the registry node manager would
+            // otherwise remove them from inside its own lifecycle operation, which waits
+            // on the lifecycle lock that operation already holds.
+            try
+            {
+                await _coordinator.RemoveAllAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Log.Logger.Warning(ex, "Failed to remove the projected WoT Connectivity resources.");
+            }
+
             if (_registration != null)
             {
                 try
                 {
-                    await ((StandardServer)null ?? throw new InvalidOperationException()).NodeManagerLifecycle
+                    await _standardServer.NodeManagerLifecycle
                         .RemoveAsync(_registration, null).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException)

@@ -125,10 +125,15 @@ namespace Opc.Ua.Edge.Translator.WotCon
             foreach ((string op, WoTBindingCapabilityEnum capability) in ResolveOperations(form, diagnostics))
             {
                 WotOperationDescriptor operation = new(capability, op, capability.ToString());
+
+                // Carry the affordance's authored target mapping (uav:mapToNodeId,
+                // uav:mapToType, uav:mapByFieldPath). The projection runtime only installs
+                // read/write handlers on the Variables these mappings name; without them a
+                // property is materialized but never fed by the driver.
                 entries.Add(new WotCompiledForm(
                     Identity, form.Kind, form.AffordanceName, form.JsonPointer, capability, op,
                     endpoint, addressing, operation, payload,
-                    [], Capability.IsExecutable));
+                    [], Capability.IsExecutable, form.TargetMapping));
             }
 
             return entries.Count == 0

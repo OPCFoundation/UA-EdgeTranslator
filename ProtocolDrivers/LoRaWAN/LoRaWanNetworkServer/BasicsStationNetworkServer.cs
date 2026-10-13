@@ -23,6 +23,10 @@ namespace LoRaWan.NetworkServer.BasicsStation
 
         public static async Task RunServerAsync()
         {
+            // The driver is loaded before the OPC UA server starts, but the TLS certificate
+            // below is derived from the OPC UA application certificate.
+            await Program.ServerStarted.ConfigureAwait(false);
+
             bool secureComms = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISABLE_TLS"));
             var builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton<BasicsStationNetworkServerStartup>();

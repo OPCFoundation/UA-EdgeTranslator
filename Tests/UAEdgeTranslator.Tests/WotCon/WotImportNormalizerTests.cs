@@ -18,8 +18,16 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
                 {
                   "@context": ["https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/PNEM/" }],
                   "@type": ["Thing"],
+                  "id": "urn:pac",
                   "title": "pac",
-                  "properties": { "p": { "uav:mapToNodeId": "s=x", "forms": [ { "href": "1" } ] } }
+                  "properties": {
+                    "p": {
+                      "uav:mapToNodeId": "s=x",
+                      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+                      "uav:mapByFieldPath": "A",
+                      "forms": [ { "href": "1" } ]
+                    }
+                  }
                 }
                 """);
 
@@ -27,12 +35,14 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
 
             JsonObject prefixes = td["@context"]!.AsArray().OfType<JsonObject>().Single();
             Assert.Equal(WotImportNormalizer.BindingNamespace, prefixes["uav"]!.GetValue<string>());
-            Assert.Equal("http://opcfoundation.org/UA/PNEM/", prefixes["uav0"]!.GetValue<string>());
 
-            // Terms written against the companion namespace move with it.
+            // Authored target mappings stay in force; a namespace-less NodeId is
+            // qualified with the Thing's namespace, exactly as 1.02 resolved it.
             JsonObject p = td["properties"]!["p"]!.AsObject();
-            Assert.Null(p["uav:mapToNodeId"]);
-            Assert.Equal("s=x", p["uav0:mapToNodeId"]!.GetValue<string>());
+            Assert.Equal("nsu=urn:pac;s=x", p["uav:mapToNodeId"]!.GetValue<string>());
+            Assert.Equal("nsu=http://opcfoundation.org/UA/PNEM/;i=3005", p["uav:mapToType"]!.GetValue<string>());
+            Assert.Equal("A", p["uav:mapByFieldPath"]!.GetValue<string>());
+            Assert.Null(p["uav:id"]);
 
             Assert.Equal(WotImportNormalizer.ObjectsFolder, td["uav:browsePathAnchor"]!.GetValue<string>());
             JsonObject link = Assert.Single(td["links"]!.AsArray().OfType<JsonObject>());
@@ -82,6 +92,32 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             JsonObject tm = Normalize("""{ "@context": "https://www.w3.org/2022/wot/td/v1.1", "@type": "tm:ThingModel", "title": "x" }""");
 
             Assert.DoesNotContain("uav:object", tm["@type"]!.ToJsonString());
+        }
+
+        [Fact]
+        public void An_unmapped_property_is_mapped_to_its_own_variable()
+        {
+            JsonObject td = Normalize("""
+                {
+                  "@context": "https://www.w3.org/2022/wot/td/v1.1",
+                  "@type": "Thing",
+                  "id": "urn:pump",
+                  "name": "pump",
+                  "properties": {
+                    "speed": { "type": "number", "forms": [ { "href": "1" } ] },
+                    "mapped": { "type": "number", "uav:mapToNodeId": "nsu=urn:x;s=y", "forms": [ { "href": "2" } ] }
+                  }
+                }
+                """);
+
+            JsonObject speed = td["properties"]!["speed"]!.AsObject();
+            Assert.Equal("nsu=urn:pump;s=pump.speed", speed["uav:id"]!.GetValue<string>());
+            Assert.Equal("nsu=urn:pump;s=pump.speed", speed["uav:mapToNodeId"]!.GetValue<string>());
+
+            // An authored, already-portable mapping is left exactly as written.
+            JsonObject mapped = td["properties"]!["mapped"]!.AsObject();
+            Assert.Equal("nsu=urn:x;s=y", mapped["uav:mapToNodeId"]!.GetValue<string>());
+            Assert.Null(mapped["uav:id"]);
         }
 
         [Fact]
