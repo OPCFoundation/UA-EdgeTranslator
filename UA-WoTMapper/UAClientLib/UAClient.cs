@@ -393,7 +393,7 @@ namespace WotOpcUaMapper.UAClientLib
 
                 try
                 {
-                    var complexTypeSystem = new ComplexTypeSystem(new NodeCacheResolver(_session, _telemetry), _telemetry);
+                    using var complexTypeSystem = new ComplexTypeSystem(new NodeCacheResolver(_session, _telemetry), _telemetry);
                     await complexTypeSystem.LoadTypeAsync(variableNode.DataType).ConfigureAwait(false);
                 }
                 catch
