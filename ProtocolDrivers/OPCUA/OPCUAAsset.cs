@@ -559,7 +559,8 @@ using Opc.Ua;
 
             foreach (object rawForm in action.Forms)
             {
-                UAForm form = rawForm == null ? null : JsonConvert.DeserializeObject<UAForm>(rawForm.ToString());
+                UAForm form = rawForm as UAForm
+                    ?? (rawForm == null ? null : JsonConvert.DeserializeObject<UAForm>(rawForm.ToString()));
                 if (form == null || string.IsNullOrEmpty(form.Href) || string.IsNullOrEmpty(form.ObjectId))
                 {
                     continue;
