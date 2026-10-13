@@ -319,7 +319,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 {
                     Ua.Server.RuntimeNodeSet.RuntimeNodeSetSource.FromStream(
                         namespaceUri,
-                        _ => OpenNodeSet(xml),
+                        _ => new ValueTask<Stream>(OpenNodeSet(xml)),
                         new ArrayOf<string>(owned))
                 })
             };
@@ -341,9 +341,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
         /// loader takes ownership: it disposes the stream once the NodeSet is parsed, and
         /// calls this again for every (re)load, so the stream must not be shared or cached.
         /// </summary>
-        private static ValueTask<Stream> OpenNodeSet(byte[] xml)
+        private static Stream OpenNodeSet(byte[] xml)
         {
-            return new ValueTask<Stream>(new MemoryStream(xml, writable: false));
+            return new MemoryStream(xml, writable: false);
         }
 
         private void OnRegistryChanged(object sender, WotRegistryChangedEventArgs e)
