@@ -1,26 +1,26 @@
 Summary
-  Generated on: 10/10/2026 - 04:15:15
-  Coverage date: 10/10/2026 - 04:15:13
+  Generated on: 10/13/2026 - 11:23:32
+  Coverage date: 10/13/2026 - 11:23:29
   Parser: Cobertura
   Assemblies: 1
-  Classes: 39
-  Files: 35
-  Line coverage: 73.5%
-  Covered lines: 2727
-  Uncovered lines: 979
-  Coverable lines: 3706
-  Total lines: 9770
-  Branch coverage: 63.8% (1423 of 2230)
-  Covered branches: 1423
-  Total branches: 2230
-  Method coverage: 90.6% (273 of 301)
-  Full method coverage: 57.8% (174 of 301)
-  Covered methods: 273
-  Fully covered methods: 174
-  Total methods: 301
+  Classes: 41
+  Files: 37
+  Line coverage: 84%
+  Covered lines: 3257
+  Uncovered lines: 616
+  Coverable lines: 3873
+  Total lines: 10440
+  Branch coverage: 75.1% (1680 of 2236)
+  Covered branches: 1680
+  Total branches: 2236
+  Method coverage: 97.5% (324 of 332)
+  Full method coverage: 65.3% (217 of 332)
+  Covered methods: 324
+  Fully covered methods: 217
+  Total methods: 332
 
-UAEdgeTranslator                                                  73.5%
-  Opc.Ua.Cloud.ConsoleTelemetry                                    100%
+UAEdgeTranslator                                                    84%
+  Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
   Opc.Ua.Cloud.Library.Models.Organisation                         100%
@@ -28,26 +28,26 @@ UAEdgeTranslator                                                  73.5%
   Opc.Ua.Edge.Translator.ApplicationMessageDlg                     100%
   Opc.Ua.Edge.Translator.AsyncBridge                               100%
   Opc.Ua.Edge.Translator.ByteSwapper                               100%
-  Opc.Ua.Edge.Translator.Components.App                              0%
-  Opc.Ua.Edge.Translator.Components.Layout.MainLayout                0%
-  Opc.Ua.Edge.Translator.Components.Pages.Certificates            52.2%
+  Opc.Ua.Edge.Translator.Components.App                           66.6%
+  Opc.Ua.Edge.Translator.Components.Layout.MainLayout              100%
+  Opc.Ua.Edge.Translator.Components.Pages.Certificates            82.2%
   Opc.Ua.Edge.Translator.Components.Pages.Devices                 60.8%
   Opc.Ua.Edge.Translator.Components.Pages.Drivers                  100%
-  Opc.Ua.Edge.Translator.Components.Pages.Explorer                65.4%
+  Opc.Ua.Edge.Translator.Components.Pages.Explorer                86.6%
   Opc.Ua.Edge.Translator.Components.Pages.OpcUaSettings           92.8%
-  Opc.Ua.Edge.Translator.Components.Pages.Overview                82.9%
-  Opc.Ua.Edge.Translator.Components.Pages.WotFiles                17.7%
-  Opc.Ua.Edge.Translator.Components.Shared.AddressSpaceTree       48.8%
+  Opc.Ua.Edge.Translator.Components.Pages.Overview                83.3%
+  Opc.Ua.Edge.Translator.Components.Pages.WotFiles                  83%
+  Opc.Ua.Edge.Translator.Components.Shared.AddressSpaceTree         86%
   Opc.Ua.Edge.Translator.Components.Shared.JsonTreeView           95.6%
   Opc.Ua.Edge.Translator.Components.Shared.PageHeader              100%
-  Opc.Ua.Edge.Translator.Components.Shared.StatusPill             88.8%
+  Opc.Ua.Edge.Translator.Components.Shared.StatusPill              100%
   Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceNode                0%
-  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          85.7%
-  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService           80.8%
-  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsWebHost              0%
+  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          86.1%
+  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService           81.6%
+  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsWebHost            100%
   Opc.Ua.Edge.Translator.Diagnostics.TelemetryCounters             100%
   Opc.Ua.Edge.Translator.DriverLoadContext                        84.2%
-  Opc.Ua.Edge.Translator.FileManager                              84.4%
+  Opc.Ua.Edge.Translator.FileManager                              84.8%
   Opc.Ua.Edge.Translator.Interfaces.IProtocolDriver                100%
   Opc.Ua.Edge.Translator.ModbusValueCodec                         92.7%
   Opc.Ua.Edge.Translator.Models.AssetActionResult                  100%
@@ -56,6 +56,8 @@ UAEdgeTranslator                                                  73.5%
   Opc.Ua.Edge.Translator.NodeFactory                               100%
   Opc.Ua.Edge.Translator.Program                                  33.9%
   Opc.Ua.Edge.Translator.ProtocolDrivers.ProtocolDriverRegistry    100%
+  Opc.Ua.Edge.Translator.TlsServerCertificates                    96.1%
   Opc.Ua.Edge.Translator.UACloudLibraryClient                     97.7%
-  Opc.Ua.Edge.Translator.UANodeManager                            67.6%
-  Opc.Ua.Edge.Translator.UAServer                                  100%
+  Opc.Ua.Edge.Translator.UANodeManager                            79.9%
+  Opc.Ua.Edge.Translator.UAServer                                 96.8%
+  Opc.Ua.Edge.Translator.VariantConversion                        93.7%
