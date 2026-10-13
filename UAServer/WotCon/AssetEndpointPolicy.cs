@@ -64,7 +64,29 @@ namespace Opc.Ua.Edge.Translator.WotCon
         /// </summary>
         public static ServiceResult Validate(string endpoint, ProtocolDriverRegistry drivers)
         {
-            return WotEndpointValidator.Validate(endpoint, Create(drivers), out _);
+            ServiceResult result = WotEndpointValidator.Validate(endpoint, Create(drivers), out Uri normalized);
+            if (ServiceResult.IsBad(result))
+            {
+                return result;
+            }
+
+            // The package validator compares host names literally, so an equivalent IP
+            // spelling of a blocked address (such as ::ffff:169.254.169.254) passes it.
+            return IsAlwaysBlockedHost(normalized?.Host)
+                ? ServiceResult.Create(StatusCodes.BadSecurityChecksFailed, "Endpoint host '{0}' is blocked by the endpoint policy.", normalized?.Host)
+                : result;
+        }
+
+        /// <summary>
+        /// Rejects an endpoint whose host is always blocked. Used where an endpoint has
+        /// already passed the package validator, which compares host names literally.
+        /// </summary>
+        public static void ThrowIfBlocked(string endpoint)
+        {
+            if (Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri) && IsAlwaysBlockedHost(uri.Host))
+            {
+                throw ServiceResultException.Create(StatusCodes.BadSecurityChecksFailed, "Endpoint host '{0}' is blocked by the endpoint policy.", uri.Host);
+            }
         }
 
         /// <summary>
@@ -82,7 +104,38 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // Strip IPv6 brackets and the DNS root dot: "metadata.google.internal." is
             // the same host as "metadata.google.internal".
             string normalized = host.Trim().Trim('[', ']').TrimEnd('.');
+
+            // An IP literal has many spellings (IPv4-mapped IPv6, expanded or compressed
+            // IPv6, leading zeros). Compare addresses, not strings.
+            if (TryParseAddress(normalized, out System.Net.IPAddress address))
+            {
+                return s_alwaysBlockedHosts.Any(blocked => TryParseAddress(blocked, out System.Net.IPAddress blockedAddress) && blockedAddress.Equals(address));
+            }
+
             return s_alwaysBlockedHosts.Any(blocked => string.Equals(blocked, normalized, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Parses an IP literal into its canonical form: an IPv4-mapped IPv6 address
+        /// becomes the IPv4 address, and a scope id is dropped.
+        /// </summary>
+        private static bool TryParseAddress(string text, out System.Net.IPAddress address)
+        {
+            if (!System.Net.IPAddress.TryParse(text, out address))
+            {
+                return false;
+            }
+
+            if (address.IsIPv4MappedToIPv6)
+            {
+                address = address.MapToIPv4();
+            }
+            else if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && address.ScopeId != 0)
+            {
+                address = new System.Net.IPAddress(address.GetAddressBytes());
+            }
+
+            return true;
         }
     }
 }

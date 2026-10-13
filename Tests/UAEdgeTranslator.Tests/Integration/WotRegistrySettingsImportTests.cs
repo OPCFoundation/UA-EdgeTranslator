@@ -437,6 +437,76 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.True(StatusCode.IsGood(value.StatusCode), "structure read: " + value.StatusCode);
         }
 
+        [Fact]
+        public async Task Things_with_a_property_of_the_same_name_keep_their_own_mapping_targets()
+        {
+            // Two Things, both with a mapped property called "status", materialize in one
+            // projection. Each mapping target must land under its own Thing, and neither
+            // Thing's property may be taken for the other's.
+            await using OpcUaServerFixture fixture = new();
+            StandardServer server = (StandardServer)fixture.App.Server;
+
+            string importFolder = Path.Combine(fixture.WorkingDirectory, "twins-import-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(importFolder);
+            foreach (string name in new[] { "twin-a", "twin-b" })
+            {
+                await File.WriteAllTextAsync(Path.Combine(importFolder, name + ".jsonld"), $$"""
+                    {
+                      "@context": ["https://www.w3.org/2022/wot/td/v1.1"],
+                      "@type": ["Thing"],
+                      "id": "urn:{{name}}",
+                      "name": "{{name}}",
+                      "title": "{{name}}",
+                      "base": "mock://{{name}}:1502/1",
+                      "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                      "security": ["nosec_sc"],
+                      "properties": {
+                        "status": {
+                          "type": "number",
+                          "uav:mapToNodeId": "s=Status",
+                          "forms": [ { "href": "/{{name}}-status", "op": ["readproperty", "writeproperty"], "type": "xsd:float" } ]
+                        }
+                      }
+                    }
+                    """);
+            }
+
+            string storage = Path.Combine(fixture.WorkingDirectory, "wot-registry-" + Guid.NewGuid().ToString("N"));
+            await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
+            await host.ImportSettingsFilesAsync(importFolder, default);
+
+            var refresh = await host.Coordinator.RefreshAsync(new global::Opc.Ua.WotCon.Server.Materialization.WotRefreshRequest());
+            foreach (string name in new[] { "twin-a", "twin-b" })
+            {
+                var loaded = Assert.Single(refresh.Results, r => r.ResourceId == name);
+                Assert.True(loaded.LoadState == WoTLoadStateEnum.Active, name + " " + loaded.Phase + ": " + loaded.Message);
+            }
+
+            AddressSpaceService service = new();
+            var roots = await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString());
+            foreach (string name in new[] { "twin-a", "twin-b" })
+            {
+                ushort ns = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:" + name);
+                AddressSpaceNode thing = Assert.Single(roots, c => c.Text == name);
+                var children = await service.BrowseChildrenAsync(thing.Id);
+
+                // The target sits under this Thing, in this Thing's namespace.
+                AddressSpaceNode target = Assert.Single(children, c => c.Text == "Status");
+                Assert.Equal(new NodeId("Status", ns).ToString(), target.Id);
+
+                // This Thing's own "status" Variable was replaced by its mapping target.
+                Assert.DoesNotContain(children, c => c.Text == "status");
+
+                // And the target is fed by this Thing's form.
+                Assert.True(StatusCode.IsGood(await WriteValueAsync(server, new NodeId("Status", ns), new Variant(name == "twin-a" ? 1.5f : 2.5f))));
+            }
+
+            ushort nsA = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:twin-a");
+            ushort nsB = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:twin-b");
+            Assert.Equal(1.5, Convert.ToDouble((await ReadValueAsync(server, new NodeId("Status", nsA))).WrappedValue.AsBoxedObject(), System.Globalization.CultureInfo.InvariantCulture), 3);
+            Assert.Equal(2.5, Convert.ToDouble((await ReadValueAsync(server, new NodeId("Status", nsB))).WrappedValue.AsBoxedObject(), System.Globalization.CultureInfo.InvariantCulture), 3);
+        }
+
         private static async Task<DataValue> ReadValueAsync(StandardServer server, NodeId nodeId, uint attributeId = Attributes.Value)
         {
             var result = await server.CurrentInstance.NodeManager.ReadAsync(

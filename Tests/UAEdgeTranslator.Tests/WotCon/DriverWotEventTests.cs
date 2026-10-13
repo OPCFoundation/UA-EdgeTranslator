@@ -72,6 +72,53 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         }
 
         [Fact]
+        public async Task An_event_only_driver_serves_subscribeevent_without_creating_a_tag()
+        {
+            // Event-only drivers (such as OPC A&E) refuse to create tags. An event
+            // channel needs none, so activation must not ask for one.
+            FakeEventingAsset asset = new();
+            ProtocolDriverRegistry drivers = new();
+            drivers.Register(new EventOnlyDriver(asset));
+            ThingDescriptionCache cache = new();
+            cache.Set(EventTd);
+            await using DriverWotBindingExecutor executor = new(drivers, cache, () => false);
+
+            WotCompiledForm form = PlanEventForm(drivers, out WotProtocolBinderRegistry registry, executor);
+            await using IWotBindingChannel channel = await registry.OpenChannelAsync(form);
+
+            List<WotNotification> received = new();
+            await using (IWotSubscription subscription = await channel.SubscribeEventAsync(received.Add))
+            {
+                asset.Raise(new AlarmEvent { Severity = 500, Message = "Door open" });
+            }
+
+            Assert.Single(received);
+            Assert.Equal(1, asset.Starts);
+        }
+
+        /// <summary>A mock-scheme driver whose assets only push events and that cannot create tags.</summary>
+        private sealed class EventOnlyDriver : IProtocolDriver
+        {
+            private readonly IEventingAsset _asset;
+
+            public EventOnlyDriver(IEventingAsset asset) => _asset = asset;
+
+            public string Scheme => MockProtocolDriver.MockScheme;
+
+            public string WoTBindingUri => MockProtocolDriver.MockBindingUri;
+
+            public IEnumerable<string> Discover() => [];
+
+            public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint) => throw new NotSupportedException();
+
+            public Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default) =>
+                Task.FromResult(new AssetConnection(_asset, 1));
+
+            public AssetTag CreateTag(ThingDescription td, object form, string assetId, byte unitId, string variableId, string mappedUAExpandedNodeId, string mappedUAFieldPath) =>
+                throw new NotSupportedException("This driver is event-driven and does not create polling tags.");
+        }
+
+        [Fact]
         public async Task Pushed_alarm_reaches_the_listener_as_named_event_data()
         {
             FakeEventingAsset asset = new();

@@ -17,6 +17,10 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         [InlineData("METADATA.GOOGLE.INTERNAL.")]
         [InlineData("169.254.169.254")]
         [InlineData("[fd00:ec2::254]")]
+        [InlineData("[::ffff:169.254.169.254]")]
+        [InlineData("::ffff:a9fe:a9fe")]
+        [InlineData("[fd00:0ec2:0000:0000:0000:0000:0000:0254]")]
+        [InlineData("FD00:EC2:0:0:0:0:0:254")]
         public void Metadata_hosts_are_always_blocked(string host)
         {
             Assert.True(AssetEndpointPolicy.IsAlwaysBlockedHost(host));
@@ -34,6 +38,8 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         [Theory]
         [InlineData("mock://metadata.google.internal:80")]
         [InlineData("mock://metadata.google.internal.:80")]
+        [InlineData("mock://[::ffff:169.254.169.254]:80")]
+        [InlineData("mock://[fd00:0ec2:0:0:0:0:0:254]:80")]
         public void Endpoints_naming_the_metadata_host_are_rejected(string endpoint)
         {
             ProtocolDriverRegistry drivers = new();
@@ -42,6 +48,16 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             ServiceResult result = AssetEndpointPolicy.Validate(endpoint, drivers);
 
             Assert.Equal(StatusCodes.BadSecurityChecksFailed, result.StatusCode.Code);
+        }
+
+        [Theory]
+        [InlineData("mock://[::ffff:169.254.169.254]:80/1")]
+        [InlineData("mock://[fd00:0ec2:0:0:0:0:0:254]:80/1")]
+        public void Activation_rejects_equivalent_spellings_of_a_blocked_address(string endpoint)
+        {
+            ServiceResultException ex = Assert.Throws<ServiceResultException>(() => AssetEndpointPolicy.ThrowIfBlocked(endpoint));
+
+            Assert.Equal(StatusCodes.BadSecurityChecksFailed, ex.StatusCode);
         }
     }
 }

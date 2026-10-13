@@ -67,11 +67,22 @@ namespace Opc.Ua.Edge.Translator.WotCon
             }
 
             // The registry projects each property as a Variable named after it, below the
-            // Thing's Object. Index those Variables by property name.
+            // Thing's Object. One projection can hold several Things with properties of the
+            // same name, so only this plan's Thing is indexed: the projection encodes the
+            // Thing id in the Object's NodeId. Without a known Thing nothing is touched.
+            string thingObjectId = ThingObjectId(plan.ResourceXid);
+            if (thingObjectId == null)
+            {
+                return;
+            }
+
             var projectedProperties = new System.Collections.Generic.Dictionary<string, BaseVariableState>(StringComparer.Ordinal);
             foreach (NodeState node in PredefinedNodes(manager))
             {
-                if (node is BaseVariableState variable && variable.Parent is BaseObjectState && !variable.BrowseName.IsNull)
+                if (node is BaseVariableState variable && variable.Parent is BaseObjectState owner
+                    && owner.NodeId.TryGetValue(out string ownerId)
+                    && string.Equals(ownerId, thingObjectId, StringComparison.Ordinal)
+                    && !variable.BrowseName.IsNull)
                 {
                     projectedProperties.TryAdd(variable.BrowseName.Name, variable);
                 }
@@ -114,6 +125,23 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     AsyncBridge.RunSync(() => manager.DeleteNodeAsync(manager.SystemContext, projectedId).AsTask());
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns the string identifier the registry gives the Object it projects for the
+        /// Thing <paramref name="resourceXid"/> describes: <c>/nsu=&lt;id&gt;;&lt;name&gt;</c>, with
+        /// the Thing id URI-escaped. Returns <c>null</c> when the Thing is unknown.
+        /// </summary>
+        private string ThingObjectId(string resourceXid)
+        {
+            Models.ThingDescription td = _thingDescriptions?.GetOrCreate(resourceXid, string.Empty);
+            string thingName = td?.Name ?? td?.Title;
+            if (string.IsNullOrEmpty(td?.Id) || string.IsNullOrEmpty(thingName))
+            {
+                return null;
+            }
+
+            return "/nsu=" + Uri.EscapeDataString(td.Id) + ";" + thingName;
         }
 
         private static System.Collections.Generic.IEnumerable<NodeState> PredefinedNodes(AsyncCustomNodeManager manager)

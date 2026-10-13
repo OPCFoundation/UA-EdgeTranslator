@@ -66,7 +66,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Program.Telemetry?.TagReadErrors.Add(1);
-                Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", _tag.Name, _assetName);
+                Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", _tag?.Name, _assetName);
                 return new WotReadResult(StatusCodes.BadDataUnavailable, DataValue.FromStatusCode(StatusCodes.BadDataUnavailable));
             }
         }
@@ -89,7 +89,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Program.Telemetry?.TagWriteErrors.Add(1);
-                Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", _tag.Name);
+                Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", _tag?.Name);
                 return new WotWriteResult(StatusCodes.BadDataUnavailable);
             }
         }
@@ -116,6 +116,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 // asset by its parent, exactly as the WoT v1.02 node manager presented it.
                 BaseObjectState parent = new(null) { BrowseName = new QualifiedName(_assetName) };
                 MethodState method = new(parent) { BrowseName = new QualifiedName(Form.AffordanceName) };
+
+                // The v1.02 node manager hands drivers the action's forms on Handle; drivers
+                // such as Matter read their action addressing (cluster, timed command) there.
+                method.Handle = ActionForms();
 
                 AssetActionResult result = await _asset.ExecuteActionAsync(method, driverInputs, cancellationToken).ConfigureAwait(false);
 
@@ -147,11 +151,28 @@ namespace Opc.Ua.Edge.Translator.WotCon
             }
         }
 
+        /// <summary>
+        /// The action's form in the shape the v1.02 node manager put on <c>MethodState.Handle</c>.
+        /// </summary>
+        private List<GenericForm> ActionForms()
+        {
+            if (Form?.Addressing?.Metadata == null
+                || !Form.Addressing.Metadata.TryGetValue(DriverWotBinder.FormMetadataKey, out string raw)
+                || string.IsNullOrEmpty(raw))
+            {
+                return new List<GenericForm>();
+            }
+
+            GenericForm form = Newtonsoft.Json.JsonConvert.DeserializeObject<GenericForm>(raw);
+            return form == null ? new List<GenericForm>() : new List<GenericForm> { form };
+        }
+
         public ValueTask<IWotSubscription> ObserveAsync(Action<WotNotification> onNotification, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(onNotification);
 
-            TimeSpan interval = TimeSpan.FromMilliseconds(_tag.PollingInterval <= 0 ? 1000 : _tag.PollingInterval);
+            int pollingInterval = _tag?.PollingInterval ?? 0;
+            TimeSpan interval = TimeSpan.FromMilliseconds(pollingInterval <= 0 ? 1000 : pollingInterval);
             IWotSubscription subscription = new PollingWotSubscription(Form, async token =>
             {
                 WotReadResult result = await ReadAsync(token).ConfigureAwait(false);

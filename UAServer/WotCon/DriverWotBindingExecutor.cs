@@ -58,6 +58,12 @@ namespace Opc.Ua.Edge.Translator.WotCon
             ArgumentNullException.ThrowIfNull(form);
 
             string baseUri = form.Endpoint.BaseUri;
+
+            // The registry validated the endpoint, but only by comparing host names
+            // literally; reject equivalent spellings of a blocked address too.
+            AssetEndpointPolicy.ThrowIfBlocked(baseUri);
+            AssetEndpointPolicy.ThrowIfBlocked(form.Addressing.Target);
+
             if (!_drivers.TryGetByUri(baseUri, out IProtocolDriver driver))
             {
                 throw new InvalidOperationException($"No protocol driver is loaded for '{baseUri}'.");
@@ -72,7 +78,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 AssetConnection connection = await shared.Connect.ConfigureAwait(false);
 
                 object rawForm = Newtonsoft.Json.Linq.JToken.Parse(form.Addressing.Metadata[DriverWotBinder.FormMetadataKey]);
-                AssetTag tag = driver.CreateTag(td, rawForm, td.Name, connection.UnitId, form.AffordanceName, null, null);
+                // Only property channels read and write a tag. Actions and events need none,
+                // and event-only drivers (such as OPC A&E) refuse to create one.
+                AssetTag tag = form.AffordanceKind == WotAffordanceKind.Property
+                    ? driver.CreateTag(td, rawForm, td.Name, connection.UnitId, form.AffordanceName, null, null)
+                    : null;
 
                 return new DriverWotBindingChannel(form, connection.Asset, tag, td.Name, _isAssetAccessBlocked, () => ReleaseAsync(baseUri, shared));
             }

@@ -521,14 +521,161 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             reconnectHandler.Dispose();
         }
 
+        private readonly Dictionary<string, (NodeId ObjectId, NodeId MethodId)> _remoteMethods = new();
+
+        /// <summary>
+        /// Maps a translator MethodState to the method on the remote server: the action
+        /// form's href (an expanded node id) names the method, otherwise it is found by
+        /// browse name; its owning object is then found via the inverse HasComponent.
+        /// </summary>
+        private async Task<(NodeId ObjectId, NodeId MethodId)> ResolveRemoteMethodAsync(MethodState method, CancellationToken cancellationToken)
+        {
+            string href = null;
+            if (method.Handle is List<GenericForm> forms)
+            {
+                foreach (GenericForm form in forms)
+                {
+                    if (!string.IsNullOrEmpty(form?.Href))
+                    {
+                        href = form.Href;
+                        break;
+                    }
+                }
+            }
+
+            string name = method.BrowseName.Name;
+            string key = href ?? "name:" + name;
+            lock (_remoteMethods)
+            {
+                if (_remoteMethods.TryGetValue(key, out (NodeId, NodeId) cached))
+                {
+                    return cached;
+                }
+            }
+
+            NodeId methodId = NodeId.Null;
+            if (href != null)
+            {
+                try
+                {
+                    methodId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(href), _session.NamespaceUris);
+                }
+                catch (Exception ex) when (ex is ServiceResultException or FormatException or ArgumentException)
+                {
+                    Log.Logger.Warning($"Action {name} has an href that is not a node id: {href}");
+                }
+            }
+
+            if (methodId.IsNull && !string.IsNullOrEmpty(name))
+            {
+                methodId = await FindMethodByNameAsync(ObjectIds.ObjectsFolder, name, new HashSet<NodeId>(), cancellationToken).ConfigureAwait(false);
+            }
+
+            if (methodId.IsNull)
+            {
+                return (NodeId.Null, NodeId.Null);
+            }
+
+            List<ReferenceDescription> owners = await BrowseAsync(methodId, BrowseDirection.Inverse, ReferenceTypeIds.HasComponent, (uint)NodeClass.Object, cancellationToken).ConfigureAwait(false);
+            NodeId objectId = owners.Count > 0 ? ExpandedNodeId.ToNodeId(owners[0].NodeId, _session.NamespaceUris) : NodeId.Null;
+
+            if (!objectId.IsNull)
+            {
+                lock (_remoteMethods)
+                {
+                    _remoteMethods[key] = (objectId, methodId);
+                }
+            }
+
+            return (objectId, methodId);
+        }
+
+        private async Task<NodeId> FindMethodByNameAsync(NodeId nodeId, string name, HashSet<NodeId> visited, CancellationToken cancellationToken)
+        {
+            if (!visited.Add(nodeId) || nodeId == ObjectIds.Server)
+            {
+                return NodeId.Null;
+            }
+
+            List<ReferenceDescription> children = await BrowseAsync(nodeId, BrowseDirection.Forward, ReferenceTypeIds.HierarchicalReferences, (uint)(NodeClass.Object | NodeClass.Method), cancellationToken).ConfigureAwait(false);
+            foreach (ReferenceDescription child in children)
+            {
+                if (child.NodeClass == NodeClass.Method && string.Equals(child.BrowseName.Name, name, StringComparison.Ordinal))
+                {
+                    return ExpandedNodeId.ToNodeId(child.NodeId, _session.NamespaceUris);
+                }
+            }
+
+            foreach (ReferenceDescription child in children)
+            {
+                if (child.NodeClass == NodeClass.Object)
+                {
+                    NodeId found = await FindMethodByNameAsync(ExpandedNodeId.ToNodeId(child.NodeId, _session.NamespaceUris), name, visited, cancellationToken).ConfigureAwait(false);
+                    if (!found.IsNull)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return NodeId.Null;
+        }
+
+        private async Task<List<ReferenceDescription>> BrowseAsync(NodeId nodeId, BrowseDirection direction, NodeId referenceTypeId, uint nodeClassMask, CancellationToken cancellationToken)
+        {
+            List<ReferenceDescription> references = new();
+            ArrayOf<BrowseDescription> nodesToBrowse = new(new[]
+            {
+                new BrowseDescription
+                {
+                    NodeId = nodeId,
+                    BrowseDirection = direction,
+                    ReferenceTypeId = referenceTypeId,
+                    IncludeSubtypes = true,
+                    NodeClassMask = nodeClassMask,
+                    ResultMask = (uint)BrowseResultMask.All
+                }
+            });
+
+            BrowseResponse response = await _session.BrowseAsync(null, null, 0u, nodesToBrowse, cancellationToken).ConfigureAwait(false);
+            if (response.Results.Count == 0 || StatusCode.IsBad(response.Results[0].StatusCode))
+            {
+                return references;
+            }
+
+            AddReferences(references, response.Results[0].References);
+            ByteString continuationPoint = response.Results[0].ContinuationPoint;
+            while (continuationPoint.Length > 0)
+            {
+                BrowseNextResponse next = await _session.BrowseNextAsync(null, false, new ArrayOf<ByteString>(new[] { continuationPoint }), cancellationToken).ConfigureAwait(false);
+                if (next.Results.Count == 0 || StatusCode.IsBad(next.Results[0].StatusCode))
+                {
+                    break;
+                }
+
+                AddReferences(references, next.Results[0].References);
+                continuationPoint = next.Results[0].ContinuationPoint;
+            }
+
+            return references;
+        }
+
         public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
         {
             // NodeId is a value type in SDK 2.0.0, so assignment already copies it (the old
             // NodeId(NodeId) copy constructor is gone).
+            // The MethodState belongs to the translator's address space, so its NodeIds mean
+            // nothing to the remote server: resolve the remote method and its owner instead.
+            (NodeId objectId, NodeId methodId) = await ResolveRemoteMethodAsync(method, cancellationToken).ConfigureAwait(false);
+            if (methodId.IsNull || objectId.IsNull)
+            {
+                return AssetActionResult.Failure($"Method {method.BrowseName.Name} not found on {_endpoint}.");
+            }
+
             CallMethodRequest request = new()
             {
-                ObjectId = method.Parent.NodeId,
-                MethodId = method.NodeId
+                ObjectId = objectId,
+                MethodId = methodId
             };
 
             if (inputArgs != null)
@@ -565,6 +712,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 if (StatusCode.IsBad(response.Results[0].StatusCode) && (response.ResponseHeader.StringTable.Count > 0))
                 {
                     return AssetActionResult.FromStatus(response.ResponseHeader.StringTable[0]);
+                }
+
+                if (StatusCode.IsBad(status))
+                {
+                    return AssetActionResult.Failure(status.ToString());
                 }
 
                 ArrayOf<Variant> outputArguments = response.Results[0].OutputArguments;
