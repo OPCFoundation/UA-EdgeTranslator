@@ -2,6 +2,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 {
     using global::Opc.Ua.WotCon;
     using global::Opc.Ua.WotCon.Server.Registry;
+    using Opc.Ua.Edge.Translator.Diagnostics;
     using Opc.Ua.Edge.Translator.WotCon;
     using Opc.Ua.Server;
     using System;
@@ -100,8 +101,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
             await host.ImportSettingsFilesAsync(importFolder, default);
 
-            Diagnostics.AddressSpaceService service = new();
-            Diagnostics.AddressSpaceNode thing = null;
+            AddressSpaceService service = new();
+            AddressSpaceNode thing = null;
             for (int attempt = 0; attempt < 100 && thing == null; attempt++)
             {
                 thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
@@ -151,8 +152,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
             await host.ImportSettingsFilesAsync(importFolder, default);
 
-            Diagnostics.AddressSpaceService service = new();
-            Diagnostics.AddressSpaceNode thing = null;
+            AddressSpaceService service = new();
+            AddressSpaceNode thing = null;
             for (int attempt = 0; attempt < 100 && thing == null; attempt++)
             {
                 thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
@@ -245,8 +246,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             ushort ns = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:shared-1");
             NodeId limits = new("Limits", ns);
 
-            Diagnostics.AddressSpaceService service = new();
-            Diagnostics.NodeDetail detail = await service.GetNodeDetailAsync(limits.ToString());
+            AddressSpaceService service = new();
+            NodeDetail detail = await service.GetNodeDetailAsync(limits.ToString());
             Assert.Equal("Variable", detail.NodeClass);
             Assert.Contains(detail.Attributes, a => a.Name == "BrowseName" && a.Value.EndsWith("Limits", StringComparison.Ordinal));
 
@@ -354,7 +355,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             // The mapping targets live under the asset, not in the Objects folder, and
             // the mapped properties have no second, never-updated projected Variable.
-            Diagnostics.AddressSpaceService service = new();
+            AddressSpaceService service = new();
             var roots = await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString());
             Assert.DoesNotContain(roots, c => c.Text == "VoltageL-N" || c.Text == "VoltageL1-L2");
             var asset = Assert.Single(roots, c => c.Text == "pnem-1");
@@ -425,8 +426,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                         await host.ImportSettingsFilesAsync(importFolder, default);
                     }
 
-                    Diagnostics.AddressSpaceService service = new();
-                    Diagnostics.AddressSpaceNode thing = null;
+                    AddressSpaceService service = new();
+                    AddressSpaceNode thing = null;
                     for (int attempt = 0; attempt < 100 && thing == null; attempt++)
                     {
                         thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
