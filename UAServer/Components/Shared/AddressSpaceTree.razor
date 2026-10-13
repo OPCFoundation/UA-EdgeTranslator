@@ -41,7 +41,9 @@
                     <span class="as-tree-toggle as-tree-toggle-empty"></span>
                 }
 
-                <span class="as-node-badge as-node-@node.NodeClass.ToLowerInvariant()" title="@node.NodeClass">@NodeClassAbbreviation(node.NodeClass)</span>
+                <span class="as-node-icon as-node-@node.NodeClass.ToLowerInvariant()" title="@node.NodeClass">
+                    <svg aria-hidden="true"><use href="icons/ua-node-icons.svg#@(string.IsNullOrEmpty(node.Icon) ? "unknown" : node.Icon)" /></svg>
+                </span>
 
                 <span class="as-tree-label @(selected ? "is-selected" : null) @(inNamespace ? "is-in-namespace" : null)"
                       title="@node.Id"
@@ -143,17 +145,4 @@
             && NodeValues.TryGetValue(node.Id, out value)
             && !string.IsNullOrEmpty(value);
     }
-
-    private static string NodeClassAbbreviation(string nodeClass) => nodeClass switch
-    {
-        "Object" => "O",
-        "Variable" => "V",
-        "Method" => "M",
-        "ObjectType" => "OT",
-        "VariableType" => "VT",
-        "ReferenceType" => "RT",
-        "DataType" => "DT",
-        "View" => "VW",
-        _ => "?"
-    };
 }

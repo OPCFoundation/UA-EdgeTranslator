@@ -263,6 +263,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                         Id = id,
                         Text = GetNodeText(reference),
                         NodeClass = reference.NodeClass.ToString(),
+                        Icon = ResolveNodeIcon(server, reference, targetId),
                         NamespaceIndex = targetId.NamespaceIndex,
 
                         // Provisionally true; resolved accurately below so the
@@ -534,6 +535,52 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Picks the icon key for a node using the UA-NodeSetEditor rules: instances are
+        /// iconised by the type family of their TypeDefinition (FolderType -> folder,
+        /// PropertyType -> property), ObjectTypes deriving from BaseInterfaceType get the
+        /// interface glyph, and everything else falls back to its NodeClass glyph.
+        /// </summary>
+        private static string ResolveNodeIcon(IServerInternal server, ReferenceDescription reference, NodeId nodeId)
+        {
+            switch (reference.NodeClass)
+            {
+                case NodeClass.Object:
+                    return IsTypeOf(server, reference.TypeDefinition, ObjectTypeIds.FolderType) ? "folder" : "object";
+
+                case NodeClass.Variable:
+                    return IsTypeOf(server, reference.TypeDefinition, VariableTypeIds.PropertyType) ? "property" : "dataVariable";
+
+                case NodeClass.Method:
+                    return "method";
+
+                case NodeClass.View:
+                    return "view";
+
+                case NodeClass.ObjectType:
+                    return IsTypeOf(server, nodeId, ObjectTypeIds.BaseInterfaceType) ? "interfaceType" : "objectType";
+
+                case NodeClass.VariableType:
+                    return "variableType";
+
+                case NodeClass.DataType:
+                    return "dataType";
+
+                case NodeClass.ReferenceType:
+                    return "referenceType";
+
+                default:
+                    return "unknown";
+            }
+        }
+
+        private static bool IsTypeOf(IServerInternal server, ExpandedNodeId typeId, NodeId superTypeId)
+        {
+            NodeId type = ExpandedNodeId.ToNodeId(typeId, server.NamespaceUris);
+
+            return !type.IsNull && server.TypeTree.IsTypeOf(type, superTypeId);
         }
 
         private static async Task<ArrayOf<ReferenceDescription>> BrowseAsync(

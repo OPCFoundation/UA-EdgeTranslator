@@ -14,19 +14,26 @@ namespace Opc.Ua.Edge.Translator
 
     public partial class UAServer : ReverseConnectServer
     {
+        /// <summary>
+        /// Constructor for a server started directly through an ApplicationInstance
+        /// rather than the generic host; registers the UA Edge Translator node manager itself.
+        /// </summary>
         public UAServer(ITelemetryContext telemetry)
             : base(telemetry)
         {
+            AddNodeManager(new UANodeManagerFactory());
         }
 
-        protected override MasterNodeManager CreateMasterNodeManager(IServerInternal server, ApplicationConfiguration configuration)
+        /// <summary>
+        /// Constructor used by the generic host's server factory. The UA Edge Translator
+        /// node manager is registered with the host through <see cref="UANodeManagerFactory"/>.
+        /// </summary>
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+        public UAServer(ITelemetryContext telemetry, TimeProvider timeProvider, HostedOpcUaApplication application)
+            : base(telemetry, timeProvider)
         {
-            List<INodeManager> nodeManagers = new List<INodeManager>
-            {
-                new UANodeManager(server, configuration)
-            };
-
-            return new MasterNodeManager(server, configuration, null, nodeManagers.ToArray());
+            ArgumentNullException.ThrowIfNull(application);
+            application.Server = this;
         }
 
         protected override ServerProperties LoadServerProperties()
@@ -42,6 +49,18 @@ namespace Opc.Ua.Edge.Translator
             };
 
             return properties;
+        }
+
+        protected override void OnServerStarting(ApplicationConfiguration configuration)
+        {
+            base.OnServerStarting(configuration);
+
+            // In SDK 2.0 the CertificateValidation event was replaced by a per-error
+            // AcceptError callback on the certificate manager, which exists by now.
+            if (configuration?.CertificateManager != null)
+            {
+                configuration.CertificateManager.AcceptError = Program.OPCUAClientCertificateAcceptError;
+            }
         }
 
         protected override void OnServerStarted(IServerInternal server)
@@ -95,6 +114,26 @@ namespace Opc.Ua.Edge.Translator
         /// </summary>
         public sealed class UserNameAuthenticator : IUserTokenAuthenticator
         {
+            /// <summary>
+            /// Wraps this authenticator in the SDK's <see cref="UserNamePasswordAuthenticator"/>.
+            /// The hosted server's startup check only recognizes that type as covering a
+            /// UserName token policy; registering this class directly makes it warn that
+            /// the policy has no matching authenticator.
+            /// </summary>
+            public static UserNamePasswordAuthenticator CreateHosted()
+            {
+                return new UserNamePasswordAuthenticator((token, ct) =>
+                {
+                    AuthenticationResult result = VerifyPassword(token);
+                    if (result.Outcome != AuthenticationOutcome.Accepted)
+                    {
+                        throw new ServiceResultException(result.Error ?? new ServiceResult(StatusCodes.BadUserAccessDenied));
+                    }
+
+                    return ValueTask.FromResult(result.Identity);
+                });
+            }
+
             public UserTokenType TokenType => UserTokenType.UserName;
 
             public string IssuedTokenProfileUri => null;

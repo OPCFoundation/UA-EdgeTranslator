@@ -55,6 +55,12 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// <summary>NodeClass name, e.g. Object, Variable, Method.</summary>
         public string NodeClass { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Icon key from the UA-NodeSetEditor icon contract (object, folder, property,
+        /// dataVariable, method, ...); the id of a symbol in <c>icons/ua-node-icons.svg</c>.
+        /// </summary>
+        public string Icon { get; init; } = string.Empty;
+
         /// <summary>Namespace index of this node, used for the bold namespace highlight.</summary>
         public int NamespaceIndex { get; init; }
 

@@ -1,5 +1,7 @@
 namespace Opc.Ua.Edge.Translator.Tests.Integration
 {
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Cloud;
     using Opc.Ua.Configuration;
@@ -10,6 +12,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
     using System.Net;
     using System.Net.Sockets;
     using System.Reflection;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -44,6 +47,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private readonly string _previousIgnoreProvisioningMode;
         private readonly string _previousUaCloudLibraryUrl;
         private bool _disposed;
+        private readonly IHost _host;
 
         public OpcUaServerFixture()
         {
@@ -105,29 +109,35 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             ResetProgramStatics();
             Program.Drivers.Register(new MockProtocolDriver());
 
-            App = new ApplicationInstance(Telemetry)
-            {
-                ApplicationType = ApplicationType.ClientAndServer,
-                ConfigSectionName = "Ua.Edge.Translator"
-            };
-
-            App.LoadApplicationConfigurationAsync(false).GetAwaiter().GetResult();
-
-            App.ApplicationConfiguration.ApplicationName = "UAEdgeTranslatorTest";
-            App.ApplicationConfiguration.ApplicationUri = "urn:UAEdgeTranslatorTest";
-
-            App.ApplicationConfiguration.SecurityConfiguration.AutoAcceptUntrustedCertificates = true;
-            App.CheckApplicationInstanceCertificatesAsync(true, 0).GetAwaiter().GetResult();
-
             // Wire up the Program statics that UANodeManager / UAServer rely on
-            // (Program.App, Program.Telemetry, Program.OpcUaUsername, Program.OpcUaPassword)
-            // without invoking Program.Main (which would block on Task.Delay forever).
-            SetProgramProperty(nameof(Program.App), App);
+            // (Program.Telemetry, Program.OpcUaUsername, Program.OpcUaPassword)
+            // without invoking Program.Main (which blocks until shutdown).
             SetProgramProperty(nameof(Program.Telemetry), Telemetry);
             SetProgramProperty(nameof(Program.OpcUaUsername), "integration-test");
             SetProgramProperty(nameof(Program.OpcUaPassword), "integration-test");
 
-            App.StartAsync(new UAServer(Telemetry)).GetAwaiter().GetResult();
+            // Same generic-host composition as Program.Main.
+            HostApplicationBuilder builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+            {
+                ContentRootPath = WorkingDirectory
+            });
+            builder.Logging.ClearProviders();
+            HostedOpcUaApplication opcUa = builder.Services.AddEdgeTranslatorServer(
+                Telemetry,
+                Path.Combine(WorkingDirectory, "Ua.Edge.Translator.Config.xml"),
+                configuration =>
+                {
+                    configuration.ApplicationName = "UAEdgeTranslatorTest";
+                    configuration.ApplicationUri = "urn:UAEdgeTranslatorTest";
+                    configuration.SecurityConfiguration.AutoAcceptUntrustedCertificates = true;
+                });
+            opcUa.Created += app => SetProgramProperty(nameof(Program.App), app);
+
+            _host = builder.Build();
+            _host.StartAsync().GetAwaiter().GetResult();
+            opcUa.WaitForStartAsync(Task.Delay(Timeout.Infinite), CancellationToken.None)
+                .WaitAsync(TimeSpan.FromMinutes(2)).GetAwaiter().GetResult();
+            App = opcUa.Application;
 
             // Production UAServer rejects anonymous sessions; allow them on this
             // fixture's private loopback server so the suite can exercise the address
@@ -160,9 +170,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             try
             {
-                if (App != null)
+                if (_host != null)
                 {
-                    await App.StopAsync().ConfigureAwait(false);
+                    await _host.StopAsync().ConfigureAwait(false);
+                    _host.Dispose();
                 }
             }
             catch

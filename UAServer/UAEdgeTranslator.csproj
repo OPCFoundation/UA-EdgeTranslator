@@ -50,6 +50,8 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Server" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Bindings" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Sinks.Console" />

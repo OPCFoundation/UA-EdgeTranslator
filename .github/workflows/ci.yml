@@ -148,9 +148,33 @@ jobs:
           pct="$(grep -m1 'Line coverage:' BadgeOut/Summary.txt | sed 's/.*: *//' | tr -d ' ')"
           label='Coverage (UA Edge Translator)'
 
-          # ~62 tenths-of-a-px per character at font-size 11, plus padding.
-          label_w=$(( (${#label} * 62) / 10 + 12 ))
-          value_w=$(( (${#pct} * 66) / 10 + 12 ))
+          # Width of a string in tenths of a px, rendered in Verdana 11px. A flat
+          # per-character estimate is far too narrow for wide glyphs such as `%`,
+          # and textLength then squeezes the text until the characters overlap.
+          text_w() {
+            printf '%s' "$1" | awk 'BEGIN {
+              split("0 1 2 3 4 5 6 7 8 9", d, " "); for (i in d) w[d[i]] = 70
+              w["%"] = 118; w["."] = 40; w[" "] = 39; w["("] = 50; w[")"] = 50
+              w["C"] = 77; w["U"] = 81; w["A"] = 75; w["E"] = 70; w["T"] = 68
+              w["o"] = 67; w["v"] = 65; w["e"] = 66; w["r"] = 47; w["a"] = 66
+              w["g"] = 69; w["d"] = 69; w["n"] = 70; w["s"] = 57; w["l"] = 30; w["t"] = 43
+            } {
+              total = 0
+              for (i = 1; i <= length($0); i++) {
+                c = substr($0, i, 1)
+                if (c in w) total += w[c]
+                else if (c ~ /[A-Z]/) total += 73
+                else total += 62
+              }
+              print total
+            }'
+          }
+
+          label_text_w=$(text_w "$label")
+          value_text_w=$(text_w "$pct")
+          # Round each half up to whole px and add 10px padding (5px a side).
+          label_w=$(( (label_text_w + 9) / 10 + 10 ))
+          value_w=$(( (value_text_w + 9) / 10 + 10 ))
           total_w=$((label_w + value_w))
           label_mid=$((label_w * 10 / 2))
           value_mid=$(((label_w * 10) + (value_w * 10 / 2)))
@@ -165,8 +189,6 @@ jobs:
           else colour='#4c1'
           fi
 
-          label_text_w=$(( (label_w - 12) * 10 ))
-          value_text_w=$(( (value_w - 12) * 10 ))
 
           # Written with printf rather than a heredoc so the YAML block scalar's
           # indentation cannot leak into the file or break the terminator.

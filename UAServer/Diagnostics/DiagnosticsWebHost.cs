@@ -18,8 +18,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>
     /// Hosts the Blazor Server diagnostics dashboard side-by-side with the OPC UA
     /// server. The OPC UA stack listens on opc.tcp (4840); this host serves the
-    /// HTML dashboard over HTTP on a separate fixed port (8081). It is started near
-    /// the end of <see cref="Program.Main"/> and stopped during graceful shutdown.
+    /// HTML dashboard over HTTP on a separate fixed port (8081). <see cref="Program.Main"/>
+    /// hosts it in the same web application as the OPC UA server through the static
+    /// helpers; an instance runs the dashboard on its own (used by tests).
     /// </summary>
     public sealed class DiagnosticsWebHost
     {
@@ -43,18 +44,42 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             int port = _port;
-            Url = string.Create(CultureInfo.InvariantCulture, $"http://0.0.0.0:{port}");
+            Url = UrlFor(port);
 
-            // Pin the content root to the binary location so the static web asset
-            // manifest (emitted next to the assembly) resolves regardless of the
-            // process working directory the OPC UA stack is launched from.
-            WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            WebApplicationBuilder builder = CreateBuilder();
+            ConfigureBuilder(builder, Url);
+
+            _app = builder.Build();
+            MapEndpoints(_app);
+
+            await _app.StartAsync(cancellationToken).ConfigureAwait(false);
+
+            Log.Logger.Information("Diagnostics UI is available on http://localhost:{Port} (listening on {Url}).", port, Url);
+        }
+
+        /// <summary>
+        /// Creates the web application builder for the translator. The content root is pinned
+        /// to the binary location so the static web asset manifest (emitted next to the
+        /// assembly) resolves regardless of the working directory the process starts in.
+        /// </summary>
+        public static WebApplicationBuilder CreateBuilder()
+        {
+            return WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 ContentRootPath = AppContext.BaseDirectory
             });
+        }
+
+        /// <summary>
+        /// Adds the dashboard to <paramref name="builder"/>: it listens on
+        /// <paramref name="url"/>, logs through Serilog and registers its services.
+        /// </summary>
+        public static void ConfigureBuilder(WebApplicationBuilder builder, string url)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
 
             builder.WebHost.UseStaticWebAssets();
-            builder.WebHost.UseUrls(Url);
+            builder.WebHost.UseUrls(url);
 
             // Route ASP.NET Core logs through the already-configured Serilog
             // logger instead of spinning up a second console logger.
@@ -64,17 +89,25 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
             builder.Services.AddSingleton<DiagnosticsService>();
             builder.Services.AddSingleton<AddressSpaceService>();
+        }
 
-            _app = builder.Build();
+        /// <summary>Returns the dashboard listen URL for <paramref name="port"/>.</summary>
+        public static string UrlFor(int port = _defaultPort) =>
+            string.Create(CultureInfo.InvariantCulture, $"http://0.0.0.0:{port}");
 
-            _app.UseStaticFiles();
+        /// <summary>Adds the dashboard middleware and endpoints to <paramref name="app"/>.</summary>
+        public static void MapEndpoints(WebApplication app)
+        {
+            ArgumentNullException.ThrowIfNull(app);
+
+            app.UseStaticFiles();
 
             // Enforce HTTP Basic authentication on every request before anything
             // else runs. The dashboard exposes operational controls (certificates,
             // driver/device management), so access is mandatory-gated behind the
             // same OPCUA_USERNAME / OPCUA_PASSWORD credentials the OPC UA server
             // validates at startup (see Program.ValidateRequiredEnvironment).
-            _app.Use(async (context, next) =>
+            app.Use(async (context, next) =>
             {
                 if (!IsAuthorized(context))
                 {
@@ -86,23 +119,19 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 await next().ConfigureAwait(false);
             });
 
-            _app.UseAntiforgery();
-            _app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+            app.UseAntiforgery();
+            app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
             // Streams the public application certificate as a file download. Lives outside
             // the Blazor circuit so the browser performs a normal HTTP GET (Save As) instead
             // of trying to push bytes over the SignalR connection.
-            _app.MapGet("/certificates/download/{thumbprint}", (string thumbprint, DiagnosticsService diagnostics) =>
+            app.MapGet("/certificates/download/{thumbprint}", (string thumbprint, DiagnosticsService diagnostics) =>
             {
                 CertificateFile file = diagnostics.GetApplicationCertificateFile(thumbprint);
                 return file == null
                     ? Results.NotFound()
                     : Results.File(file.Content, file.ContentType, file.FileName);
             });
-
-            await _app.StartAsync(cancellationToken).ConfigureAwait(false);
-
-            Log.Logger.Information("Diagnostics UI is available on http://localhost:{Port} (listening on {Url}).", port, Url);
         }
 
         private static bool IsAuthorized(HttpContext context)

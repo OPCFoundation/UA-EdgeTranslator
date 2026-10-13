@@ -125,6 +125,42 @@ namespace Opc.Ua.Edge.Translator.Tests
             }
         }
 
+        [Fact]
+        public void OnDiscoverAssets_drops_endpoints_rejected_by_the_endpoint_policy()
+        {
+            UANodeManager nm = NewBareInstance();
+
+            ProtocolDriverRegistry registry = Program.Drivers;
+            FieldInfo driversField = typeof(ProtocolDriverRegistry).GetField("_drivers", BindingFlags.NonPublic | BindingFlags.Instance);
+            System.Collections.IDictionary map = (System.Collections.IDictionary)driversField.GetValue(registry);
+
+            ListingDriver listing = new();
+            map[listing.Scheme] = listing;
+            try
+            {
+                List<Variant> outputs = new() { default };
+                MethodInfo m = _sut.GetMethod("OnDiscoverAssets", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                ServiceResult sr = (ServiceResult)m.Invoke(
+                    nm,
+                    new object[] { null, null, ArrayOfTestExtensions.ToVariantArray(new object[0]), outputs });
+
+                Assert.True(ServiceResult.IsGood(sr));
+                string[] endpoints = outputs[0].AsBoxedObject() switch
+                {
+                    string[] array => array,
+                    IConvertableToArray arrayOf => (string[])arrayOf.ToArray(),
+                    _ => Array.Empty<string>()
+                };
+
+                Assert.Contains("discovery-lists://192.168.1.20:502/1", endpoints);
+                Assert.DoesNotContain("discovery-lists://169.254.169.254:80/1", endpoints);
+            }
+            finally
+            {
+                map.Remove(listing.Scheme);
+            }
+        }
+
         // ---------------- AddTag missing-driver branch ----------------
 
         [Fact]
@@ -202,6 +238,35 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             public IEnumerable<string> Discover()
                 => throw new InvalidOperationException("simulated discovery failure");
+
+            public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
+                => throw new NotSupportedException();
+
+            public System.Threading.Tasks.Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, System.Threading.CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public AssetTag CreateTag(
+                ThingDescription td,
+                object form,
+                string assetId,
+                byte unitId,
+                string variableId,
+                string mappedUAExpandedNodeId,
+                string mappedUAFieldPath)
+                => throw new NotSupportedException();
+        }
+
+        private sealed class ListingDriver : IProtocolDriver
+        {
+            public string Scheme => "discovery-lists";
+
+            public string WoTBindingUri => "https://example/discovery-lists";
+
+            public IEnumerable<string> Discover() =>
+            [
+                "discovery-lists://192.168.1.20:502/1",
+                "discovery-lists://169.254.169.254:80/1"
+            ];
 
             public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
                 => throw new NotSupportedException();

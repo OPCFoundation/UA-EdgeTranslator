@@ -5,7 +5,12 @@
     using Opc.Ua.Configuration;
     using Opc.Ua.Edge.Translator.Diagnostics;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
     using Opc.Ua.Security.Certificates;
+    using Opc.Ua.Server;
     using Serilog;
     using System;
     using System.IO;
@@ -18,6 +23,15 @@
     public class Program
     {
         public static ApplicationInstance App { get; private set; }
+
+        private static readonly TaskCompletionSource s_serverStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// Completes once the OPC UA server is running, i.e. <see cref="App"/> and its
+        /// application certificate are available. Protocol drivers are loaded before the
+        /// server starts, so anything they start that needs the certificate awaits this.
+        /// </summary>
+        public static Task ServerStarted => s_serverStarted.Task;
 
         public static ProtocolDriverRegistry Drivers { get; } = new();
 
@@ -46,45 +60,6 @@
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "drivers"));
             Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "nodesets"));
 
-            // create OPC UA client app
-            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
-            App = new ApplicationInstance(Telemetry) {
-                ApplicationType = ApplicationType.ClientAndServer,
-                ConfigSectionName = "Ua.Edge.Translator"
-            };
-
-            await App.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
-
-            string appName = Environment.GetEnvironmentVariable("APP_NAME") ?? "UAEdgeTranslator";
-
-            // override ApplicationUri so it matches the configurable application name
-            App.ApplicationConfiguration.ApplicationName = appName;
-            App.ApplicationConfiguration.ApplicationUri = "urn:" + appName;
-
-            try
-            {
-                App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName = $"CN={appName}, C=US, S=Arizona, O=OPC Foundation";
-            }
-            catch (ArgumentException ex)
-            {
-                Log.Logger.Error(ex, "Certificate subject name error. Please delete the 'pki' folder to allow the generation of new certs.");
-                throw;
-            }
-
-            foreach (var cert in App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificates)
-            {
-                cert.SubjectName = $"CN={appName}, C=US, S=Arizona, O=OPC Foundation";
-            }
-
-            await App.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
-
-            // Hook certificate validation. In SDK 2.0.0 the CertificateValidator type and its
-            // CertificateValidation event were replaced by ICertificateValidatorEx.AcceptError:
-            // a per-error callback consulted for each suppressible validation error. The
-            // manager itself is created and populated by CheckApplicationInstanceCertificatesAsync
-            // above, so we only attach the hook here.
-            App.ApplicationConfiguration.CertificateManager.AcceptError = OPCUAClientCertificateAcceptError;
-
             string issuerPath = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "certs");
             if (!Directory.Exists(issuerPath))
             {
@@ -110,76 +85,103 @@
             DriverLoadContext.LoadProtocolDrivers();
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
-            // start the server
-            await App.StartAsync(new UAServer(Telemetry)).ConfigureAwait(false);
+            string appName = Environment.GetEnvironmentVariable("APP_NAME") ?? "UAEdgeTranslator";
 
-            Log.Logger.Information("UA Edge Translator is running.");
-
-            // graceful shutdown on SIGINT / SIGTERM so resources (drivers, file managers,
-            // telemetry, logs) get a chance to flush before the process exits.
-            using var shutdownCts = new CancellationTokenSource();
-
-            Console.CancelKeyPress += (_, eventArgs) =>
-            {
-                eventArgs.Cancel = true;
-                Log.Logger.Information("Shutdown signal received, stopping UA Edge Translator...");
-                shutdownCts.Cancel();
-            };
-
-            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
-            {
-                if (!shutdownCts.IsCancellationRequested)
+            // Host the OPC UA server, the WoT Connectivity registry and the diagnostics
+            // dashboard in one web application. The configuration file is applied as-is,
+            // then the application name and certificate subject are overridden to match APP_NAME.
+            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
+            WebApplicationBuilder builder = DiagnosticsWebHost.CreateBuilder();
+            DiagnosticsWebHost.ConfigureBuilder(builder, DiagnosticsWebHost.UrlFor());
+            HostedOpcUaApplication opcUa = builder.Services.AddEdgeTranslatorServer(
+                Telemetry,
+                Path.Combine(Directory.GetCurrentDirectory(), "Ua.Edge.Translator.Config.xml"),
+                configuration =>
                 {
-                    Log.Logger.Information("Process exit signal received, stopping UA Edge Translator...");
-                    shutdownCts.Cancel();
-                }
-            };
+                    ApplyApplicationName(configuration, appName);
+                    ValidateUserTokenPolicies(configuration);
+                });
+            opcUa.Created += app => App = app;
+            builder.Services.AddWotRegistry(opcUa, Path.Combine(Directory.GetCurrentDirectory(), "settings", "wot-registry"));
 
-            // Start the Blazor diagnostics dashboard alongside the OPC UA server.
-            // A failure here is non-fatal: the translator must keep running even
-            // if the auxiliary UI cannot bind its HTTP port.
-            DiagnosticsWebHost diagnosticsWebHost = new();
+            WebApplication app = builder.Build();
+            DiagnosticsWebHost.MapEndpoints(app);
+
+            IHostApplicationLifetime lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+            opcUa.StartupTasks.Add(_ =>
+            {
+                s_serverStarted.TrySetResult();
+                Log.Logger.Information("UA Edge Translator is running. Diagnostics UI is available on http://localhost:8081.");
+                return Task.CompletedTask;
+            });
+            lifetime.ApplicationStopping.Register(() => Log.Logger.Information("Shutdown signal received, stopping UA Edge Translator..."));
+
             try
             {
-                await diagnosticsWebHost.StartAsync(shutdownCts.Token).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Log.Logger.Error(ex, "Failed to start the diagnostics UI. The translator will continue running without it.");
-            }
-
-            try
-            {
-                await Task.Delay(Timeout.Infinite, shutdownCts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // expected on graceful shutdown
+                // Runs until SIGINT / SIGTERM; the host then stops the registry and the OPC UA server.
+                await app.RunAsync().ConfigureAwait(false);
             }
             finally
             {
-                try
-                {
-                    if (App != null)
-                    {
-                        await App.StopAsync().ConfigureAwait(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex, "Error while stopping the OPC UA application.");
-                }
-
-                try
-                {
-                    await diagnosticsWebHost.StopAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Error(ex, "Error while stopping the diagnostics UI.");
-                }
-
+                await app.DisposeAsync().ConfigureAwait(false);
                 Telemetry?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Checks that the endpoints offer username/password login, the only identity
+        /// UA Edge Translator accepts (OPCUA_USERNAME / OPCUA_PASSWORD). Clients cannot
+        /// log in otherwise, so this explains the problem and the fix instead of letting
+        /// every session fail later.
+        /// </summary>
+        internal static void ValidateUserTokenPolicies(ApplicationConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            var policies = configuration.ServerConfiguration?.UserTokenPolicies.ToArray() ?? Array.Empty<UserTokenPolicy>();
+            if (!policies.Any(p => p.TokenType == UserTokenType.UserName))
+            {
+                Log.Logger.Error(
+                    "OPC UA clients will not be able to log in: no endpoint in 'Ua.Edge.Translator.Config.xml' offers username/password login, " +
+                    "which is the only login UA Edge Translator accepts (OPCUA_USERNAME / OPCUA_PASSWORD). " +
+                    "Fix: add <ua:UserTokenPolicy><ua:TokenType>UserName_1</ua:TokenType></ua:UserTokenPolicy> under ServerConfiguration/UserTokenPolicies.");
+            }
+
+            foreach (UserTokenPolicy policy in policies.Where(p => p.TokenType != UserTokenType.UserName))
+            {
+                Log.Logger.Warning(
+                    "'Ua.Edge.Translator.Config.xml' offers {TokenType} login, but UA Edge Translator rejects it: only username/password " +
+                    "(OPCUA_USERNAME / OPCUA_PASSWORD) is accepted, so clients choosing {TokenType} fail with BadIdentityTokenInvalid. " +
+                    "Fix: remove the {TokenType} UserTokenPolicy from ServerConfiguration/UserTokenPolicies.",
+                    policy.TokenType, policy.TokenType, policy.TokenType);
+            }
+        }
+
+        /// <summary>
+        /// Applies the APP_NAME override to a loaded configuration: the application name,
+        /// URI and certificate subjects all follow it.
+        /// </summary>
+        internal static void ApplyApplicationName(ApplicationConfiguration configuration, string appName)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            configuration.ApplicationName = appName;
+            configuration.ApplicationUri = "urn:" + appName;
+
+            string subjectName = $"CN={appName}, C=US, S=Arizona, O=OPC Foundation";
+            try
+            {
+                configuration.SecurityConfiguration.ApplicationCertificate.SubjectName = subjectName;
+            }
+            catch (ArgumentException ex)
+            {
+                Log.Logger.Error(ex, "Certificate subject name error. Please delete the 'pki' folder to allow the generation of new certs.");
+                throw;
+            }
+
+            foreach (var cert in configuration.SecurityConfiguration.ApplicationCertificates)
+            {
+                cert.SubjectName = subjectName;
             }
         }
 
@@ -224,7 +226,7 @@
         // the error, false rejects it. This replaces the old CertificateValidation event,
         // where acceptance was signalled by setting e.Accept and rejection by leaving it
         // alone; the decision logic below is otherwise unchanged.
-        private static bool OPCUAClientCertificateAcceptError(Certificate certificate, ServiceResult error)
+        internal static bool OPCUAClientCertificateAcceptError(Certificate certificate, ServiceResult error)
         {
             if (error.StatusCode != StatusCodes.BadCertificateUntrusted)
             {

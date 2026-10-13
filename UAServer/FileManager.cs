@@ -142,6 +142,18 @@ using System.Threading.Tasks;
                 return StatusCodes.BadNotSupported;
             }
 
+            // A writable handle takes the single write lock, so it must be authorized
+            // before it is granted: authorizing only at Write/Close would let any client
+            // hold the lock and keep legitimate management clients from writing.
+            if (mode == 6)
+            {
+                ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(_context, "WoTFile.Open", mutates: true);
+                if (ServiceResult.IsBad(authorized))
+                {
+                    return authorized;
+                }
+            }
+
             lock (_handles)
             {
                 if (_handles.Count >= 10)
@@ -246,6 +258,12 @@ using System.Threading.Tasks;
             uint fileHandle,
             ByteString data)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(_context, "WoTFile.Write", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             lock (_handles)
             {
                 Handle handle = Find(_context, fileHandle);
@@ -280,6 +298,38 @@ using System.Threading.Tasks;
             uint fileHandle,
             CancellationToken cancellationToken)
         {
+            // Only closing a writable handle updates assets. A read handle has nothing to
+            // apply, so it is simply released - without authorization, so any client can
+            // always release its own read handle.
+            bool writing;
+            lock (_handles)
+            {
+                if (!_handles.TryGetValue(fileHandle, out Handle open))
+                {
+                    return new CloseMethodStateResult { ServiceResult = StatusCodes.BadInvalidArgument };
+                }
+
+                if (open.SessionId != GetSessionId(context))
+                {
+                    return new CloseMethodStateResult { ServiceResult = StatusCodes.BadUserAccessDenied };
+                }
+
+                writing = open.Writing;
+                if (!writing)
+                {
+                    _handles.Remove(fileHandle);
+                    _file.OpenCount.Value = (ushort)_handles.Count;
+                    open.Stream.Dispose();
+                    return new CloseMethodStateResult { ServiceResult = ServiceResult.Good };
+                }
+            }
+
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CloseAndUpdate", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return new CloseMethodStateResult { ServiceResult = authorized };
+            }
+
             return new CloseMethodStateResult
             {
                 ServiceResult = await OnCloseAndUpdateAsync(context, method, objectId, fileHandle, cancellationToken).ConfigureAwait(false)
@@ -307,7 +357,12 @@ using System.Threading.Tasks;
                     return StatusCodes.BadUserAccessDenied;
                 }
 
-                _writing = false;
+                // Only the writer releases the write lock; closing a read handle must not.
+                if (handle.Writing)
+                {
+                    _writing = false;
+                }
+
                 _handles.Remove(fileHandle);
                 _file.OpenCount.Value = (ushort)_handles.Count;
             }

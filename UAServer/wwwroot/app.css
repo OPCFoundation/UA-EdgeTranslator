@@ -1256,7 +1256,7 @@ a {
     flex: 0 1 auto;
 }
 
-/* Node class badge ---------------------------------------------------------- */
+/* Node class icon (UA-NodeSetEditor glyphs) --------------------------------- */
 
 .as-node-badge {
     display: inline-flex;
@@ -1275,22 +1275,32 @@ a {
     flex: 0 0 auto;
 }
 
+.as-node-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-secondary);
+    flex: 0 0 auto;
+}
+
+    .as-node-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+    }
+
 .as-node-variable {
     color: #0071e3;
-    background: rgba(0, 113, 227, 0.1);
-    border-color: rgba(0, 113, 227, 0.2);
 }
 
 .as-node-method {
     color: #ff9f0a;
-    background: rgba(255, 159, 10, 0.12);
-    border-color: rgba(255, 159, 10, 0.25);
 }
 
 .as-node-object {
     color: #34c759;
-    background: rgba(52, 199, 89, 0.12);
-    border-color: rgba(52, 199, 89, 0.25);
 }
 
 /* Detail panel -------------------------------------------------------------- */

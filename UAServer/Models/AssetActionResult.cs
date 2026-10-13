@@ -20,6 +20,23 @@ namespace Opc.Ua.Edge.Translator.Models
         public string Status { get; set; } = string.Empty;
 
         /// <summary>
+        /// Whether the action succeeded. A driver that reports success with an arbitrary
+        /// message (such as an HTTP response body) sets this, so the message is not taken
+        /// for an error. When <c>null</c>, success is inferred from <see cref="Status"/>:
+        /// only <c>ok</c> and <c>success</c> count as success, as before.
+        /// </summary>
+        public bool? Succeeded { get; set; }
+
+        /// <summary>
+        /// True when the action succeeded: <see cref="Succeeded"/> when the driver set
+        /// it, otherwise a <see cref="Status"/> of <c>ok</c> or <c>success</c>.
+        /// </summary>
+        public bool IsSuccess =>
+            Succeeded ?? (Status != null
+                && (Status.Equals("ok", System.StringComparison.OrdinalIgnoreCase)
+                    || Status.Equals("success", System.StringComparison.OrdinalIgnoreCase)));
+
+        /// <summary>
         /// The output arguments produced by the action, or <c>null</c> when the action
         /// does not produce any.
         /// </summary>
@@ -31,6 +48,23 @@ namespace Opc.Ua.Edge.Translator.Models
         public static AssetActionResult FromStatus(string status)
         {
             return new AssetActionResult { Status = status };
+        }
+
+        /// <summary>
+        /// Creates a successful result whose <paramref name="message"/> describes the
+        /// outcome; the message is not interpreted as an error.
+        /// </summary>
+        public static AssetActionResult Success(string message, IList<object> outputs = null)
+        {
+            return new AssetActionResult { Status = message, Outputs = outputs, Succeeded = true };
+        }
+
+        /// <summary>
+        /// Creates a failed result whose <paramref name="message"/> describes the error.
+        /// </summary>
+        public static AssetActionResult Failure(string message)
+        {
+            return new AssetActionResult { Status = message, Succeeded = false };
         }
 
         /// <summary>

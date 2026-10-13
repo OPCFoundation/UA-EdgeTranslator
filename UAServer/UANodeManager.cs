@@ -801,6 +801,12 @@ namespace Opc.Ua.Edge.Translator
 
         public ServiceResult OnCreateAsset(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CreateAsset", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             string assetName = ArgumentAsString(inputArguments, 0);
             if (!IsSafeAssetName(assetName))
             {
@@ -907,6 +913,12 @@ namespace Opc.Ua.Edge.Translator
 
         public async ValueTask<ServiceResult> OnDeleteAssetAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "DeleteAsset", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
                 return StatusCodes.BadInvalidArgument;
@@ -1104,13 +1116,31 @@ namespace Opc.Ua.Edge.Translator
 
         public ServiceResult OnDiscoverAssets(ISystemContext context, MethodState method, ArrayOf<Variant> inputArguments, List<Variant> outputArguments)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "DiscoverAssets", mutates: false);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             List<string> allAddresses = new();
 
             try
             {
                 foreach (var drv in Program.Drivers.AllDrivers)
                 {
-                    allAddresses.AddRange(drv.Discover());
+                    foreach (string endpoint in drv.Discover())
+                    {
+                        // WoT-Con 1.1 §Security: endpoints DiscoverAssets reports get the
+                        // same endpoint policy as caller-supplied ones, so a driver can't
+                        // surface (and a client can't then onboard) a blocked address.
+                        if (ServiceResult.IsBad(WotCon.AssetEndpointPolicy.Validate(endpoint, Program.Drivers)))
+                        {
+                            Log.Logger.Warning("DiscoverAssets dropped endpoint {Endpoint}: rejected by the endpoint policy.", endpoint);
+                            continue;
+                        }
+
+                        allAddresses.Add(endpoint);
+                    }
                 }
             }
             catch (Exception ex)
@@ -1128,6 +1158,12 @@ namespace Opc.Ua.Edge.Translator
 
         private async ValueTask<ServiceResult> OnCreateAssetForEndpointAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CreateAssetForEndpoint", mutates: true);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)) || string.IsNullOrEmpty(ArgumentAsString(inputArguments, 1)))
             {
                 return StatusCodes.BadInvalidArgument;
@@ -1140,6 +1176,22 @@ namespace Opc.Ua.Edge.Translator
                 return StatusCodes.BadInvalidArgument;
             }
 
+            string assetEndpoint = ArgumentAsString(inputArguments, 1);
+            if (!Program.Drivers.TryGetByUri(assetEndpoint, out var drv))
+            {
+                return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText($"No driver installed for endpoint: {assetEndpoint}"));
+            }
+
+            // WoT-Con 1.1 §Security: a caller-chosen endpoint passes the same
+            // endpoint policy the binder applies before the server connects to it.
+            // Checked before the asset node exists so a rejection leaves nothing behind.
+            ServiceResult endpointCheck = WotCon.AssetEndpointPolicy.Validate(assetEndpoint, Program.Drivers);
+            if (ServiceResult.IsBad(endpointCheck))
+            {
+                Log.Logger.Warning("Rejecting CreateAssetForEndpoint: endpoint {Endpoint} violates the endpoint policy.", assetEndpoint);
+                return endpointCheck;
+            }
+
             bool success = CreateAssetNode(assetName, out NodeState assetNode);
             if (!success)
             {
@@ -1150,12 +1202,6 @@ namespace Opc.Ua.Edge.Translator
                 outputArguments[0] = assetNode.NodeId;
 
                 // generate WoT File contents
-                string assetEndpoint = ArgumentAsString(inputArguments, 1);
-                if (!Program.Drivers.TryGetByUri(assetEndpoint, out var drv))
-                {
-                    return new ServiceResult(StatusCodes.BadNotSupported, new Ua.LocalizedText($"No driver installed for endpoint: {assetEndpoint}"));
-                }
-
                 ThingDescription td = drv.BrowseAndGenerateTD(assetName, assetEndpoint);
 
                 string contents = JsonConvert.SerializeObject(td, Formatting.Indented);
@@ -1174,6 +1220,12 @@ namespace Opc.Ua.Edge.Translator
 
         private async ValueTask<ServiceResult> OnConnectionTestAsync(ISystemContext context, MethodState method, NodeId objectId, ArrayOf<Variant> inputArguments, List<Variant> outputArguments, CancellationToken cancellationToken)
         {
+            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "ConnectionTest", mutates: false);
+            if (ServiceResult.IsBad(authorized))
+            {
+                return authorized;
+            }
+
             if (string.IsNullOrEmpty(ArgumentAsString(inputArguments, 0)))
             {
                 return StatusCodes.BadInvalidArgument;
@@ -1214,6 +1266,17 @@ namespace Opc.Ua.Edge.Translator
                 outputArguments[1] = $"Connection test to '{endpoint}' rejected: a TCP port is required (e.g. '{endpoint}:4840').";
                 Log.Logger.Warning("ConnectionTest rejected: missing port in endpoint {Endpoint}", endpoint);
                 return StatusCodes.BadInvalidArgument;
+            }
+
+            // WoT-Con 1.1 §Security: the caller chooses this address, so the same
+            // endpoint policy as the binder applies and the server must not be
+            // usable as a probe against the cloud instance-metadata service.
+            if (WotCon.AssetEndpointPolicy.IsAlwaysBlockedHost(host))
+            {
+                outputArguments[0] = false;
+                outputArguments[1] = $"Connection test to '{endpoint}' rejected by the endpoint policy.";
+                Log.Logger.Warning("ConnectionTest rejected by endpoint policy: {Endpoint}", endpoint);
+                return StatusCodes.BadUserAccessDenied;
             }
 
             const int probeTimeoutMs = 3000;
@@ -2433,7 +2496,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     return new ServiceResult(StatusCodes.Uncertain, new Ua.LocalizedText("no result"));
                 }
-                else if (result.ToLowerInvariant() == "ok" || result.ToLowerInvariant() == "success")
+                else if (actionResult.IsSuccess)
                 {
                     return new ServiceResult(StatusCodes.Good, new Ua.LocalizedText("success"));
                 }
