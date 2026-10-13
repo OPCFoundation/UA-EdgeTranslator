@@ -142,6 +142,18 @@ using System.Threading.Tasks;
                 return StatusCodes.BadNotSupported;
             }
 
+            // A writable handle takes the single write lock, so it must be authorized
+            // before it is granted: authorizing only at Write/Close would let any client
+            // hold the lock and keep legitimate management clients from writing.
+            if (mode == 6)
+            {
+                ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(_context, "WoTFile.Open", mutates: true);
+                if (ServiceResult.IsBad(authorized))
+                {
+                    return authorized;
+                }
+            }
+
             lock (_handles)
             {
                 if (_handles.Count >= 10)
@@ -286,10 +298,21 @@ using System.Threading.Tasks;
             uint fileHandle,
             CancellationToken cancellationToken)
         {
-            ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CloseAndUpdate", mutates: true);
-            if (ServiceResult.IsBad(authorized))
+            // Only closing a writable handle updates assets. A read handle must always be
+            // closable, or an unauthorized reader could not release it.
+            bool writing;
+            lock (_handles)
             {
-                return new CloseMethodStateResult { ServiceResult = authorized };
+                writing = _handles.TryGetValue(fileHandle, out Handle open) && open.Writing;
+            }
+
+            if (writing)
+            {
+                ServiceResult authorized = WotCon.AssetManagementAuthorization.Authorize(context, "CloseAndUpdate", mutates: true);
+                if (ServiceResult.IsBad(authorized))
+                {
+                    return new CloseMethodStateResult { ServiceResult = authorized };
+                }
             }
 
             return new CloseMethodStateResult
@@ -319,7 +342,12 @@ using System.Threading.Tasks;
                     return StatusCodes.BadUserAccessDenied;
                 }
 
-                _writing = false;
+                // Only the writer releases the write lock; closing a read handle must not.
+                if (handle.Writing)
+                {
+                    _writing = false;
+                }
+
                 _handles.Remove(fileHandle);
                 _file.OpenCount.Value = (ushort)_handles.Count;
             }

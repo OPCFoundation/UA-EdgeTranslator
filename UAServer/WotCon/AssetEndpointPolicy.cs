@@ -47,6 +47,13 @@ namespace Opc.Ua.Edge.Translator.WotCon
             foreach (string host in s_alwaysBlockedHosts)
             {
                 policy.BlockedHosts.Add(host);
+
+                // A fully qualified name with a trailing root dot resolves to the same
+                // host, and the validator compares names literally, so block that form too.
+                if (!host.Contains(':', StringComparison.Ordinal) && !char.IsDigit(host[^1]))
+                {
+                    policy.BlockedHosts.Add(host + ".");
+                }
             }
 
             return policy;
@@ -72,7 +79,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return false;
             }
 
-            string normalized = host.Trim().Trim('[', ']');
+            // Strip IPv6 brackets and the DNS root dot: "metadata.google.internal." is
+            // the same host as "metadata.google.internal".
+            string normalized = host.Trim().Trim('[', ']').TrimEnd('.');
             return s_alwaysBlockedHosts.Any(blocked => string.Equals(blocked, normalized, StringComparison.OrdinalIgnoreCase));
         }
     }

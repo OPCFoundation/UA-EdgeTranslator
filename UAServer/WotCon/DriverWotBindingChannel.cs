@@ -26,10 +26,17 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly Func<bool> _isAssetAccessBlocked;
 
-        public DriverWotBindingChannel(WotCompiledForm form, IAsset asset, AssetTag tag, string assetName, Func<bool> isAssetAccessBlocked)
+        private Func<ValueTask> _release;
+
+        /// <param name="release">
+        /// Returns this channel's reference to the shared asset connection; called once,
+        /// when the channel is disposed.
+        /// </param>
+        public DriverWotBindingChannel(WotCompiledForm form, IAsset asset, AssetTag tag, string assetName, Func<bool> isAssetAccessBlocked, Func<ValueTask> release = null)
         {
             Form = form;
             _asset = asset;
+            _release = release;
             _tag = tag;
             _assetName = assetName;
             _isAssetAccessBlocked = isAssetAccessBlocked ?? throw new ArgumentNullException(nameof(isAssetAccessBlocked));
@@ -127,7 +134,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     return new WotInvokeResult(StatusCodes.Uncertain, outputs, "no result");
                 }
 
-                return status.Equals("ok", StringComparison.OrdinalIgnoreCase) || status.Equals("success", StringComparison.OrdinalIgnoreCase)
+                // Drivers that report success with an arbitrary message say so explicitly;
+                // otherwise only "ok"/"success" count as success, as in the v1.02 manager.
+                return result.IsSuccess
                     ? new WotInvokeResult(StatusCodes.Good, outputs)
                     : new WotInvokeResult(StatusCodes.Bad, outputs, status);
             }
@@ -177,8 +186,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         public ValueTask DisposeAsync()
         {
-            // The asset is shared across channels and owned by the executor.
-            return default;
+            // The asset is shared across channels; release this channel's reference so
+            // the executor disconnects it once no channel uses it.
+            Func<ValueTask> release = Interlocked.Exchange(ref _release, null);
+            return release?.Invoke() ?? default;
         }
 
         private static Variant ToVariant(object value)

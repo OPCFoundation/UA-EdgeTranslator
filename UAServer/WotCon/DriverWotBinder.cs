@@ -98,7 +98,13 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return WotBindingCompilation.Unsupported([.. diagnostics]);
             }
 
-            string baseUri = SchemeOf(href) is null ? context.BaseUri : href;
+            // The TD base identifies the asset: it is the driver connection and the key of
+            // the Thing Description cache. An absolute href only addresses a point on that
+            // asset (a BACnet base names the device, while each href names one of its
+            // objects), so it must not become the connection. Only a TD without a base
+            // falls back to the absolute href.
+            bool relative = SchemeOf(href) is null;
+            string baseUri = string.IsNullOrEmpty(context.BaseUri) ? (relative ? null : href) : context.BaseUri;
             if (string.IsNullOrEmpty(baseUri)
                 || !TryParseUri(baseUri, out Uri endpointUri)
                 || !_drivers.TryGetByUri(baseUri, out IProtocolDriver driver))
@@ -106,6 +112,18 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 diagnostics.Add(WotBindingDiagnostic.Error(
                     WotBindingDiagnosticCode.UnsupportedScheme,
                     "No loaded protocol driver handles the form's endpoint.",
+                    form.Pointer("href")));
+                return WotBindingCompilation.Unsupported([.. diagnostics]);
+            }
+
+            // An absolute href must still be one this server is allowed to reach: a scheme
+            // a loaded driver handles, and the same driver that serves the base.
+            if (!relative
+                && (!_drivers.TryGetByUri(href, out IProtocolDriver hrefDriver) || !ReferenceEquals(hrefDriver, driver)))
+            {
+                diagnostics.Add(WotBindingDiagnostic.Error(
+                    WotBindingDiagnosticCode.UnsupportedScheme,
+                    "The form's href is not served by the protocol driver of the Thing's base.",
                     form.Pointer("href")));
                 return WotBindingCompilation.Unsupported([.. diagnostics]);
             }

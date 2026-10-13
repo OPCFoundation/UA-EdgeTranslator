@@ -121,6 +121,33 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         }
 
         [Fact]
+        public void An_authored_relative_id_is_qualified_before_it_is_mapped()
+        {
+            JsonObject td = Normalize("""
+                {
+                  "@context": "https://www.w3.org/2022/wot/td/v1.1",
+                  "@type": "Thing",
+                  "id": "urn:pump",
+                  "name": "pump",
+                  "properties": {
+                    "speed": { "type": "number", "uav:id": "s=Speed", "forms": [ { "href": "1" } ] },
+                    "flow": { "type": "number", "uav:id": "nsu=urn:other;s=Flow", "forms": [ { "href": "2" } ] }
+                  }
+                }
+                """);
+
+            // "s=Speed" would otherwise resolve in namespace 0.
+            JsonObject speed = td["properties"]!["speed"]!.AsObject();
+            Assert.Equal("nsu=urn:pump;s=Speed", speed["uav:id"]!.GetValue<string>());
+            Assert.Equal("nsu=urn:pump;s=Speed", speed["uav:mapToNodeId"]!.GetValue<string>());
+
+            // An already qualified id is kept as written.
+            JsonObject flow = td["properties"]!["flow"]!.AsObject();
+            Assert.Equal("nsu=urn:other;s=Flow", flow["uav:id"]!.GetValue<string>());
+            Assert.Equal("nsu=urn:other;s=Flow", flow["uav:mapToNodeId"]!.GetValue<string>());
+        }
+
+        [Fact]
         public void Invalid_json_is_passed_through_for_the_registry_to_report()
         {
             byte[] content = Encoding.UTF8.GetBytes("not json");

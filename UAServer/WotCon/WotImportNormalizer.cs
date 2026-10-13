@@ -222,16 +222,26 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     continue;
                 }
 
-                if (nodeId.StartsWith("nsu=", StringComparison.Ordinal) || nodeId.StartsWith("ns=", StringComparison.Ordinal))
+                string qualified = QualifyNodeId(nodeId, thingId);
+                if (!string.Equals(qualified, nodeId, StringComparison.Ordinal))
                 {
-                    continue;
+                    property["uav:mapToNodeId"] = qualified;
+                    changed = true;
                 }
-
-                property["uav:mapToNodeId"] = $"nsu={thingId};{nodeId}";
-                changed = true;
             }
 
             return changed;
+        }
+
+        /// <summary>
+        /// Qualifies a relative NodeId (one without <c>nsu=</c> or <c>ns=</c>) with the
+        /// Thing's namespace; an already qualified NodeId is returned unchanged.
+        /// </summary>
+        private static string QualifyNodeId(string nodeId, string thingId)
+        {
+            return nodeId.StartsWith("nsu=", StringComparison.Ordinal) || nodeId.StartsWith("ns=", StringComparison.Ordinal)
+                ? nodeId
+                : $"nsu={thingId};{nodeId}";
         }
 
         /// <summary>
@@ -267,6 +277,17 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 {
                     nodeId = $"nsu={thingId};s={thingName}.{name}";
                     property["uav:id"] = nodeId;
+                }
+                else
+                {
+                    // An authored relative id (such as "s=Speed") belongs to the Thing's
+                    // namespace; unqualified it would resolve in namespace 0.
+                    string qualified = QualifyNodeId(nodeId, thingId);
+                    if (!string.Equals(qualified, nodeId, StringComparison.Ordinal))
+                    {
+                        nodeId = qualified;
+                        property["uav:id"] = nodeId;
+                    }
                 }
 
                 property["uav:mapToNodeId"] = nodeId;

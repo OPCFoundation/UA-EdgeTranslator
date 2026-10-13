@@ -93,8 +93,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 }
 
                 _resolver.Parents[mapping.TargetNodeId] = owner;
-                string rewrittenTarget = _resolver.RewriteObjectTypeMapping(mapping)?.TargetNodeId;
-                if (rewrittenTarget != null)
+                // An ObjectType mapping is rewritten to a child target; record its parent too.
+                string rewrittenTarget = _resolver.RewriteObjectTypeMapping(mapping).TargetNodeId;
+                if (!string.Equals(rewrittenTarget, mapping.TargetNodeId, StringComparison.Ordinal))
                 {
                     _resolver.Parents[rewrittenTarget] = owner;
                 }

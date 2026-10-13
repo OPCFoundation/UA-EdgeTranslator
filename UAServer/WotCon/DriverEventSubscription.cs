@@ -22,7 +22,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
     /// </remarks>
     public sealed class DriverEventSubscription : IWotSubscription
     {
-        private static readonly Dictionary<IEventingAsset, int> s_listenerCounts = new(ReferenceEqualityComparer.Instance);
+        // One gate per asset, kept for as long as the asset has listeners. The gate
+        // serializes the whole start/stop transition - the count change and the
+        // driver call - so a stop for the last old listener cannot run after a new
+        // listener has already started the subscription again.
+        private static readonly Dictionary<IEventingAsset, Gate> s_gates = new(ReferenceEqualityComparer.Instance);
 
         private readonly IEventingAsset _asset;
 
@@ -39,28 +43,26 @@ namespace Opc.Ua.Edge.Translator.WotCon
             _onEvent = onEvent;
             _assetName = assetName;
 
+            Gate gate = Acquire(_asset);
+            lock (gate)
+            {
+                if (gate.Listeners == 0)
+                {
+                    try
+                    {
+                        _asset.StartEventSubscription();
+                    }
+                    catch
+                    {
+                        ReleaseGate(_asset, gate);
+                        throw;
+                    }
+                }
+
+                gate.Listeners++;
+            }
+
             _asset.AlarmReceived += OnAlarm;
-
-            bool first;
-            lock (s_listenerCounts)
-            {
-                s_listenerCounts.TryGetValue(_asset, out int count);
-                s_listenerCounts[_asset] = count + 1;
-                first = count == 0;
-            }
-
-            if (first)
-            {
-                try
-                {
-                    _asset.StartEventSubscription();
-                }
-                catch
-                {
-                    Release();
-                    throw;
-                }
-            }
         }
 
         public WotCompiledForm Form { get; }
@@ -80,32 +82,72 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             _asset.AlarmReceived -= OnAlarm;
 
-            bool last;
-            lock (s_listenerCounts)
+            Gate gate;
+            lock (s_gates)
             {
-                s_listenerCounts.TryGetValue(_asset, out int count);
-                last = count <= 1;
-                if (last)
+                if (!s_gates.TryGetValue(_asset, out gate))
                 {
-                    s_listenerCounts.Remove(_asset);
-                }
-                else
-                {
-                    s_listenerCounts[_asset] = count - 1;
+                    return;
                 }
             }
 
-            if (last)
+            lock (gate)
             {
-                try
+                gate.Listeners--;
+                if (gate.Listeners == 0)
                 {
-                    _asset.StopEventSubscription();
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Warning(ex, "Failed to stop the event subscription of asset {AssetId}.", _assetName);
+                    try
+                    {
+                        _asset.StopEventSubscription();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Logger.Warning(ex, "Failed to stop the event subscription of asset {AssetId}.", _assetName);
+                    }
                 }
             }
+
+            ReleaseGate(_asset, gate);
+        }
+
+        /// <summary>Returns the gate of <paramref name="asset"/>, holding a reference to it.</summary>
+        private static Gate Acquire(IEventingAsset asset)
+        {
+            lock (s_gates)
+            {
+                if (!s_gates.TryGetValue(asset, out Gate gate))
+                {
+                    gate = new Gate();
+                    s_gates[asset] = gate;
+                }
+
+                gate.References++;
+                return gate;
+            }
+        }
+
+        /// <summary>Drops a reference to <paramref name="gate"/>, removing it when unused.</summary>
+        private static void ReleaseGate(IEventingAsset asset, Gate gate)
+        {
+            lock (s_gates)
+            {
+                gate.References--;
+                if (gate.References == 0 && s_gates.TryGetValue(asset, out Gate current) && ReferenceEquals(current, gate))
+                {
+                    s_gates.Remove(asset);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Serializes the event subscription of one asset. <see cref="Listeners"/> is
+        /// guarded by the gate itself; <see cref="References"/> by <c>s_gates</c>.
+        /// </summary>
+        private sealed class Gate
+        {
+            public int Listeners;
+
+            public int References;
         }
 
         private void OnAlarm(object sender, AlarmEvent alarm)

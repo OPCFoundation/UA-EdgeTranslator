@@ -27,8 +27,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly ThingDescriptionCache _thingDescriptions;
 
-        private readonly ConcurrentDictionary<string, Lazy<Task<AssetConnection>>> _connections =
-            new(StringComparer.OrdinalIgnoreCase);
+        // One shared connection per TD base, reference-counted by the channels using it.
+        // Guarded by _gate; the connect itself runs outside the lock.
+        private readonly Dictionary<string, SharedConnection> _connections = new(StringComparer.OrdinalIgnoreCase);
+
+        private readonly object _gate = new();
 
         private readonly Func<bool> _isAssetAccessBlocked;
 
@@ -61,50 +64,118 @@ namespace Opc.Ua.Edge.Translator.WotCon
             }
 
             ThingDescription td = _thingDescriptions.GetOrCreate(baseUri);
-            AssetConnection connection = await GetConnectionAsync(driver, td, cancellationToken).ConfigureAwait(false);
+            SharedConnection shared = Acquire(driver, td);
+            try
+            {
+                AssetConnection connection = await shared.Connect.ConfigureAwait(false);
 
-            object rawForm = Newtonsoft.Json.Linq.JToken.Parse(form.Addressing.Metadata[DriverWotBinder.FormMetadataKey]);
-            AssetTag tag = driver.CreateTag(td, rawForm, td.Name, connection.UnitId, form.AffordanceName, null, null);
+                object rawForm = Newtonsoft.Json.Linq.JToken.Parse(form.Addressing.Metadata[DriverWotBinder.FormMetadataKey]);
+                AssetTag tag = driver.CreateTag(td, rawForm, td.Name, connection.UnitId, form.AffordanceName, null, null);
 
-            return new DriverWotBindingChannel(form, connection.Asset, tag, td.Name, _isAssetAccessBlocked);
+                return new DriverWotBindingChannel(form, connection.Asset, tag, td.Name, _isAssetAccessBlocked, () => ReleaseAsync(td.Base, shared));
+            }
+            catch
+            {
+                await ReleaseAsync(td.Base, shared).ConfigureAwait(false);
+                throw;
+            }
         }
 
-        private Task<AssetConnection> GetConnectionAsync(IProtocolDriver driver, ThingDescription td, CancellationToken cancellationToken)
+        /// <summary>
+        /// Returns the shared connection for <paramref name="td"/>, holding a reference to it.
+        /// A connection whose connect failed is replaced, so a later activation retries
+        /// instead of getting the cached failure.
+        /// </summary>
+        private SharedConnection Acquire(IProtocolDriver driver, ThingDescription td)
         {
-            Lazy<Task<AssetConnection>> lazy = _connections.GetOrAdd(
-                td.Base,
-                _ => new Lazy<Task<AssetConnection>>(() => driver.CreateAndConnectAssetAsync(td, cancellationToken)));
-
-            Task<AssetConnection> task = lazy.Value;
-            if (task.IsFaulted || task.IsCanceled)
+            lock (_gate)
             {
-                // Do not cache a failed connect; the next activation retries.
-                _connections.TryRemove(new KeyValuePair<string, Lazy<Task<AssetConnection>>>(td.Base, lazy));
+                if (!_connections.TryGetValue(td.Base, out SharedConnection shared)
+                    || shared.Connect.IsFaulted || shared.Connect.IsCanceled)
+                {
+                    // Connect without the activation's cancellation token: the connection
+                    // is shared, so one caller cancelling must not fail the others.
+                    shared = new SharedConnection(driver.CreateAndConnectAssetAsync(td, CancellationToken.None));
+                    _connections[td.Base] = shared;
+                }
+
+                shared.References++;
+                return shared;
+            }
+        }
+
+        /// <summary>
+        /// Drops a reference to <paramref name="shared"/>. The last reference disconnects
+        /// the asset and forgets the connection.
+        /// </summary>
+        private async ValueTask ReleaseAsync(string key, SharedConnection shared)
+        {
+            lock (_gate)
+            {
+                shared.References--;
+                if (shared.References > 0)
+                {
+                    return;
+                }
+
+                if (_connections.TryGetValue(key, out SharedConnection current) && ReferenceEquals(current, shared))
+                {
+                    _connections.Remove(key);
+                }
             }
 
-            return task;
+            await DisposeConnectionAsync(shared).ConfigureAwait(false);
+        }
+
+        private static async ValueTask DisposeConnectionAsync(SharedConnection shared)
+        {
+            AssetConnection connection;
+            try
+            {
+                connection = await shared.Connect.ConfigureAwait(false);
+            }
+            catch
+            {
+                // A failed connect has nothing to release.
+                return;
+            }
+
+            try
+            {
+                await connection.Asset.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Failed to dispose asset connection.");
+            }
+        }
+
+        /// <summary>A connection to one asset and the number of channels using it.</summary>
+        private sealed class SharedConnection
+        {
+            public SharedConnection(Task<AssetConnection> connect)
+            {
+                Connect = connect;
+            }
+
+            public Task<AssetConnection> Connect { get; }
+
+            public int References;
         }
 
         public async ValueTask DisposeAsync()
         {
-            foreach (Lazy<Task<AssetConnection>> lazy in _connections.Values)
+            List<SharedConnection> connections;
+            lock (_gate)
             {
-                if (!lazy.IsValueCreated || !lazy.Value.IsCompletedSuccessfully)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    await lazy.Value.Result.Asset.DisposeAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Log.Logger.Warning(ex, "Failed to dispose asset connection.");
-                }
+                connections = new List<SharedConnection>(_connections.Values);
+                _connections.Clear();
             }
 
-            _connections.Clear();
+            foreach (SharedConnection shared in connections)
+            {
+                await DisposeConnectionAsync(shared).ConfigureAwait(false);
+            }
         }
     }
 }

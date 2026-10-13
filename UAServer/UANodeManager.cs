@@ -2496,7 +2496,7 @@ namespace Opc.Ua.Edge.Translator
                 {
                     return new ServiceResult(StatusCodes.Uncertain, new Ua.LocalizedText("no result"));
                 }
-                else if (result.ToLowerInvariant() == "ok" || result.ToLowerInvariant() == "success")
+                else if (actionResult.IsSuccess)
                 {
                     return new ServiceResult(StatusCodes.Good, new Ua.LocalizedText("success"));
                 }

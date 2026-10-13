@@ -191,7 +191,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                 string result = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-                return AssetActionResult.FromOutputs(result, new List<object> { result });
+                // The response body is the action's output, not a status word.
+                return AssetActionResult.Success(result, new List<object> { result });
             }
             catch (Exception ex)
             {

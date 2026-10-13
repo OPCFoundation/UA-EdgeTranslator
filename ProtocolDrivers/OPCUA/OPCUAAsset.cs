@@ -581,7 +581,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
             }
 
-            return AssetActionResult.FromOutputs("Action executed successfully.", outputArgs);
+            return AssetActionResult.Success("Action executed successfully.", outputArgs);
         }
 
         /// <summary>

@@ -113,11 +113,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 }
             }
 
-            Assert.NotNull(thing);
+            // Assert into a non-null local, so the dereference below is provably safe.
+            AddressSpaceNode legacyThing = Assert.IsType<AddressSpaceNode>(thing);
 
             // 'setpoint' is served by its mapping target, which sits below the Thing in
             // its place; the property gets no second, never-updated Variable.
-            var children = await service.BrowseChildrenAsync(thing.Id);
+            var children = await service.BrowseChildrenAsync(legacyThing.Id);
             Assert.Contains(children, c => c.Text == "VoltageL-N");
             Assert.DoesNotContain(children, c => c.Text == "setpoint");
         }
@@ -164,8 +165,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 }
             }
 
-            Assert.NotNull(thing);
-            NodeId setpoint = NodeId.Parse(Assert.Single(await service.BrowseChildrenAsync(thing.Id), c => c.Text == "setpoint").Id);
+            AddressSpaceNode importedThing = Assert.IsType<AddressSpaceNode>(thing);
+            NodeId setpoint = NodeId.Parse(Assert.Single(await service.BrowseChildrenAsync(importedThing.Id), c => c.Text == "setpoint").Id);
 
             // The mock asset keeps what is written, so a write followed by a read
             // proves both handlers reach the driver.
@@ -363,6 +364,77 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.Contains(children, c => c.Text == "VoltageL-N");
             Assert.Contains(children, c => c.Text == "VoltageL1-L2");
             Assert.DoesNotContain(children, c => c.Text == "VoltageL1-N" || c.Text == "VoltageL2-N");
+        }
+
+        [Fact]
+        public async Task A_thing_upserted_through_the_registry_is_prepared_before_it_is_materialized()
+        {
+            // A change made through xRegistry (not a settings import) goes straight into
+            // the registry. Its companion model and cached Thing Description must be in
+            // place before the Thing is materialized, or the mapping type is unknown.
+            await using OpcUaServerFixture fixture = new();
+            StandardServer server = (StandardServer)fixture.App.Server;
+
+            string nodesets = Path.Combine(fixture.WorkingDirectory, "nodesets");
+            foreach (string name in new[] { "opcfoundation.org.UA.DI.nodeset2.xml", "opcfoundation.org.UA.PNEM.nodeset2.xml" })
+            {
+                File.Copy(FindRepositoryFile(Path.Combine("Tests", "UAEdgeTranslator.Tests", "TestData", "nodesets", name)), Path.Combine(nodesets, name), overwrite: true);
+            }
+
+            string storage = Path.Combine(fixture.WorkingDirectory, "wot-registry-" + Guid.NewGuid().ToString("N"));
+            await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
+
+            byte[] td = WotImportNormalizer.Normalize(System.Text.Encoding.UTF8.GetBytes("""
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/PNEM/" }],
+                  "@type": ["Thing"],
+                  "id": "urn:pnem-x",
+                  "name": "pnem-x",
+                  "title": "pnem-x",
+                  "base": "mock://device-1:1502/1",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": ["nosec_sc"],
+                  "properties": {
+                    "VoltageL1-N": {
+                      "type": "number",
+                      "uav:mapToNodeId": "s=VoltageL-N",
+                      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=3005",
+                      "uav:mapByFieldPath": "A",
+                      "forms": [ { "href": "/l1", "op": ["readproperty", "writeproperty"], "type": "xsd:float" } ]
+                    }
+                  }
+                }
+                """));
+
+            await host.Registry.UpsertResourceAsync(new WotUpsertResourceRequest
+            {
+                Kind = WoTDocumentKindEnum.ThingDescription,
+                ResourceId = "pnem-x",
+                Name = "pnem-x",
+                Content = new ByteString(td),
+                SetAsDefault = true
+            });
+
+            // No manual refresh: the change itself must lead to a materialized, readable Thing.
+            ushort ns = 0;
+            DataValue value = default;
+            for (int attempt = 0; attempt < 100; attempt++)
+            {
+                ns = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:pnem-x");
+                if (ns != ushort.MaxValue && ns != 0)
+                {
+                    value = await ReadValueAsync(server, new NodeId("VoltageL-N", ns));
+                    if (StatusCode.IsGood(value.StatusCode))
+                    {
+                        break;
+                    }
+                }
+
+                await Task.Delay(100);
+            }
+
+            Assert.False(value.IsNull, "the Thing was never materialized");
+            Assert.True(StatusCode.IsGood(value.StatusCode), "structure read: " + value.StatusCode);
         }
 
         private static async Task<DataValue> ReadValueAsync(StandardServer server, NodeId nodeId, uint attributeId = Attributes.Value)

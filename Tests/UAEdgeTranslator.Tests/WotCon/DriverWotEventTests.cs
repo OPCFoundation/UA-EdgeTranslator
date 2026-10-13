@@ -125,6 +125,90 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             asset.Raise(new AlarmEvent { Message = "ignored" });
         }
 
+        [Fact]
+        public async Task A_new_listener_during_the_last_stop_keeps_the_subscription_running()
+        {
+            // The last old listener is stopping the driver subscription when a new
+            // listener arrives. The new start must come after that stop, so the
+            // subscription ends up running; a stop that lands last would silently
+            // disable events for the live listener.
+            BlockingEventingAsset asset = new();
+            DriverEventSubscription old = new(null, asset, _ => { }, "evt-race");
+
+            Task stopping = Task.Run(() => old.DisposeAsync().AsTask());
+            Assert.True(asset.StopEntered.Wait(TimeSpan.FromSeconds(10)), "stop was not called");
+
+            Task<DriverEventSubscription> starting = Task.Run(() => new DriverEventSubscription(null, asset, _ => { }, "evt-race"));
+
+            // While the stop is still running, the new listener must wait for it.
+            Assert.False(starting.Wait(TimeSpan.FromMilliseconds(300)), "the new listener started while the stop was in progress");
+
+            asset.ReleaseStop.Set();
+            await stopping;
+            await using DriverEventSubscription current = await starting;
+
+            Assert.Equal(new[] { "start", "stop", "start" }, asset.Calls);
+            Assert.True(asset.Running);
+        }
+
+        private sealed class BlockingEventingAsset : IEventingAsset
+        {
+            public ManualResetEventSlim StopEntered { get; } = new();
+
+            public ManualResetEventSlim ReleaseStop { get; } = new();
+
+            public List<string> Calls { get; } = new();
+
+            public bool Running { get; private set; }
+
+#pragma warning disable CS0067 // never raised: this fake only tracks subscription calls
+            public event EventHandler<AlarmEvent> AlarmReceived;
+#pragma warning restore CS0067
+
+            public bool IsConnected => true;
+
+            public void StartEventSubscription()
+            {
+                lock (Calls)
+                {
+                    Calls.Add("start");
+                }
+
+                Running = true;
+            }
+
+            public void RefreshEventSubscription()
+            {
+            }
+
+            public void StopEventSubscription()
+            {
+                StopEntered.Set();
+                ReleaseStop.Wait(TimeSpan.FromSeconds(10));
+                lock (Calls)
+                {
+                    Calls.Add("stop");
+                }
+
+                Running = false;
+            }
+
+            public string GetRemoteEndpoint() => "fake://race";
+
+            public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task<object> ReadAsync(AssetTag tag, CancellationToken cancellationToken = default) => Task.FromResult<object>(null);
+
+            public Task WriteAsync(AssetTag tag, object value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+            public Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default) =>
+                Task.FromResult(AssetActionResult.FromStatus("ok"));
+
+            public ValueTask DisposeAsync() => default;
+        }
+
         private sealed class FakeEventingAsset : IEventingAsset
         {
             public event EventHandler<AlarmEvent> AlarmReceived;

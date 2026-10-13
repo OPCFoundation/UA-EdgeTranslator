@@ -42,6 +42,12 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private NodeManagerRegistration _registration;
 
+        // Serializes the prepare-then-refresh work that registry changes trigger, so
+        // each refresh sees the caches and companion models of the change before it.
+        private readonly SemaphoreSlim _changeGate = new(1, 1);
+
+        private readonly CancellationTokenSource _stopping = new();
+
         private WotRegistryHost(
             StandardServer server,
             IWotRegistryService registry,
@@ -98,7 +104,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
             var options = new WotRegistryServerOptions
             {
                 StorageFolder = storageFolder,
-                AutoRefresh = true,
+
+                // The host refreshes after every content change itself, once the Thing
+                // Descriptions are cached and their companion models are loaded (see
+                // OnRegistryChanged). The package's auto-refresh would run before that.
+                AutoRefresh = false,
                 StrictBindings = false,
                 ManagementAccess = new WotManagementAccessPolicy
                 {
@@ -309,7 +319,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 {
                     Ua.Server.RuntimeNodeSet.RuntimeNodeSetSource.FromStream(
                         namespaceUri,
-                        _ => new ValueTask<Stream>(new MemoryStream(xml, writable: false)),
+                        _ => OpenNodeSet(xml),
                         new ArrayOf<string>(owned))
                 })
             };
@@ -326,14 +336,57 @@ namespace Opc.Ua.Edge.Translator.WotCon
             Log.Logger.Information("Loaded companion model {NamespaceUri} for WoT target mappings.", namespaceUri);
         }
 
+        /// <summary>
+        /// Opens a fresh read-only stream over a companion NodeSet. The runtime NodeSet
+        /// loader takes ownership: it disposes the stream once the NodeSet is parsed, and
+        /// calls this again for every (re)load, so the stream must not be shared or cached.
+        /// </summary>
+        private static ValueTask<Stream> OpenNodeSet(byte[] xml)
+        {
+            return new ValueTask<Stream>(new MemoryStream(xml, writable: false));
+        }
+
         private void OnRegistryChanged(object sender, WotRegistryChangedEventArgs e)
         {
-            // Drivers need the Thing Description before the projection opens its
-            // first channel; refreshing the cache on every content mutation keeps
-            // them in step with what the coordinator materializes.
+            // Content changes come from settings imports and from xRegistry (OPC UA
+            // methods). Before the change is materialized, drivers need its Thing
+            // Descriptions, and target mappings need the companion models their
+            // uav:mapToType names; only then is the coordinator refreshed.
             if (!e.ProjectionOnly)
             {
-                _ = CacheThingDescriptionsAsync(e.Current, CancellationToken.None);
+                _ = PrepareAndRefreshAsync(e.Current);
+            }
+        }
+
+        private async Task PrepareAndRefreshAsync(WotRegistrySnapshot snapshot)
+        {
+            CancellationToken cancellationToken = _stopping.Token;
+            try
+            {
+                await _changeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            try
+            {
+                await CacheThingDescriptionsAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                await LoadCompanionModelsAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                await _coordinator.RefreshAsync(new WotRefreshRequest { RequestId = "change" }, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // shutting down
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Could not materialize a WoT Connectivity registry change.");
+            }
+            finally
+            {
+                _changeGate.Release();
             }
         }
 
@@ -362,6 +415,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
         public async ValueTask DisposeAsync()
         {
             Registry.Changed -= OnRegistryChanged;
+
+            // Cancel pending change work and wait for a refresh in progress, so nothing
+            // materializes again while the projected Things are being removed.
+            _stopping.Cancel();
+            await _changeGate.WaitAsync().ConfigureAwait(false);
 
             // Remove the projected Things first. Removing the registry node manager would
             // otherwise remove them from inside its own lifecycle operation, which waits

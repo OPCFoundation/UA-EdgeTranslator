@@ -129,10 +129,6 @@
         }
 
         /// <summary>
-        /// Applies the APP_NAME override to a loaded configuration: the application name,
-        /// URI and certificate subjects all follow it.
-        /// </summary>
-        /// <summary>
         /// Checks that the endpoints offer username/password login, the only identity
         /// UA Edge Translator accepts (OPCUA_USERNAME / OPCUA_PASSWORD). Clients cannot
         /// log in otherwise, so this explains the problem and the fix instead of letting
@@ -161,6 +157,10 @@
             }
         }
 
+        /// <summary>
+        /// Applies the APP_NAME override to a loaded configuration: the application name,
+        /// URI and certificate subjects all follow it.
+        /// </summary>
         internal static void ApplyApplicationName(ApplicationConfiguration configuration, string appName)
         {
             ArgumentNullException.ThrowIfNull(configuration);
