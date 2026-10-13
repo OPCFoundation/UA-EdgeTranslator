@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Makaretu.Dns.Multicast.New" />
     <PackageReference Include="Linux.Bluetooth" />
     <PackageReference Include="BouncyCastle.Cryptography" />

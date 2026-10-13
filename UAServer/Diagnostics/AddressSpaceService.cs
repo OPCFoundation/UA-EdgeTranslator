@@ -299,8 +299,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// <para>
         /// This is what lets the tree hide the expander on leaf nodes instead of
         /// offering one that opens onto "(no children)". The whole set is
-        /// resolved in a single Browse call — <c>BrowseAsync</c> accepts a
-        /// collection of descriptions — so one expansion still costs one extra
+        /// resolved in a single Browse call - <c>BrowseAsync</c> accepts a
+        /// collection of descriptions - so one expansion still costs one extra
         /// round-trip rather than one per child. Only the first reference of
         /// each node is needed, hence <c>maxReferencesPerNode: 1</c>.
         /// </para>
@@ -1016,7 +1016,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 : string.Create(CultureInfo.InvariantCulture, $"{{ {joined} }}");
         }
 
-        private static string FormatValue(DataValue value)
+        /// <summary>Formats a value for display in the Address Space Explorer.</summary>
+        public static string FormatValue(DataValue value)
         {
             if (value.IsNull)
             {
@@ -1040,7 +1041,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 return value.StatusCode.ToString();
             }
 
-            return FormatVariant(value.WrappedValue);
+            // Format the CLR value, not the Variant wrapper: boxed, the wrapper matches
+            // IFormattable, and SDK 2.0 arrays (ArrayOf<T>) and byte strings would never
+            // reach the array or byte[] formatting below.
+            return FormatVariant(VariantConversion.ToClrValue(value.WrappedValue));
         }
 
         private static string FormatVariant(object value)
@@ -1049,6 +1053,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             {
                 case null:
                     return string.Empty;
+
+                // Elements of a Variant[] (and any other nested Variant) are unwrapped too.
+                case Variant variant:
+                    return FormatVariant(VariantConversion.ToClrValue(variant));
 
                 case LocalizedText text:
                     return text.Text ?? string.Empty;

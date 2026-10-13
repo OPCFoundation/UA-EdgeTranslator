@@ -393,7 +393,15 @@ namespace WotOpcUaMapper.UAClientLib
 
                 try
                 {
-                    var complexTypeSystem = new ComplexTypeSystem(new NodeCacheResolver(_session, _telemetry), _telemetry);
+                    // The loaded types are registered in the session's encodeable factory
+                    // and stay there after the type system is disposed, so the read below
+                    // can decode them. The type system owns (and disposes) the resolver
+                    // and the node cache it creates.
+                    using var complexTypeSystem = new ComplexTypeSystem(
+                        new NodeCacheResolver(_session, _telemetry),
+                        new DefaultComplexTypeFactory(),
+                        _telemetry,
+                        ownsResolver: true);
                     await complexTypeSystem.LoadTypeAsync(variableNode.DataType).ConfigureAwait(false);
                 }
                 catch

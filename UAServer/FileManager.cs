@@ -1,4 +1,4 @@
-namespace Opc.Ua.Edge.Translator
+﻿namespace Opc.Ua.Edge.Translator
 {
     using Opc.Ua;
     using Opc.Ua.Export;

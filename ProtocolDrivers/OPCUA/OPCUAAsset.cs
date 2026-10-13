@@ -57,6 +57,24 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 await _session.CloseAsync().ConfigureAwait(false);
                 _session = null;
             }
+
+            DisposeComplexTypes();
+        }
+
+        /// <summary>
+        /// Disposes the type systems kept per session, which releases their node caches.
+        /// When <paramref name="keep"/> is given, its type system is kept.
+        /// </summary>
+        private void DisposeComplexTypes(ISession keep = null)
+        {
+            foreach (ISession session in new List<ISession>(_complexTypeList.Keys))
+            {
+                if (!ReferenceEquals(session, keep))
+                {
+                    _complexTypeList[session].Dispose();
+                    _complexTypeList.Remove(session);
+                }
+            }
         }
 
         public async ValueTask DisposeAsync()
@@ -381,7 +399,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     // SDK 2.0.0 moved ComplexTypeSystem to Opc.Ua.Core.Schema; it now resolves
                     // types through an IComplexTypeResolver rather than the session directly.
-                    _complexTypeList.Add(_session, new ComplexTypeSystem(new NodeCacheResolver(_session, Program.Telemetry), Program.Telemetry));
+                    // The type system owns the resolver and its node cache, so disposing it
+                    // (see DisposeComplexTypes) releases both. Loaded types stay registered in
+                    // the session's encodeable factory.
+                    _complexTypeList.Add(_session, new ComplexTypeSystem(
+                        new NodeCacheResolver(_session, Program.Telemetry),
+                        new DefaultComplexTypeFactory(),
+                        Program.Telemetry,
+                        ownsResolver: true));
                 }
 
                 await _complexTypeList[_session].LoadAsync().ConfigureAwait(false);
@@ -484,6 +509,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             // update the session
             _session = reconnectHandler.Session;
+
+            // a reconnect may hand back a new session; drop the type systems of replaced ones
+            DisposeComplexTypes(_session);
 
 
             lock (_reconnectHandlersLock)
