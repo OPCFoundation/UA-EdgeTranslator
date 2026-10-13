@@ -106,13 +106,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             InvokeReportReadOnlyAlarm(assetId, alarm);
             AlarmConditionState condition = GetCondition(assetId + ":state-map");
 
-            Assert.Equal("Disabled", condition.EnabledState?.Value?.Text);
+            Assert.Equal("Disabled", condition.EnabledState?.Value.Text);
             Assert.False(condition.EnabledState?.Id?.Value ?? true);
 
-            Assert.Equal("Active", condition.ActiveState?.Value?.Text);
+            Assert.Equal("Active", condition.ActiveState?.Value.Text);
             Assert.True(condition.ActiveState?.Id?.Value ?? false);
 
-            Assert.Equal("Unacknowledged", condition.AckedState?.Value?.Text);
+            Assert.Equal("Unacknowledged", condition.AckedState?.Value.Text);
             Assert.False(condition.AckedState?.Id?.Value ?? true);
         }
 
@@ -140,8 +140,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             AlarmConditionState first = GetCondition(assetId + ":retain-false");
             Assert.False(first.Retain?.Value ?? true);
-            Assert.Equal(fixedTime, first.Time?.Value);
-            Assert.InRange(first.ReceiveTime?.Value ?? DateTime.MinValue, beforeFirst.AddSeconds(-1), afterFirst.AddSeconds(1));
+            // Time is a DateTimeUtc in SDK 2.0.0; convert so this compares DateTime to
+            // DateTime rather than a DateTime to a boxed DateTimeUtc (never equal).
+            Assert.Equal(fixedTime, (DateTime?)first.Time?.Value);
+            Assert.InRange((DateTime?)first.ReceiveTime?.Value ?? DateTime.MinValue, beforeFirst.AddSeconds(-1), afterFirst.AddSeconds(1));
 
             DateTime beforeSecond = DateTime.UtcNow;
             InvokeReportReadOnlyAlarm(assetId, new AlarmEvent
@@ -160,8 +162,8 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             AlarmConditionState second = GetCondition(assetId + ":retain-true");
             Assert.True(second.Retain?.Value ?? false);
-            Assert.InRange(second.Time?.Value ?? DateTime.MinValue, beforeSecond.AddSeconds(-1), afterSecond.AddSeconds(1));
-            Assert.InRange(second.ReceiveTime?.Value ?? DateTime.MinValue, beforeSecond.AddSeconds(-1), afterSecond.AddSeconds(1));
+            Assert.InRange((DateTime?)second.Time?.Value ?? DateTime.MinValue, beforeSecond.AddSeconds(-1), afterSecond.AddSeconds(1));
+            Assert.InRange((DateTime?)second.ReceiveTime?.Value ?? DateTime.MinValue, beforeSecond.AddSeconds(-1), afterSecond.AddSeconds(1));
         }
 
         private void EnsureEventSource(string assetId)

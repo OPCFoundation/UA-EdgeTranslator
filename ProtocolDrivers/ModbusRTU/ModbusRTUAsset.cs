@@ -225,7 +225,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
         {
-            string actionName = method?.BrowseName?.Name;
+            string actionName = method?.BrowseName.Name;
             if (string.IsNullOrEmpty(actionName) || (_actionTags == null) || !_actionTags.TryGetValue(actionName, out AssetTag tag))
             {
                 return $"No Modbus form found for action '{actionName}'.";

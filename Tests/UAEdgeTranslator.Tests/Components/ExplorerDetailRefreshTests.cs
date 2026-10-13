@@ -141,7 +141,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             {
                 NodeId = _variableNodeId,
                 BrowseName = new QualifiedName("ExplorerDetailRefreshValue", ns),
-                DisplayName = "ExplorerDetailRefreshValue",
+                DisplayName = new LocalizedText("ExplorerDetailRefreshValue"),
                 TypeDefinitionId = VariableTypeIds.BaseDataVariableType,
                 DataType = DataTypeIds.Int32,
                 ValueRank = ValueRanks.Scalar,

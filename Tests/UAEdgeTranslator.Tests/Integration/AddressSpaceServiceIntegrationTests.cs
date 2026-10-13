@@ -308,7 +308,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = new NodeId("LateAddedExplorerNode", ns),
                 BrowseName = new QualifiedName("LateAddedExplorerNode", ns),
-                DisplayName = "LateAddedExplorerNode",
+                DisplayName = new LocalizedText("LateAddedExplorerNode"),
                 TypeDefinitionId = ObjectTypeIds.BaseObjectType
             };
 

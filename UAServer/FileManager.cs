@@ -8,6 +8,8 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
     public class FileManager : IDisposable
     {
@@ -62,7 +64,7 @@
             _file.Write.OnCall = new WriteMethodStateMethodCallHandler(OnWrite);
             _file.GetPosition.OnCall = new GetPositionMethodStateMethodCallHandler(OnGetPosition);
             _file.SetPosition.OnCall = new SetPositionMethodStateMethodCallHandler(OnSetPosition);
-            _file.Close.OnCall = new CloseMethodStateMethodCallHandler(OnCloseAndUpdate);
+            _file.Close.OnCallAsync = OnCloseAsync;
             _file.Close.DisplayName = new Opc.Ua.LocalizedText("CloseAndUpdate");
             ushort WoTConNamespaceIndex = (ushort)_nodeManager.Server.NamespaceUris.GetIndex(_cWotCon);
             _file.Close.BrowseName = new QualifiedName("CloseAndUpdate", WoTConNamespaceIndex);
@@ -86,7 +88,7 @@
         {
             if (context is ServerSystemContext serverContext)
             {
-                return serverContext.SessionId;
+                return serverContext.SessionId ?? NodeId.Null;
             }
 
             return NodeId.Null;
@@ -205,7 +207,7 @@
         NodeId _objectId,
         uint fileHandle,
         int length,
-        ref byte[] data)
+        ref ByteString data)
         {
             lock (_handles)
             {
@@ -220,17 +222,17 @@
                 {
                     byte[] buffer = new byte[length];
                     int bytesRead = handle.Stream.Read(buffer, 0, length);
-                    
+
                     // Return only the bytes actually read
                     if (bytesRead < length)
                     {
                         Array.Resize(ref buffer, bytesRead);
                     }
-                    data = buffer;
+                    data = (ByteString)buffer;
                 }
                 else
                 {
-                    data = new byte[0];
+                    data = (ByteString)Array.Empty<byte>();
                 }
             }
 
@@ -242,7 +244,7 @@
             MethodState _method,
             NodeId _objectId,
             uint fileHandle,
-            byte[] data)
+            ByteString data)
         {
             lock (_handles)
             {
@@ -253,7 +255,7 @@
                     return StatusCodes.BadInvalidState;
                 }
 
-                if (data != null && data.Length > 0)
+                if (!data.IsNull && data.Length > 0)
                 {
                     // enforce a per-handle upload cap to prevent unbounded
                     // memory growth via repeated chunked Write() calls.
@@ -261,21 +263,35 @@
                     if (projected > _maxFileBytes)
                     {
                         Log.Logger.Warning("Rejecting WoT file upload: size {Projected} exceeds configured cap {Cap} bytes.", projected, _maxFileBytes);
-                        return new ServiceResult(StatusCodes.BadOutOfMemory, $"Upload exceeds maximum allowed size of {_maxFileBytes} bytes.");
+                        return new ServiceResult(StatusCodes.BadOutOfMemory, new Opc.Ua.LocalizedText($"Upload exceeds maximum allowed size of {_maxFileBytes} bytes."));
                     }
 
-                    handle.Stream.Write(data, 0, data.Length);
+                    handle.Stream.Write(data.Span);
                 }
             }
 
             return StatusCodes.Good;
         }
 
-        private ServiceResult OnCloseAndUpdate(
+        private async ValueTask<CloseMethodStateResult> OnCloseAsync(
+            ISystemContext context,
+            MethodState method,
+            NodeId objectId,
+            uint fileHandle,
+            CancellationToken cancellationToken)
+        {
+            return new CloseMethodStateResult
+            {
+                ServiceResult = await OnCloseAndUpdateAsync(context, method, objectId, fileHandle, cancellationToken).ConfigureAwait(false)
+            };
+        }
+
+        private async ValueTask<ServiceResult> OnCloseAndUpdateAsync(
             ISystemContext _context,
             MethodState _method,
             NodeId _objectId,
-            uint fileHandle)
+            uint fileHandle,
+            CancellationToken cancellationToken)
         {
             Handle handle;
 
@@ -335,9 +351,7 @@
                         contents = File.ReadAllText(fallbackPath);
                     }
 
-                    // OPC UA FileType Close callback is synchronous by contract; bridge through AsyncBridge
-                    // so we never block on a captured SynchronizationContext during onboarding.
-                    AsyncBridge.RunSync(() => _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents));
+                    await _nodeManager.OnboardAssetFromWoTFileAsync(_file.Parent, contents).ConfigureAwait(false);
 
                     _nodeManager.RaiseModelChangedEvent(_file.Parent.NodeId, ModelChangeStructureVerbMask.NodeAdded);
 

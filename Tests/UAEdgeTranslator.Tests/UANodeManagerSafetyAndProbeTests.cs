@@ -115,12 +115,11 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnConnectionTest_returns_BadInvalidArgument_for_null_endpoint()
         {
             UANodeManager nm = NewBareInstance();
-            MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            IList<object> inputs = new List<object> { null };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { null });
+            List<Variant> outputs = new() { default, default };
 
-            object res = m.Invoke(nm, new object[] { null, null, inputs, outputs });
+            object res = AsyncHandlerInvoker.CallMethod(nm, "OnConnectionTestAsync", null, inputs, outputs);
             ServiceResult sr = (ServiceResult)res;
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
@@ -129,12 +128,11 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnConnectionTest_returns_BadInvalidArgument_when_no_port()
         {
             UANodeManager nm = NewBareInstance();
-            MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            IList<object> inputs = new List<object> { "hostonly" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "hostonly" });
+            List<Variant> outputs = new() { default, default };
 
-            ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(nm, "OnConnectionTestAsync", null, inputs, outputs);
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
             Assert.False((bool)outputs[0]);
             Assert.Contains("port is required", outputs[1].ToString(), StringComparison.OrdinalIgnoreCase);
@@ -144,16 +142,15 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnConnectionTest_returns_BadNotFound_when_remote_host_refuses_connection()
         {
             UANodeManager nm = NewBareInstance();
-            MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // 127.0.0.1:1 is loopback to a closed port — ConnectAsync should
             // throw a SocketException (ConnectionRefused) almost immediately,
             // exercising the generic catch branch -> BadNotFound. Wrap in a
             // scheme so the URI parser doesn't claim "127.0.0.1" as a scheme.
-            IList<object> inputs = new List<object> { "tcp://127.0.0.1:1" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "tcp://127.0.0.1:1" });
+            List<Variant> outputs = new() { default, default };
 
-            ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(nm, "OnConnectionTestAsync", null, inputs, outputs);
             Assert.Equal((StatusCode)StatusCodes.BadNotFound, sr.StatusCode);
             Assert.False((bool)outputs[0]);
             Assert.NotNull(outputs[1]);
@@ -171,14 +168,13 @@ namespace Opc.Ua.Edge.Translator.Tests
             CancellationTokenSource cts = (CancellationTokenSource)ctsField.GetValue(nm);
             cts.Cancel();
 
-            MethodInfo m = _sut.GetMethod("OnConnectionTest", BindingFlags.NonPublic | BindingFlags.Instance);
             // Use a routable port that won't accept fast on most hosts so we
             // really hit the cancellation path; even loopback to a closed port
             // should still cancel before the SocketException surfaces.
-            IList<object> inputs = new List<object> { "tcp://127.0.0.1:1" };
-            IList<object> outputs = new List<object> { null, null };
+            ArrayOf<Variant> inputs = ArrayOfTestExtensions.ToVariantArray(new object[] { "tcp://127.0.0.1:1" });
+            List<Variant> outputs = new() { default, default };
 
-            ServiceResult sr = (ServiceResult)m.Invoke(nm, new object[] { null, null, inputs, outputs });
+            ServiceResult sr = AsyncHandlerInvoker.CallMethod(nm, "OnConnectionTestAsync", null, inputs, outputs);
             // Either the connection failed (BadNotFound) or was cancelled (BadNotFound).
             Assert.Equal((StatusCode)StatusCodes.BadNotFound, sr.StatusCode);
             Assert.False((bool)outputs[0]);

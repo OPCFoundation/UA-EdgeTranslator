@@ -66,7 +66,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                 UANodeManager nm = NewBareInstance();
                 MethodInfo m = _sut.GetMethod("OnReadValue", BindingFlags.Public | BindingFlags.Instance);
 
-                object[] args = new object[] { null, null, null, null, null, (StatusCode)0, DateTime.MinValue };
+                object[] args = new object[] { null, null, null, null, default(Variant), (StatusCode)0, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.BadNotReadable, sr.StatusCode);
@@ -90,9 +90,9 @@ namespace Opc.Ua.Edge.Translator.Tests
                 UANodeManager nm = NewBareInstance();
                 MethodInfo m = _sut.GetMethod("OnWriteValue", BindingFlags.Public | BindingFlags.Instance);
 
-                object value = null;
+                Variant value = default;
                 StatusCode statusCode = StatusCodes.Good;
-                DateTime ts = DateTime.MinValue;
+                DateTimeUtc ts = DateTime.MinValue;
 
                 object[] args = new object[] { null, null, null, null, value, statusCode, ts };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
@@ -124,9 +124,9 @@ namespace Opc.Ua.Edge.Translator.Tests
                     BrowseName = new QualifiedName("SupportedWoTBindings")
                 };
 
-                object value = new[] { "uri" };
+                Variant value = Variant.From(new ArrayOf<string>(new[] { "uri" }));
                 StatusCode statusCode = StatusCodes.Bad;
-                DateTime ts = DateTime.MinValue;
+                DateTimeUtc ts = DateTime.MinValue;
 
                 object[] args = new object[] { null, property, null, null, value, statusCode, ts };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
@@ -159,9 +159,9 @@ namespace Opc.Ua.Edge.Translator.Tests
                     BrowseName = new QualifiedName("SupportedOPCUAInfoModels")
                 };
 
-                object value = new[] { "x.nodeset2.xml" };
+                Variant value = Variant.From(new ArrayOf<string>(new[] { "x.nodeset2.xml" }));
                 StatusCode statusCode = StatusCodes.Bad;
-                DateTime ts = DateTime.MinValue;
+                DateTimeUtc ts = DateTime.MinValue;
 
                 object[] args = new object[] { null, property, null, null, value, statusCode, ts };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
@@ -193,7 +193,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     BrowseName = new QualifiedName("License")
                 };
 
-                object[] args = new object[] { null, property, null, null, "", (StatusCode)StatusCodes.Good, DateTime.MinValue };
+                object[] args = new object[] { null, property, null, null, Variant.From(""), (StatusCode)StatusCodes.Good, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
@@ -225,7 +225,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     BrowseName = new QualifiedName("License")
                 };
 
-                object[] args = new object[] { null, property, null, null, "some-key", (StatusCode)StatusCodes.Good, DateTime.MinValue };
+                object[] args = new object[] { null, property, null, null, Variant.From("some-key"), (StatusCode)StatusCodes.Good, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.BadNotSupported, sr.StatusCode);
@@ -258,7 +258,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     BrowseName = new QualifiedName("License")
                 };
 
-                object[] args = new object[] { null, property, null, null, "wrong-license", (StatusCode)StatusCodes.Good, DateTime.MinValue };
+                object[] args = new object[] { null, property, null, null, Variant.From("wrong-license"), (StatusCode)StatusCodes.Good, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
@@ -290,7 +290,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     NodeId = new NodeId(99u, 0)
                 };
 
-                object[] args = new object[] { null, variable, null, null, 42, (StatusCode)StatusCodes.Bad, DateTime.MinValue };
+                object[] args = new object[] { null, variable, null, null, Variant.From(42), (StatusCode)StatusCodes.Bad, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.Good, sr.StatusCode);
@@ -321,7 +321,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     NodeId = new NodeId(99u, 0)
                 };
 
-                object[] args = new object[] { null, obj, null, null, null, (StatusCode)StatusCodes.Bad, DateTime.MinValue };
+                object[] args = new object[] { null, obj, null, null, default(Variant), (StatusCode)StatusCodes.Bad, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.Good, sr.StatusCode);
@@ -352,11 +352,11 @@ namespace Opc.Ua.Edge.Translator.Tests
                     NodeId = new NodeId(99u, 0)
                 };
 
-                object[] args = new object[] { null, variable, null, null, null, (StatusCode)0, DateTime.MinValue };
+                object[] args = new object[] { null, variable, null, null, default(Variant), (StatusCode)0, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.Good, sr.StatusCode);
-                Assert.True(Convert.ToInt64(args[4]) > 0);
+                Assert.True(Convert.ToInt64(VariantConversion.ToClrValue((Variant)args[4])) > 0);
             }
             finally
             {
@@ -384,7 +384,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                     NodeId = new NodeId(99u, 0)
                 };
 
-                object[] args = new object[] { null, obj, null, null, null, (StatusCode)0, DateTime.MinValue };
+                object[] args = new object[] { null, obj, null, null, default(Variant), (StatusCode)0, (DateTimeUtc)DateTime.MinValue };
                 ServiceResult sr = (ServiceResult)m.Invoke(nm, args);
 
                 Assert.Equal((StatusCode)StatusCodes.Good, sr.StatusCode);

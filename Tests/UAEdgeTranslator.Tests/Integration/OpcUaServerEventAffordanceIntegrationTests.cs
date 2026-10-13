@@ -77,7 +77,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             AddressSpaceService addressSpace = new();
 
             NodeId assetId = FindAssetNode("eventonly");
-            Assert.False(NodeId.IsNull(assetId), "The asset node was not created.");
+            Assert.False(assetId.IsNull, "The asset node was not created.");
 
             var children = await addressSpace.BrowseChildrenAsync(assetId.ToString()).ConfigureAwait(false);
 
@@ -228,7 +228,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeState target = manager.Find(ExpandedNodeId.ToNodeId(reference.TargetId, manager.Server.NamespaceUris));
 
-                if (target?.DisplayName?.Text == assetName)
+                if (target?.DisplayName.Text == assetName)
                 {
                     return target.NodeId;
                 }

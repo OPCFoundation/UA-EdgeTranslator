@@ -58,7 +58,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             IList<object> created = await CallMethodAsync(assetManagement, createAsset, new object[] { assetName }).ConfigureAwait(false);
             NodeId newId = Assert.IsType<NodeId>(created[0]);
-            Assert.False(NodeId.IsNull(newId));
+            Assert.False(newId.IsNull);
 
             // Calling CreateAsset again with the same name must surface BadBrowseNameDuplicated
             CallMethodResult duplicate = await CallMethodRawAsync(assetManagement, createAsset, new object[] { assetName }).ConfigureAwait(false);
@@ -142,7 +142,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     new object[] { $"opc.tcp://127.0.0.1:{port}" }).ConfigureAwait(false);
 
                 Assert.True(StatusCode.IsGood(result.StatusCode), $"Expected good status, got {result.StatusCode}");
-                bool success = Assert.IsType<bool>(result.OutputArguments[0].Value);
+                bool success = Assert.IsType<bool>(result.OutputArguments[0].ClrValue());
                 Assert.True(success);
             }
             finally
@@ -171,11 +171,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 WriteResponse response = await _session.WriteAsync(
                     null,
-                    new WriteValueCollection { write },
+                    new ArrayOf<WriteValue>(new[] { write }),
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, response.Results[0]);
             }
             finally
@@ -204,11 +204,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 WriteResponse response = await _session.WriteAsync(
                     null,
-                    new WriteValueCollection { write },
+                    new ArrayOf<WriteValue>(new[] { write }),
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.True(StatusCode.IsGood(response.Results[0]),
                     $"License write should succeed, got {response.Results[0]}");
 
@@ -242,11 +242,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 WriteResponse response = await _session.WriteAsync(
                     null,
-                    new WriteValueCollection { write },
+                    new ArrayOf<WriteValue>(new[] { write }),
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadNotSupported, response.Results[0]);
             }
             finally
@@ -275,11 +275,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 WriteResponse response = await _session.WriteAsync(
                     null,
-                    new WriteValueCollection { write },
+                    new ArrayOf<WriteValue>(new[] { write }),
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
                 Assert.NotNull(response);
-                Assert.NotEmpty(response.Results);
+                Assert.True(response.Results.Count > 0);
                 Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, response.Results[0]);
             }
             finally
@@ -303,7 +303,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             DataValue value = await _session.ReadValueAsync(nodeId).ConfigureAwait(false);
 
             Assert.True(StatusCode.IsGood(value.StatusCode));
-            string[] files = Assert.IsType<string[]>(value.Value);
+            string[] files = Assert.IsType<string[]>(value.ClrValue());
             Assert.Contains(files, f => f.EndsWith("sample.nodeset2.xml", StringComparison.OrdinalIgnoreCase));
         }
 
@@ -314,7 +314,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             DataValue value = await _session.ReadValueAsync(nodeId).ConfigureAwait(false);
 
             Assert.True(StatusCode.IsGood(value.StatusCode));
-            int mb = Convert.ToInt32(value.Value);
+            int mb = Convert.ToInt32(value.ClrValue());
             Assert.True(mb >= 0);
         }
 
@@ -339,7 +339,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             NodeId newAssetNodeId = Assert.IsType<NodeId>(created[0]);
 
             // Browse new asset for its "temperature" child created from the TD property.
-            ReferenceDescriptionCollection assetChildren = await BrowseChildrenAsync(newAssetNodeId).ConfigureAwait(false);
+            List<ReferenceDescription> assetChildren = await BrowseChildrenAsync(newAssetNodeId).ConfigureAwait(false);
             ReferenceDescription tempRef = assetChildren.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "temperature", StringComparison.Ordinal));
 
@@ -359,13 +359,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 0,
                 TimestampsToReturn.Both,
-                new ReadValueIdCollection { rv },
+                new ArrayOf<ReadValueId>(new[] { rv }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             // Status may be Bad (asset never connected / no value), but the read
             // must complete and not throw — that confirms tag plumbing is alive.
             Assert.NotNull(readResponse);
-            Assert.NotEmpty(readResponse.Results);
+            Assert.True(readResponse.Results.Count > 0);
         }
 
         [Fact]
@@ -414,11 +414,11 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // The handler short-circuits and returns Good without storing the value.
             WriteResponse response = await _session.WriteAsync(
                 null,
-                new WriteValueCollection { write },
+                new ArrayOf<WriteValue>(new[] { write }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             // Server may reject with Bad due to access level; accept either Good
             // or Bad as long as the call did not throw — the tested code path is
             // the OnWriteValue switch on DisplayName.
@@ -447,12 +447,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 "UAEdgeTranslator extra integration tests",
                 30_000,
                 new UserIdentity(),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
         }
 
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
             ReferenceDescription am = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "WoTAssetConnectionManagement", StringComparison.Ordinal));
             Assert.NotNull(am);
@@ -462,7 +462,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveAssetManagementChildAsync(string browseName)
         {
             NodeId am = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(am).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(am).ConfigureAwait(false);
             ReferenceDescription target = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, browseName, StringComparison.Ordinal));
 
@@ -472,7 +472,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private async Task<NodeId> ResolveLicenseNodeIdAsync()
         {
             NodeId am = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(am).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(am).ConfigureAwait(false);
 
             // License lives under AssetManagement -> Configuration -> License
             ReferenceDescription configRef = children.FirstOrDefault(
@@ -480,7 +480,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.NotNull(configRef);
 
             NodeId configNodeId = ExpandedNodeId.ToNodeId(configRef.NodeId, _session.NamespaceUris);
-            ReferenceDescriptionCollection configChildren = await BrowseChildrenAsync(configNodeId).ConfigureAwait(false);
+            List<ReferenceDescription> configChildren = await BrowseChildrenAsync(configNodeId).ConfigureAwait(false);
 
             ReferenceDescription licenseRef = configChildren.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "License", StringComparison.Ordinal));
@@ -489,7 +489,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return ExpandedNodeId.ToNodeId(licenseRef.NodeId, _session.NamespaceUris);
         }
 
-        private async Task<ReferenceDescriptionCollection> BrowseChildrenAsync(NodeId parent)
+        private async Task<List<ReferenceDescription>> BrowseChildrenAsync(NodeId parent)
         {
             BrowseDescription browse = new BrowseDescription
             {
@@ -505,12 +505,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 null,
                 0,
-                new BrowseDescriptionCollection { browse },
+                new ArrayOf<BrowseDescription>(new[] { browse }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             Assert.True(StatusCode.IsGood(response.Results[0].StatusCode));
-            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+            return response.Results[0].References.ToList();
         }
 
         private async Task<IList<object>> CallMethodAsync(NodeId objectId, NodeId methodId, object[] inputArgs = null)
@@ -519,20 +519,18 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 ObjectId = objectId,
                 MethodId = methodId,
-                InputArguments = inputArgs == null
-                    ? new VariantCollection()
-                    : new VariantCollection(inputArgs.Select(a => new Variant(a)))
+                InputArguments = ArrayOfTestExtensions.ToVariantArray(inputArgs)
             };
 
             CallResponse response = await _session.CallAsync(
                 null,
-                new CallMethodRequestCollection { request },
+                new ArrayOf<CallMethodRequest>(new[] { request }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             Assert.True(StatusCode.IsGood(response.Results[0].StatusCode), $"Method call returned {response.Results[0].StatusCode}.");
 
-            return response.Results[0].OutputArguments.Select(v => v.Value).ToList();
+            return response.Results[0].OutputArguments.ToList().Select(v => v.ClrValue()).ToList();
         }
 
         private async Task<CallMethodResult> CallMethodRawAsync(NodeId objectId, NodeId methodId, object[] inputArgs = null)
@@ -541,17 +539,15 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 ObjectId = objectId,
                 MethodId = methodId,
-                InputArguments = inputArgs == null
-                    ? new VariantCollection()
-                    : new VariantCollection(inputArgs.Select(a => new Variant(a)))
+                InputArguments = ArrayOfTestExtensions.ToVariantArray(inputArgs)
             };
 
             CallResponse response = await _session.CallAsync(
                 null,
-                new CallMethodRequestCollection { request },
+                new ArrayOf<CallMethodRequest>(new[] { request }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             return response.Results[0];
         }
     }

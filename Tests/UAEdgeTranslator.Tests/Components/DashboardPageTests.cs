@@ -55,6 +55,14 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             Assert.Contains("opc.tcp://", page.Markup, System.StringComparison.Ordinal);
         }
 
+		[Fact]
+		public void Overview_renders_the_version_and_build_number()
+		{
+			IRenderedComponent<Overview> page = Render<Overview>();
+
+			Assert.Matches(@"<span class=""kv-key"">Version</span><span class=""kv-value"">\d+\.\d+\.\d+</span>", page.Markup);
+			Assert.Matches(@"<span class=""kv-key"">Build</span><span class=""kv-value mono"">\d+( \([0-9a-f]+\))?</span>", page.Markup);
+		}
         [Fact]
         public void OpcUaSettings_renders_security_policies_and_limits()
         {

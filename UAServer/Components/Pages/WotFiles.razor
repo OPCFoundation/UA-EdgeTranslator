@@ -255,9 +255,9 @@ else
             UANodeManager manager = UANodeManager.Instance
                 ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
 
-            // Offload to a background thread: unloading disconnects the southbound
-            // driver, which may briefly block on network I/O.
-            bool deleted = await Task.Run(() => manager.UnloadWoTFile(file.FileName));
+            // Unloading disconnects the southbound driver asynchronously, so the
+            // render thread is not blocked on its network I/O.
+            bool deleted = await manager.UnloadWoTFileAsync(file.FileName);
 
             if (deleted)
             {

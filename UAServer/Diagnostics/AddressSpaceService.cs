@@ -138,7 +138,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 }
 
                 List<string> ids = [];
-                ReadValueIdCollection reads = [];
+                List<ReadValueId> reads = [];
 
                 foreach (string nodeId in nodeIds)
                 {
@@ -162,9 +162,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     return values;
                 }
 
-                DataValueCollection results = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+                ArrayOf<DataValue> results = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
 
-                if (results is null)
+                if (results.IsNull)
                 {
                     return values;
                 }
@@ -185,15 +185,17 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     // BadNodeIdUnknown. Those are expected (the caller passes in
                     // whatever is on screen), so skip them silently rather than
                     // decorating Objects and Methods with an error string.
-                    if (result is null || IsMissingValueAttribute(result.StatusCode))
+                    if (result.IsNull || IsMissingValueAttribute(result.StatusCode))
                     {
                         continue;
                     }
 
-                    if (result.Value is ExtensionObject extension && dataTypeIndex < results.Count)
+                    if (result.WrappedValue.TryGetValue(out ExtensionObject extension) && dataTypeIndex < results.Count)
                     {
+                        results[dataTypeIndex].WrappedValue.TryGetValue(out NodeId dataTypeId);
+
                         IReadOnlyList<StructureFieldValue> fields =
-                            DecodeStructure(server, extension, results[dataTypeIndex].Value as NodeId);
+                            DecodeStructure(server, extension, dataTypeId);
 
                         if (fields.Count > 0)
                         {
@@ -231,7 +233,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     return children;
                 }
 
-                ReferenceDescriptionCollection references = await BrowseAsync(server, nodeId, cancellationToken).ConfigureAwait(false);
+                ArrayOf<ReferenceDescription> references = await BrowseAsync(server, nodeId, cancellationToken).ConfigureAwait(false);
 
                 // A node can be reached through more than one hierarchical
                 // reference (for example both Organizes and HasComponent), so
@@ -244,9 +246,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 foreach (ReferenceDescription reference in references)
                 {
                     NodeId targetId = ExpandedNodeId.ToNodeId(reference.NodeId, server.NamespaceUris);
-                    if (NodeId.IsNull(targetId))
+                    if (targetId.IsNull)
                     {
-                        // External/unreachable target (a server-relative id we cannot resolve).
+                        // External/unreachable target
                         continue;
                     }
 
@@ -296,8 +298,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// <para>
         /// This is what lets the tree hide the expander on leaf nodes instead of
         /// offering one that opens onto "(no children)". The whole set is
-        /// resolved in a single Browse call — <c>BrowseAsync</c> accepts a
-        /// collection of descriptions — so one expansion still costs one extra
+        /// resolved in a single Browse call - <c>BrowseAsync</c> accepts a
+        /// collection of descriptions - so one expansion still costs one extra
         /// round-trip rather than one per child. Only the first reference of
         /// each node is needed, hence <c>maxReferencesPerNode: 1</c>.
         /// </para>
@@ -315,7 +317,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
             try
             {
-                BrowseDescriptionCollection nodesToBrowse = [];
+                List<BrowseDescription> nodesToBrowse = [];
 
                 foreach (NodeId target in targets)
                 {
@@ -330,14 +332,16 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     });
                 }
 
-                (BrowseResultCollection results, _) = await server.NodeManager.BrowseAsync(
+                var browseResponse = await server.NodeManager.BrowseAsync(
                     CreateContext(),
                     null,
                     1,
                     nodesToBrowse,
                     cancellationToken).ConfigureAwait(false);
 
-                if (results is null)
+                ArrayOf<BrowseResult> results = browseResponse.Item1;
+
+                if (results.IsNull)
                 {
                     return;
                 }
@@ -354,7 +358,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                         continue;
                     }
 
-                    children[i].HasChildren = result.References is { Count: > 0 };
+                    children[i].HasChildren = !result.References.IsNull && result.References.Count > 0;
                 }
             }
             catch (Exception ex)
@@ -381,8 +385,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 }
 
                 // Attributes common to every node class.
-                ReadValueIdCollection reads =
-                [
+                ArrayOf<ReadValueId> reads = new ReadValueId[]
+                {
                     NewRead(parsed, Attributes.NodeClass),
                     NewRead(parsed, Attributes.BrowseName),
                     NewRead(parsed, Attributes.DisplayName),
@@ -398,11 +402,11 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     NewRead(parsed, Attributes.ValueRank),
                     NewRead(parsed, Attributes.AccessLevel),
                     NewRead(parsed, Attributes.UserAccessLevel),
-                ];
+                };
 
-                DataValueCollection values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+                ArrayOf<DataValue> values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
 
-                if (values is null || values.Count < reads.Count)
+                if (values.IsNull || values.Count < reads.Count)
                 {
                     return new NodeDetail { NodeId = nodeId, Error = "The node attributes could not be read." };
                 }
@@ -430,9 +434,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     // A structure arrives as an ExtensionObject holding an opaque
                     // binary body. Decode it so the panel can show named fields
                     // instead of a byte count.
-                    if (values[6].Value is ExtensionObject extension)
+                    if (values[6].WrappedValue.TryGetValue(out ExtensionObject extension))
                     {
-                        fields = DecodeStructure(server, extension, values[7].Value as NodeId);
+                        values[7].WrappedValue.TryGetValue(out NodeId valueDataTypeId);
+                        fields = DecodeStructure(server, extension, valueDataTypeId);
                     }
 
                     valueAttributes.Add(new NodeAttribute("Value", fields.Count > 0 ? FormatStructureSummary(fields) : FormatValue(values[6])));
@@ -477,16 +482,16 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     return null;
                 }
 
-                ReadValueIdCollection reads = [NewRead(nodeId, Attributes.DisplayName), NewRead(nodeId, Attributes.NodeClass)];
-                DataValueCollection values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+                ArrayOf<ReadValueId> reads = new ReadValueId[] { NewRead(nodeId, Attributes.DisplayName), NewRead(nodeId, Attributes.NodeClass) };
+                ArrayOf<DataValue> values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
 
-                string text = values is { Count: 2 } ? FormatValue(values[0]) : string.Empty;
+                string text = values.Count == 2 ? FormatValue(values[0]) : string.Empty;
 
                 return new AddressSpaceNode
                 {
                     Id = nodeId.ToString(),
                     Text = string.IsNullOrEmpty(text) ? nodeId.ToString() : text,
-                    NodeClass = values is { Count: 2 } ? FormatNodeClass(values[1]) : NodeClass.Object.ToString(),
+                    NodeClass = values.Count == 2 ? FormatNodeClass(values[1]) : NodeClass.Object.ToString(),
                     NamespaceIndex = nodeId.NamespaceIndex,
                     HasChildren = true
                 };
@@ -507,7 +512,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             {
                 // Both directions, all reference types, so the panel shows the
                 // node's full relationship set rather than just its children.
-                ReferenceDescriptionCollection references = await BrowseAsync(
+                ArrayOf<ReferenceDescription> references = await BrowseAsync(
                     server,
                     nodeId,
                     cancellationToken,
@@ -520,7 +525,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                         GetReferenceTypeName(server, reference.ReferenceTypeId),
                         reference.IsForward ? "Forward" : "Inverse",
                         GetNodeText(reference),
-                        reference.NodeId?.ToString() ?? string.Empty));
+                        reference.NodeId.IsNull ? string.Empty : reference.NodeId.ToString()));
                 }
             }
             catch (Exception ex)
@@ -531,44 +536,46 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             return result;
         }
 
-        private static async Task<ReferenceDescriptionCollection> BrowseAsync(
+        private static async Task<ArrayOf<ReferenceDescription>> BrowseAsync(
             IServerInternal server,
             NodeId nodeId,
             CancellationToken cancellationToken,
-            NodeId referenceTypeId = null,
+            NodeId referenceTypeId = default,
             BrowseDirection direction = BrowseDirection.Forward)
         {
-            BrowseDescriptionCollection nodesToBrowse =
-            [
+            ArrayOf<BrowseDescription> nodesToBrowse = new BrowseDescription[]
+            {
                 new BrowseDescription
                 {
                     NodeId = nodeId,
                     BrowseDirection = direction,
-                    ReferenceTypeId = referenceTypeId ?? ReferenceTypeIds.HierarchicalReferences,
+                    ReferenceTypeId = referenceTypeId.IsNull ? ReferenceTypeIds.HierarchicalReferences : referenceTypeId,
                     IncludeSubtypes = true,
                     NodeClassMask = 0,
                     ResultMask = (uint)BrowseResultMask.All
                 }
-            ];
+            };
 
-            (BrowseResultCollection results, _) = await server.NodeManager.BrowseAsync(
+            var browseResponse = await server.NodeManager.BrowseAsync(
                 CreateContext(),
                 null,
                 _maxReferencesPerNode,
                 nodesToBrowse,
                 cancellationToken).ConfigureAwait(false);
 
-            if (results is null || results.Count == 0 || StatusCode.IsBad(results[0].StatusCode))
+            ArrayOf<BrowseResult> results = browseResponse.Item1;
+
+            if (results.IsNull || results.Count == 0 || StatusCode.IsBad(results[0].StatusCode))
             {
-                return [];
+                return ArrayOf<ReferenceDescription>.Empty;
             }
 
-            return results[0].References ?? [];
+            return results[0].References.IsNull ? ArrayOf<ReferenceDescription>.Empty : results[0].References;
         }
 
-        private static async Task<DataValueCollection> ReadAsync(IServerInternal server, ReadValueIdCollection reads, CancellationToken cancellationToken)
+        private static async Task<ArrayOf<DataValue>> ReadAsync(IServerInternal server, ArrayOf<ReadValueId> reads, CancellationToken cancellationToken)
         {
-            (DataValueCollection values, _) = await server.NodeManager.ReadAsync(
+            (ArrayOf<DataValue> values, _) = await server.NodeManager.ReadAsync(
                 CreateContext(),
                 0,
                 TimestampsToReturn.Both,
@@ -594,7 +601,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 ReturnDiagnostics = 0
             };
 
-            return new OperationContext(header, new SecureChannelContext(string.Empty, null, RequestEncoding.Binary), RequestType.Browse, new UserIdentity());
+            return new OperationContext(header, new SecureChannelContext(string.Empty, null, RequestEncoding.Binary), RequestType.Browse, RequestLifetime.None, new UserIdentity());
         }
 
         private static ReadValueId NewRead(NodeId nodeId, uint attributeId) => new() { NodeId = nodeId, AttributeId = attributeId };
@@ -617,13 +624,13 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static bool TryParseNodeId(string nodeId, out NodeId parsed)
         {
-            parsed = null;
+            parsed = NodeId.Null;
 
             try
             {
                 parsed = NodeId.Parse(nodeId);
 
-                return !NodeId.IsNull(parsed);
+                return !parsed.IsNull;
             }
             catch (Exception)
             {
@@ -633,19 +640,19 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string GetNodeText(ReferenceDescription reference)
         {
-            string text = reference.DisplayName?.Text;
+            string text = reference.DisplayName.Text;
 
             if (string.IsNullOrEmpty(text))
             {
-                text = reference.BrowseName?.Name;
+                text = reference.BrowseName.Name;
             }
 
-            return string.IsNullOrEmpty(text) ? reference.NodeId?.ToString() ?? string.Empty : text;
+            return string.IsNullOrEmpty(text) ? (reference.NodeId.IsNull ? string.Empty : reference.NodeId.ToString()) : text;
         }
 
         private static string GetReferenceTypeName(IServerInternal server, NodeId referenceTypeId)
         {
-            if (NodeId.IsNull(referenceTypeId))
+            if (referenceTypeId.IsNull)
             {
                 return string.Empty;
             }
@@ -663,7 +670,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                         target,
                         BrowseResultMask.BrowseName);
 
-                    if (!string.IsNullOrEmpty(metadata?.BrowseName?.Name))
+                    if (metadata is not null && !string.IsNullOrEmpty(metadata.BrowseName.Name))
                     {
                         return metadata.BrowseName.Name;
                     }
@@ -691,17 +698,17 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string FormatNodeClass(DataValue value)
         {
-            if (value?.Value is int raw && Enum.IsDefined(typeof(NodeClass), raw))
+            if (value.WrappedValue.TryGetValue(out int raw) && Enum.IsDefined(typeof(NodeClass), raw))
             {
                 return ((NodeClass)raw).ToString();
             }
 
-            return value?.Value?.ToString() ?? string.Empty;
+            return value.IsNull ? string.Empty : value.WrappedValue.ToString() ?? string.Empty;
         }
 
         private static string FormatDataType(DataValue value, IServerInternal server)
         {
-            if (value?.Value is NodeId dataTypeId)
+            if (value.WrappedValue.TryGetValue(out NodeId dataTypeId) && !dataTypeId.IsNull)
             {
                 // Built-in types resolve to a friendly name; anything else falls
                 // back to the qualified id.
@@ -724,7 +731,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string FormatValueRank(DataValue value)
         {
-            if (value?.Value is int rank)
+            if (value.WrappedValue.TryGetValue(out int rank))
             {
                 return rank switch
                 {
@@ -742,7 +749,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static string FormatAccessLevel(DataValue value)
         {
-            if (value?.Value is byte level)
+            if (value.WrappedValue.TryGetValue(out byte level))
             {
                 List<string> parts = [];
 
@@ -772,11 +779,11 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             return FormatValue(value);
         }
 
-        private static string FormatTimestamp(DateTime timestamp)
+        private static string FormatTimestamp(DateTimeUtc timestamp)
         {
-            return timestamp == DateTime.MinValue
+            return timestamp.IsNull || timestamp == DateTimeUtc.MinValue
                 ? string.Empty
-                : timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+                : timestamp.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -795,10 +802,12 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         {
             List<StructureFieldValue> fields = [];
 
-            if (extension?.Body is not byte[] body || body.Length == 0)
+            if (extension.IsNull || !extension.TryGetAsBinary(out ByteString bodyBytes) || bodyBytes.IsEmpty)
             {
                 return fields;
             }
+
+            byte[] body = bodyBytes.ToArray();
 
             StructureDefinition definition = GetStructureDefinition(dataTypeId);
 
@@ -809,11 +818,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
             try
             {
-                using BinaryDecoder decoder = new(body, new ServiceMessageContext(Program.Telemetry)
-                {
-                    NamespaceUris = server.NamespaceUris,
-                    Factory = server.Factory
-                });
+                ServiceMessageContext messageContext = ServiceMessageContext.Create(Program.Telemetry);
+                messageContext.NamespaceUris = server.NamespaceUris;
+
+                using BinaryDecoder decoder = new(body, messageContext);
 
                 foreach (StructureField field in definition.Fields)
                 {
@@ -847,7 +855,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             value = string.Empty;
             typeName = string.Empty;
 
-            if (field?.DataType is null || field.DataType.Identifier is not uint id)
+            if (field is null || field.DataType.IsNull || !field.DataType.TryGetValue(out uint id))
             {
                 return false;
             }
@@ -927,7 +935,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// </summary>
         private static StructureDefinition GetStructureDefinition(NodeId dataTypeId)
         {
-            if (NodeId.IsNull(dataTypeId))
+            if (dataTypeId.IsNull)
             {
                 return null;
             }
@@ -935,7 +943,8 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             try
             {
                 return UANodeManager.Instance?.Find(dataTypeId) is DataTypeState dataType
-                    ? dataType.DataTypeDefinition?.Body as StructureDefinition
+                    && dataType.DataTypeDefinition.TryGetValue(out StructureDefinition definition, null)
+                    ? definition
                     : null;
             }
             catch (Exception)
@@ -960,9 +969,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 : string.Create(CultureInfo.InvariantCulture, $"{{ {joined} }}");
         }
 
-        private static string FormatValue(DataValue value)
+        /// <summary>Formats a value for display in the Address Space Explorer.</summary>
+        public static string FormatValue(DataValue value)
         {
-            if (value is null)
+            if (value.IsNull)
             {
                 return string.Empty;
             }
@@ -984,7 +994,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 return value.StatusCode.ToString();
             }
 
-            return FormatVariant(value.Value);
+            // Format the CLR value, not the Variant wrapper: boxed, the wrapper matches
+            // IFormattable, and SDK 2.0 arrays (ArrayOf<T>) and byte strings would never
+            // reach the array or byte[] formatting below.
+            return FormatVariant(VariantConversion.ToClrValue(value.WrappedValue));
         }
 
         private static string FormatVariant(object value)
@@ -993,6 +1006,10 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             {
                 case null:
                     return string.Empty;
+
+                // Elements of a Variant[] (and any other nested Variant) are unwrapped too.
+                case Variant variant:
+                    return FormatVariant(VariantConversion.ToClrValue(variant));
 
                 case LocalizedText text:
                     return text.Text ?? string.Empty;

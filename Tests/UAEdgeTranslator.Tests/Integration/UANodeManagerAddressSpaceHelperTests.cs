@@ -41,9 +41,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         [Fact]
         public void FindAssetNodeIdByName_returns_null_for_unknown_and_blank_names()
         {
-            Assert.Null(InvokeFindAssetNodeIdByName("no-such-asset"));
-            Assert.Null(InvokeFindAssetNodeIdByName(string.Empty));
-            Assert.Null(InvokeFindAssetNodeIdByName(null));
+            NodeIdAssert.IsNullId(InvokeFindAssetNodeIdByName("no-such-asset"));
+            NodeIdAssert.IsNullId(InvokeFindAssetNodeIdByName(string.Empty));
+            NodeIdAssert.IsNullId(InvokeFindAssetNodeIdByName(null));
         }
 
         [Fact]
@@ -61,13 +61,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = dataTypeId,
                 BrowseName = new QualifiedName("NoEncodingType", ns),
-                DisplayName = "NoEncodingType",
+                DisplayName = new LocalizedText("NoEncodingType"),
                 SuperTypeId = DataTypeIds.Structure
             });
 
             DataTypeState dataType = (DataTypeState)manager.Find(dataTypeId);
 
-            Assert.Null(InvokeGetDefaultBinaryEncodingId(dataType));
+            NodeIdAssert.IsNullId(InvokeGetDefaultBinaryEncodingId(dataType));
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             {
                 NodeId = dataTypeId,
                 BrowseName = new QualifiedName("EncodedType", ns),
-                DisplayName = "EncodedType",
+                DisplayName = new LocalizedText("EncodedType"),
                 SuperTypeId = DataTypeIds.Structure
             };
 
@@ -93,7 +93,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
                 // The lookup matches on this exact browse name.
                 BrowseName = new QualifiedName("Default Binary", ns),
-                DisplayName = "Default Binary",
+                DisplayName = new LocalizedText("Default Binary"),
                 TypeDefinitionId = ObjectTypeIds.DataTypeEncodingType
             };
 

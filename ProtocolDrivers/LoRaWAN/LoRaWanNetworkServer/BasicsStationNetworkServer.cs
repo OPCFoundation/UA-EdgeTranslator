@@ -62,7 +62,7 @@ namespace LoRaWan.NetworkServer.BasicsStation
         internal static void ConfigureHttpsSettings(ClientCertificateValidatorService clientCertificateValidatorService,
                                                     HttpsConnectionAdapterOptions https)
         {
-            X509Certificate2 opcuaCert = Program.App.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+            X509Certificate2 opcuaCert = TlsServerCertificates.GetApplicationCertificate(Program.App.ApplicationConfiguration);
 
             if (File.Exists(Path.Combine("pki/own/private", $"UAEdgeTranslator-with-san.pfx")))
             {
@@ -71,14 +71,15 @@ namespace LoRaWan.NetworkServer.BasicsStation
             else
             {
                 // create a new X.509 certificate for LoRaWAN Network Server, based on the OPC UA application certificate, but set the certificate alternate name to the gateway ID
-                https.ServerCertificate = CertificateFactory.CreateCertificate(opcuaCert.Subject)
+                https.ServerCertificate = TlsServerCertificates.ToX509CertificateWithPrivateKey(
+                    DefaultCertificateFactory.Instance.CreateCertificate(opcuaCert.Subject)
                     .AddExtension(new X509SubjectAltNameExtension("urn:UAEdgeTranslator", ["UAEdgeTranslator"]))
                     .SetNotBefore(DateTime.Today.AddDays(-1))
                     .SetLifeTime(12)
                     .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
                     .SetCAConstraint()
                     .SetRSAKeySize(2048)
-                    .CreateForRSA();
+                    .CreateForRSA());
 
                 byte[] bytes = https.ServerCertificate.Export(X509ContentType.Cert);
                 string base64 = Convert.ToBase64String(bytes);

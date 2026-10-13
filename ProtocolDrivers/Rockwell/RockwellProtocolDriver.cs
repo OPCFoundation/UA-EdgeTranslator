@@ -435,7 +435,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 StructureType = StructureType.Structure
             };
 
-            StructureFieldCollection fields = new();
+            List<StructureField> fields = new();
             if (structDef.Fields != null)
             {
                 foreach (EIPFieldDefinition eipField in structDef.Fields)
@@ -449,14 +449,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         Description = new LocalizedText("en", eipField.Description ?? string.Empty),
                         DataType = fieldDataType,
                         ValueRank = ValueRanks.Scalar,
-                        ArrayDimensions = null,
+                        ArrayDimensions = default,
                         MaxStringLength = 0,
                         IsOptional = false
                     });
                 }
             }
 
-            structureDefinition.Fields = fields;
+            structureDefinition.Fields = new ArrayOf<StructureField>(fields.ToArray());
 
             // --- 2. Default Binary encoding node ---
             NodeId encodingNodeId = new(structDef.TypeName + "Type_Encoding_DefaultBinary", namespaceIndex);
@@ -516,17 +516,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     dictionaryNodeId);
 
                 // NamespaceUri property — add as child BEFORE registering the dictionary
-                PropertyState<string> nsProperty = new(dictionary) {
-                    NodeId = new NodeId(namespaceUri + ".BinarySchema.NamespaceUri", namespaceIndex),
-                    BrowseName = new QualifiedName("NamespaceUri", 0),
-                    DisplayName = new LocalizedText("en", "NamespaceUri"),
-                    TypeDefinitionId = VariableTypeIds.PropertyType,
-                    DataType = DataTypeIds.String,
-                    ValueRank = ValueRanks.Scalar,
-                    AccessLevel = AccessLevels.CurrentRead,
-                    UserAccessLevel = AccessLevels.CurrentRead,
-                    Value = namespaceUri
-                };
+                PropertyState<string> nsProperty = PropertyState<string>.With<VariantBuilder>(dictionary);
+                nsProperty.NodeId = new NodeId(namespaceUri + ".BinarySchema.NamespaceUri", namespaceIndex);
+                nsProperty.BrowseName = new QualifiedName("NamespaceUri", 0);
+                nsProperty.DisplayName = new LocalizedText("en", "NamespaceUri");
+                nsProperty.ReferenceTypeId = ReferenceTypeIds.HasProperty;
+                nsProperty.TypeDefinitionId = VariableTypeIds.PropertyType;
+                nsProperty.DataType = DataTypeIds.String;
+                nsProperty.ValueRank = ValueRanks.Scalar;
+                nsProperty.AccessLevel = AccessLevels.CurrentRead;
+                nsProperty.UserAccessLevel = AccessLevels.CurrentRead;
+                nsProperty.Value = namespaceUri;
 
                 // AddChild here is fine — dictionary hasn't been added to the node manager yet
                 dictionary.AddChild(nsProperty);
@@ -539,6 +539,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 NodeId = descriptionNodeId,
                 BrowseName = new QualifiedName(structDef.TypeName, namespaceIndex),
                 DisplayName = new LocalizedText("en", structDef.TypeName),
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
                 TypeDefinitionId = VariableTypeIds.DataTypeDescriptionType,
                 DataType = DataTypeIds.String,
                 ValueRank = ValueRanks.Scalar,
@@ -619,7 +620,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     NodeId dtNodeId = new(typeName + "Type", namespaceIndex);
                     var dtNode = nodeManager.Find(dtNodeId) as DataTypeState;
 
-                    if (dtNode?.DataTypeDefinition?.Body is StructureDefinition sd)
+                    if (dtNode != null
+                        && !dtNode.DataTypeDefinition.IsNull
+                        && dtNode.DataTypeDefinition.TryGetValue(out StructureDefinition sd, nodeManager.Server.MessageContext)
+                        && sd != null)
                     {
                         structuredTypes.AppendLine($"  <opc:StructuredType Name=\"{typeName}\" BaseType=\"ua:ExtensionObject\">");
 
@@ -648,7 +652,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 structuredTypes.ToString() +
                 "</opc:TypeDictionary>";
 
-            dictionary.Value = Encoding.UTF8.GetBytes(schemaXml);
+            dictionary.Value = Variant.From((ByteString)Encoding.UTF8.GetBytes(schemaXml));
         }
 
         /// <summary>
@@ -660,9 +664,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             ushort namespaceIndex,
             UANodeManager nodeManager)
         {
-            if (dataType.NamespaceIndex == 0 && dataType.IdType == IdType.Numeric)
+            if (dataType.NamespaceIndex == 0 && dataType.IdType == IdType.Numeric && dataType.TryGetValue(out uint numericId))
             {
-                return (uint)dataType.Identifier switch
+                return numericId switch
                 {
                     DataTypes.Boolean => "opc:Boolean",
                     DataTypes.SByte   => "opc:SByte",

@@ -23,9 +23,20 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// </summary>
     public sealed class DiagnosticsWebHost
     {
-        private const int _port = 8081;
+        private const int _defaultPort = 8081;
+
+        private readonly int _port;
 
         private WebApplication _app;
+
+        /// <summary>
+        /// Creates the host on the default dashboard port (8081). A different port
+        /// can be supplied so tests can run beside an instance that already owns it.
+        /// </summary>
+        public DiagnosticsWebHost(int port = _defaultPort)
+        {
+            _port = port;
+        }
 
         public string Url { get; private set; }
 

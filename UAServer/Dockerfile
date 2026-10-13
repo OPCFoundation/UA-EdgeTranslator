@@ -34,6 +34,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION
 ARG INFORMATIONAL_VERSION=local-dev
+ARG BUILD_NUMBER=0
 WORKDIR /src
 
 # Copy the repo-root MSBuild infrastructure that NuGet restore needs under
@@ -47,13 +48,14 @@ RUN dotnet restore "UAServer/UAEdgeTranslator.csproj" /p:PlatformTarget=AnyCPU
 COPY . .
 WORKDIR "/src/UAServer"
 ARG TARGET_FRAMEWORK=net10.0
-RUN dotnet build "UAEdgeTranslator.csproj" -c $BUILD_CONFIGURATION -o /app/build -f $TARGET_FRAMEWORK /p:PlatformTarget=AnyCPU /p:InformationalVersion=$INFORMATIONAL_VERSION
+RUN dotnet build "UAEdgeTranslator.csproj" -c $BUILD_CONFIGURATION -o /app/build -f $TARGET_FRAMEWORK /p:PlatformTarget=AnyCPU /p:InformationalVersion=$INFORMATIONAL_VERSION /p:BuildNumber=$BUILD_NUMBER
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION
 ARG INFORMATIONAL_VERSION=local-dev
+ARG BUILD_NUMBER=0
 ARG TARGET_FRAMEWORK=net10.0
-RUN dotnet publish "UAEdgeTranslator.csproj" --no-restore -c $BUILD_CONFIGURATION -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false /p:PlatformTarget=AnyCPU /p:InformationalVersion=$INFORMATIONAL_VERSION
+RUN dotnet publish "UAEdgeTranslator.csproj" --no-restore -c $BUILD_CONFIGURATION -o /app/publish -f $TARGET_FRAMEWORK /p:UseAppHost=false /p:PlatformTarget=AnyCPU /p:InformationalVersion=$INFORMATIONAL_VERSION /p:BuildNumber=$BUILD_NUMBER
 
 FROM base AS final
 WORKDIR /app

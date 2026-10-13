@@ -50,6 +50,7 @@ namespace WotOpcUaMapper.UAClientLib
 
             ApplicationInstance app = await _opcUaApp.GetAppAsync().ConfigureAwait(false);
             _telemetry = _opcUaApp.Telemetry;
+            ApplicationConfiguration appConfig = app.ApplicationConfiguration ?? throw new InvalidOperationException("OPC UA application configuration is not loaded.");
 
             EndpointDescription? selectedEndpoint = null;
             int maxRetry = 200;
@@ -62,10 +63,10 @@ namespace WotOpcUaMapper.UAClientLib
 
                 try
                 {
-                    _server = new SimpleServer(app, _port);
+                    _server = new SimpleServer(app, _port, _telemetry);
                     await app.StartAsync(_server).ConfigureAwait(false);
                     selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(
-                        app.ApplicationConfiguration, "opc.tcp://localhost:" + _port, false, _telemetry).ConfigureAwait(false);
+                        appConfig, "opc.tcp://localhost:" + _port, false, _telemetry).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -90,7 +91,7 @@ namespace WotOpcUaMapper.UAClientLib
 
             // connect a client session to the just-started server
             var configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint,
-                EndpointConfiguration.Create(app.ApplicationConfiguration));
+                EndpointConfiguration.Create(appConfig));
 
             _session = await new DefaultSessionFactory(_telemetry).CreateAsync(
                 app.ApplicationConfiguration,
@@ -100,7 +101,7 @@ namespace WotOpcUaMapper.UAClientLib
                 string.Empty,
                 30000,
                 new UserIdentity(new AnonymousIdentityToken()),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
 
             if (_session == null || !_session.Connected)
             {
@@ -218,12 +219,12 @@ namespace WotOpcUaMapper.UAClientLib
                 mask |= (uint)(NodeClass.DataType | NodeClass.VariableType | NodeClass.ObjectType);
             }
 
-            ReferenceDescriptionCollection references;
+            List<ReferenceDescription> references;
             try
             {
                 references = await Browse(new BrowseDescription
                 {
-                    NodeId = ExpandedNodeId.ToNodeId(nodeId, _session.NamespaceUris),
+                    NodeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(nodeId), _session.NamespaceUris),
                     BrowseDirection = BrowseDirection.Forward,
                     ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
                     IncludeSubtypes = true,
@@ -254,22 +255,37 @@ namespace WotOpcUaMapper.UAClientLib
             return nodes;
         }
 
-        private async Task<ReferenceDescriptionCollection> Browse(BrowseDescription nodeToBrowse)
+        private async Task<List<ReferenceDescription>> Browse(BrowseDescription nodeToBrowse)
         {
-            (_, byte[]? continuationPoints, ReferenceDescriptionCollection referencesList) = await _session!.BrowseAsync(
-                null, null, nodeToBrowse.NodeId, 0, BrowseDirection.Forward, nodeToBrowse.ReferenceTypeId ?? ReferenceTypeIds.HierarchicalReferences, true, nodeToBrowse.NodeClassMask).ConfigureAwait(false);
+            // NodeId is a struct in SDK 2.0.0, so `??` no longer applies; IsNull is the
+            // equivalent of the old null fallback.
+            NodeId referenceTypeId = nodeToBrowse.ReferenceTypeId.IsNull
+                ? ReferenceTypeIds.HierarchicalReferences
+                : nodeToBrowse.ReferenceTypeId;
 
-            while (referencesList.Count > 0 && continuationPoints != null)
+            var (_, continuationPoints, firstReferences) = await _session!.BrowseAsync(
+                null, null, nodeToBrowse.NodeId, 0, BrowseDirection.Forward, referenceTypeId, true, nodeToBrowse.NodeClassMask).ConfigureAwait(false);
+
+            // ArrayOf<T> is not IEnumerable<T>, so accumulate into a list.
+            List<ReferenceDescription> referencesList = new();
+            foreach (ReferenceDescription reference in firstReferences)
             {
-                (_, byte[]? continuationPointsNext, ReferenceDescriptionCollection referencesListNext) =
+                referencesList.Add(reference);
+            }
+
+            // The continuation point is a ByteString struct now; IsNull mirrors the old
+            // `!= null` test on byte[] exactly.
+            while (referencesList.Count > 0 && !continuationPoints.IsNull)
+            {
+                var (_, continuationPointsNext, referencesListNext) =
                     await _session!.BrowseNextAsync(null, false, continuationPoints).ConfigureAwait(false);
 
-                if (referencesListNext.Count > 0)
+                foreach (ReferenceDescription reference in referencesListNext)
                 {
-                    referencesList.AddRange(referencesListNext);
+                    referencesList.Add(reference);
                 }
 
-                if (continuationPointsNext == null)
+                if (continuationPointsNext.IsNull)
                 {
                     break;
                 }
@@ -293,13 +309,12 @@ namespace WotOpcUaMapper.UAClientLib
 
             try
             {
-                var localNodeId = ExpandedNodeId.ToNodeId(nodeId, _session.NamespaceUris);
+                var localNodeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(nodeId), _session.NamespaceUris);
                 Node node = await _session.ReadNodeAsync(localNodeId).ConfigureAwait(false);
-
                 var info = new NodeMappingInfo
                 {
                     NodeId = ShortNodeId(localNodeId),
-                    DisplayName = node.DisplayName?.ToString() ?? string.Empty
+                    DisplayName = node.DisplayName.ToString() ?? string.Empty
                 };
 
                 if (node is VariableNode variableNode)
@@ -335,16 +350,16 @@ namespace WotOpcUaMapper.UAClientLib
             {
                 Node dtNode = await _session!.ReadNodeAsync(dataTypeId).ConfigureAwait(false);
                 if (dtNode is DataTypeNode dataTypeNode &&
-                    dataTypeNode.DataTypeDefinition?.Body is StructureDefinition structure &&
-                    structure.Fields != null)
+                    dataTypeNode.DataTypeDefinition.TryGetValue(out StructureDefinition? structure, _session!.MessageContext) &&
+                    structure?.Fields != null)
                 {
                     foreach (StructureField field in structure.Fields)
                     {
                         fields.Add(new ComplexTypeField
                         {
-                            Name = field.Name,
-                            DataType = field.DataType != null ? ExpandedNodeIdString(field.DataType) : string.Empty,
-                            Path = field.Name
+                            Name = field.Name ?? string.Empty,
+                            DataType = !field.DataType.IsNull ? ExpandedNodeIdString(field.DataType) : string.Empty,
+                            Path = field.Name ?? string.Empty
                         });
                     }
                 }
@@ -365,20 +380,28 @@ namespace WotOpcUaMapper.UAClientLib
 
             try
             {
-                var localNodeId = ExpandedNodeId.ToNodeId(nodeId, _session.NamespaceUris);
+                var localNodeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(nodeId), _session.NamespaceUris);
                 if (await _session.ReadNodeAsync(localNodeId).ConfigureAwait(false) is not VariableNode variableNode)
                 {
                     return string.Empty;
                 }
 
-                var nodesToRead = new ReadValueIdCollection
+                ArrayOf<ReadValueId> nodesToRead = new[]
                 {
                     new ReadValueId { NodeId = localNodeId, AttributeId = Attributes.Value }
                 };
 
                 try
                 {
-                    var complexTypeSystem = new ComplexTypeSystem(_session);
+                    // The loaded types are registered in the session's encodeable factory
+                    // and stay there after the type system is disposed, so the read below
+                    // can decode them. The type system owns (and disposes) the resolver
+                    // and the node cache it creates.
+                    using var complexTypeSystem = new ComplexTypeSystem(
+                        new NodeCacheResolver(_session, _telemetry),
+                        new DefaultComplexTypeFactory(),
+                        _telemetry,
+                        ownsResolver: true);
                     await complexTypeSystem.LoadTypeAsync(variableNode.DataType).ConfigureAwait(false);
                 }
                 catch
@@ -387,7 +410,7 @@ namespace WotOpcUaMapper.UAClientLib
                 }
 
                 ReadResponse response = await _session.ReadAsync(null, 0, TimestampsToReturn.Both, nodesToRead, CancellationToken.None).ConfigureAwait(false);
-                if (response.Results.Count > 0 && response.Results[0].Value != null)
+                if (response.Results.Count > 0 && !response.Results[0].WrappedValue.IsNull)
                 {
                     return response.Results[0].ToString() ?? string.Empty;
                 }

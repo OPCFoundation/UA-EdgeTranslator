@@ -91,6 +91,7 @@ jobs:
             TARGET_FRAMEWORK=net10.0
             BUILD_CONFIGURATION=Release
             INFORMATIONAL_VERSION=${{ github.ref_name }}+${{ github.sha }}
+            BUILD_NUMBER=${{ github.run_number }}
 
       # Sign the published image keylessly via cosign + GitHub OIDC.
       # Skipped on PRs because nothing was pushed.

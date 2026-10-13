@@ -6,6 +6,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
     using Opc.Ua.Edge.Translator;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using Xunit;
@@ -97,7 +98,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
             DataValue read = await _session.ReadValueAsync(licenseId).ConfigureAwait(false);
             Assert.True(StatusCode.IsGood(read.StatusCode));
-            Assert.Equal(licenseKey, read.Value?.ToString());
+            Assert.Equal(licenseKey, read.ClrValue()?.ToString());
         }
 
         // ----------------- helpers -----------------
@@ -106,13 +107,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         {
             NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
 
-            ReferenceDescriptionCollection topChildren = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
+            List<ReferenceDescription> topChildren = await BrowseChildrenAsync(assetManagement).ConfigureAwait(false);
             ReferenceDescription configRef = topChildren.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "Configuration", StringComparison.Ordinal));
             Assert.NotNull(configRef);
 
             NodeId configurationId = ExpandedNodeId.ToNodeId(configRef.NodeId, _session.NamespaceUris);
-            ReferenceDescriptionCollection configChildren = await BrowseChildrenAsync(configurationId).ConfigureAwait(false);
+            List<ReferenceDescription> configChildren = await BrowseChildrenAsync(configurationId).ConfigureAwait(false);
 
             ReferenceDescription licenseRef = configChildren.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "License", StringComparison.Ordinal));
@@ -123,15 +124,15 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
 
         private async Task<StatusCode> WriteLicenseAsync(NodeId licenseId, string value)
         {
-            WriteValueCollection writes = new()
+            ArrayOf<WriteValue> writes = new(new[]
             {
                 new WriteValue
                 {
                     NodeId = licenseId,
                     AttributeId = Attributes.Value,
-                    Value = new DataValue { Value = value }
+                    Value = new DataValue(Variant.From(value))
                 }
-            };
+            });
 
             WriteResponse response = await _session.WriteAsync(
                 null,
@@ -139,13 +140,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
             return response.Results[0];
         }
 
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
-            ReferenceDescriptionCollection children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+            List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
             ReferenceDescription assetManagement = children.FirstOrDefault(
                 r => string.Equals(r.BrowseName.Name, "WoTAssetConnectionManagement", StringComparison.Ordinal));
 
@@ -153,7 +154,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return ExpandedNodeId.ToNodeId(assetManagement.NodeId, _session.NamespaceUris);
         }
 
-        private async Task<ReferenceDescriptionCollection> BrowseChildrenAsync(NodeId parent)
+        private async Task<List<ReferenceDescription>> BrowseChildrenAsync(NodeId parent)
         {
             BrowseDescription browse = new BrowseDescription
             {
@@ -169,13 +170,13 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 null,
                 null,
                 0,
-                new BrowseDescriptionCollection { browse },
+                new ArrayOf<BrowseDescription>(new[] { browse }),
                 System.Threading.CancellationToken.None).ConfigureAwait(false);
 
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Results);
+            Assert.True(response.Results.Count > 0);
 
-            return response.Results[0].References ?? new ReferenceDescriptionCollection();
+            return response.Results[0].References.ToList();
         }
 
         private async Task<ISession> CreateClientSessionAsync()
@@ -199,7 +200,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 "UAEdgeTranslator license-write tests",
                 30_000,
                 new UserIdentity(),
-                null).ConfigureAwait(false);
+                default).ConfigureAwait(false);
         }
     }
 }

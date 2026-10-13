@@ -56,7 +56,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             object handle = Activator.CreateInstance(_handleType);
             _handleType.GetField("Stream").SetValue(handle, stream);
             _handleType.GetField("Writing").SetValue(handle, writing);
-            _handleType.GetField("SessionId").SetValue(handle, session ?? NodeId.Null);
+            _handleType.GetField("SessionId").SetValue(handle, session);
             _handleType.GetField("Position").SetValue(handle, 0u);
 
             IDictionary map = GetHandles(fm);
@@ -98,7 +98,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             FileManager fm = NewBareFileManager();
             for (int i = 0; i < 10; i++)
             {
-                AddHandle(fm, new MemoryStream(), writing: false, session: null);
+                AddHandle(fm, new MemoryStream(), writing: false, session: NodeId.Null);
             }
 
             MethodInfo onOpen = _sut.GetMethod("OnOpen", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -150,9 +150,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         public void OnCloseAndUpdate_returns_BadInvalidArgument_for_unknown_handle()
         {
             FileManager fm = NewBareFileManager();
-            MethodInfo onClose = _sut.GetMethod("OnCloseAndUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            ServiceResult sr = (ServiceResult)onClose.Invoke(fm, new object[] { null, null, null, 12345u });
+            ServiceResult sr = AsyncHandlerInvoker.Invoke<ServiceResult>(fm, "OnCloseAndUpdateAsync", null, null, NodeId.Null, 12345u, System.Threading.CancellationToken.None);
             Assert.Equal((StatusCode)StatusCodes.BadInvalidArgument, sr.StatusCode);
         }
 
@@ -162,8 +160,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             FileManager fm = NewBareFileManager();
             uint h = AddHandle(fm, new MemoryStream(), writing: false, session: new NodeId(99, 1));
 
-            MethodInfo onClose = _sut.GetMethod("OnCloseAndUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
-            ServiceResult sr = (ServiceResult)onClose.Invoke(fm, new object[] { null, null, null, h });
+            ServiceResult sr = AsyncHandlerInvoker.Invoke<ServiceResult>(fm, "OnCloseAndUpdateAsync", null, null, NodeId.Null, h, System.Threading.CancellationToken.None);
 
             Assert.Equal((StatusCode)StatusCodes.BadUserAccessDenied, sr.StatusCode);
         }
@@ -180,7 +177,7 @@ namespace Opc.Ua.Edge.Translator.Tests
         {
             // Use FileState (which exposes a settable OpenCount property surface).
             Opc.Ua.FileState fs = new(null);
-            fs.OpenCount = new Opc.Ua.PropertyState<ushort>(fs);
+            fs.OpenCount = Opc.Ua.PropertyState<ushort>.With<Opc.Ua.VariantBuilder>(fs);
             return fs;
         }
     }

@@ -13,11 +13,12 @@ namespace WotOpcUaMapper.UAClientLib
     {
         private readonly ApplicationInstance _app;
 
-        public SimpleServer(ApplicationInstance app, uint port)
+        public SimpleServer(ApplicationInstance app, uint port, ITelemetryContext telemetry)
+            : base(telemetry)
         {
             _app = app;
 
-            _app.ApplicationConfiguration.ServerConfiguration.BaseAddresses[0] = "opc.tcp://localhost:" + port;
+            _app.ApplicationConfiguration!.ServerConfiguration!.BaseAddresses = new[] { "opc.tcp://localhost:" + port };
         }
 
         protected override MasterNodeManager CreateMasterNodeManager(IServerInternal server, ApplicationConfiguration configuration)

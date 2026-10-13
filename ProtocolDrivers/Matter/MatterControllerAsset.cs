@@ -165,7 +165,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             outputArgs = null; // not used
 
-            string nodeName = method.Parent?.BrowseName?.Name;
+            string nodeName = method.Parent?.BrowseName.Name;
 
             // find the node in the fabric
             Matter.Core.Node node = _fabric.Nodes.Values.FirstOrDefault(n => n.Name == nodeName);
