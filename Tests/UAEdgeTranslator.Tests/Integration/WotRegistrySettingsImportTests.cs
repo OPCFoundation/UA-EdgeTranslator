@@ -106,7 +106,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             for (int attempt = 0; attempt < 100 && thing == null; attempt++)
             {
                 thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
-                    .FirstOrDefault(c => c.Text == "legacy-1");
+                    .FirstOrDefault(c => c.Text == "legacy-1 [xRegistry]");
                 if (thing == null)
                 {
                     await Task.Delay(50);
@@ -158,7 +158,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             for (int attempt = 0; attempt < 100 && thing == null; attempt++)
             {
                 thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
-                    .FirstOrDefault(c => c.Text == "rw-1");
+                    .FirstOrDefault(c => c.Text == "rw-1 [xRegistry]");
                 if (thing == null)
                 {
                     await Task.Delay(50);
@@ -255,7 +255,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             // The shared target is created once, below the Thing whose properties map onto it.
             var objects = await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString());
             Assert.DoesNotContain(objects, c => c.Id == limits.ToString());
-            var thing = Assert.Single(objects, c => c.Text == "shared-1");
+            var thing = Assert.Single(objects, c => c.Text == "shared-1 [xRegistry]");
             var thingChildren = await service.BrowseChildrenAsync(thing.Id);
             Assert.Single(thingChildren, c => c.Id == limits.ToString());
             Assert.DoesNotContain(thingChildren, c => c.Text == "low" || c.Text == "high");
@@ -292,7 +292,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                   "@type": ["Thing"],
                   "id": "urn:pnem-1",
                   "name": "pnem-1",
-                  "title": "pnem-1",
+                  "title": "PNEM Meter 1",
                   "base": "mock://device-1:1502/1",
                   "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
                   "security": ["nosec_sc"],
@@ -359,11 +359,12 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             AddressSpaceService service = new();
             var roots = await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString());
             Assert.DoesNotContain(roots, c => c.Text == "VoltageL-N" || c.Text == "VoltageL1-L2");
-            var asset = Assert.Single(roots, c => c.Text == "pnem-1");
+            var asset = Assert.Single(roots, c => c.Text == "PNEM Meter 1 [xRegistry]");
             var children = await service.BrowseChildrenAsync(asset.Id);
             Assert.Contains(children, c => c.Text == "VoltageL-N");
             Assert.Contains(children, c => c.Text == "VoltageL1-L2");
             Assert.DoesNotContain(children, c => c.Text == "VoltageL1-N" || c.Text == "VoltageL2-N");
+            Assert.DoesNotContain(children, c => c.Text.EndsWith(" [xRegistry]", StringComparison.Ordinal));
         }
 
         [Fact]
@@ -487,7 +488,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             foreach (string name in new[] { "twin-a", "twin-b" })
             {
                 ushort ns = (ushort)server.CurrentInstance.NamespaceUris.GetIndex("urn:" + name);
-                AddressSpaceNode thing = Assert.Single(roots, c => c.Text == name);
+                AddressSpaceNode thing = Assert.Single(roots, c => c.Text == name + " [xRegistry]");
                 var children = await service.BrowseChildrenAsync(thing.Id);
 
                 // The target sits under this Thing, in this Thing's namespace.
@@ -573,7 +574,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                     for (int attempt = 0; attempt < 100 && thing == null; attempt++)
                     {
                         thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
-                            .FirstOrDefault(c => c.Text == "restart-1");
+                            .FirstOrDefault(c => c.Text == "restart-1 [xRegistry]");
                         if (thing == null)
                         {
                             await Task.Delay(50);

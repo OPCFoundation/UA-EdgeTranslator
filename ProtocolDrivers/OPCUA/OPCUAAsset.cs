@@ -1,6 +1,7 @@
 namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 {
-    using Opc.Ua;
+    using Newtonsoft.Json;
+using Opc.Ua;
     using Opc.Ua.Client;
     using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Edge.Translator.Interfaces;
@@ -23,6 +24,17 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         public TypeString XsdType { get; set; }
 
         public bool ReadOnly { get; set; }
+
+        /// <summary>For a method, the expanded node id of the object it is called on.</summary>
+        public string ObjectExpandedNodeId { get; set; }
+
+        /// <summary>For a method, its input arguments by name.</summary>
+        public Dictionary<string, Property> InputArguments { get; set; }
+
+        /// <summary>For a method, its output arguments by name.</summary>
+        public Dictionary<string, Property> OutputArguments { get; set; }
+
+        public bool IsMethod => ObjectExpandedNodeId != null;
     }
 
     public class OPCUAAsset : IAsset
@@ -521,143 +533,60 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             reconnectHandler.Dispose();
         }
 
-        private readonly Dictionary<string, (NodeId ObjectId, NodeId MethodId)> _remoteMethods = new();
+        /// <summary>
+        /// The asset's Thing Description, whose action forms name the remote methods.
+        /// </summary>
+        public ThingDescription ThingDescription { get; set; }
 
         /// <summary>
-        /// Maps a translator MethodState to the method on the remote server: the action
-        /// form's href (an expanded node id) names the method, otherwise it is found by
-        /// browse name; its owning object is then found via the inverse HasComponent.
+        /// Maps a translator MethodState to the method on the remote server. The TD action
+        /// of the same name must name both the method (href) and the object it is called
+        /// on (uav:objectId) as expanded node ids; nothing is browsed to guess them.
         /// </summary>
-        private async Task<(NodeId ObjectId, NodeId MethodId)> ResolveRemoteMethodAsync(MethodState method, CancellationToken cancellationToken)
+        private bool TryResolveRemoteMethod(MethodState method, out NodeId objectId, out NodeId methodId)
         {
-            string href = null;
-            if (method.Handle is List<GenericForm> forms)
-            {
-                foreach (GenericForm form in forms)
-                {
-                    if (!string.IsNullOrEmpty(form?.Href))
-                    {
-                        href = form.Href;
-                        break;
-                    }
-                }
-            }
+            objectId = NodeId.Null;
+            methodId = NodeId.Null;
 
             string name = method.BrowseName.Name;
-            string key = href ?? "name:" + name;
-            lock (_remoteMethods)
+            if (ThingDescription?.Actions == null
+                || string.IsNullOrEmpty(name)
+                || !ThingDescription.Actions.TryGetValue(name, out TDAction action)
+                || action.Forms == null)
             {
-                if (_remoteMethods.TryGetValue(key, out (NodeId, NodeId) cached))
-                {
-                    return cached;
-                }
+                return false;
             }
 
-            NodeId methodId = NodeId.Null;
-            if (href != null)
+            foreach (object rawForm in action.Forms)
             {
+                UAForm form = rawForm == null ? null : JsonConvert.DeserializeObject<UAForm>(rawForm.ToString());
+                if (form == null || string.IsNullOrEmpty(form.Href) || string.IsNullOrEmpty(form.ObjectId))
+                {
+                    continue;
+                }
+
                 try
                 {
-                    methodId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(href), _session.NamespaceUris);
+                    methodId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(form.Href), _session.NamespaceUris);
+                    objectId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(form.ObjectId), _session.NamespaceUris);
                 }
                 catch (Exception ex) when (ex is ServiceResultException or FormatException or ArgumentException)
                 {
-                    Log.Logger.Warning($"Action {name} has an href that is not a node id: {href}");
+                    Log.Logger.Warning($"Action {method.BrowseName.Name} has a form whose href or uav:objectId is not an expanded node id.");
+                    objectId = NodeId.Null;
+                    methodId = NodeId.Null;
+                    continue;
                 }
-            }
 
-            if (methodId.IsNull && !string.IsNullOrEmpty(name))
-            {
-                methodId = await FindMethodByNameAsync(ObjectIds.ObjectsFolder, name, new HashSet<NodeId>(), cancellationToken).ConfigureAwait(false);
-            }
-
-            if (methodId.IsNull)
-            {
-                return (NodeId.Null, NodeId.Null);
-            }
-
-            List<ReferenceDescription> owners = await BrowseAsync(methodId, BrowseDirection.Inverse, ReferenceTypeIds.HasComponent, (uint)NodeClass.Object, cancellationToken).ConfigureAwait(false);
-            NodeId objectId = owners.Count > 0 ? ExpandedNodeId.ToNodeId(owners[0].NodeId, _session.NamespaceUris) : NodeId.Null;
-
-            if (!objectId.IsNull)
-            {
-                lock (_remoteMethods)
+                if (!objectId.IsNull && !methodId.IsNull)
                 {
-                    _remoteMethods[key] = (objectId, methodId);
+                    return true;
                 }
             }
 
-            return (objectId, methodId);
-        }
-
-        private async Task<NodeId> FindMethodByNameAsync(NodeId nodeId, string name, HashSet<NodeId> visited, CancellationToken cancellationToken)
-        {
-            if (!visited.Add(nodeId) || nodeId == ObjectIds.Server)
-            {
-                return NodeId.Null;
-            }
-
-            List<ReferenceDescription> children = await BrowseAsync(nodeId, BrowseDirection.Forward, ReferenceTypeIds.HierarchicalReferences, (uint)(NodeClass.Object | NodeClass.Method), cancellationToken).ConfigureAwait(false);
-            foreach (ReferenceDescription child in children)
-            {
-                if (child.NodeClass == NodeClass.Method && string.Equals(child.BrowseName.Name, name, StringComparison.Ordinal))
-                {
-                    return ExpandedNodeId.ToNodeId(child.NodeId, _session.NamespaceUris);
-                }
-            }
-
-            foreach (ReferenceDescription child in children)
-            {
-                if (child.NodeClass == NodeClass.Object)
-                {
-                    NodeId found = await FindMethodByNameAsync(ExpandedNodeId.ToNodeId(child.NodeId, _session.NamespaceUris), name, visited, cancellationToken).ConfigureAwait(false);
-                    if (!found.IsNull)
-                    {
-                        return found;
-                    }
-                }
-            }
-
-            return NodeId.Null;
-        }
-
-        private async Task<List<ReferenceDescription>> BrowseAsync(NodeId nodeId, BrowseDirection direction, NodeId referenceTypeId, uint nodeClassMask, CancellationToken cancellationToken)
-        {
-            List<ReferenceDescription> references = new();
-            ArrayOf<BrowseDescription> nodesToBrowse = new(new[]
-            {
-                new BrowseDescription
-                {
-                    NodeId = nodeId,
-                    BrowseDirection = direction,
-                    ReferenceTypeId = referenceTypeId,
-                    IncludeSubtypes = true,
-                    NodeClassMask = nodeClassMask,
-                    ResultMask = (uint)BrowseResultMask.All
-                }
-            });
-
-            BrowseResponse response = await _session.BrowseAsync(null, null, 0u, nodesToBrowse, cancellationToken).ConfigureAwait(false);
-            if (response.Results.Count == 0 || StatusCode.IsBad(response.Results[0].StatusCode))
-            {
-                return references;
-            }
-
-            AddReferences(references, response.Results[0].References);
-            ByteString continuationPoint = response.Results[0].ContinuationPoint;
-            while (continuationPoint.Length > 0)
-            {
-                BrowseNextResponse next = await _session.BrowseNextAsync(null, false, new ArrayOf<ByteString>(new[] { continuationPoint }), cancellationToken).ConfigureAwait(false);
-                if (next.Results.Count == 0 || StatusCode.IsBad(next.Results[0].StatusCode))
-                {
-                    break;
-                }
-
-                AddReferences(references, next.Results[0].References);
-                continuationPoint = next.Results[0].ContinuationPoint;
-            }
-
-            return references;
+            objectId = NodeId.Null;
+            methodId = NodeId.Null;
+            return false;
         }
 
         public async Task<AssetActionResult> ExecuteActionAsync(MethodState method, IList<object> inputArgs, CancellationToken cancellationToken = default)
@@ -665,11 +594,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // NodeId is a value type in SDK 2.0.0, so assignment already copies it (the old
             // NodeId(NodeId) copy constructor is gone).
             // The MethodState belongs to the translator's address space, so its NodeIds mean
-            // nothing to the remote server: resolve the remote method and its owner instead.
-            (NodeId objectId, NodeId methodId) = await ResolveRemoteMethodAsync(method, cancellationToken).ConfigureAwait(false);
-            if (methodId.IsNull || objectId.IsNull)
+            // nothing to the remote server: call the method and object its form names.
+            if (!TryResolveRemoteMethod(method, out NodeId objectId, out NodeId methodId))
             {
-                return AssetActionResult.Failure($"Method {method.BrowseName.Name} not found on {_endpoint}.");
+                return AssetActionResult.Failure($"Action {method.BrowseName.Name} does not name its method (href) and object (uav:objectId) as expanded node ids.");
             }
 
             CallMethodRequest request = new()
@@ -775,7 +703,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 BrowseDirection = BrowseDirection.Forward,
                 ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
                 IncludeSubtypes = true,
-                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
+                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable | NodeClass.Method),
                 ResultMask = (uint)BrowseResultMask.All
             };
 
@@ -879,6 +807,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     continue;
                 }
 
+                // A method becomes an action called on the object it was browsed from. Its
+                // argument properties are read here, not recursed into as tags.
+                if (reference.NodeClass == NodeClass.Method)
+                {
+                    BrowsedNode method = BuildBrowsedMethod(nodeId, childNodeId, childPath);
+                    if (method != null)
+                    {
+                        results.Add(method);
+                    }
+
+                    continue;
+                }
+
                 // Only add variables to the results, but keep recursing through objects since variables can be nested under objects or other variables (e.g. Properties).
                 if (reference.NodeClass == NodeClass.Variable)
                 {
@@ -901,6 +842,90 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 target.Add(reference);
             }
+        }
+
+        private BrowsedNode BuildBrowsedMethod(NodeId objectId, NodeId methodId, string browsePath)
+        {
+            try
+            {
+                Dictionary<string, Property> inputs = null;
+                Dictionary<string, Property> outputs = null;
+
+                ArrayOf<BrowseDescription> nodesToBrowse = new(new[]
+                {
+                    new BrowseDescription
+                    {
+                        NodeId = methodId,
+                        BrowseDirection = BrowseDirection.Forward,
+                        ReferenceTypeId = ReferenceTypeIds.HasProperty,
+                        IncludeSubtypes = true,
+                        NodeClassMask = (uint)NodeClass.Variable,
+                        ResultMask = (uint)BrowseResultMask.All
+                    }
+                });
+
+                BrowseResponse response = _session.BrowseAsync(null, null, 0u, nodesToBrowse, CancellationToken.None).GetAwaiter().GetResult();
+                if (response.Results.Count > 0 && StatusCode.IsGood(response.Results[0].StatusCode))
+                {
+                    foreach (ReferenceDescription argument in response.Results[0].References)
+                    {
+                        string name = argument.BrowseName.Name;
+                        if (name == BrowseNames.InputArguments)
+                        {
+                            inputs = ReadArguments(ExpandedNodeId.ToNodeId(argument.NodeId, _session.NamespaceUris));
+                        }
+                        else if (name == BrowseNames.OutputArguments)
+                        {
+                            outputs = ReadArguments(ExpandedNodeId.ToNodeId(argument.NodeId, _session.NamespaceUris));
+                        }
+                    }
+                }
+
+                return new BrowsedNode()
+                {
+                    BrowsePath = browsePath,
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(methodId, _session.NamespaceUris).ToString(),
+                    ObjectExpandedNodeId = NodeId.ToExpandedNodeId(objectId, _session.NamespaceUris).ToString(),
+                    InputArguments = inputs,
+                    OutputArguments = outputs
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning($"Failed to read the arguments of method {methodId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        private Dictionary<string, Property> ReadArguments(NodeId argumentsId)
+        {
+            ArrayOf<ReadValueId> nodesToRead = new(new[] { new ReadValueId() { NodeId = argumentsId, AttributeId = Attributes.Value } });
+            ReadResponse readResponse = _session.ReadAsync(null, 0, TimestampsToReturn.Neither, nodesToRead, CancellationToken.None).GetAwaiter().GetResult();
+            if (readResponse.Results.Count == 0 || VariantConversion.ToClrValue(readResponse.Results[0].WrappedValue) is not System.Collections.IEnumerable values)
+            {
+                return null;
+            }
+
+            Dictionary<string, Property> arguments = new();
+            foreach (object value in values)
+            {
+                Argument argument = value switch
+                {
+                    Argument a => a,
+                    ExtensionObject extension when extension.TryGetValue(out Argument decoded, _session.MessageContext) => decoded,
+                    _ => null
+                };
+
+                if (argument == null || string.IsNullOrEmpty(argument.Name) || arguments.ContainsKey(argument.Name))
+                {
+                    continue;
+                }
+
+                MapTypes(TypeInfo.GetBuiltInType(argument.DataType, _session.TypeTree), out TypeEnum wotType, out TypeString _);
+                arguments.Add(argument.Name, new Property() { Type = argument.ValueRank >= 0 ? TypeEnum.Object : wotType });
+            }
+
+            return arguments.Count > 0 ? arguments : null;
         }
 
         private BrowsedNode BuildBrowsedNode(NodeId nodeId, string browsePath)

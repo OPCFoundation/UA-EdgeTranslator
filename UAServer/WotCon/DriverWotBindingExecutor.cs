@@ -73,10 +73,27 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // resources may share one base. The connection itself is still per base.
             ThingDescription td = _thingDescriptions.GetOrCreate(_thingDescriptions.ResourceOf(form), baseUri);
             SharedConnection shared = Acquire(driver, td, baseUri);
+            AssetConnection connection;
             try
             {
-                AssetConnection connection = await shared.Connect.ConfigureAwait(false);
+                // The shared connect is not tied to this activation; only this waiter stops
+                // waiting when canceled. Its reference is released in the background, so a
+                // hung connect is disposed once it finishes without blocking the caller.
+                connection = await shared.Connect.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _ = ReleaseAsync(baseUri, shared).AsTask();
+                throw;
+            }
+            catch
+            {
+                await ReleaseAsync(baseUri, shared).ConfigureAwait(false);
+                throw;
+            }
 
+            try
+            {
                 object rawForm = Newtonsoft.Json.Linq.JToken.Parse(form.Addressing.Metadata[DriverWotBinder.FormMetadataKey]);
                 // Only property channels read and write a tag. Actions and events need none,
                 // and event-only drivers (such as OPC A&E) refuse to create one.

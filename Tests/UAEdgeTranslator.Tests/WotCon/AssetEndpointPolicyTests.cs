@@ -3,6 +3,9 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
     using Opc.Ua;
     using Opc.Ua.Edge.Translator.ProtocolDrivers;
     using Opc.Ua.Edge.Translator.WotCon;
+    using System;
+    using System.Diagnostics;
+    using System.Net;
     using Xunit;
 
     /// <summary>
@@ -58,6 +61,36 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             ServiceResultException ex = Assert.Throws<ServiceResultException>(() => AssetEndpointPolicy.ThrowIfBlocked(endpoint));
 
             Assert.Equal(StatusCodes.BadSecurityChecksFailed, ex.StatusCode);
+        }
+
+        [Fact]
+        public void A_name_resolving_to_a_blocked_address_is_blocked()
+        {
+            Func<string, IPAddress[]> previous = AssetEndpointPolicy.ResolveHost;
+            AssetEndpointPolicy.ResolveHost = host => host == "alias.example"
+                ? new[] { IPAddress.Parse("169.254.169.254") }
+                : Array.Empty<IPAddress>();
+            try
+            {
+                Assert.True(AssetEndpointPolicy.IsAlwaysBlockedHost("alias.example"));
+                Assert.False(AssetEndpointPolicy.IsAlwaysBlockedHost("plc.example"));
+            }
+            finally
+            {
+                AssetEndpointPolicy.ResolveHost = previous;
+            }
+        }
+
+        [Fact]
+        public void The_real_resolver_answers_within_its_timeout()
+        {
+            // The one test that performs a real DNS lookup.
+            Stopwatch watch = Stopwatch.StartNew();
+            IPAddress[] addresses = AssetEndpointPolicy.ResolveWithTimeout("localhost");
+            watch.Stop();
+
+            Assert.NotEmpty(addresses);
+            Assert.True(watch.Elapsed < AssetEndpointPolicy.DnsTimeout + TimeSpan.FromSeconds(1), $"lookup took {watch.Elapsed}");
         }
     }
 }

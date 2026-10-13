@@ -112,7 +112,41 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return s_alwaysBlockedHosts.Any(blocked => TryParseAddress(blocked, out System.Net.IPAddress blockedAddress) && blockedAddress.Equals(address));
             }
 
-            return s_alwaysBlockedHosts.Any(blocked => string.Equals(blocked, normalized, StringComparison.OrdinalIgnoreCase));
+            return s_alwaysBlockedHosts.Any(blocked => string.Equals(blocked, normalized, StringComparison.OrdinalIgnoreCase))
+                || ResolvesToBlockedAddress(normalized);
+        }
+
+        /// <summary>The longest a host name lookup may take.</summary>
+        public static readonly TimeSpan DnsTimeout = TimeSpan.FromSeconds(5);
+
+        /// <summary>Resolves a host name; replaceable so tests do not depend on DNS.</summary>
+        public static Func<string, System.Net.IPAddress[]> ResolveHost { get; set; } = ResolveWithTimeout;
+
+        /// <summary>Resolves a host name, giving up after <see cref="DnsTimeout"/>.</summary>
+        public static System.Net.IPAddress[] ResolveWithTimeout(string host)
+        {
+            using System.Threading.CancellationTokenSource timeout = new(DnsTimeout);
+            return System.Net.Dns.GetHostAddressesAsync(host, timeout.Token).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// True when a DNS name resolves to a blocked address, so an alias of the
+        /// metadata service is refused like the service's own name. A name that does not
+        /// resolve here is not blocked: the connection to it fails anyway.
+        /// </summary>
+        private static bool ResolvesToBlockedAddress(string host)
+        {
+            System.Net.IPAddress[] addresses;
+            try
+            {
+                addresses = ResolveHost(host) ?? Array.Empty<System.Net.IPAddress>();
+            }
+            catch (Exception ex) when (ex is System.Net.Sockets.SocketException or ArgumentException or OperationCanceledException)
+            {
+                return false;
+            }
+
+            return addresses.Any(resolved => IsAlwaysBlockedHost(resolved.ToString()));
         }
 
         /// <summary>

@@ -74,12 +74,37 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 List<BrowsedNode> nodes = asset.BrowseObjectsFolder();
                 foreach (BrowsedNode node in nodes)
                 {
+                    if (node.IsMethod)
+                    {
+                        if (string.IsNullOrEmpty(node.BrowsePath) || td.Actions.ContainsKey(node.BrowsePath))
+                        {
+                            continue;
+                        }
+
+                        // An action names both its method and the object it is called on, so
+                        // it can be invoked without browsing the server again.
+                        UAForm actionForm = new()
+                        {
+                            Href = node.ExpandedNodeId,
+                            ObjectId = node.ObjectExpandedNodeId,
+                            Op = [Op.Invokeaction]
+                        };
+
+                        td.Actions.Add(node.BrowsePath, new TDAction()
+                        {
+                            Input = node.InputArguments == null ? null : new TDArguments() { Type = TypeEnum.Object, Properties = node.InputArguments },
+                            Output = node.OutputArguments == null ? null : new TDArguments() { Type = TypeEnum.Object, Properties = node.OutputArguments },
+                            Forms = [actionForm]
+                        });
+                        continue;
+                    }
+
                     if (string.IsNullOrEmpty(node.BrowsePath) || td.Properties.ContainsKey(node.BrowsePath))
                     {
                         continue;
                     }
 
-                    GenericForm form = new()
+                    UAForm form = new()
                     {
                         Href = node.ExpandedNodeId,
                         Op = node.ReadOnly
@@ -123,7 +148,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             // check if we can reach the OPC UA asset
-            OPCUAAsset asset = new();
+            OPCUAAsset asset = new() { ThingDescription = td };
             await asset.ConnectAsync(address[3], int.Parse(address[4]), cancellationToken).ConfigureAwait(false);
 
             return new AssetConnection(asset, unitId);

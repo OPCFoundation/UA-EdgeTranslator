@@ -51,8 +51,10 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
-        public async Task An_action_is_called_on_the_remote_method_found_by_name()
+        public async Task An_action_is_called_on_the_remote_method_and_object_named_by_its_form()
         {
+            _asset.ThingDescription = await RemoteTdAsync("DiscoverAssets").ConfigureAwait(false);
+
             AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod("DiscoverAssets"), new List<object>()).ConfigureAwait(false);
 
             Assert.True(result.IsSuccess, result.Status);
@@ -60,26 +62,53 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
-        public async Task An_action_is_called_on_the_remote_method_named_by_its_form()
+        public async Task A_bad_status_from_the_remote_method_fails_the_action()
         {
-            string href = await RemoteMethodHrefAsync("ConnectionTest").ConfigureAwait(false);
-            MethodState method = LocalMethod("SomeLocalName");
-            method.Handle = new List<GenericForm> { new GenericForm { Href = href } };
+            _asset.ThingDescription = await RemoteTdAsync("ConnectionTest").ConfigureAwait(false);
 
             // An empty endpoint reaches the remote method body, which rejects it.
-            AssetActionResult result = await _asset.ExecuteActionAsync(method, new List<object> { string.Empty }).ConfigureAwait(false);
+            AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod("ConnectionTest"), new List<object> { string.Empty }).ConfigureAwait(false);
 
             Assert.False(result.IsSuccess);
             Assert.Contains("BadInvalidArgument", result.Status, StringComparison.Ordinal);
         }
 
         [Fact]
-        public async Task An_unknown_action_fails_without_calling_the_server()
+        public async Task An_action_without_its_object_node_id_fails_without_calling_the_server()
         {
-            AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod("NoSuchMethod"), new List<object>()).ConfigureAwait(false);
+            _asset.ThingDescription = await RemoteTdAsync("DiscoverAssets", includeObjectId: false).ConfigureAwait(false);
+
+            AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod("DiscoverAssets"), new List<object>()).ConfigureAwait(false);
 
             Assert.False(result.IsSuccess);
-            Assert.Contains("not found", result.Status, StringComparison.Ordinal);
+            Assert.Contains("uav:objectId", result.Status, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task An_action_missing_from_the_td_fails_without_calling_the_server()
+        {
+            _asset.ThingDescription = await RemoteTdAsync("ConnectionTest").ConfigureAwait(false);
+
+            AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod("DiscoverAssets"), new List<object>()).ConfigureAwait(false);
+
+            Assert.False(result.IsSuccess);
+        }
+
+        [Fact]
+        public async Task A_browsed_method_becomes_an_action_the_v102_node_manager_can_call()
+        {
+            BrowsedNode browsed = _asset.BrowseObjectsFolder().Single(n => n.IsMethod && n.BrowsePath == "WoTAssetConnectionManagement.DiscoverAssets");
+            Assert.NotNull(browsed.ObjectExpandedNodeId);
+
+            // The action as generated into the TD, read back from TD JSON as when the asset
+            // is onboarded from its file.
+            UAForm generated = new() { Href = browsed.ExpandedNodeId, ObjectId = browsed.ObjectExpandedNodeId, Op = [Op.Invokeaction] };
+            ThingDescription td = new() { Actions = new Dictionary<string, TDAction> { [browsed.BrowsePath] = new TDAction { Forms = [generated] } } };
+            _asset.ThingDescription = Newtonsoft.Json.JsonConvert.DeserializeObject<ThingDescription>(Newtonsoft.Json.JsonConvert.SerializeObject(td));
+
+            AssetActionResult result = await _asset.ExecuteActionAsync(LocalMethod(browsed.BrowsePath), new List<object>()).ConfigureAwait(false);
+
+            Assert.True(result.IsSuccess, result.Status);
         }
 
         // A method shaped like the v1.02 node manager's: local ids that the remote server does not know.
@@ -89,11 +118,19 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             return new MethodState(parent) { NodeId = new NodeId("local-method", 42), BrowseName = new QualifiedName(name) };
         }
 
-        private async Task<string> RemoteMethodHrefAsync(string name)
+        // A TD with one action naming a method of WoTAssetConnectionManagement, read from JSON.
+        private async Task<ThingDescription> RemoteTdAsync(string name, bool includeObjectId = true)
         {
             NodeId management = await ChildAsync(_session, ObjectIds.ObjectsFolder, "WoTAssetConnectionManagement").ConfigureAwait(false);
             NodeId method = await ChildAsync(_session, management, name).ConfigureAwait(false);
-            return NodeId.ToExpandedNodeId(method, _session.NamespaceUris).ToString();
+            Newtonsoft.Json.Linq.JObject form = new() { ["href"] = NodeId.ToExpandedNodeId(method, _session.NamespaceUris).ToString() };
+            if (includeObjectId)
+            {
+                form["uav:objectId"] = NodeId.ToExpandedNodeId(management, _session.NamespaceUris).ToString();
+            }
+
+            Newtonsoft.Json.Linq.JObject actions = new() { [name] = new Newtonsoft.Json.Linq.JObject { ["forms"] = new Newtonsoft.Json.Linq.JArray(form) } };
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<ThingDescription>(new Newtonsoft.Json.Linq.JObject { ["actions"] = actions }.ToString());
         }
 
         private async Task<ISession> OpenSessionAsync()

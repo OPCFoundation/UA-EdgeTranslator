@@ -183,6 +183,32 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             Assert.Equal(2, driver.Connects);
         }
 
+        [Fact]
+        public async Task A_canceled_activation_stops_waiting_for_a_hung_connect()
+        {
+            CountingDriver driver = new() { HangConnect = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+            (WotProtocolBinderRegistry registry, WotBindingPlan plan, DriverWotBindingExecutor executor) = Plan(driver: driver);
+            await using DriverWotBindingExecutor ownedExecutor = executor;
+
+            WotCompiledForm write = plan.CompiledForms.Single(f => f.Operation == WoTBindingCapabilityEnum.WriteProperty);
+            using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(200));
+
+            Task activation = registry.OpenChannelAsync(write, cts.Token).AsTask();
+            Task finished = await Task.WhenAny(activation, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            Assert.Same(activation, finished);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => activation);
+
+            // Once the hung connect completes, its abandoned connection is disposed.
+            driver.HangConnect.SetResult();
+            for (int i = 0; i < 100 && Volatile.Read(ref driver.Disposals) == 0; i++)
+            {
+                await Task.Delay(20);
+            }
+
+            Assert.Equal(1, Volatile.Read(ref driver.Disposals));
+        }
+
         /// <summary>
         /// The mock driver, counting connects and the disposal of the connected assets,
         /// optionally failing the first connect.
@@ -192,6 +218,8 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             private readonly MockProtocolDriver _inner = new();
 
             public bool FailNextConnect { get; set; }
+
+            public TaskCompletionSource HangConnect { get; set; }
 
             public int Connects;
 
@@ -208,6 +236,12 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
             public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
             {
                 Interlocked.Increment(ref Connects);
+                if (HangConnect != null)
+                {
+                    // Ignore the token, like a driver stuck in a blocking connect.
+                    await HangConnect.Task;
+                }
+
                 if (FailNextConnect)
                 {
                     FailNextConnect = false;

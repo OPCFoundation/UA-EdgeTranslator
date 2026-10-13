@@ -41,6 +41,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         public ValueTask<IAsyncDisposable> CreateAsync(INodeManagerBuilder builder, ArrayOf<WotBindingPlan> bindingPlans, CancellationToken cancellationToken = default)
         {
+            MarkRegistryThings(builder);
+
             WotBindingPlan[] rewritten = new WotBindingPlan[bindingPlans.Count];
             for (int i = 0; i < bindingPlans.Count; i++)
             {
@@ -70,8 +72,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // Thing's Object. One projection can hold several Things with properties of the
             // same name, so only this plan's Thing is indexed: the projection encodes the
             // Thing id in the Object's NodeId. Without a known Thing nothing is touched.
-            string thingObjectId = ThingObjectId(plan.ResourceXid);
-            if (thingObjectId == null)
+            string thingObjectPrefix = ThingObjectPrefix(plan.ResourceXid);
+            if (thingObjectPrefix == null)
             {
                 return;
             }
@@ -81,7 +83,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             {
                 if (node is BaseVariableState variable && variable.Parent is BaseObjectState owner
                     && owner.NodeId.TryGetValue(out string ownerId)
-                    && string.Equals(ownerId, thingObjectId, StringComparison.Ordinal)
+                    && ownerId.StartsWith(thingObjectPrefix, StringComparison.Ordinal)
                     && !variable.BrowseName.IsNull)
                 {
                     projectedProperties.TryAdd(variable.BrowseName.Name, variable);
@@ -128,20 +130,58 @@ namespace Opc.Ua.Edge.Translator.WotCon
         }
 
         /// <summary>
-        /// Returns the string identifier the registry gives the Object it projects for the
-        /// Thing <paramref name="resourceXid"/> describes: <c>/nsu=&lt;id&gt;;&lt;name&gt;</c>, with
-        /// the Thing id URI-escaped. Returns <c>null</c> when the Thing is unknown.
+        /// Returns the start of the string identifier the registry gives the Object it
+        /// projects for the Thing <paramref name="resourceXid"/> describes:
+        /// <c>/nsu=&lt;id&gt;;</c>, with the Thing id URI-escaped. The rest is derived from the
+        /// title, so only the Thing id is matched. Returns <c>null</c> when the Thing is unknown.
         /// </summary>
-        private string ThingObjectId(string resourceXid)
+        private string ThingObjectPrefix(string resourceXid)
         {
             Models.ThingDescription td = _thingDescriptions?.GetOrCreate(resourceXid, string.Empty);
-            string thingName = td?.Name ?? td?.Title;
-            if (string.IsNullOrEmpty(td?.Id) || string.IsNullOrEmpty(thingName))
+            if (string.IsNullOrEmpty(td?.Id))
             {
                 return null;
             }
 
-            return "/nsu=" + Uri.EscapeDataString(td.Id) + ";" + thingName;
+            return "/nsu=" + Uri.EscapeDataString(td.Id) + ";";
+        }
+
+        /// <summary>
+        /// Suffix that tells the Thing projected from the registry apart from the asset of
+        /// the same name that the WoT asset connection management node manager creates.
+        /// </summary>
+        internal const string RegistryThingSuffix = " [xRegistry]";
+
+        /// <summary>
+        /// Marks every Thing projected into this node manager, mapped or not: the projection
+        /// encodes the Thing id in the Object's NodeId as <c>/nsu=&lt;id&gt;;...</c>.
+        /// </summary>
+        private static void MarkRegistryThings(INodeManagerBuilder builder)
+        {
+            if (builder.NodeManager is not AsyncCustomNodeManager manager)
+            {
+                return;
+            }
+
+            foreach (NodeState node in PredefinedNodes(manager))
+            {
+                if (node is BaseObjectState thing && node.NodeId.TryGetValue(out string id)
+                    && id.StartsWith("/nsu=", StringComparison.Ordinal))
+                {
+                    MarkAsRegistryThing(thing);
+                }
+            }
+        }
+
+        private static void MarkAsRegistryThing(BaseObjectState thing)
+        {
+            string text = thing.DisplayName.Text ?? thing.BrowseName.Name;
+            if (string.IsNullOrEmpty(text) || text.EndsWith(RegistryThingSuffix, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            thing.DisplayName = new LocalizedText(thing.DisplayName.Locale, text + RegistryThingSuffix);
         }
 
         private static System.Collections.Generic.IEnumerable<NodeState> PredefinedNodes(AsyncCustomNodeManager manager)

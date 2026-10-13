@@ -46,6 +46,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
         // each refresh sees the caches and companion models of the change before it.
         private readonly SemaphoreSlim _changeGate = new(1, 1);
 
+        // The registry generation last prepared and refreshed; guarded by _changeGate.
+        private long _preparedGeneration = -1;
+
         private readonly CancellationTokenSource _stopping = new();
 
         private WotRegistryHost(
@@ -355,11 +358,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // uav:mapToType names; only then is the coordinator refreshed.
             if (!e.ProjectionOnly)
             {
-                _ = PrepareAndRefreshAsync(e.Current);
+                _ = PrepareAndRefreshAsync();
             }
         }
 
-        private async Task PrepareAndRefreshAsync(WotRegistrySnapshot snapshot)
+        private async Task PrepareAndRefreshAsync()
         {
             CancellationToken cancellationToken = _stopping.Token;
             try
@@ -373,9 +376,31 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             try
             {
-                await CacheThingDescriptionsAsync(snapshot, cancellationToken).ConfigureAwait(false);
-                await LoadCompanionModelsAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                // Changes queued behind this one are coalesced: prepare the latest snapshot,
+                // and if another change commits meanwhile, prepare again, so the refresh
+                // (which projects the registry's current state) never sees an unprepared one.
+                WotRegistrySnapshot snapshot = Registry.Current;
+                if (snapshot.Generation <= _preparedGeneration)
+                {
+                    return;
+                }
+
+                while (true)
+                {
+                    await CacheThingDescriptionsAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                    await LoadCompanionModelsAsync(snapshot, cancellationToken).ConfigureAwait(false);
+
+                    WotRegistrySnapshot current = Registry.Current;
+                    if (current.Generation == snapshot.Generation)
+                    {
+                        break;
+                    }
+
+                    snapshot = current;
+                }
+
                 await _coordinator.RefreshAsync(new WotRefreshRequest { RequestId = "change" }, cancellationToken).ConfigureAwait(false);
+                _preparedGeneration = snapshot.Generation;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
