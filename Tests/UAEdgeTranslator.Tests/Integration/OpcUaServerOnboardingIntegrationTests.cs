@@ -450,6 +450,37 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
                 default).ConfigureAwait(false);
         }
 
+        [Fact]
+        public async Task Closing_a_read_handle_releases_it_without_applying_an_update()
+        {
+            // A read handle carries nothing to apply. Closing it must just release it:
+            // before, Close ran the update path, which parsed the empty contents.
+            NodeId file = await ResolveAssetManagementChildAsync("NodesetFileUpload").ConfigureAwait(false);
+            Assert.False(file.IsNull, "NodesetFileUpload was not found.");
+
+            NodeId open = await ResolveChildAsync(file, "Open").ConfigureAwait(false);
+            NodeId close = await ResolveChildAsync(file, "CloseAndUpdate").ConfigureAwait(false);
+
+            IList<object> opened = await CallMethodAsync(file, open, new object[] { (byte)1 }).ConfigureAwait(false);
+            uint handle = Convert.ToUInt32(opened[0], System.Globalization.CultureInfo.InvariantCulture);
+
+            CallMethodResult closed = await CallMethodRawAsync(file, close, new object[] { handle }).ConfigureAwait(false);
+            Assert.True(StatusCode.IsGood(closed.StatusCode), $"Close returned {closed.StatusCode}.");
+
+            // The handle is released: closing it again finds nothing to close.
+            CallMethodResult again = await CallMethodRawAsync(file, close, new object[] { handle }).ConfigureAwait(false);
+            Assert.Equal(StatusCodes.BadInvalidArgument, again.StatusCode.Code);
+        }
+
+        private async Task<NodeId> ResolveChildAsync(NodeId parent, string browseName)
+        {
+            List<ReferenceDescription> children = await BrowseChildrenAsync(parent).ConfigureAwait(false);
+            ReferenceDescription child = children.FirstOrDefault(
+                r => string.Equals(r.BrowseName.Name, browseName, StringComparison.Ordinal));
+            Assert.NotNull(child);
+            return ExpandedNodeId.ToNodeId(child.NodeId, _session.NamespaceUris);
+        }
+
         private async Task<NodeId> ResolveAssetManagementNodeIdAsync()
         {
             List<ReferenceDescription> children = await BrowseChildrenAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);

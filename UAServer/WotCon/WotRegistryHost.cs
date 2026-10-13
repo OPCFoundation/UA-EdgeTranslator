@@ -129,7 +129,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 server.NodeManagerLifecycle,
                 new ObjectTypeMappingRuntimeFactory(
                     new WotProjectionBindingRuntimeFactory(binderRegistry, targetResolver),
-                    targetResolver));
+                    targetResolver,
+                    thingDescriptions));
 
             var nodeSetResolver = new CloudLibraryNodeSetResolver(new UACloudLibraryClient());
             var coordinator = new WotMaterializationCoordinator(
@@ -403,7 +404,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 try
                 {
                     ByteString content = await Registry.ReadContentAsync(version, cancellationToken).ConfigureAwait(false);
-                    ThingDescriptions.Set(System.Text.Encoding.UTF8.GetString(content.ToArray()));
+                    ThingDescriptions.Set(resource.Xid, System.Text.Encoding.UTF8.GetString(content.ToArray()));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

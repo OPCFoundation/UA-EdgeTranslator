@@ -26,10 +26,17 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly CreatingTargetVariableResolver _resolver;
 
-        public ObjectTypeMappingRuntimeFactory(IWotProjectionBindingRuntimeFactory inner, CreatingTargetVariableResolver resolver)
+        private readonly ThingDescriptionCache _thingDescriptions;
+
+        /// <param name="thingDescriptions">
+        /// Told which registry resource each wired form belongs to, so the executor
+        /// can give drivers that resource's Thing Description.
+        /// </param>
+        public ObjectTypeMappingRuntimeFactory(IWotProjectionBindingRuntimeFactory inner, CreatingTargetVariableResolver resolver, ThingDescriptionCache thingDescriptions = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+            _thingDescriptions = thingDescriptions;
         }
 
         public ValueTask<IAsyncDisposable> CreateAsync(INodeManagerBuilder builder, ArrayOf<WotBindingPlan> bindingPlans, CancellationToken cancellationToken = default)
@@ -39,6 +46,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             {
                 PlaceMappedTargets(builder, bindingPlans[i]);
                 rewritten[i] = Rewrite(bindingPlans[i]);
+                RecordResource(rewritten[i]);
             }
 
             return _inner.CreateAsync(builder, new ArrayOf<WotBindingPlan>(rewritten), cancellationToken);
@@ -140,6 +148,23 @@ namespace Opc.Ua.Edge.Translator.WotCon
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 return NodeId.Null;
+            }
+        }
+
+        /// <summary>
+        /// Records the plan's registry resource against each of its final compiled forms;
+        /// the runtime opens channels with exactly these instances.
+        /// </summary>
+        private void RecordResource(WotBindingPlan plan)
+        {
+            if (_thingDescriptions == null || plan == null || plan.CompiledForms.IsDefaultOrEmpty)
+            {
+                return;
+            }
+
+            foreach (WotCompiledForm form in plan.CompiledForms)
+            {
+                _thingDescriptions.SetResource(form, plan.ResourceXid);
             }
         }
 

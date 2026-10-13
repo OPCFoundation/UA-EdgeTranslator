@@ -63,8 +63,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 throw new InvalidOperationException($"No protocol driver is loaded for '{baseUri}'.");
             }
 
-            ThingDescription td = _thingDescriptions.GetOrCreate(baseUri);
-            SharedConnection shared = Acquire(driver, td);
+            // Look the TD up by the registry resource the form was planned for: several
+            // resources may share one base. The connection itself is still per base.
+            ThingDescription td = _thingDescriptions.GetOrCreate(_thingDescriptions.ResourceOf(form), baseUri);
+            SharedConnection shared = Acquire(driver, td, baseUri);
             try
             {
                 AssetConnection connection = await shared.Connect.ConfigureAwait(false);
@@ -72,11 +74,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 object rawForm = Newtonsoft.Json.Linq.JToken.Parse(form.Addressing.Metadata[DriverWotBinder.FormMetadataKey]);
                 AssetTag tag = driver.CreateTag(td, rawForm, td.Name, connection.UnitId, form.AffordanceName, null, null);
 
-                return new DriverWotBindingChannel(form, connection.Asset, tag, td.Name, _isAssetAccessBlocked, () => ReleaseAsync(td.Base, shared));
+                return new DriverWotBindingChannel(form, connection.Asset, tag, td.Name, _isAssetAccessBlocked, () => ReleaseAsync(baseUri, shared));
             }
             catch
             {
-                await ReleaseAsync(td.Base, shared).ConfigureAwait(false);
+                await ReleaseAsync(baseUri, shared).ConfigureAwait(false);
                 throw;
             }
         }
@@ -86,17 +88,17 @@ namespace Opc.Ua.Edge.Translator.WotCon
         /// A connection whose connect failed is replaced, so a later activation retries
         /// instead of getting the cached failure.
         /// </summary>
-        private SharedConnection Acquire(IProtocolDriver driver, ThingDescription td)
+        private SharedConnection Acquire(IProtocolDriver driver, ThingDescription td, string key)
         {
             lock (_gate)
             {
-                if (!_connections.TryGetValue(td.Base, out SharedConnection shared)
+                if (!_connections.TryGetValue(key, out SharedConnection shared)
                     || shared.Connect.IsFaulted || shared.Connect.IsCanceled)
                 {
                     // Connect without the activation's cancellation token: the connection
                     // is shared, so one caller cancelling must not fail the others.
                     shared = new SharedConnection(driver.CreateAndConnectAssetAsync(td, CancellationToken.None));
-                    _connections[td.Base] = shared;
+                    _connections[key] = shared;
                 }
 
                 shared.References++;
