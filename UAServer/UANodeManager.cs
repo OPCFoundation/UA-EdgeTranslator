@@ -1773,6 +1773,13 @@ namespace Opc.Ua.Edge.Translator
                 _ => DataTypeIds.BaseDataType
             };
 
+            // An array of structures takes the structure's DataType from opcua:type.
+            if (property.Items?.Type == TypeEnum.Object && !string.IsNullOrEmpty(property.OpcUaType)
+                && Find(ExpandedNodeId.ToNodeId(ParseExpandedNodeId(property.OpcUaType), Server.NamespaceUris)) is DataTypeState structureType)
+            {
+                elementType = structureType.NodeId;
+            }
+
             BaseDataVariableState variable = _nodeFactory.CreateVariable(parent, name, elementType, namespaceIndex, !property.ReadOnly);
             variable.ValueRank = ValueRanks.OneDimension;
             if (property.MaxItems is int length && length > 0)
@@ -1815,7 +1822,12 @@ namespace Opc.Ua.Edge.Translator
             string fieldPath = string.Empty;
 
             // create an OPC UA variable optionally with a specified type.
-            if (!string.IsNullOrEmpty(property.Value.OpcUaType))
+            if (property.Value.Type == TypeEnum.Array)
+            {
+                // An array property becomes a one-dimensional array of its element type.
+                AddVariableOnce(variableId, () => CreateArrayVariable(assetFolder, variableName, property.Value, assetNamespaceIndex));
+            }
+            else if (!string.IsNullOrEmpty(property.Value.OpcUaType))
             {
                 string[] opcuaTypeParts = property.Value.OpcUaType.Split(['=', ';']);
                 if ((opcuaTypeParts.Length > 3) && (opcuaTypeParts[0] == "nsu") && (opcuaTypeParts[2] == "i" || opcuaTypeParts[2] == "s"))
@@ -1961,11 +1973,6 @@ namespace Opc.Ua.Edge.Translator
                     // can't parse type info, default to float
                     AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
                 }
-            }
-            else if (property.Value.Type == TypeEnum.Array)
-            {
-                // An array property becomes a one-dimensional array of its element type.
-                AddVariableOnce(variableId, () => CreateArrayVariable(assetFolder, variableName, property.Value, assetNamespaceIndex));
             }
             else
             {
@@ -2770,7 +2777,17 @@ namespace Opc.Ua.Edge.Translator
             }
 
             // check for complex type
-            if (variable.Value.TryGetValue(out ExtensionObject oldEo) && !oldEo.IsNull)
+            if (IsStructureArray(value))
+            {
+                // An array of structures: encode each element with the variable's DataType.
+                if (!TryEncodeStructureArray(variable.DataType, (System.Collections.IEnumerable)value, out ExtensionObject[] elements))
+                {
+                    throw new InvalidOperationException($"An array of structures cannot be encoded as {variable.DataType}.");
+                }
+
+                variable.Value = Variant.From(new ArrayOf<ExtensionObject>(elements));
+            }
+            else if (variable.Value.TryGetValue(out ExtensionObject oldEo) && !oldEo.IsNull)
             {
                 var opcuaType = (DataTypeState)Find(variable.DataType);
 
@@ -2996,6 +3013,39 @@ namespace Opc.Ua.Edge.Translator
         /// <paramref name="dataTypeId"/>. Returns false when the DataType is not a known
         /// structure or a field type is not supported.
         /// </summary>
+        /// <summary>
+        /// Encodes an array of decoded structures (one field dictionary per element) as
+        /// ExtensionObjects of <paramref name="dataTypeId"/>.
+        /// </summary>
+        public bool TryEncodeStructureArray(NodeId dataTypeId, System.Collections.IEnumerable elements, out ExtensionObject[] encoded)
+        {
+            encoded = null;
+            if (elements == null)
+            {
+                return false;
+            }
+
+            var result = new List<ExtensionObject>();
+            foreach (object element in elements)
+            {
+                if (element is not IDictionary<string, object> fields || !TryEncodeStructure(dataTypeId, fields, out ExtensionObject item))
+                {
+                    return false;
+                }
+
+                result.Add(item);
+            }
+
+            encoded = result.ToArray();
+            return true;
+        }
+
+        /// <summary>True when <paramref name="value"/> is an array of decoded structures.</summary>
+        public static bool IsStructureArray(object value)
+        {
+            return value is IDictionary<string, object>[];
+        }
+
         public bool TryEncodeStructure(NodeId dataTypeId, IDictionary<string, object> fieldValues, out ExtensionObject encoded)
         {
             encoded = ExtensionObject.Null;

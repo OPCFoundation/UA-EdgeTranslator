@@ -77,7 +77,7 @@ namespace Opc.Ua.Edge.Translator.Tests
                 {
                     // Structured tags are named only; the driver reads their live layout.
                     Assert.Null(form.StructureDefinition);
-                    Assert.Equal("object", (string)property.Value["type"]);
+                    Assert.Equal(form.IsArray ? "array" : "object", (string)property.Value["type"]);
                 }
             }
         }
@@ -120,7 +120,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.Equal("./Program:Mixer.AlarmRC", form.Href);
 
             // Arrays the extension does not describe are still skipped, with the reason.
-            Assert.Contains(result.Skipped, s => s.StartsWith("LineData: array of MachineUDT", StringComparison.Ordinal));
+            Assert.Equal(TypeEnum.Array, result.ThingModel.Properties["LineData"].Type);
+            Assert.Equal(TypeEnum.Object, result.ThingModel.Properties["LineData"].Items.Type);
         }
 
         [Theory]

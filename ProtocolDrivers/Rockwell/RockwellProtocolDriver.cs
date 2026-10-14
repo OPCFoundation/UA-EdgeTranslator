@@ -173,7 +173,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         Href = EipTagReference.ToHref(propertyName),
                         Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
-                        StructureDefinition = structDef
+                        StructureDefinition = structDef,
+                        Dimensions = ArrayDimensions(tag)
                     };
 
                     Property property = new()
@@ -184,6 +185,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         OpcUaType = $"nsu={assetNamespaceUri};s={structDef.TypeName}Type",
                         Forms = [form]
                     };
+
+                    // Proposed array extension: an array of this structure.
+                    if (form.IsArray)
+                    {
+                        property.Items = new ArrayItems { Type = TypeEnum.Object };
+                        property.Type = TypeEnum.Array;
+                        property.MinItems = form.EffectiveElementCount;
+                        property.MaxItems = form.EffectiveElementCount;
+                    }
 
                     if (!td.Properties.ContainsKey(propertyName))
                     {
@@ -279,6 +289,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             EIPStructureDefinition structDef = new()
             {
                 TypeName = udt.Name,
+                Size = udt.Size > 0 ? (int?)udt.Size : null,
                 Fields = new EIPFieldDefinition[udt.NumFields]
             };
 
@@ -956,8 +967,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// template. Returns null when the tag is not a structure or cannot be found, in
         /// which case reads return the raw bytes.
         /// </summary>
-        private EIPStructureDefinition ResolveLiveDefinition(RockwellAsset asset, string tagPath)
+        private EIPStructureDefinition ResolveLiveDefinition(RockwellAsset asset, string tagPath, out int[] dimensions)
         {
+            dimensions = null;
             try
             {
                 // Program:Mixer.Recipe.Step -> list "Program:Mixer.@tags", tag "Recipe".
@@ -992,6 +1004,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     if (string.Equals(info.Name, name, StringComparison.OrdinalIgnoreCase) && TagIsUdt(info))
                     {
+                        dimensions = ArrayDimensions(info);
                         return ResolveUdtDefinition(asset.GetRemoteEndpoint(), asset.RoutePath, GetUdtId(info));
                     }
                 }
@@ -1052,7 +1065,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // binding has a Consumer that can browse the controller prefer the live layout.
             if (eipForm.Type == null && eipForm.StructureDefinition == null && asset != null)
             {
-                eipForm.StructureDefinition = ResolveLiveDefinition(asset, EipTagReference.Parse(eipForm.Href).TagPath);
+                eipForm.StructureDefinition = ResolveLiveDefinition(asset, EipTagReference.Parse(eipForm.Href).TagPath, out int[] liveDimensions);
+
+                // An array of the structure keeps the dimensions the TD states, or the live ones.
+                if (eipForm.StructureDefinition != null && eipForm.Dimensions == null)
+                {
+                    eipForm.Dimensions = liveDimensions;
+                }
             }
 
             // The asset encodes and decodes the value from the form: its type, conversion,

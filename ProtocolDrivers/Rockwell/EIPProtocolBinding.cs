@@ -103,8 +103,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         /// <summary>
         /// Checks the array terms against the proposed rules: one to three positive
-        /// dimensions, a primitive non-BOOL, non-STRING element type, no structure
-        /// definition, and an element count within the declared size. Returns null when
+        /// dimensions, an element that is a non-BOOL, non-STRING primitive or a structure
+        /// (embedded or read from the controller), and an element count within the
+        /// declared size. Returns null when
         /// the form is valid, otherwise the reason.
         /// </summary>
         public string ValidateArray()
@@ -127,9 +128,9 @@ namespace Opc.Ua.Edge.Translator.Models
                 }
             }
 
-            if (StructureDefinition != null || Type == null)
+            if (StructureDefinition != null && Type != null)
             {
-                return "An array form needs a primitive eipv:type; arrays of structures are not supported.";
+                return "An array form has an element eipv:type or an eipv:structureDefinition, not both.";
             }
 
             if (Type == EIPTypeString.BOOL)
@@ -236,6 +237,13 @@ namespace Opc.Ua.Edge.Translator.Models
 
         [JsonProperty("eipv:fields")]
         public EIPFieldDefinition[] Fields { get; set; }
+
+        /// <summary>
+        /// Proposed extension: the padded size of one instance in bytes, as the Logix
+        /// template reports it; the element stride of an array of this structure.
+        /// </summary>
+        [JsonProperty("eipv:size", NullValueHandling = NullValueHandling.Ignore)]
+        public int? Size { get; set; }
 
         [JsonProperty("typeName")]
         private string LegacyTypeName { set => TypeName ??= value; }

@@ -90,7 +90,8 @@ namespace Opc.Ua.Edge.Translator.Tools
             }
 
             // Proposed array extension: TYPE[d1,d2,d3] becomes eipv:dimensions on a form of
-            // the element type. Arrays of structures, BOOL and STRING are not described.
+            // the element type, or of the structure the driver reads from the controller.
+            // Arrays of BOOL and STRING are not described.
             int[] dimensions = null;
             int bracket = datatype.IndexOf('[');
             if (bracket >= 0)
@@ -103,10 +104,10 @@ namespace Opc.Ua.Edge.Translator.Tools
                     return;
                 }
 
-                if (!EIPTypes.TryParse(datatype, out EIPTypeString elementType)
-                    || elementType == EIPTypeString.BOOL || elementType == EIPTypeString.STRING)
+                if (EIPTypes.TryParse(datatype, out EIPTypeString elementType)
+                    && (elementType == EIPTypeString.BOOL || elementType == EIPTypeString.STRING))
                 {
-                    result.Skipped.Add(displayName + ": array of " + datatype + " (only arrays of numeric primitives are described)");
+                    result.Skipped.Add(displayName + ": array of " + datatype + " (arrays of BOOL and STRING are not described)");
                     return;
                 }
             }
@@ -152,6 +153,15 @@ namespace Opc.Ua.Edge.Translator.Tools
                 // A UDT, AOI instance or predefined structure (TIMER, COUNTER, ALARM_*):
                 // named only, decoded from the definition the driver reads from the controller.
                 property.Type = TypeEnum.Object;
+
+                if (dimensions != null)
+                {
+                    form.Dimensions = dimensions;
+                    property.Items = new ArrayItems { Type = TypeEnum.Object };
+                    property.Type = TypeEnum.Array;
+                    property.MinItems = form.EffectiveElementCount;
+                    property.MaxItems = form.EffectiveElementCount;
+                }
             }
 
             if (!result.ThingModel.Properties.ContainsKey(displayName))

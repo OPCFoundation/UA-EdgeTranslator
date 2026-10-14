@@ -220,7 +220,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 {
                     if (node is BaseVariableState variable && IsTarget(builder, variable, form))
                     {
-                        variable.DataType = ElementDataType(property.Items?.Type);
+                        NodeId structureType = StructureElementType(builder, form, property);
+                        variable.DataType = structureType.IsNull ? ElementDataType(property.Items?.Type) : structureType;
                         variable.ValueRank = ValueRanks.OneDimension;
                         variable.ArrayDimensions = property.MaxItems is int length && length > 0
                             ? new ArrayOf<uint>(new[] { (uint)length })
@@ -250,6 +251,28 @@ namespace Opc.Ua.Edge.Translator.WotCon
             catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// The structure DataType of an array of structures: the mapping's
+        /// <c>uav:mapToType</c>, or <see cref="NodeId.Null"/> when the elements are not structures or no type is mapped.
+        /// </summary>
+        private static NodeId StructureElementType(INodeManagerBuilder builder, WotCompiledForm form, Models.Property property)
+        {
+            string typeId = form.TargetMapping?.TargetTypeNodeId;
+            if (property.Items?.Type != Models.TypeEnum.Object || string.IsNullOrWhiteSpace(typeId))
+            {
+                return NodeId.Null;
+            }
+
+            try
+            {
+                return ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(typeId, builder.Context.NamespaceUris), builder.Context.NamespaceUris);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+            {
+                return NodeId.Null;
             }
         }
 

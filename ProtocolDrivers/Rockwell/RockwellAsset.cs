@@ -131,6 +131,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Tag plcTag = NewTag(reference.TagPath, form);
             plcTag.Read();
 
+            // An array of structures: one field dictionary per element.
+            if (form != null && form.IsArray && form.StructureDefinition?.Fields != null)
+            {
+                return DecodeStructureArray(ReadBuffer(plcTag), reference.Offset, form.EffectiveElementCount, form.StructureDefinition);
+            }
+
             // A structured tag is decoded field by field into name -> value.
             if (form?.StructureDefinition?.Fields != null)
             {
@@ -235,7 +241,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Tag plcTag = NewTag(reference.TagPath, form);
             plcTag.Read();
 
-            if (form?.StructureDefinition?.Fields != null)
+            if (form != null && form.IsArray && form.StructureDefinition?.Fields != null)
+            {
+                WriteStructureArray(plcTag, reference.Offset, form.EffectiveElementCount, form.StructureDefinition, value);
+            }
+            else if (form?.StructureDefinition?.Fields != null)
             {
                 // The value is the OPC UA binary body of the structure, fields in definition order.
                 ExtensionObject extensionObject = (ExtensionObject)value;
@@ -396,6 +406,84 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 EIPTypeString.LREAL => typeof(double),
                 EIPTypeString.STRING => typeof(string),
                 _ => typeof(object)
+            };
+        }
+
+        /// <summary>
+        /// The byte stride of one structure element: the definition's <c>eipv:size</c>, or
+        /// the bytes after <paramref name="offset"/> shared evenly by the elements.
+        /// </summary>
+        public static int StructureStride(EIPStructureDefinition definition, int bufferLength, int offset, int count)
+        {
+            if (definition.Size is int size && size > 0)
+            {
+                return size;
+            }
+
+            int available = bufferLength - offset;
+            if (count <= 0 || available <= 0 || available % count != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), $"Cannot divide {available} bytes into {count} elements of {definition.TypeName}; eipv:size is needed.");
+            }
+
+            return available / count;
+        }
+
+        /// <summary>Decodes an array of structures: one field dictionary per element.</summary>
+        public static Dictionary<string, object>[] DecodeStructureArray(byte[] buffer, int offset, int count, EIPStructureDefinition definition)
+        {
+            int stride = StructureStride(definition, buffer.Length, offset, count);
+            if (offset + (long)count * stride > buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), $"{count} elements of {definition.TypeName} at offset {offset} exceed the {buffer.Length}-byte tag.");
+            }
+
+            var elements = new Dictionary<string, object>[count];
+            for (int i = 0; i < count; i++)
+            {
+                elements[i] = DecodeUdtFields(buffer, offset + i * stride, definition);
+            }
+
+            return elements;
+        }
+
+        /// <summary>
+        /// Writes an array of structures: <paramref name="values"/> holds one OPC UA
+        /// structure (an ExtensionObject or its binary body) per element, exactly
+        /// <paramref name="count"/> of them; each is written at its stride.
+        /// </summary>
+        private static void WriteStructureArray(Tag plcTag, int offset, int count, EIPStructureDefinition definition, object values)
+        {
+            var elements = new List<object>();
+            if (values is System.Collections.IEnumerable items && values is not string && values is not byte[])
+            {
+                foreach (object item in items)
+                {
+                    elements.Add(item);
+                }
+            }
+
+            if (elements.Count != count)
+            {
+                throw new ArgumentException($"{elements.Count} elements given for an array of {count} {definition.TypeName}.", nameof(values));
+            }
+
+            int stride = StructureStride(definition, plcTag.GetSize(), offset, count);
+            for (int i = 0; i < count; i++)
+            {
+                byte[] body = BodyOf(elements[i]);
+                int bodyOffset = 0;
+                WriteFieldsFromBody(plcTag, body, ref bodyOffset, offset + i * stride, definition);
+            }
+        }
+
+        private static byte[] BodyOf(object element)
+        {
+            return element switch
+            {
+                byte[] bytes => bytes,
+                ExtensionObject extension when extension.TryGetAsBinary(out ByteString body, ServiceMessageContext.CreateEmpty(Program.Telemetry)) && !body.IsNull => body.ToArray(),
+                _ => throw new ArgumentException("An array of structures needs one encoded structure per element.")
             };
         }
 

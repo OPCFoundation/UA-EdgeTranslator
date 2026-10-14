@@ -50,7 +50,7 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.NotNull(new EIPForm { Type = EIPTypeString.DINT, Dimensions = [0] }.ValidateArray());
             Assert.NotNull(new EIPForm { Type = EIPTypeString.BOOL, Dimensions = [32] }.ValidateArray());
             Assert.NotNull(new EIPForm { Type = EIPTypeString.STRING, Dimensions = [4] }.ValidateArray());
-            Assert.NotNull(new EIPForm { Dimensions = [4], StructureDefinition = new EIPStructureDefinition { TypeName = "UDT" } }.ValidateArray());
+            Assert.NotNull(new EIPForm { Type = EIPTypeString.DINT, Dimensions = [4], StructureDefinition = new EIPStructureDefinition { TypeName = "UDT" } }.ValidateArray());
             Assert.NotNull(new EIPForm { Type = EIPTypeString.DINT, Dimensions = [10], ElementCount = 11 }.ValidateArray());
             Assert.NotNull(new EIPForm { Type = EIPTypeString.DINT, ElementCount = 2 }.ValidateArray());
             Assert.Null(new EIPForm { Type = EIPTypeString.DINT }.ValidateArray());
@@ -123,6 +123,42 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.Null(scalar["items"]);
             Assert.Null(scalar["minItems"]);
             Assert.Null(scalar["maxItems"]);
+        }
+
+        private static EIPStructureDefinition Point(int? size) => new()
+        {
+            TypeName = "Point",
+            Size = size,
+            Fields =
+            [
+                new EIPFieldDefinition { Name = "X", Type = EIPTypeString.DINT, ByteOffset = 0 },
+                new EIPFieldDefinition { Name = "Ok", Type = EIPTypeString.BOOL, ByteOffset = 4, BitOffset = 0 }
+            ]
+        };
+
+        [Fact]
+        public void Structure_elements_are_decoded_at_the_padded_stride()
+        {
+            byte[] buffer = new byte[2 + 24];
+            for (int i = 0; i < 3; i++)
+            {
+                BitConverter.GetBytes(100 + i).CopyTo(buffer, 2 + i * 8);
+                buffer[2 + i * 8 + 4] = (byte)(i % 2);
+            }
+
+            var elements = RockwellAsset.DecodeStructureArray(buffer, 2, 3, Point(8));
+            Assert.Equal(new object[] { 100, 101, 102 }, Array.ConvertAll(elements, e => e["X"]));
+            Assert.Equal(new object[] { false, true, false }, Array.ConvertAll(elements, e => e["Ok"]));
+            Assert.Null(new EIPForm { Dimensions = [3], StructureDefinition = Point(8) }.ValidateArray());
+            Assert.Equal(8, (int)JObject.FromObject(Point(8))["eipv:size"]);
+        }
+
+        [Fact]
+        public void Without_a_size_the_stride_is_inferred_from_the_tag()
+        {
+            Assert.Equal(8, RockwellAsset.StructureStride(Point(null), 24, 0, 3));
+            Assert.Throws<ArgumentOutOfRangeException>(() => RockwellAsset.StructureStride(Point(null), 25, 0, 3));
+            Assert.Throws<ArgumentOutOfRangeException>(() => RockwellAsset.DecodeStructureArray(new byte[16], 0, 3, Point(8)));
         }
     }
 }

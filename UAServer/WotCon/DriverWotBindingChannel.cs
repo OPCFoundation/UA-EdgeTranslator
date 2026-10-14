@@ -64,6 +64,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 // A structure tag (such as a Rockwell UDT) comes back as its decoded fields.
                 // A Variant cannot hold a dictionary, so it is encoded as the structure
                 // the property is mapped to; without that the read fails silently.
+                if (UANodeManager.IsStructureArray(value))
+                {
+                    return ReadStructureArray((System.Collections.IEnumerable)value);
+                }
+
                 if (value is IDictionary<string, object> fields)
                 {
                     return ReadStructure(fields);
@@ -219,6 +224,23 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // the executor disconnects it once no channel uses it.
             Func<ValueTask> release = Interlocked.Exchange(ref _release, null);
             return release?.Invoke() ?? default;
+        }
+
+        private WotReadResult ReadStructureArray(System.Collections.IEnumerable elements)
+        {
+            string typeId = Form?.TargetMapping?.TargetTypeNodeId;
+            UANodeManager nodeManager = UANodeManager.Instance;
+            if (!string.IsNullOrEmpty(typeId) && nodeManager != null)
+            {
+                NodeId dataTypeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(typeId), nodeManager.Server.NamespaceUris);
+                if (nodeManager.TryEncodeStructureArray(dataTypeId, elements, out ExtensionObject[] encoded))
+                {
+                    return new WotReadResult(StatusCodes.Good, new DataValue(Variant.From(new ArrayOf<ExtensionObject>(encoded)), StatusCodes.Good, DateTime.UtcNow));
+                }
+            }
+
+            Log.Logger.Warning("Structure array value of tag {TagName} on asset {AssetId} cannot be encoded as type {Type}.", _tag?.Name, _assetName, typeId);
+            return new WotReadResult(StatusCodes.BadTypeMismatch, DataValue.FromStatusCode(StatusCodes.BadTypeMismatch));
         }
 
         private WotReadResult ReadStructure(IDictionary<string, object> fields)
