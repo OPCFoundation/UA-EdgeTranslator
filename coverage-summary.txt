@@ -1,18 +1,18 @@
 Summary
-  Generated on: 10/13/2026 - 21:43:32
-  Coverage date: 10/13/2026 - 21:43:30
+  Generated on: 10/14/2026 - 07:23:34
+  Coverage date: 10/14/2026 - 07:23:31
   Parser: Cobertura
   Assemblies: 1
   Classes: 60
   Files: 54
   Line coverage: 83.4%
-  Covered lines: 4315
-  Uncovered lines: 856
-  Coverable lines: 5171
-  Total lines: 13925
-  Branch coverage: 73.8% (2197 of 2976)
-  Covered branches: 2197
-  Total branches: 2976
+  Covered lines: 4322
+  Uncovered lines: 857
+  Coverable lines: 5179
+  Total lines: 13945
+  Branch coverage: 73.8% (2205 of 2984)
+  Covered branches: 2205
+  Total branches: 2984
   Method coverage: 92.1% (457 of 496)
   Full method coverage: 60.4% (300 of 496)
   Covered methods: 457
@@ -33,7 +33,7 @@ UAEdgeTranslator                                                  83.4%
   Opc.Ua.Edge.Translator.Components.Pages.Certificates            82.2%
   Opc.Ua.Edge.Translator.Components.Pages.Devices                 60.8%
   Opc.Ua.Edge.Translator.Components.Pages.Drivers                  100%
-  Opc.Ua.Edge.Translator.Components.Pages.Explorer                86.8%
+  Opc.Ua.Edge.Translator.Components.Pages.Explorer                86.9%
   Opc.Ua.Edge.Translator.Components.Pages.OpcUaSettings           92.8%
   Opc.Ua.Edge.Translator.Components.Pages.Overview                83.3%
   Opc.Ua.Edge.Translator.Components.Pages.WotFiles                  83%
@@ -42,7 +42,7 @@ UAEdgeTranslator                                                  83.4%
   Opc.Ua.Edge.Translator.Components.Shared.PageHeader              100%
   Opc.Ua.Edge.Translator.Components.Shared.StatusPill              100%
   Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceNode                0%
-  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService            86%
+  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          86.2%
   Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService           81.6%
   Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsWebHost            100%
   Opc.Ua.Edge.Translator.Diagnostics.TelemetryCounters             100%
@@ -78,5 +78,5 @@ UAEdgeTranslator                                                  83.4%
   Opc.Ua.Edge.Translator.WotCon.ThingDescriptionCache               96%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               93.8%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   90.8%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   90.4%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
