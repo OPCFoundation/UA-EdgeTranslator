@@ -1,25 +1,25 @@
 Summary
-  Generated on: 10/14/2026 - 12:05:35
-  Coverage date: 10/14/2026 - 12:05:33
+  Generated on: 10/14/2026 - 19:29:38
+  Coverage date: 10/14/2026 - 19:29:35
   Parser: Cobertura
   Assemblies: 1
-  Classes: 60
-  Files: 54
-  Line coverage: 82.6%
-  Covered lines: 4387
-  Uncovered lines: 921
-  Coverable lines: 5308
-  Total lines: 14265
-  Branch coverage: 72.4% (2265 of 3128)
-  Covered branches: 2265
-  Total branches: 3128
-  Method coverage: 91.5% (466 of 509)
-  Full method coverage: 59.7% (304 of 509)
-  Covered methods: 466
-  Fully covered methods: 304
-  Total methods: 509
+  Classes: 61
+  Files: 55
+  Line coverage: 82.5%
+  Covered lines: 4441
+  Uncovered lines: 942
+  Coverable lines: 5383
+  Total lines: 14454
+  Branch coverage: 72.4% (2298 of 3172)
+  Covered branches: 2298
+  Total branches: 3172
+  Method coverage: 91.6% (474 of 517)
+  Full method coverage: 59.9% (310 of 517)
+  Covered methods: 474
+  Fully covered methods: 310
+  Total methods: 517
 
-UAEdgeTranslator                                                  82.6%
+UAEdgeTranslator                                                  82.5%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -71,12 +71,13 @@ UAEdgeTranslator                                                  82.6%
   Opc.Ua.Edge.Translator.WotCon.DeferredWotRegistryService        43.3%
   Opc.Ua.Edge.Translator.WotCon.DriverEventSubscription           90.2%
   Opc.Ua.Edge.Translator.WotCon.DriverWotBinder                   81.9%
-  Opc.Ua.Edge.Translator.WotCon.DriverWotBindingChannel           54.7%
-  Opc.Ua.Edge.Translator.WotCon.DriverWotBindingExecutor          89.1%
+  Opc.Ua.Edge.Translator.WotCon.DriverWotBindingChannel           53.3%
+  Opc.Ua.Edge.Translator.WotCon.DriverWotBindingExecutor          89.3%
   Opc.Ua.Edge.Translator.WotCon.ObjectTypeMappingRuntimeFactory   82.3%
   Opc.Ua.Edge.Translator.WotCon.ProvisioningGate                   100%
   Opc.Ua.Edge.Translator.WotCon.ThingDescriptionCache               96%
+  Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               94.4%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   90.8%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   90.4%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
