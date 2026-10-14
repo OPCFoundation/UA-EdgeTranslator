@@ -189,6 +189,76 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.Equal(12.5, Convert.ToDouble(value.WrappedValue.AsBoxedObject(), System.Globalization.CultureInfo.InvariantCulture));
         }
 
+        [Fact]
+        public async Task An_array_property_round_trips_through_the_registry()
+        {
+            // A property with an array data schema (as the EtherNet/IP array extension
+            // writes) must carry a whole array between the client and the driver.
+            await using OpcUaServerFixture fixture = new();
+            StandardServer server = (StandardServer)fixture.App.Server;
+
+            string importFolder = Path.Combine(fixture.WorkingDirectory, "array-import-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(importFolder);
+            await File.WriteAllTextAsync(Path.Combine(importFolder, "arr-1.jsonld"), """
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1"],
+                  "@type": ["Thing"],
+                  "id": "urn:arr-1",
+                  "title": "arr-1",
+                  "base": "mock://device-1:1502/1",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": ["nosec_sc"],
+                  "properties": {
+                    "levels": {
+                      "type": "array",
+                      "items": { "type": "number" },
+                      "minItems": 3,
+                      "maxItems": 3,
+                      "forms": [ { "href": "/levels", "op": ["readproperty", "writeproperty"] } ]
+                    }
+                  }
+                }
+                """);
+
+            string storage = Path.Combine(fixture.WorkingDirectory, "wot-registry-" + Guid.NewGuid().ToString("N"));
+            await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
+            await host.ImportSettingsFilesAsync(importFolder, default);
+
+            AddressSpaceService service = new();
+            AddressSpaceNode thing = null;
+            for (int attempt = 0; attempt < 100 && thing == null; attempt++)
+            {
+                thing = (await service.BrowseChildrenAsync(global::Opc.Ua.ObjectIds.ObjectsFolder.ToString()))
+                    .FirstOrDefault(c => c.Text == "arr-1 [xRegistry]");
+                if (thing == null)
+                {
+                    await Task.Delay(50);
+                }
+            }
+
+            AddressSpaceNode importedThing = Assert.IsType<AddressSpaceNode>(thing);
+            NodeId levels = NodeId.Parse(Assert.Single(await service.BrowseChildrenAsync(importedThing.Id), c => c.Text == "levels").Id);
+
+            OperationContext context = new(new RequestHeader(), null, RequestType.Write, RequestLifetime.None);
+            var write = await server.CurrentInstance.NodeManager.WriteAsync(
+                context,
+                new[] { new WriteValue { NodeId = levels, AttributeId = Attributes.Value, Value = new DataValue(new Variant(new[] { 1.5, 2.5, 3.5 })) } },
+                default);
+            Assert.True(StatusCode.IsGood(write.Item1[0]), write.Item1[0].ToString());
+
+            var read = await server.CurrentInstance.NodeManager.ReadAsync(
+                new OperationContext(new RequestHeader(), null, RequestType.Read, RequestLifetime.None),
+                0,
+                TimestampsToReturn.Both,
+                new[] { new ReadValueId { NodeId = levels, AttributeId = Attributes.Value }, new ReadValueId { NodeId = levels, AttributeId = Attributes.ValueRank } },
+                default);
+            DataValue value = read.Item1[0];
+            Assert.True(StatusCode.IsGood(value.StatusCode), value.StatusCode.ToString());
+            double[] values = Assert.IsType<double[]>(VariantConversion.ToClrValue(value.WrappedValue));
+            Assert.Equal(new[] { 1.5, 2.5, 3.5 }, values);
+            Assert.Equal(ValueRanks.OneDimension, Convert.ToInt32(read.Item1[1].WrappedValue.AsBoxedObject(), System.Globalization.CultureInfo.InvariantCulture));
+        }
+
         private static WotResource Find(WotRegistryHost host) =>
             host.Registry.Current
                 .ResourcesOfKind(WoTDocumentKindEnum.ThingDescription)

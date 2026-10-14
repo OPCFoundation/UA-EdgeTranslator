@@ -47,6 +47,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             for (int i = 0; i < bindingPlans.Count; i++)
             {
                 PlaceMappedTargets(builder, bindingPlans[i]);
+                ShapeArrayProperties(builder, bindingPlans[i]);
                 rewritten[i] = Rewrite(bindingPlans[i]);
                 RecordResource(rewritten[i]);
             }
@@ -182,6 +183,86 @@ namespace Opc.Ua.Edge.Translator.WotCon
             }
 
             thing.DisplayName = new LocalizedText(thing.DisplayName.Locale, text + RegistryThingSuffix);
+        }
+
+        /// <summary>
+        /// The registry projects every property as a scalar Variable. A property whose
+        /// data schema is an <c>array</c> holds a whole array, so its Variable is made
+        /// one-dimensional (of the <c>items</c> type, sized by <c>maxItems</c>) before the
+        /// runtime wires it; otherwise writes of the array are rejected as type mismatches.
+        /// </summary>
+        private void ShapeArrayProperties(INodeManagerBuilder builder, WotBindingPlan plan)
+        {
+            if (plan == null || plan.IsDeclarationContext || plan.CompiledForms.IsDefaultOrEmpty
+                || builder.NodeManager is not AsyncCustomNodeManager manager)
+            {
+                return;
+            }
+
+            Models.ThingDescription td = _thingDescriptions?.GetOrCreate(plan.ResourceXid, string.Empty);
+            if (td?.Properties == null)
+            {
+                return;
+            }
+
+            var shaped = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+            foreach (WotCompiledForm form in plan.CompiledForms)
+            {
+                if (form?.AffordanceKind != WotAffordanceKind.Property
+                    || !td.Properties.TryGetValue(form.AffordanceName, out Models.Property property)
+                    || property.Type != Models.TypeEnum.Array
+                    || !shaped.Add(form.AffordanceName))
+                {
+                    continue;
+                }
+
+                foreach (NodeState node in PredefinedNodes(manager))
+                {
+                    if (node is BaseVariableState variable && IsTarget(builder, variable, form))
+                    {
+                        variable.DataType = ElementDataType(property.Items?.Type);
+                        variable.ValueRank = ValueRanks.OneDimension;
+                        variable.ArrayDimensions = property.MaxItems is int length && length > 0
+                            ? new ArrayOf<uint>(new[] { (uint)length })
+                            : default;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// True when <paramref name="variable"/> is the one <paramref name="form"/> feeds:
+        /// its authored <c>uav:mapToNodeId</c> target, which the import maps every
+        /// property to.
+        /// </summary>
+        private static bool IsTarget(INodeManagerBuilder builder, BaseVariableState variable, WotCompiledForm form)
+        {
+            string target = form.TargetMapping?.TargetNodeId;
+            if (string.IsNullOrWhiteSpace(target))
+            {
+                return false;
+            }
+
+            try
+            {
+                return variable.NodeId == ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(target, builder.Context.NamespaceUris), builder.Context.NamespaceUris);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+            {
+                return false;
+            }
+        }
+
+        private static NodeId ElementDataType(Models.TypeEnum? itemType)
+        {
+            return itemType switch
+            {
+                Models.TypeEnum.Boolean => DataTypeIds.Boolean,
+                Models.TypeEnum.Integer => DataTypeIds.Integer,
+                Models.TypeEnum.Number => DataTypeIds.Number,
+                Models.TypeEnum.String => DataTypeIds.String,
+                _ => DataTypeIds.BaseDataType
+            };
         }
 
         private static System.Collections.Generic.IEnumerable<NodeState> PredefinedNodes(AsyncCustomNodeManager manager)

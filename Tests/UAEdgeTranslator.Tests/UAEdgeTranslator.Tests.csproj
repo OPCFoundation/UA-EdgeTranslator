@@ -74,4 +74,13 @@
     <PackageReference Include="AngleSharp" />
   </ItemGroup>
 
+  <!-- The Rockwell CSV importer of UA-WoTGenerator is linked in so its output can be checked
+       against the EtherNet/IP binding; the tool itself is an exe and is not referenced. -->
+  <ItemGroup>
+    <Compile Include="..\..\UA-WoTGenerator\RockwellCsvImporter.cs" Link="WoTGenerator\RockwellCsvImporter.cs" />
+    <None Include="..\..\UA-WoTGenerator\Rockwell_Sample_Tags.csv" Link="TestData\Rockwell_Sample_Tags.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

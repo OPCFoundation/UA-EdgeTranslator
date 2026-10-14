@@ -1758,6 +1758,31 @@ namespace Opc.Ua.Edge.Translator
         /// one of its forms is processed. A property with several forms (one per
         /// operation) maps onto a single OPC UA variable, so later forms reuse it.
         /// </summary>
+        /// <summary>
+        /// A variable for an <c>array</c> property: a one-dimensional array of the element
+        /// type its <c>items</c> schema names, sized by <c>maxItems</c> when it is given.
+        /// </summary>
+        private BaseDataVariableState CreateArrayVariable(NodeState parent, string name, Property property, ushort namespaceIndex)
+        {
+            NodeId elementType = property.Items?.Type switch
+            {
+                TypeEnum.Boolean => DataTypeIds.Boolean,
+                TypeEnum.Integer => DataTypeIds.Integer,
+                TypeEnum.String => DataTypeIds.String,
+                TypeEnum.Number => DataTypeIds.Number,
+                _ => DataTypeIds.BaseDataType
+            };
+
+            BaseDataVariableState variable = _nodeFactory.CreateVariable(parent, name, elementType, namespaceIndex, !property.ReadOnly);
+            variable.ValueRank = ValueRanks.OneDimension;
+            if (property.MaxItems is int length && length > 0)
+            {
+                variable.ArrayDimensions = new ArrayOf<uint>(new[] { (uint)length });
+            }
+
+            return variable;
+        }
+
         private void AddVariableOnce(string variableId, Func<BaseDataVariableState> create)
         {
             if (_uaVariables.ContainsKey(variableId))
@@ -1936,6 +1961,11 @@ namespace Opc.Ua.Edge.Translator
                     // can't parse type info, default to float
                     AddVariableOnce(variableId, () => _nodeFactory.CreateVariable(assetFolder, variableName, DataTypes.Float, assetNamespaceIndex, !property.Value.ReadOnly));
                 }
+            }
+            else if (property.Value.Type == TypeEnum.Array)
+            {
+                // An array property becomes a one-dimensional array of its element type.
+                AddVariableOnce(variableId, () => CreateArrayVariable(assetFolder, variableName, property.Value, assetNamespaceIndex));
             }
             else
             {

@@ -18,7 +18,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     {
         public string Scheme => "eip";
 
-        public string WoTBindingUri => "https://www.w3.org/2019/wot/eip";
+        public string WoTBindingUri => EIPForm.BindingNamespace;
 
         // Cache of UDT definitions resolved during BrowseAndGenerateTD, keyed by UDT type ID.
         // Avoids re-reading the same UDT definition from the PLC when multiple tags share a type.
@@ -120,13 +120,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Actions = new Dictionary<string, TDAction>()
             };
 
-            var address = td.Base.Split([':', '/']);
-            if (address.Length != 4 || address[0] != "eip")
+            if (!EipEndpoint.TryParse(td.Base, out EipEndpoint endpoint))
             {
-                throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress!");
+                throw new Exception("Expected Rockwell PLC address in the format eip://host[:port][/route-path]/!");
             }
 
-            string gateway = address[3];
+            // The binding wants the route path in base, which must end in / so relative
+            // tag hrefs resolve below it, and the binding vocabulary in the context.
+            td.Base = endpoint.ToBaseUri();
+            td.Context = ["https://www.w3.org/2022/wot/td/v1.1", new Dictionary<string, string> { [EIPForm.Prefix] = EIPForm.BindingNamespace }];
+
+            string gateway = endpoint.Gateway;
+            string routePath = endpoint.RoutePath;
 
             // Clear the UDT cache for each new browse
             _udtDefinitionCache.Clear();
@@ -134,7 +139,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             Tag tags = new()
             {
                 Gateway = gateway,
-                Path = "1,0",
+                Path = routePath,
                 PlcType = PlcType.ControlLogix,
                 Protocol = Protocol.ab_eip,
                 Name = "@tags",
@@ -156,7 +161,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     var udtTypeId = GetUdtId(tag);
 
                     // Recursively build the structure definition, resolving nested UDTs
-                    EIPStructureDefinition structDef = ResolveUdtDefinition(gateway, udtTypeId);
+                    EIPStructureDefinition structDef = ResolveUdtDefinition(gateway, routePath, udtTypeId);
 
                     Log.Logger.Information($"EIP Tag: Id={tag.Name} UDT={structDef.TypeName}");
 
@@ -165,7 +170,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
                     EIPForm form = new()
                     {
-                        Href = propertyName,
+                        Href = EipTagReference.ToHref(propertyName),
                         Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
                         StructureDefinition = structDef
@@ -187,25 +192,56 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else
                 {
-                    Log.Logger.Information($"EIP Tag: Id={tag.Name} Type=" + ParseDataType(tag.Type));
+                    EIPTypeString primitiveType;
+                    try
+                    {
+                        // The low byte is the atomic type; the high bits carry array dimensions.
+                        primitiveType = ParseDataType((ushort)(tag.Type & 0xFF));
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        // The binding forbids decoding an unsupported type as another one.
+                        Log.Logger.Warning($"EIP Tag: Id={tag.Name} skipped: {ex.Message}");
+                        continue;
+                    }
+
+                    // Proposed array extension: the type word carries the number of array
+                    // dimensions in bits 13-14 and the tag list their sizes.
+                    int[] dimensions = ArrayDimensions(tag);
+                    if (dimensions != null && (primitiveType == EIPTypeString.BOOL || primitiveType == EIPTypeString.STRING))
+                    {
+                        Log.Logger.Warning($"EIP Tag: Id={tag.Name} skipped: arrays of {primitiveType} are not supported.");
+                        continue;
+                    }
+
+                    Log.Logger.Information($"EIP Tag: Id={tag.Name} Type=" + primitiveType + (dimensions != null ? "[" + string.Join(",", dimensions) + "]" : string.Empty));
 
                     string properyName = tag.Name;
 
                     EIPForm form = new()
                     {
-                        Href = properyName + "?0",
+                        Href = EipTagReference.ToHref(properyName),
                         Op = [Op.Readproperty, Op.Observeproperty, Op.Writeproperty],
                         PollingTime = 1000,
-                        Type = ParseDataType(tag.Type)
+                        Type = primitiveType,
+                        Dimensions = dimensions
                     };
 
                     Property property = new()
                     {
-                        Type = TypeEnum.Number,
+                        Type = WotTypeOf(form.Type.Value),
                         ReadOnly = false,
                         Observable = true,
                         Forms = [form]
                     };
+
+                    if (form.IsArray)
+                    {
+                        property.Items = new ArrayItems { Type = property.Type };
+                        property.Type = TypeEnum.Array;
+                        property.MinItems = form.EffectiveElementCount;
+                        property.MaxItems = form.EffectiveElementCount;
+                    }
 
                     if (!td.Properties.ContainsKey(properyName))
                     {
@@ -222,7 +258,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// resolving any nested UDT fields. Results are cached by type ID so each
         /// UDT is only read from the PLC once.
         /// </summary>
-        private EIPStructureDefinition ResolveUdtDefinition(string gateway, int udtTypeId)
+        private EIPStructureDefinition ResolveUdtDefinition(string gateway, string routePath, int udtTypeId)
         {
             if (_udtDefinitionCache.TryGetValue(udtTypeId, out EIPStructureDefinition cached))
             {
@@ -231,7 +267,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             Tag udtTag = new() {
                 Gateway = gateway,
-                Path = "1,0",
+                Path = routePath,
                 PlcType = PlcType.ControlLogix,
                 Protocol = Protocol.ab_eip,
                 Name = $"@udt/{udtTypeId}",
@@ -254,12 +290,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     // Nested UDT: recursively resolve its definition
                     int nestedUdtTypeId = GetFieldUdtId(field);
-                    EIPStructureDefinition nestedDef = ResolveUdtDefinition(gateway, nestedUdtTypeId);
+                    EIPStructureDefinition nestedDef = ResolveUdtDefinition(gateway, routePath, nestedUdtTypeId);
 
                     structDef.Fields[i] = new EIPFieldDefinition {
                         Name = field.Name,
-                        Type = null, // no primitive type — use nested structure
-                        Offset = (int)field.Offset,
+                        ByteOffset = (int)field.Offset,
                         StructureDefinition = nestedDef
                     };
 
@@ -270,8 +305,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 {
                     structDef.Fields[i] = new EIPFieldDefinition {
                         Name = field.Name,
-                        Type = "xsd:" + ParseDataType(field.Type).ToString().Replace("xsd:", ""),
-                        Offset = (int)field.Offset
+                        Type = ParseDataType(field.Type),
+                        ByteOffset = (int)field.Offset,
+                        BitOffset = IsBool(field.Type) ? BitOf(field) : null
                     };
                 }
             }
@@ -570,25 +606,67 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             RebuildBinarySchemaXml(dictionary, namespaceUri, namespaceIndex, nodeManager);
         }
 
-        private static NodeId MapEIPTypeToOpcUaDataType(string eipType)
+        private static NodeId MapEIPTypeToOpcUaDataType(EIPTypeString? eipType)
         {
             return eipType switch
             {
-                "xsd:BOOL"   => DataTypeIds.Boolean,
-                "xsd:SINT"   => DataTypeIds.SByte,
-                "xsd:INT"    => DataTypeIds.Int16,
-                "xsd:DINT"   => DataTypeIds.Int32,
-                "xsd:LINT"   => DataTypeIds.Int64,
-                "xsd:USINT"  => DataTypeIds.Byte,
-                "xsd:UINT"   => DataTypeIds.UInt16,
-                "xsd:UDINT"  => DataTypeIds.UInt32,
-                "xsd:ULINT"  => DataTypeIds.UInt64,
-                "xsd:REAL"   => DataTypeIds.Float,
-                "xsd:LREAL"  => DataTypeIds.Double,
-                "xsd:STRING" => DataTypeIds.String,
-                _            => DataTypeIds.Float
+                EIPTypeString.BOOL => DataTypeIds.Boolean,
+                EIPTypeString.SINT => DataTypeIds.SByte,
+                EIPTypeString.INT => DataTypeIds.Int16,
+                EIPTypeString.DINT => DataTypeIds.Int32,
+                EIPTypeString.LINT => DataTypeIds.Int64,
+                EIPTypeString.USINT or EIPTypeString.BYTE => DataTypeIds.Byte,
+                EIPTypeString.UINT or EIPTypeString.WORD => DataTypeIds.UInt16,
+                EIPTypeString.UDINT or EIPTypeString.DWORD => DataTypeIds.UInt32,
+                EIPTypeString.ULINT or EIPTypeString.LWORD => DataTypeIds.UInt64,
+                EIPTypeString.REAL => DataTypeIds.Float,
+                EIPTypeString.LREAL => DataTypeIds.Double,
+                EIPTypeString.STRING => DataTypeIds.String,
+                _ => DataTypeIds.BaseDataType
             };
         }
+
+        /// <summary>The WoT data schema type the binding recommends for a Logix type.</summary>
+        internal static TypeEnum WotTypeOf(EIPTypeString type)
+        {
+            return type switch
+            {
+                EIPTypeString.BOOL => TypeEnum.Boolean,
+                EIPTypeString.REAL or EIPTypeString.LREAL => TypeEnum.Number,
+                EIPTypeString.STRING => TypeEnum.String,
+                _ => TypeEnum.Integer
+            };
+        }
+
+        /// <summary>
+        /// The declared dimensions of an array tag (outermost first), or null for a scalar.
+        /// Logix keeps the number of dimensions in bits 13-14 of the symbol type.
+        /// </summary>
+        private static int[] ArrayDimensions(TagInfo tag)
+        {
+            int count = (tag.Type >> 13) & 0x03;
+            if (count == 0 || tag.Dimensions == null)
+            {
+                return null;
+            }
+
+            int[] dimensions = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                dimensions[i] = (int)tag.Dimensions[i];
+                if (dimensions[i] <= 0)
+                {
+                    return null;
+                }
+            }
+
+            return dimensions;
+        }
+
+        private static bool IsBool(ushort eipDataTypeId) => (eipDataTypeId & 0xFF) == 0xC1;
+
+        /// <summary>The bit of a packed BOOL member, which a Logix template keeps in the member info word.</summary>
+        private static int? BitOf(UdtFieldInfo field) => field.Metadata & 0x07;
 
         /// <summary>
         /// Rebuilds the OPC Binary Schema XML content for the dictionary from
@@ -701,7 +779,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // Data Type:   Tag Type Value:     Size of Transmitted Data:
             // BOOL         0x0nC1              1 byte
             // The BOOL value includes an additional field (n) for specifying the bit position within the SINT (n = 0 - 7).
-            if ((eipDataTypeId & 0xC1) == 0xC1)
+            if (IsBool(eipDataTypeId))
             {
                 return EIPTypeString.BOOL;
             }
@@ -718,7 +796,11 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 case 0xC9: return EIPTypeString.ULINT;
                 case 0xCA: return EIPTypeString.REAL;
                 case 0xCB: return EIPTypeString.LREAL;
-                default: return EIPTypeString.REAL;
+                case 0xD1: return EIPTypeString.BYTE;
+                case 0xD2: return EIPTypeString.WORD;
+                case 0xD3: return EIPTypeString.DWORD;
+                case 0xD4: return EIPTypeString.LWORD;
+                default: throw new NotSupportedException($"EtherNet/IP type 0x{eipDataTypeId:X4} is not supported.");
             }
         }
 
@@ -868,19 +950,73 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return true;
         }
 
+        /// <summary>
+        /// Reads the UDT layout of <paramref name="tagPath"/> from the controller: the tag's
+        /// type id from the tag list (the program's list for a program-scoped tag), then its
+        /// template. Returns null when the tag is not a structure or cannot be found, in
+        /// which case reads return the raw bytes.
+        /// </summary>
+        private EIPStructureDefinition ResolveLiveDefinition(RockwellAsset asset, string tagPath)
+        {
+            try
+            {
+                // Program:Mixer.Recipe.Step -> list "Program:Mixer.@tags", tag "Recipe".
+                string path = tagPath.Split('[')[0];
+                string list = "@tags";
+                if (path.StartsWith("Program:", StringComparison.OrdinalIgnoreCase) && path.IndexOf('.') > 0)
+                {
+                    list = path.Substring(0, path.IndexOf('.')) + ".@tags";
+                    path = path.Substring(path.IndexOf('.') + 1);
+                }
+
+                // The template describes a whole tag, so a member path is not decoded with it.
+                if (path.Contains('.'))
+                {
+                    return null;
+                }
+
+                string name = path;
+
+                Tag tags = new()
+                {
+                    Gateway = asset.GetRemoteEndpoint(),
+                    Path = asset.RoutePath,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Name = list,
+                    Timeout = TimeSpan.FromSeconds(10),
+                };
+
+                tags.Read();
+                foreach (TagInfo info in DecodeAllTags(tags))
+                {
+                    if (string.Equals(info.Name, name, StringComparison.OrdinalIgnoreCase) && TagIsUdt(info))
+                    {
+                        return ResolveUdtDefinition(asset.GetRemoteEndpoint(), asset.RoutePath, GetUdtId(info));
+                    }
+                }
+
+                Log.Logger.Warning($"EIP tag {tagPath}: no structure found in the controller tag list.");
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning($"EIP tag {tagPath}: could not read its structure from the controller: {ex.Message}");
+            }
+
+            return null;
+        }
+
         public async Task<AssetConnection> CreateAndConnectAssetAsync(ThingDescription td, CancellationToken cancellationToken = default)
         {
             byte unitId = 1;
-            unitId = 1;
 
-            string[] address = td.Base.Split([':', '/']);
-            if ((address.Length != 4) || (address[0] != "eip"))
+            if (!EipEndpoint.TryParse(td.Base, out EipEndpoint endpoint))
             {
-                throw new Exception("Expected Rockwell PLC address in the format eip://ipaddress!");
+                throw new Exception("Expected Rockwell PLC address in the format eip://host[:port][/route-path]/!");
             }
 
             RockwellAsset asset = new();
-            await asset.ConnectAsync(address[3], 0).ConfigureAwait(false);
+            await asset.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
 
             _assets[td.Name] = asset;
 
@@ -898,20 +1034,38 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             EIPForm eipForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
 
-            // Register the UDT structure definition on the asset so
-            // Read() can decode the raw PLC bytes at EIP field offsets.
-            if ((eipForm.StructureDefinition != null) && _assets.TryGetValue(td.Name, out var asset))
+            // The binding allows a primitive type or a structure definition, never both.
+            if (eipForm.Type != null && eipForm.StructureDefinition != null)
             {
-                asset.RegisterUdtDefinition(eipForm.Href, eipForm.StructureDefinition);
+                throw new ArgumentException($"Form {eipForm.Href} has both eipv:type and eipv:structureDefinition.");
             }
+
+            string arrayProblem = eipForm.ValidateArray();
+            if (arrayProblem != null)
+            {
+                throw new ArgumentException($"Form {eipForm.Href}: {arrayProblem}");
+            }
+
+            _assets.TryGetValue(td.Name, out RockwellAsset asset);
+
+            // A structured tag may be named only (as a CSV-generated Thing Model does): the
+            // binding has a Consumer that can browse the controller prefer the live layout.
+            if (eipForm.Type == null && eipForm.StructureDefinition == null && asset != null)
+            {
+                eipForm.StructureDefinition = ResolveLiveDefinition(asset, EipTagReference.Parse(eipForm.Href).TagPath);
+            }
+
+            // The asset encodes and decodes the value from the form: its type, conversion,
+            // timeout and structure definition.
+            asset?.RegisterForm(eipForm.Href, eipForm);
 
             return new AssetTag()
             {
                 Name = variableId,
                 Address = eipForm.Href,
                 UnitID = unitId,
-                Type = eipForm.StructureDefinition != null ? "UDT" : eipForm.Type.ToString(),
-                PollingInterval = (int)eipForm.PollingTime,
+                Type = eipForm.StructureDefinition != null ? "UDT" : eipForm.Type?.ToString(),
+                PollingInterval = (int)eipForm.EffectivePollingTime,
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };

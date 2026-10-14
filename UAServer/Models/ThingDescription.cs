@@ -80,8 +80,27 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("observable")]
         public bool Observable { get; set; }
 
+        /// <summary>For an <c>array</c> property, the schema of its elements.</summary>
+        [JsonProperty("items", NullValueHandling = NullValueHandling.Ignore)]
+        public ArrayItems Items { get; set; }
+
+        /// <summary>For an <c>array</c> property, the fewest elements it holds.</summary>
+        [JsonProperty("minItems", NullValueHandling = NullValueHandling.Ignore)]
+        public int? MinItems { get; set; }
+
+        /// <summary>For an <c>array</c> property, the most elements it holds.</summary>
+        [JsonProperty("maxItems", NullValueHandling = NullValueHandling.Ignore)]
+        public int? MaxItems { get; set; }
+
         [JsonProperty("forms", NullValueHandling = NullValueHandling.Ignore)]
         public object[] Forms { get; set; }
+    }
+
+    /// <summary>The data schema of the elements of an <c>array</c> property.</summary>
+    public class ArrayItems
+    {
+        [JsonProperty("type")]
+        public TypeEnum Type { get; set; }
     }
 
     public class TDAction
@@ -237,7 +256,10 @@ namespace Opc.Ua.Edge.Translator.Models
         String,
 
         [EnumMember(Value = "object")]
-        Object
+        Object,
+
+        [EnumMember(Value = "array")]
+        Array
     };
 
     [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

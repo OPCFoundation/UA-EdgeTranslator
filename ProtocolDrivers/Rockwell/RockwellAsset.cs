@@ -6,55 +6,103 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Threading;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// A Logix controller reached over EtherNet/IP, read and written as the W3C WoT
+    /// EtherNet/IP binding describes: symbolic tag paths sent as written, the CIP route
+    /// path of the endpoint, Logix primitive types, raw byte offsets, linear value
+    /// conversion and UDT structure definitions whose nested offsets are relative.
+    /// </summary>
     public class RockwellAsset : IAsset
     {
-        private string _endpoint = string.Empty;
+        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
+
+        private string _gateway = string.Empty;
+
+        private string _routePath = EipEndpoint.DefaultRoutePath;
 
         /// <summary>
-        /// Maps tag address (href) to its EIP structure definition.
-        /// Populated by the protocol driver during tag creation.
+        /// The form of each tag href, registered by the protocol driver when the tag is
+        /// created: its type, conversion, timeout and structure definition.
         /// </summary>
-        private readonly Dictionary<string, EIPStructureDefinition> _udtDefinitions = new();
+        private readonly Dictionary<string, EIPForm> _forms = new();
 
         public bool IsConnected { get; private set; } = false;
 
-        /// <summary>
-        /// Registers an EIP structure definition for a UDT tag address
-        /// so that Read() can decode the raw PLC bytes field-by-field.
-        /// </summary>
-        public void RegisterUdtDefinition(string tagAddress, EIPStructureDefinition structDef)
+        /// <summary>The CIP route path from the communication module to the controller.</summary>
+        public string RoutePath => _routePath;
+
+        /// <summary>Registers the form of a tag so reads and writes can encode its value.</summary>
+        public void RegisterForm(string href, EIPForm form)
         {
-            _udtDefinitions[tagAddress] = structDef;
+            if (!string.IsNullOrEmpty(href) && form != null)
+            {
+                _forms[href] = form;
+            }
         }
 
-        private void ConnectCore(string ipAddress, int port)
+        /// <summary>Connects to the controller an <c>eip</c> endpoint names, through its route path.</summary>
+        public Task ConnectAsync(EipEndpoint endpoint, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(endpoint);
+            _routePath = endpoint.RoutePath;
+            ConnectCore(endpoint.Gateway);
+            return Task.CompletedTask;
+        }
+
+        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
+        {
+            // An eip endpoint carries its route path; a bare host uses the default route.
+            if (EipEndpoint.TryParse(ipAddress, out EipEndpoint endpoint))
+            {
+                return ConnectAsync(endpoint, cancellationToken);
+            }
+
+            _routePath = EipEndpoint.DefaultRoutePath;
+            ConnectCore(port > 0 && port != EipEndpoint.DefaultPort ? ipAddress + ":" + port : ipAddress);
+            return Task.CompletedTask;
+        }
+
+        private void ConnectCore(string gateway)
         {
             try
             {
-                _endpoint = ipAddress;
+                _gateway = gateway;
 
-                Tag tags = new()
-                {
-                    Gateway = ipAddress,
-                    Path = "1,0",
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Name = "@tags",
-                    Timeout = TimeSpan.FromSeconds(10),
-                };
-
+                Tag tags = NewTag("@tags", null);
                 tags.Read();
 
-                Log.Logger.Information("Connected to Rockwell ControlLogix PLC at " + ipAddress);
+                Log.Logger.Information("Connected to Rockwell ControlLogix PLC at " + gateway + " (route " + _routePath + ")");
                 IsConnected = true;
             }
             catch (Exception ex)
             {
                 Log.Logger.Error(ex.Message, ex);
             }
+        }
+
+        private Tag NewTag(string name, EIPForm form)
+        {
+            Tag tag = new Tag()
+            {
+                Name = name,
+                Gateway = _gateway,
+                Path = _routePath,
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip,
+                Timeout = form?.Timeout is > 0 ? TimeSpan.FromMilliseconds(form.Timeout.Value) : s_defaultTimeout
+            };
+
+            // An array form transfers several elements in one CIP Read/Write Tag request.
+            if (form != null && form.IsArray)
+            {
+                tag.ElementCount = form.EffectiveElementCount;
+            }
+
+            return tag;
         }
 
         private void DisconnectCore()
@@ -64,268 +112,160 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         public string GetRemoteEndpoint()
         {
-            return _endpoint;
+            return _gateway;
         }
+
+        private EIPForm FormOf(AssetTag tag) => _forms.TryGetValue(tag.Address, out EIPForm form) ? form : null;
 
         private object ReadCore(AssetTag tag)
         {
-            object value = null;
+            EIPForm form = FormOf(tag);
+            EipTagReference reference = EipTagReference.Parse(tag.Address);
 
-            // UDT: read the entire tag as a raw byte buffer, then decode
-            // each field at its EIP offset into a dictionary.
-            if (tag.Type == "UDT")
+            // Connection entries hold no data (see RockwellProtocolDriver.IsTag).
+            if (reference.TagPath.StartsWith("Cxn:", StringComparison.Ordinal))
             {
-                byte[] rawBuffer = ReadRawTag(tag.Address);
-                if ((rawBuffer != null)
-                    && _udtDefinitions.TryGetValue(tag.Address, out var structDef)
-                    && (structDef.Fields != null))
-                {
-                    return DecodeUdtFields(rawBuffer, structDef);
-                }
-
-                return rawBuffer;
+                return null;
             }
 
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            Tag plcTag = NewTag(reference.TagPath, form);
+            plcTag.Read();
 
-            if (addressParts.Length == 2)
+            // A structured tag is decoded field by field into name -> value.
+            if (form?.StructureDefinition?.Fields != null)
             {
-                if (!addressParts[0].StartsWith("Cxn:Standard:"))
-                {
-                    byte[] tagBytes = Read(addressParts[0], byte.Parse(addressParts[1]), tag.Type, 0).GetAwaiter().GetResult();
-
-                    if ((tagBytes != null) && (tagBytes.Length > 0))
-                    {
-                        if (tag.Type == "BOOL")
-                        {
-                            value = BitConverter.ToBoolean(tagBytes);
-                        }
-                        else if (tag.Type == "SINT")
-                        {
-                            value = (sbyte)tagBytes[0];
-                        }
-                        else if (tag.Type == "INT")
-                        {
-                            value = BitConverter.ToInt16(tagBytes);
-                        }
-                        else if (tag.Type == "DINT")
-                        {
-                            value = BitConverter.ToInt32(tagBytes);
-                        }
-                        else if (tag.Type == "LINT")
-                        {
-                            value = BitConverter.ToInt64(tagBytes);
-                        }
-                        else if (tag.Type == "USINT")
-                        {
-                            value = tagBytes[0];
-                        }
-                        else if (tag.Type == "UINT")
-                        {
-                            value = BitConverter.ToUInt16(tagBytes);
-                        }
-                        else if (tag.Type == "UDINT")
-                        {
-                            value = BitConverter.ToUInt32(tagBytes);
-                        }
-                        else if (tag.Type == "ULINT")
-                        {
-                            value = BitConverter.ToUInt64(tagBytes);
-                        }
-                        else if (tag.Type == "REAL")
-                        {
-                            value = BitConverter.ToSingle(tagBytes);
-                        }
-                        else if (tag.Type == "LREAL")
-                        {
-                            value = BitConverter.ToDouble(tagBytes);
-                        }
-                        else
-                        {
-                            throw new ArgumentException("Type not supported by Ethernet/IP.");
-                        }
-                    }
-                }
+                return DecodeUdtFields(ReadBuffer(plcTag), reference.Offset, form.StructureDefinition);
             }
 
-            return value;
+            // An array form returns its elements as a typed array.
+            if (form != null && form.IsArray && form.Type is EIPTypeString elementType)
+            {
+                return DecodeArray(ReadBuffer(plcTag), reference.Offset, elementType, form.EffectiveElementCount, form);
+            }
+
+            // A structured tag named without a definition whose layout could not be read from
+            // the controller: return its raw bytes rather than guess a decoding.
+            if (form?.Type is not EIPTypeString type)
+            {
+                return ReadBuffer(plcTag);
+            }
+
+            int size = plcTag.GetSize();
+            if (reference.Offset + ByteSize(type) > size)
+            {
+                throw new ArgumentOutOfRangeException(nameof(tag), $"Offset {reference.Offset} exceeds the {size}-byte tag {reference.TagPath}.");
+            }
+
+            return form.ToApplicationValue(GetValue(plcTag, reference.Offset, type));
+        }
+
+        private static byte[] ReadBuffer(Tag plcTag)
+        {
+            int size = plcTag.GetSize();
+            byte[] buffer = new byte[size];
+            for (int i = 0; i < size; i++)
+            {
+                buffer[i] = plcTag.GetUInt8(i);
+            }
+
+            return buffer;
+        }
+
+        private static object GetValue(Tag plcTag, int offset, EIPTypeString type)
+        {
+            return type switch
+            {
+                // A scalar BOOL travels in one byte whose least significant bit is the value.
+                EIPTypeString.BOOL => (plcTag.GetUInt8(offset) & 1) != 0,
+                EIPTypeString.SINT => plcTag.GetInt8(offset),
+                EIPTypeString.INT => plcTag.GetInt16(offset),
+                EIPTypeString.DINT => plcTag.GetInt32(offset),
+                EIPTypeString.LINT => plcTag.GetInt64(offset),
+                EIPTypeString.USINT or EIPTypeString.BYTE => plcTag.GetUInt8(offset),
+                EIPTypeString.UINT or EIPTypeString.WORD => plcTag.GetUInt16(offset),
+                EIPTypeString.UDINT or EIPTypeString.DWORD => plcTag.GetUInt32(offset),
+                EIPTypeString.ULINT or EIPTypeString.LWORD => plcTag.GetUInt64(offset),
+                EIPTypeString.REAL => plcTag.GetFloat32(offset),
+                EIPTypeString.LREAL => plcTag.GetFloat64(offset),
+                EIPTypeString.STRING => ExtractPlcString(ReadBuffer(plcTag), offset),
+                _ => throw new NotSupportedException($"EtherNet/IP type {type} is not supported.")
+            };
+        }
+
+        private static void SetValue(Tag plcTag, int offset, EIPTypeString type, object value)
+        {
+            CultureInfo c = CultureInfo.InvariantCulture;
+            switch (type)
+            {
+                case EIPTypeString.BOOL: plcTag.SetUInt8(offset, (byte)(Convert.ToBoolean(value, c) ? 1 : 0)); break;
+                case EIPTypeString.SINT: plcTag.SetInt8(offset, Convert.ToSByte(value, c)); break;
+                case EIPTypeString.INT: plcTag.SetInt16(offset, Convert.ToInt16(value, c)); break;
+                case EIPTypeString.DINT: plcTag.SetInt32(offset, Convert.ToInt32(value, c)); break;
+                case EIPTypeString.LINT: plcTag.SetInt64(offset, Convert.ToInt64(value, c)); break;
+                case EIPTypeString.USINT or EIPTypeString.BYTE: plcTag.SetUInt8(offset, Convert.ToByte(value, c)); break;
+                case EIPTypeString.UINT or EIPTypeString.WORD: plcTag.SetUInt16(offset, Convert.ToUInt16(value, c)); break;
+                case EIPTypeString.UDINT or EIPTypeString.DWORD: plcTag.SetUInt32(offset, Convert.ToUInt32(value, c)); break;
+                case EIPTypeString.ULINT or EIPTypeString.LWORD: plcTag.SetUInt64(offset, Convert.ToUInt64(value, c)); break;
+                case EIPTypeString.REAL: plcTag.SetFloat32(offset, Convert.ToSingle(value, c)); break;
+                case EIPTypeString.LREAL: plcTag.SetFloat64(offset, Convert.ToDouble(value, c)); break;
+                case EIPTypeString.STRING: SetPlcString(plcTag, offset, Convert.ToString(value, c)); break;
+                default: throw new NotSupportedException($"EtherNet/IP type {type} is not supported.");
+            }
+        }
+
+        private static int ByteSize(EIPTypeString type)
+        {
+            return type switch
+            {
+                EIPTypeString.BOOL or EIPTypeString.SINT or EIPTypeString.USINT or EIPTypeString.BYTE => 1,
+                EIPTypeString.INT or EIPTypeString.UINT or EIPTypeString.WORD => 2,
+                EIPTypeString.DINT or EIPTypeString.UDINT or EIPTypeString.DWORD or EIPTypeString.REAL => 4,
+                EIPTypeString.LINT or EIPTypeString.ULINT or EIPTypeString.LWORD or EIPTypeString.LREAL => 8,
+                EIPTypeString.STRING => 4,
+                _ => 1
+            };
         }
 
         private void WriteCore(AssetTag tag, object value)
         {
-            string[] addressParts = tag.Address.Split(['?', '&', '=']);
+            EIPForm form = FormOf(tag);
+            EipTagReference reference = EipTagReference.Parse(tag.Address);
 
-            // UDT: Value is the OPC UA binary-encoded ExtensionObject.
-            // Decode each field per the StructureDefinition field order, then write
-            // to the PLC tag at the corresponding EIP offsets.
-            if (tag.Type == "UDT")
+            // Read first: a write must preserve the bytes no field covers, such as padding.
+            Tag plcTag = NewTag(reference.TagPath, form);
+            plcTag.Read();
+
+            if (form?.StructureDefinition?.Fields != null)
             {
-                if (!_udtDefinitions.TryGetValue(tag.Address, out var structDef))
-                {
-                    throw new ArgumentException($"No UDT definition registered for tag '{tag.Address}'.");
-                }
-
-                // ExtensionObject.Body is obsolete in SDK 2.0.0; read the binary encoding
-                // through the type-safe accessor. A null/empty body maps to null, as before.
+                // The value is the OPC UA binary body of the structure, fields in definition order.
                 ExtensionObject extensionObject = (ExtensionObject)value;
                 byte[] body = extensionObject.TryGetAsBinary(out ByteString encodedBody, ServiceMessageContext.CreateEmpty(Program.Telemetry))
                     && !encodedBody.IsNull
                     ? encodedBody.ToArray()
                     : null;
 
-                WriteUdtFromBinaryBody(tag.Address, body, structDef);
-
-                return;
+                int bodyOffset = 0;
+                WriteFieldsFromBody(plcTag, body, ref bodyOffset, reference.Offset, form.StructureDefinition);
             }
-
-            byte[] tagBytes = null;
-            if (tag.Type == "BOOL")
+            else if (form != null && form.IsArray && form.Type is EIPTypeString elementType)
             {
-                tagBytes = BitConverter.GetBytes(bool.Parse(value.ToString()));
+                byte[] buffer = ReadBuffer(plcTag);
+                EncodeArray(buffer, reference.Offset, elementType, form.EffectiveElementCount, value as System.Collections.IEnumerable, form);
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    plcTag.SetUInt8(i, buffer[i]);
+                }
             }
-            else if (tag.Type == "SINT")
+            else if (form?.Type is EIPTypeString type)
             {
-                tagBytes = [(byte)sbyte.Parse(value.ToString())];
-            }
-            else if (tag.Type == "INT")
-            {
-                tagBytes = BitConverter.GetBytes(short.Parse(value.ToString()));
-            }
-            else if (tag.Type == "DINT")
-            {
-                tagBytes = BitConverter.GetBytes(int.Parse(value.ToString()));
-            }
-            else if (tag.Type == "LINT")
-            {
-                tagBytes = BitConverter.GetBytes(Int64.Parse(value.ToString()));
-            }
-            else if (tag.Type == "USINT")
-            {
-                tagBytes = [byte.Parse(value.ToString())];
-            }
-            else if (tag.Type == "UINT")
-            {
-                tagBytes = BitConverter.GetBytes(ushort.Parse(value.ToString()));
-            }
-            else if (tag.Type == "UDINT")
-            {
-                tagBytes = BitConverter.GetBytes(uint.Parse(value.ToString()));
-            }
-            else if (tag.Type == "ULINT")
-            {
-                tagBytes = BitConverter.GetBytes(UInt64.Parse(value.ToString()));
-            }
-            else if (tag.Type == "REAL")
-            {
-                tagBytes = BitConverter.GetBytes(float.Parse(value.ToString()));
-            }
-            else if (tag.Type == "LREAL")
-            {
-                tagBytes = BitConverter.GetBytes(double.Parse(value.ToString()));
+                SetValue(plcTag, reference.Offset, type, form.ToControllerValue(value));
             }
             else
             {
-                throw new ArgumentException("Type not supported by Rockwell.");
+                throw new NotSupportedException($"Tag {reference.TagPath} has neither an eipv:type nor an eipv:structureDefinition.");
             }
 
-            Write(addressParts[0], byte.Parse(addressParts[1]), tag.Type, tagBytes, false).GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// Reads an entire tag (including UDTs) as a raw byte buffer.
-        /// libplctag reads the full UDT structure in a single EIP request.
-        /// </summary>
-        private byte[] ReadRawTag(string tagName)
-        {
-            var tag = new Tag()
-            {
-                Name = tagName,
-                Gateway = _endpoint,
-                Path = "1,0",
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip
-            };
-
-            tag.Read();
-
-            int size = tag.GetSize();
-            byte[] buffer = new byte[size];
-            for (int i = 0; i < size; i++)
-            {
-                buffer[i] = tag.GetUInt8(i);
-            }
-
-            return buffer;
-        }
-
-        private Task<byte[]> Read(string addressWithinAsset, byte unitID, string function, ushort count)
-        {
-            var addressParts = addressWithinAsset.Split('.');
-
-            var tag = new Tag()
-            {
-                Name = addressParts[0],
-                Gateway = _endpoint,
-                Path = "1,0",
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip
-            };
-
-            tag.Read();
-
-            int offset = unitID;
-
-            switch (function)
-            {
-                case "BOOL": return Task.FromResult(BitConverter.GetBytes(tag.GetBit(offset)));
-                case "SINT": return Task.FromResult(new byte[] { (byte)tag.GetInt8(offset) });
-                case "INT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt16(offset)));
-                case "DINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt32(offset)));
-                case "LINT": return Task.FromResult(BitConverter.GetBytes(tag.GetInt64(offset)));
-                case "USINT": return Task.FromResult(new byte[] { tag.GetUInt8(offset) });
-                case "UINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt16(offset)));
-                case "UDINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt32(offset)));
-                case "ULINT": return Task.FromResult(BitConverter.GetBytes(tag.GetUInt64(offset)));
-                case "REAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat32(offset)));
-                case "LREAL": return Task.FromResult(BitConverter.GetBytes(tag.GetFloat64(offset)));
-                default: return Task.FromResult((byte[])null);
-            }
-        }
-
-        private Task Write(string addressWithinAsset, byte unitID, string function, byte[] values, bool singleBitOnly)
-        {
-            var tag = new Tag()
-            {
-                Name = addressWithinAsset,
-                Gateway = _endpoint,
-                Path = "1,0",
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip
-            };
-
-            tag.Read();
-
-            int offset = unitID;
-
-            switch (function)
-            {
-                case "BOOL": tag.SetBit(offset, BitConverter.ToBoolean(values)); break;
-                case "SINT": tag.SetInt8(offset, (sbyte)values[0]); break;
-                case "INT": tag.SetInt16(offset, BitConverter.ToInt16(values)); break;
-                case "DINT": tag.SetInt32(offset, BitConverter.ToInt32(values)); break;
-                case "LINT": tag.SetInt64(offset, BitConverter.ToInt64(values)); break;
-                case "USINT": tag.SetUInt8(offset, values[0]); break;
-                case "UINT": tag.SetUInt16(offset, BitConverter.ToUInt16(values)); break;
-                case "UDINT": tag.SetUInt32(offset, BitConverter.ToUInt32(values)); break;
-                case "ULINT": tag.SetUInt64(offset, BitConverter.ToUInt64(values)); break;
-                case "REAL": tag.SetFloat32(offset, BitConverter.ToSingle(values)); break;
-                case "LREAL": tag.SetFloat64(offset, BitConverter.ToDouble(values)); break;
-                default: break;
-            }
-
-            tag.Write();
-
-            return Task.CompletedTask;
+            plcTag.Write();
         }
 
         private string ExecuteActionCore(MethodState method, IList<object> inputArgs, ref IList<object> outputArgs)
@@ -334,70 +274,165 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         }
 
         /// <summary>
-        /// Decodes a raw PLC UDT byte buffer into a dictionary of field name → value
-        /// using the EIP field offsets from the structure definition.
-        /// Nested UDTs are decoded recursively.
+        /// Decodes a raw UDT buffer into field name -> value. Offsets of a nested
+        /// structure are relative to the start of that structure, so each level adds its
+        /// own base offset; a BOOL member is a bit of the byte at its byte offset.
         /// </summary>
-        private static Dictionary<string, object> DecodeUdtFields(byte[] buffer, EIPStructureDefinition structDef)
+        public static Dictionary<string, object> DecodeUdtFields(byte[] buffer, int baseOffset, EIPStructureDefinition structDef)
         {
             var result = new Dictionary<string, object>();
 
             foreach (EIPFieldDefinition field in structDef.Fields)
             {
-                if (field.StructureDefinition != null)
-                {
-                    // Nested UDT: decode recursively from the same buffer
-                    // starting at the nested field's offset
-                    result[field.Name] = DecodeUdtFields(buffer, field.StructureDefinition);
-                }
-                else
-                {
-                    result[field.Name] = ExtractFieldValue(buffer, field);
-                }
+                int offset = baseOffset + field.ByteOffset;
+                result[field.Name] = field.StructureDefinition != null
+                    ? DecodeUdtFields(buffer, offset, field.StructureDefinition)
+                    : ExtractFieldValue(buffer, offset, field);
             }
 
             return result;
         }
 
         /// <summary>
-        /// Extracts a single primitive field value from the raw PLC buffer
-        /// at the EIP byte offset.
+        /// Decodes <paramref name="count"/> elements of <paramref name="type"/> packed back to
+        /// back (row-major, no padding) from <paramref name="offset"/>, applying the form's
+        /// conversion to each element. A converted array is returned as <c>double[]</c>.
         /// </summary>
-        private static object ExtractFieldValue(byte[] buffer, EIPFieldDefinition field)
+        public static Array DecodeArray(byte[] buffer, int offset, EIPTypeString type, int count, EIPForm form = null)
         {
-            int offset = field.Offset;
+            int size = ByteSize(type);
+            if (offset < 0 || count < 0 || offset + (long)count * size > buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), $"{count} elements of {type} at offset {offset} exceed the {buffer.Length}-byte tag.");
+            }
 
-            try
+            EIPFieldDefinition element = new EIPFieldDefinition { Type = type };
+            Array raw = Array.CreateInstance(ClrTypeOf(type), count);
+            for (int i = 0; i < count; i++)
             {
-                return field.Type switch
-                {
-                    "xsd:BOOL"  => offset < buffer.Length && BitConverter.ToBoolean(buffer, offset),
-                    "xsd:SINT"  => offset < buffer.Length ? (sbyte)buffer[offset] : (sbyte)0,
-                    "xsd:USINT" => offset < buffer.Length ? buffer[offset] : (byte)0,
-                    "xsd:INT"   => offset + 1 < buffer.Length ? BitConverter.ToInt16(buffer, offset) : (short)0,
-                    "xsd:UINT"  => offset + 1 < buffer.Length ? BitConverter.ToUInt16(buffer, offset) : (ushort)0,
-                    "xsd:DINT"  => offset + 3 < buffer.Length ? BitConverter.ToInt32(buffer, offset) : 0,
-                    "xsd:UDINT" => offset + 3 < buffer.Length ? BitConverter.ToUInt32(buffer, offset) : 0u,
-                    "xsd:LINT"  => offset + 7 < buffer.Length ? BitConverter.ToInt64(buffer, offset) : 0L,
-                    "xsd:ULINT" => offset + 7 < buffer.Length ? BitConverter.ToUInt64(buffer, offset) : 0UL,
-                    "xsd:REAL"  => offset + 3 < buffer.Length ? BitConverter.ToSingle(buffer, offset) : 0f,
-                    "xsd:LREAL" => offset + 7 < buffer.Length ? BitConverter.ToDouble(buffer, offset) : 0d,
-                    "xsd:STRING" => ExtractPlcString(buffer, offset),
-                    _           => null
-                };
+                raw.SetValue(ExtractFieldValue(buffer, offset + i * size, element), i);
             }
-            catch (ArgumentOutOfRangeException)
+
+            if (form == null || !form.HasValueConversion)
             {
-                return null;
+                return raw;
             }
+
+            double[] converted = new double[count];
+            for (int i = 0; i < count; i++)
+            {
+                converted[i] = Convert.ToDouble(form.ToApplicationValue(raw.GetValue(i)), CultureInfo.InvariantCulture);
+            }
+
+            return converted;
         }
 
         /// <summary>
-        /// Extracts a Rockwell STRING from the raw PLC buffer.
-        /// Rockwell STRINGs are stored as a 4-byte little-endian length
-        /// prefix followed by the ASCII character data.
+        /// Encodes the elements of <paramref name="values"/> back to back from
+        /// <paramref name="offset"/>; exactly <paramref name="count"/> elements are required.
         /// </summary>
-        private static string ExtractPlcString(byte[] buffer, int offset)
+        public static void EncodeArray(byte[] buffer, int offset, EIPTypeString type, int count, System.Collections.IEnumerable values, EIPForm form = null)
+        {
+            if (values == null || values is string)
+            {
+                throw new ArgumentException($"An array of {count} {type} elements is required.", nameof(values));
+            }
+
+            var items = new List<object>();
+            foreach (object item in values)
+            {
+                items.Add(item);
+            }
+
+            if (items.Count != count)
+            {
+                throw new ArgumentException($"{items.Count} elements given for an array of {count}.", nameof(values));
+            }
+
+            int size = ByteSize(type);
+            if (offset < 0 || offset + (long)count * size > buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), $"{count} elements of {type} at offset {offset} exceed the {buffer.Length}-byte tag.");
+            }
+
+            CultureInfo c = CultureInfo.InvariantCulture;
+            for (int i = 0; i < count; i++)
+            {
+                object value = form == null ? items[i] : form.ToControllerValue(items[i]);
+                byte[] bytes = type switch
+                {
+                    EIPTypeString.SINT => new[] { unchecked((byte)Convert.ToSByte(value, c)) },
+                    EIPTypeString.USINT or EIPTypeString.BYTE => new[] { Convert.ToByte(value, c) },
+                    EIPTypeString.INT => BitConverter.GetBytes(Convert.ToInt16(value, c)),
+                    EIPTypeString.UINT or EIPTypeString.WORD => BitConverter.GetBytes(Convert.ToUInt16(value, c)),
+                    EIPTypeString.DINT => BitConverter.GetBytes(Convert.ToInt32(value, c)),
+                    EIPTypeString.UDINT or EIPTypeString.DWORD => BitConverter.GetBytes(Convert.ToUInt32(value, c)),
+                    EIPTypeString.LINT => BitConverter.GetBytes(Convert.ToInt64(value, c)),
+                    EIPTypeString.ULINT or EIPTypeString.LWORD => BitConverter.GetBytes(Convert.ToUInt64(value, c)),
+                    EIPTypeString.REAL => BitConverter.GetBytes(Convert.ToSingle(value, c)),
+                    EIPTypeString.LREAL => BitConverter.GetBytes(Convert.ToDouble(value, c)),
+                    _ => throw new NotSupportedException($"Arrays of {type} are not supported.")
+                };
+
+                Buffer.BlockCopy(bytes, 0, buffer, offset + i * size, bytes.Length);
+            }
+        }
+
+        /// <summary>The CLR element type a Logix primitive decodes to.</summary>
+        private static Type ClrTypeOf(EIPTypeString type)
+        {
+            return type switch
+            {
+                EIPTypeString.BOOL => typeof(bool),
+                EIPTypeString.SINT => typeof(sbyte),
+                EIPTypeString.USINT or EIPTypeString.BYTE => typeof(byte),
+                EIPTypeString.INT => typeof(short),
+                EIPTypeString.UINT or EIPTypeString.WORD => typeof(ushort),
+                EIPTypeString.DINT => typeof(int),
+                EIPTypeString.UDINT or EIPTypeString.DWORD => typeof(uint),
+                EIPTypeString.LINT => typeof(long),
+                EIPTypeString.ULINT or EIPTypeString.LWORD => typeof(ulong),
+                EIPTypeString.REAL => typeof(float),
+                EIPTypeString.LREAL => typeof(double),
+                EIPTypeString.STRING => typeof(string),
+                _ => typeof(object)
+            };
+        }
+
+        private static object ExtractFieldValue(byte[] buffer, int offset, EIPFieldDefinition field)
+        {
+            if (field.Type is not EIPTypeString type)
+            {
+                return null;
+            }
+
+            if (offset < 0 || offset + ByteSize(type) > buffer.Length)
+            {
+                return null;
+            }
+
+            return type switch
+            {
+                EIPTypeString.BOOL => (buffer[offset] & (1 << (field.BitOffset ?? 0))) != 0,
+                EIPTypeString.SINT => (sbyte)buffer[offset],
+                EIPTypeString.USINT or EIPTypeString.BYTE => buffer[offset],
+                EIPTypeString.INT => BitConverter.ToInt16(buffer, offset),
+                EIPTypeString.UINT or EIPTypeString.WORD => BitConverter.ToUInt16(buffer, offset),
+                EIPTypeString.DINT => BitConverter.ToInt32(buffer, offset),
+                EIPTypeString.UDINT or EIPTypeString.DWORD => BitConverter.ToUInt32(buffer, offset),
+                EIPTypeString.LINT => BitConverter.ToInt64(buffer, offset),
+                EIPTypeString.ULINT or EIPTypeString.LWORD => BitConverter.ToUInt64(buffer, offset),
+                EIPTypeString.REAL => BitConverter.ToSingle(buffer, offset),
+                EIPTypeString.LREAL => BitConverter.ToDouble(buffer, offset),
+                EIPTypeString.STRING => ExtractPlcString(buffer, offset),
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// Reads a Logix STRING: a DINT <c>LEN</c> followed by the SINT <c>DATA</c> characters.
+        /// </summary>
+        public static string ExtractPlcString(byte[] buffer, int offset)
         {
             if ((offset + 4) > buffer.Length)
             {
@@ -413,129 +448,75 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             return System.Text.Encoding.ASCII.GetString(buffer, offset + 4, length);
         }
 
-        /// <summary>
-        /// Writes a UDT tag from an OPC UA binary-encoded ExtensionObject body.
-        /// The body contains fields encoded sequentially in StructureDefinition field order.
-        /// Each field is decoded from the body using OPC UA binary encoding sizes, then
-        /// written into the PLC tag buffer at the corresponding EIP byte offset.
-        /// </summary>
-        private void WriteUdtFromBinaryBody(string tagAddress, byte[] body, EIPStructureDefinition structDef)
+        private static void SetPlcString(Tag plcTag, int offset, string value)
         {
-            var plcTag = new Tag()
+            byte[] data = System.Text.Encoding.ASCII.GetBytes(value ?? string.Empty);
+            plcTag.SetInt32(offset, data.Length);
+            for (int i = 0; i < data.Length; i++)
             {
-                Name = tagAddress,
-                Gateway = _endpoint,
-                Path = "1,0",
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip
-            };
-
-            // Read current tag to initialise the buffer (preserves fields not in the write)
-            plcTag.Read();
-
-            int bodyOffset = 0;
-            WriteFieldsFromBody(plcTag, body, ref bodyOffset, structDef);
-
-            plcTag.Write();
+                plcTag.SetUInt8(offset + 4 + i, data[i]);
+            }
         }
 
         /// <summary>
-        /// Recursively decodes OPC UA binary-encoded fields from <paramref name="body"/>
-        /// and writes each value into the PLC tag at its EIP offset.
-        ///
-        /// OPC UA binary encoding order matches the StructureDefinition field order.
-        /// Field sizes follow OPC UA Part 6 binary encoding:
-        ///   Boolean/SByte/Byte = 1, Int16/UInt16 = 2, Int32/UInt32/Float = 4,
-        ///   Int64/UInt64/Double = 8, String = 4-byte length prefix + UTF-8 bytes.
+        /// Writes each field of an OPC UA binary structure body into the controller
+        /// buffer at its byte offset (relative to its enclosing structure). Field sizes
+        /// follow OPC UA Part 6: Boolean/SByte/Byte 1, Int16/UInt16 2, Int32/UInt32/Float 4,
+        /// Int64/UInt64/Double 8, String a 4-byte length plus the bytes.
         /// </summary>
-        private static void WriteFieldsFromBody(
-            Tag plcTag,
-            byte[] body,
-            ref int bodyOffset,
-            EIPStructureDefinition structDef)
+        private static void WriteFieldsFromBody(Tag plcTag, byte[] body, ref int bodyOffset, int baseOffset, EIPStructureDefinition structDef)
         {
-            if (structDef.Fields == null) return;
+            if (structDef.Fields == null || body == null)
+            {
+                return;
+            }
 
             foreach (EIPFieldDefinition field in structDef.Fields)
             {
+                int offset = baseOffset + field.ByteOffset;
+
                 if (field.StructureDefinition != null)
                 {
-                    // Nested UDT — recurse; fields are encoded inline (no length prefix)
-                    WriteFieldsFromBody(plcTag, body, ref bodyOffset, field.StructureDefinition);
+                    // Nested UDT: its fields follow inline in the OPC UA body.
+                    WriteFieldsFromBody(plcTag, body, ref bodyOffset, offset, field.StructureDefinition);
                     continue;
                 }
 
-                int eipOffset = field.Offset;
-
                 switch (field.Type)
                 {
-                    case "xsd:BOOL":
-                        plcTag.SetUInt8(eipOffset, body[bodyOffset]);
-                        bodyOffset += 1;
-                        break;
-                    case "xsd:SINT":
-                        plcTag.SetInt8(eipOffset, (sbyte)body[bodyOffset]);
-                        bodyOffset += 1;
-                        break;
-                    case "xsd:USINT":
-                        plcTag.SetUInt8(eipOffset, body[bodyOffset]);
-                        bodyOffset += 1;
-                        break;
-                    case "xsd:INT":
-                        plcTag.SetInt16(eipOffset, BitConverter.ToInt16(body, bodyOffset));
-                        bodyOffset += 2;
-                        break;
-                    case "xsd:UINT":
-                        plcTag.SetUInt16(eipOffset, BitConverter.ToUInt16(body, bodyOffset));
-                        bodyOffset += 2;
-                        break;
-                    case "xsd:DINT":
-                        plcTag.SetInt32(eipOffset, BitConverter.ToInt32(body, bodyOffset));
-                        bodyOffset += 4;
-                        break;
-                    case "xsd:UDINT":
-                        plcTag.SetUInt32(eipOffset, BitConverter.ToUInt32(body, bodyOffset));
-                        bodyOffset += 4;
-                        break;
-                    case "xsd:LINT":
-                        plcTag.SetInt64(eipOffset, BitConverter.ToInt64(body, bodyOffset));
-                        bodyOffset += 8;
-                        break;
-                    case "xsd:ULINT":
-                        plcTag.SetUInt64(eipOffset, BitConverter.ToUInt64(body, bodyOffset));
-                        bodyOffset += 8;
-                        break;
-                    case "xsd:REAL":
-                        plcTag.SetFloat32(eipOffset, BitConverter.ToSingle(body, bodyOffset));
-                        bodyOffset += 4;
-                        break;
-                    case "xsd:LREAL":
-                        plcTag.SetFloat64(eipOffset, BitConverter.ToDouble(body, bodyOffset));
-                        bodyOffset += 8;
-                        break;
-                    case "xsd:STRING":
-                        // OPC UA binary: 4-byte length prefix (Int32) + UTF-8 bytes
-                        int strLen = BitConverter.ToInt32(body, bodyOffset);
-                        bodyOffset += 4;
-                        // Rockwell PLC string: 4-byte length prefix (DINT) + char data
-                        plcTag.SetInt32(eipOffset, strLen);
-                        for (int i = 0; i < strLen; i++)
+                    case EIPTypeString.BOOL:
                         {
-                            plcTag.SetUInt8(eipOffset + 4 + i, body[bodyOffset + i]);
+                            // A packed BOOL member owns one bit; keep the bits of its neighbours.
+                            int bit = field.BitOffset ?? 0;
+                            byte current = plcTag.GetUInt8(offset);
+                            byte updated = body[bodyOffset] != 0 ? (byte)(current | (1 << bit)) : (byte)(current & ~(1 << bit));
+                            plcTag.SetUInt8(offset, updated);
+                            bodyOffset += 1;
+                            break;
                         }
-                        bodyOffset += strLen;
-                        break;
+                    case EIPTypeString.SINT: plcTag.SetInt8(offset, (sbyte)body[bodyOffset]); bodyOffset += 1; break;
+                    case EIPTypeString.USINT or EIPTypeString.BYTE: plcTag.SetUInt8(offset, body[bodyOffset]); bodyOffset += 1; break;
+                    case EIPTypeString.INT: plcTag.SetInt16(offset, BitConverter.ToInt16(body, bodyOffset)); bodyOffset += 2; break;
+                    case EIPTypeString.UINT or EIPTypeString.WORD: plcTag.SetUInt16(offset, BitConverter.ToUInt16(body, bodyOffset)); bodyOffset += 2; break;
+                    case EIPTypeString.DINT: plcTag.SetInt32(offset, BitConverter.ToInt32(body, bodyOffset)); bodyOffset += 4; break;
+                    case EIPTypeString.UDINT or EIPTypeString.DWORD: plcTag.SetUInt32(offset, BitConverter.ToUInt32(body, bodyOffset)); bodyOffset += 4; break;
+                    case EIPTypeString.LINT: plcTag.SetInt64(offset, BitConverter.ToInt64(body, bodyOffset)); bodyOffset += 8; break;
+                    case EIPTypeString.ULINT or EIPTypeString.LWORD: plcTag.SetUInt64(offset, BitConverter.ToUInt64(body, bodyOffset)); bodyOffset += 8; break;
+                    case EIPTypeString.REAL: plcTag.SetFloat32(offset, BitConverter.ToSingle(body, bodyOffset)); bodyOffset += 4; break;
+                    case EIPTypeString.LREAL: plcTag.SetFloat64(offset, BitConverter.ToDouble(body, bodyOffset)); bodyOffset += 8; break;
+                    case EIPTypeString.STRING:
+                        {
+                            int length = BitConverter.ToInt32(body, bodyOffset);
+                            bodyOffset += 4;
+                            SetPlcString(plcTag, offset, System.Text.Encoding.ASCII.GetString(body, bodyOffset, Math.Max(0, length)));
+                            bodyOffset += Math.Max(0, length);
+                            break;
+                        }
                     default:
                         Log.Logger.Warning($"Unsupported UDT field type '{field.Type}' for field '{field.Name}' during write.");
                         break;
                 }
             }
-        }
-
-        public Task ConnectAsync(string ipAddress, int port, CancellationToken cancellationToken = default)
-        {
-            ConnectCore(ipAddress, port);
-            return Task.CompletedTask;
         }
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default)
