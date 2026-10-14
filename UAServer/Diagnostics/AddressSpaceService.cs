@@ -540,15 +540,23 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// <summary>
         /// Picks the icon key for a node using the UA-NodeSetEditor rules: instances are
         /// iconised by the type family of their TypeDefinition (FolderType -> folder,
-        /// PropertyType -> property), ObjectTypes deriving from BaseInterfaceType get the
-        /// interface glyph, and everything else falls back to its NodeClass glyph.
+        /// PropertyType -> property, ConditionType -> condition), ObjectTypes are iconised
+        /// by the nearest family they derive from (ConditionType -> condition,
+        /// BaseEventType -> eventType, BaseInterfaceType -> interfaceType), and everything
+        /// else falls back to its NodeClass glyph. An Object typed by a non-Condition event
+        /// type keeps the object glyph: only Conditions exist as instances.
         /// </summary>
         private static string ResolveNodeIcon(IServerInternal server, ReferenceDescription reference, NodeId nodeId)
         {
             switch (reference.NodeClass)
             {
                 case NodeClass.Object:
-                    return IsTypeOf(server, reference.TypeDefinition, ObjectTypeIds.FolderType) ? "folder" : "object";
+                    if (IsTypeOf(server, reference.TypeDefinition, ObjectTypeIds.FolderType))
+                    {
+                        return "folder";
+                    }
+
+                    return IsTypeOf(server, reference.TypeDefinition, ObjectTypeIds.ConditionType) ? "condition" : "object";
 
                 case NodeClass.Variable:
                     return IsTypeOf(server, reference.TypeDefinition, VariableTypeIds.PropertyType) ? "property" : "dataVariable";
@@ -560,6 +568,16 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     return "view";
 
                 case NodeClass.ObjectType:
+                    if (IsTypeOf(server, nodeId, ObjectTypeIds.ConditionType))
+                    {
+                        return "condition";
+                    }
+
+                    if (IsTypeOf(server, nodeId, ObjectTypeIds.BaseEventType))
+                    {
+                        return "eventType";
+                    }
+
                     return IsTypeOf(server, nodeId, ObjectTypeIds.BaseInterfaceType) ? "interfaceType" : "objectType";
 
                 case NodeClass.VariableType:

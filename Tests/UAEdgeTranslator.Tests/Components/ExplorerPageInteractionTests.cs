@@ -164,7 +164,20 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
 
             string[] labels = page.FindAll(".as-legend-label").Select(l => l.TextContent).ToArray();
 
-            Assert.Equal(["Object", "Folder", "Variable", "Property", "Method", "ObjectType", "InterfaceType", "VariableType", "ReferenceType", "DataType", "View"], labels);
+            Assert.Equal(["Object", "Folder", "Variable", "Property", "Method", "ObjectType", "InterfaceType", "EventType", "Condition", "VariableType", "ReferenceType", "DataType", "View"], labels);
+        }
+
+        [Fact]
+        public void Each_legend_icon_is_coloured_by_its_icon_key()
+        {
+            IRenderedComponent<Explorer> page = Render<Explorer>();
+
+            // The tree colours an icon by the same as-node-<icon> class, so one key has one colour.
+            string[] classes = page.FindAll(".as-legend-item .as-node-icon").Select(i => i.ClassName).ToArray();
+
+            Assert.Equal(13, classes.Distinct().Count());
+            Assert.Contains("as-node-icon as-node-dataVariable", classes);
+            Assert.Contains("as-node-icon as-node-condition", classes);
         }
 
         private static void ExpandToSeededFolder(IRenderedComponent<Explorer> page)

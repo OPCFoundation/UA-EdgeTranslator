@@ -144,6 +144,16 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.Equal("interfaceType", Assert.Single(objectTypes, c => c.Text == "BaseInterfaceType").Icon);
             Assert.Equal("objectType", Assert.Single(objectTypes, c => c.Text == "FolderType").Icon);
 
+            // Event types wear the event glyph; ConditionType, the nearer family, the condition one.
+            AddressSpaceNode eventType = Assert.Single(objectTypes, c => c.Text == "BaseEventType");
+            Assert.Equal("eventType", eventType.Icon);
+            IReadOnlyList<AddressSpaceNode> eventTypes =
+                await _service.BrowseChildrenAsync(ObjectTypeIds.BaseEventType.ToString()).ConfigureAwait(false);
+            Assert.Equal("eventType", Assert.Single(eventTypes, c => c.Text == "SystemEventType").Icon);
+            IReadOnlyList<AddressSpaceNode> conditionTypes =
+                await _service.BrowseChildrenAsync(ObjectTypeIds.ConditionType.ToString()).ConfigureAwait(false);
+            Assert.Equal("condition", Assert.Single(conditionTypes, c => c.Text == "AcknowledgeableConditionType").Icon);
+
             IReadOnlyList<AddressSpaceNode> referenceTypes =
                 await _service.BrowseChildrenAsync(ReferenceTypeIds.References.ToString()).ConfigureAwait(false);
             Assert.All(referenceTypes, t => Assert.Equal("referenceType", t.Icon));

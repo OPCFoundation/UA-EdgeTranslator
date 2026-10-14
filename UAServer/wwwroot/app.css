@@ -1291,16 +1291,61 @@ a {
         fill: currentColor;
     }
 
-.as-node-variable {
+/* One colour per icon key, shared by the tree and the legend. */
+.as-node-object {
+    color: #34c759;
+}
+
+.as-node-folder {
+    color: #30b0c7;
+}
+
+.as-node-dataVariable {
     color: #0071e3;
+}
+
+.as-node-property {
+    color: #5e5ce6;
 }
 
 .as-node-method {
     color: #ff9f0a;
 }
 
-.as-node-object {
-    color: #34c759;
+.as-node-view {
+    color: #a2845e;
+}
+
+.as-node-objectType {
+    color: #248a3d;
+}
+
+.as-node-interfaceType {
+    color: #00a3a3;
+}
+
+.as-node-eventType {
+    color: #ff3b30;
+}
+
+.as-node-condition {
+    color: #c4214a;
+}
+
+.as-node-variableType {
+    color: #0040dd;
+}
+
+.as-node-dataType {
+    color: #af52de;
+}
+
+.as-node-referenceType {
+    color: #d6338a;
+}
+
+.as-node-unknown {
+    color: #8e8e93;
 }
 
 /* Detail panel -------------------------------------------------------------- */

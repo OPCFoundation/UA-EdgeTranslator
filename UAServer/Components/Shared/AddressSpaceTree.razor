@@ -41,7 +41,7 @@
                     <span class="as-tree-toggle as-tree-toggle-empty"></span>
                 }
 
-                <span class="as-node-icon as-node-@node.NodeClass.ToLowerInvariant()" title="@node.NodeClass">
+                <span class="as-node-icon as-node-@(string.IsNullOrEmpty(node.Icon) ? "unknown" : node.Icon)" title="@node.NodeClass">
                     <svg aria-hidden="true"><use href="icons/ua-node-icons.svg#@(string.IsNullOrEmpty(node.Icon) ? "unknown" : node.Icon)" /></svg>
                 </span>
 
