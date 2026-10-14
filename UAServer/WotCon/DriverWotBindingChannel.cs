@@ -51,6 +51,12 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return new WotReadResult(StatusCodes.BadNotReadable, DataValue.FromStatusCode(StatusCodes.BadNotReadable), ProvisioningMessage);
             }
 
+            if (!WotAssetReconnector.IsAttemptDue(_asset))
+            {
+                // Inside a reconnect backoff window: don't hammer the asset.
+                return new WotReadResult(StatusCodes.BadDataUnavailable, DataValue.FromStatusCode(StatusCodes.BadDataUnavailable));
+            }
+
             try
             {
                 Program.Telemetry?.TagReads.Add(1);
@@ -58,8 +64,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 if (!_asset.IsConnected)
                 {
                     Program.Telemetry?.TagReadErrors.Add(1);
+                    await WotAssetReconnector.TryReconnectAsync(_asset, _assetName, cancellationToken).ConfigureAwait(false);
                     return new WotReadResult(StatusCodes.BadDataUnavailable, DataValue.FromStatusCode(StatusCodes.BadDataUnavailable));
                 }
+
+                WotAssetReconnector.Reset(_asset);
 
                 // A structure tag (such as a Rockwell UDT) comes back as its decoded fields.
                 // A Variant cannot hold a dictionary, so it is encoded as the structure
@@ -80,6 +89,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             {
                 Program.Telemetry?.TagReadErrors.Add(1);
                 Log.Logger.Error(ex, "Failed to read tag: {TagName}, Asset: {AssetId}", _tag?.Name, _assetName);
+                await WotAssetReconnector.TryReconnectAsync(_asset, _assetName, cancellationToken).ConfigureAwait(false);
                 return new WotReadResult(StatusCodes.BadDataUnavailable, DataValue.FromStatusCode(StatusCodes.BadDataUnavailable));
             }
         }
@@ -93,16 +103,29 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return new WotWriteResult(StatusCodes.BadNotWritable, ProvisioningMessage);
             }
 
+            if (!WotAssetReconnector.IsAttemptDue(_asset))
+            {
+                return new WotWriteResult(StatusCodes.BadDataUnavailable);
+            }
+
             try
             {
                 Program.Telemetry?.TagWrites.Add(1);
                 await _asset.WriteAsync(_tag, VariantConversion.ToClrValue(value.WrappedValue), cancellationToken).ConfigureAwait(false);
-                return new WotWriteResult(_asset.IsConnected ? StatusCodes.Good : StatusCodes.BadDataUnavailable);
+                if (!_asset.IsConnected)
+                {
+                    await WotAssetReconnector.TryReconnectAsync(_asset, _assetName, cancellationToken).ConfigureAwait(false);
+                    return new WotWriteResult(StatusCodes.BadDataUnavailable);
+                }
+
+                WotAssetReconnector.Reset(_asset);
+                return new WotWriteResult(StatusCodes.Good);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Program.Telemetry?.TagWriteErrors.Add(1);
                 Log.Logger.Error(ex, "Failed to write value for tag: {TagName}", _tag?.Name);
+                await WotAssetReconnector.TryReconnectAsync(_asset, _assetName, cancellationToken).ConfigureAwait(false);
                 return new WotWriteResult(StatusCodes.BadDataUnavailable);
             }
         }

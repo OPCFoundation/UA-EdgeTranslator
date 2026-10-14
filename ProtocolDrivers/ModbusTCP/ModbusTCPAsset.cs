@@ -224,6 +224,37 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             lock (_lock)
             {
+                // Not connected (never, or torn down for a reconnect): report it rather
+                // than dereference a missing master, so callers take the reconnect path.
+                if (_master == null)
+                {
+                    IsConnected = false;
+                    return Task.FromResult<byte[]>(null);
+                }
+
+                try
+                {
+                    return ReadCore(addressWithinAsset, unitID, function, count);
+                }
+                catch (Exception ex) when (IsConnectionLost(ex))
+                {
+                    // The server closed or broke the connection: drop it once, so the other
+                    // tags stop reading a dead socket until the connection is re-established.
+                    Log.Logger.Warning("Modbus connection to {Endpoint} lost: {Reason}", _endpoint, ex.Message);
+                    DisconnectCore();
+                    return Task.FromResult<byte[]>(null);
+                }
+            }
+        }
+
+        private static bool IsConnectionLost(Exception ex)
+        {
+            return ex is System.IO.IOException or SocketException or ObjectDisposedException or InvalidOperationException;
+        }
+
+        private Task<byte[]> ReadCore(string addressWithinAsset, byte unitID, string function, ushort count)
+        {
+            {
                 ushort startAddress = ushort.Parse(addressWithinAsset);
 
                 switch (function)
@@ -268,6 +299,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
             lock (_lock)
             {
+                if (_master == null)
+                {
+                    IsConnected = false;
+                    throw new InvalidOperationException("Modbus asset " + _endpoint + " is not connected.");
+                }
+
                 ushort startAddress = ushort.Parse(addressWithinAsset);
 
                 if (singleBitOnly)

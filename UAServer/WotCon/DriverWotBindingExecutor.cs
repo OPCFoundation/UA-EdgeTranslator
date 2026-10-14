@@ -169,6 +169,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return;
             }
 
+            WotAssetReconnector.Forget(connection.Asset);
+
             try
             {
                 await connection.Asset.DisposeAsync().ConfigureAwait(false);
