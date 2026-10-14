@@ -857,6 +857,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 return false;
             }
 
+            // Controller connection entries (such as Cxn:Standard:fc7fc958) and system
+            // tags (__*) are listed with the tags but hold no readable data, per the
+            // Logix 5000 Data Access manual (1756-PM020).
+            if (tag.Name.StartsWith("Cxn:") || tag.Name.StartsWith("__"))
+            {
+                return false;
+            }
+
             return true;
         }
 

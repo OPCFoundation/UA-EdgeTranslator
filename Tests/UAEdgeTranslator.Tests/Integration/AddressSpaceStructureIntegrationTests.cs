@@ -260,5 +260,36 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.DoesNotContain("Speed", state, System.StringComparison.Ordinal);
             Assert.False(string.IsNullOrEmpty(state));
         }
+
+        [Fact]
+        public void A_driver_structure_value_is_encoded_as_the_mapped_structure_type()
+        {
+            // A Rockwell UDT read returns its decoded fields; the WoT channel encodes them
+            // as the structure the property is mapped to, which the Explorer then decodes.
+            UANodeManager manager = UANodeManager.Instance;
+            ushort ns = (ushort)manager.Server.NamespaceUris.GetIndex("http://opcfoundation.org/UA/EdgeTranslator/");
+            Dictionary<string, object> fields = new()
+            {
+                ["Speed"] = 3.5f,
+                ["Running"] = true,
+                ["Count"] = 7,
+                ["Label"] = "line-2"
+            };
+
+            Assert.True(manager.TryEncodeStructure(new NodeId(_structTypeName, ns), fields, out ExtensionObject encoded));
+            Assert.True(encoded.TryGetAsBinary(out ByteString body));
+
+            using BinaryDecoder decoder = new(body.ToArray(), new ServiceMessageContext(Program.Telemetry, manager.Server.Factory)
+            {
+                NamespaceUris = manager.Server.NamespaceUris
+            });
+            Assert.Equal(3.5f, decoder.ReadFloat("Speed"));
+            Assert.True(decoder.ReadBoolean("Running"));
+            Assert.Equal(7, decoder.ReadInt32("Count"));
+            Assert.Equal("line-2", decoder.ReadString("Label"));
+
+            // An unknown type is reported rather than encoded.
+            Assert.False(manager.TryEncodeStructure(new NodeId("NoSuchType", ns), fields, out _));
+        }
     }
 }

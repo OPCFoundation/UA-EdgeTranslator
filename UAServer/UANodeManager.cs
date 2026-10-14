@@ -2960,6 +2960,45 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        /// <summary>
+        /// Encodes the decoded fields of a driver structure value (field name -> CLR value,
+        /// as drivers such as Rockwell return for a UDT) as an ExtensionObject of
+        /// <paramref name="dataTypeId"/>. Returns false when the DataType is not a known
+        /// structure or a field type is not supported.
+        /// </summary>
+        public bool TryEncodeStructure(NodeId dataTypeId, IDictionary<string, object> fieldValues, out ExtensionObject encoded)
+        {
+            encoded = ExtensionObject.Null;
+            if (fieldValues == null || Find(dataTypeId) is not DataTypeState dataType
+                || !TryGetStructureDefinition(dataType, out StructureDefinition structDef))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry, Server.Factory)
+                {
+                    NamespaceUris = Server.NamespaceUris
+                });
+
+                foreach (StructureField field in structDef.Fields)
+                {
+                    fieldValues.TryGetValue(field.Name, out object fieldVal);
+                    EncodeField(encoder, field, fieldVal);
+                }
+
+                NodeId encodingId = structDef.DefaultEncodingId.IsNull ? dataTypeId : structDef.DefaultEncodingId;
+                encoded = new ExtensionObject(NodeId.ToExpandedNodeId(encodingId, Server.NamespaceUris), new ByteString(encoder.CloseAndReturnBuffer()));
+                return true;
+            }
+            catch (NotImplementedException ex)
+            {
+                Log.Logger.Warning("Cannot encode a value of structure {DataType}: {Reason}", dataTypeId, ex.Message);
+                return false;
+            }
+        }
+
         private void EncodeField(BinaryEncoder encoder, StructureField field, object value)
         {
             uint fieldDataType = 0;

@@ -95,6 +95,37 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         }
 
         [Fact]
+        public void A_driver_address_containing_colons_is_planned_as_relative_to_the_base()
+        {
+            // Rockwell tags such as Local:2:O look like a URI with scheme "local"; only a
+            // scheme some loaded driver serves may make an href absolute.
+            const string colonTd = 
+"""
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/WoT-Binding/" }],
+                  "@type": ["Thing", "uav:object"],
+                  "id": "urn:colon-1",
+                  "title": "colon-1",
+                  "base": "mock://device-1:1502/1",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": ["nosec_sc"],
+                  "properties": {
+                    "output": { "type": "number", "uav:mapToNodeId": "nsu=urn:colon-1;s=output", "forms": [ { "href": "Local:2:O", "op": ["readproperty"] } ] }
+                  }
+                }
+                
+"""
+;
+
+            (_, WotBindingPlan plan, DriverWotBindingExecutor executor) = Plan(td: colonTd);
+
+            Assert.True(plan.FullySupported, string.Join("; ", plan.Diagnostics.Select(d => d.Message)));
+            WotCompiledForm form = Assert.Single(plan.CompiledForms);
+            Assert.Equal(BaseUri, form.Endpoint.BaseUri);
+            Assert.Equal("Local:2:O", form.Addressing.Target);
+        }
+
+        [Fact]
         public void Relative_forms_are_planned_against_the_td_base_and_are_executable()
         {
             (_, WotBindingPlan plan, DriverWotBindingExecutor executor) = Plan();

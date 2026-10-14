@@ -18,28 +18,6 @@
   "base": "eip://192.168.178.122",
   "title": "Rockwell",
   "properties": {
-    "Cxn:Standard:fc7fc958": {
-      "type": "number",
-      "const": null,
-      "uav:mapToNodeId": null,
-      "uav:mapToType": null,
-      "uav:mapByFieldPath": null,
-      "readOnly": false,
-      "observable": true,
-      "forms": [
-        {
-          "href": "Cxn:Standard:fc7fc958?0",
-          "op": [
-            "readproperty",
-            "observeproperty",
-            "writeproperty"
-          ],
-          "type": "xsd:REAL",
-          "pollingTime": 1000,
-          "eip:structureDefinition": null
-        }
-      ]
-    },
     "Local:2:O": {
       "type": "object",
       "const": null,

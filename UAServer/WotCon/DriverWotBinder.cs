@@ -77,14 +77,25 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return match;
             }
 
-            // A relative href (no scheme) can only be resolved against the TD base,
-            // which Compile sees. Claim it below any scheme-based match.
-            if (!string.IsNullOrEmpty(form.Href) && SchemeOf(form.Href) is null)
+            // A relative href can only be resolved against the TD base, which Compile
+            // sees. Claim it below any scheme-based match.
+            if (!string.IsNullOrEmpty(form.Href) && IsRelative(form.Href))
             {
                 return WotBindingMatch.Match(WotBindingMatchKind.Scheme, 1);
             }
 
             return WotBindingMatch.NoMatch;
+        }
+
+        /// <summary>
+        /// True when <paramref name="href"/> is relative to the TD base. Driver addresses
+        /// can contain colons (a Rockwell tag such as <c>Local:2:O</c>), which read as a
+        /// URI scheme; only a scheme some loaded driver serves makes an href absolute.
+        /// </summary>
+        private bool IsRelative(string href)
+        {
+            string scheme = SchemeOf(href);
+            return scheme is null || !_drivers.AllDrivers.Any(driver => string.Equals(driver.Scheme, scheme, StringComparison.OrdinalIgnoreCase));
         }
 
         public override WotBindingCompilation Compile(WotAffordanceForm form, WotBindingPlanContext context)
@@ -103,7 +114,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // asset (a BACnet base names the device, while each href names one of its
             // objects), so it must not become the connection. Only a TD without a base
             // falls back to the absolute href.
-            bool relative = SchemeOf(href) is null;
+            bool relative = IsRelative(href);
             string baseUri = string.IsNullOrEmpty(context.BaseUri) ? (relative ? null : href) : context.BaseUri;
             if (string.IsNullOrEmpty(baseUri)
                 || !TryParseUri(baseUri, out Uri endpointUri)

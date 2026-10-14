@@ -154,5 +154,37 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
 
             Assert.Same(content, WotImportNormalizer.Normalize(content));
         }
+
+        [Fact]
+        public void Null_mapping_terms_are_dropped_and_type_only_properties_feed_their_own_variable()
+        {
+            // As written by the Rockwell driver browse: absent terms are JSON null, and a
+            // UDT names only its type. The registry rejects null terms as non-strings.
+            JsonObject td = Normalize(
+"""
+                {
+                  "@context": ["https://www.w3.org/2022/wot/td/v1.1"],
+                  "@type": ["Thing"],
+                  "id": "urn:plc",
+                  "name": "plc",
+                  "properties": {
+                    "scalar": { "uav:mapToNodeId": null, "uav:mapToType": null, "uav:mapByFieldPath": null, "forms": [ { "href": "Cxn:1" } ] },
+                    "udt": { "uav:mapToNodeId": null, "uav:mapToType": "nsu=http://opcfoundation.org/UA/plc/;s=UdtType", "uav:mapByFieldPath": null, "forms": [ { "href": "Local:2:O" } ] }
+                  }
+                }
+                
+"""
+);
+
+            JsonObject scalar = td["properties"]!["scalar"]!.AsObject();
+            Assert.Equal("nsu=urn:plc;s=plc.scalar", scalar["uav:mapToNodeId"]!.GetValue<string>());
+            Assert.False(scalar.ContainsKey("uav:mapToType"));
+            Assert.False(scalar.ContainsKey("uav:mapByFieldPath"));
+
+            JsonObject udt = td["properties"]!["udt"]!.AsObject();
+            Assert.Equal("nsu=urn:plc;s=plc.udt", udt["uav:mapToNodeId"]!.GetValue<string>());
+            Assert.Equal("nsu=http://opcfoundation.org/UA/plc/;s=UdtType", udt["uav:mapToType"]!.GetValue<string>());
+            Assert.False(udt.ContainsKey("uav:mapByFieldPath"));
+        }
     }
 }

@@ -61,6 +61,14 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     return new WotReadResult(StatusCodes.BadDataUnavailable, DataValue.FromStatusCode(StatusCodes.BadDataUnavailable));
                 }
 
+                // A structure tag (such as a Rockwell UDT) comes back as its decoded fields.
+                // A Variant cannot hold a dictionary, so it is encoded as the structure
+                // the property is mapped to; without that the read fails silently.
+                if (value is IDictionary<string, object> fields)
+                {
+                    return ReadStructure(fields);
+                }
+
                 return new WotReadResult(StatusCodes.Good, new DataValue(ToVariant(value), StatusCodes.Good, DateTime.UtcNow));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -211,6 +219,23 @@ namespace Opc.Ua.Edge.Translator.WotCon
             // the executor disconnects it once no channel uses it.
             Func<ValueTask> release = Interlocked.Exchange(ref _release, null);
             return release?.Invoke() ?? default;
+        }
+
+        private WotReadResult ReadStructure(IDictionary<string, object> fields)
+        {
+            string typeId = Form?.TargetMapping?.TargetTypeNodeId;
+            UANodeManager nodeManager = UANodeManager.Instance;
+            if (!string.IsNullOrEmpty(typeId) && nodeManager != null)
+            {
+                NodeId dataTypeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(typeId), nodeManager.Server.NamespaceUris);
+                if (nodeManager.TryEncodeStructure(dataTypeId, fields, out ExtensionObject encoded))
+                {
+                    return new WotReadResult(StatusCodes.Good, new DataValue(new Variant(encoded), StatusCodes.Good, DateTime.UtcNow));
+                }
+            }
+
+            Log.Logger.Warning("Structure value of tag {TagName} on asset {AssetId} cannot be encoded as type {Type}.", _tag?.Name, _assetName, typeId);
+            return new WotReadResult(StatusCodes.BadTypeMismatch, DataValue.FromStatusCode(StatusCodes.BadTypeMismatch));
         }
 
         private static Variant ToVariant(object value)
