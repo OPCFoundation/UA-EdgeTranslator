@@ -1,17 +1,17 @@
 Summary
-  Generated on: 10/17/2026 - 09:12:15
-  Coverage date: 10/17/2026 - 09:12:12
+  Generated on: 10/17/2026 - 09:14:44
+  Coverage date: 10/17/2026 - 09:14:41
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
   Files: 55
-  Line coverage: 82.5%
-  Covered lines: 4442
-  Uncovered lines: 941
+  Line coverage: 82.4%
+  Covered lines: 4440
+  Uncovered lines: 943
   Coverable lines: 5383
   Total lines: 14454
-  Branch coverage: 72.4% (2299 of 3172)
-  Covered branches: 2299
+  Branch coverage: 72.4% (2298 of 3172)
+  Covered branches: 2298
   Total branches: 3172
   Method coverage: 91.6% (474 of 517)
   Full method coverage: 59.9% (310 of 517)
@@ -19,7 +19,7 @@ Summary
   Fully covered methods: 310
   Total methods: 517
 
-UAEdgeTranslator                                                  82.5%
+UAEdgeTranslator                                                  82.4%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -79,5 +79,5 @@ UAEdgeTranslator                                                  82.5%
   Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               94.4%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   90.8%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                     90%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
