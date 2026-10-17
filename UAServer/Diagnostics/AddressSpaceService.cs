@@ -621,11 +621,14 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                 }
             };
 
-            var browseResponse = await server.NodeManager.BrowseAsync(
-                CreateContext(),
-                null,
-                _maxReferencesPerNode,
-                nodesToBrowse,
+            // Off the circuit thread for the same reason as ReadAsync.
+            var browseResponse = await Task.Run(
+                async () => await server.NodeManager.BrowseAsync(
+                    CreateContext(),
+                    null,
+                    _maxReferencesPerNode,
+                    nodesToBrowse,
+                    cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
             ArrayOf<BrowseResult> results = browseResponse.Item1;
@@ -640,11 +643,18 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
         private static async Task<ArrayOf<DataValue>> ReadAsync(IServerInternal server, ArrayOf<ReadValueId> reads, CancellationToken cancellationToken)
         {
-            (ArrayOf<DataValue> values, _) = await server.NodeManager.ReadAsync(
-                CreateContext(),
-                0,
-                TimestampsToReturn.Both,
-                reads,
+            // Run on the thread pool, not the Blazor circuit: WoT-Con direct-read
+            // handlers call protocol drivers whose ReadAsync is often synchronous
+            // (e.g. BACnet/Rockwell return Task.FromResult(ReadCore(...))) and can
+            // block for seconds on timeouts. Executed inline, that blocks the
+            // circuit's synchronization context and freezes the whole UI.
+            (ArrayOf<DataValue> values, _) = await Task.Run(
+                async () => await server.NodeManager.ReadAsync(
+                    CreateContext(),
+                    0,
+                    TimestampsToReturn.Both,
+                    reads,
+                    cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
             return values;

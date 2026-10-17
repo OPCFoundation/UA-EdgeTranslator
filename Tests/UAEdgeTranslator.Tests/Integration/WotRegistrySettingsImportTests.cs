@@ -67,6 +67,25 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         }
 
         [Fact]
+        public async Task A_registry_resource_is_named_after_its_thing_description_not_its_file()
+        {
+            await using OpcUaServerFixture fixture = new();
+            StandardServer server = (StandardServer)fixture.App.Server;
+
+            string importFolder = Path.Combine(fixture.WorkingDirectory, "named-import-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(importFolder);
+            await File.WriteAllTextAsync(Path.Combine(importFolder, "some-file.td.jsonld"), Td.Replace("\"title\": \"imported-1\"", "\"name\": \"named-1\", \"title\": \"imported-1\"", StringComparison.Ordinal));
+
+            string storage = Path.Combine(fixture.WorkingDirectory, "wot-registry-" + Guid.NewGuid().ToString("N"));
+            await using WotRegistryHost host = await WotRegistryHost.StartAsync(server, Program.Drivers, storage);
+            await host.ImportSettingsFilesAsync(importFolder, default);
+
+            var resources = host.Registry.Current.ResourcesOfKind(WoTDocumentKindEnum.ThingDescription);
+            Assert.Contains(resources, r => r.ResourceId == "named-1");
+            Assert.DoesNotContain(resources, r => r.ResourceId == "some-file.td");
+        }
+
+        [Fact]
         public async Task A_legacy_thing_description_is_materialized_below_the_objects_folder()
         {
             await using OpcUaServerFixture fixture = new();

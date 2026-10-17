@@ -444,6 +444,16 @@ namespace Opc.Ua.Edge.Translator
         // OPC UA client write outside of /app/settings or hijack another asset's
         // tag-polling state. Reject anything that isn't a small set of safe
         // characters before we commit it anywhere.
+        /// <summary>
+        /// Set DELETE_WOT_FILE_ON_ASSET_DELETE=1 to also delete an asset's Thing Description
+        /// file from settings/ when the asset is deleted (OPC UA DeleteAsset or the dashboard's
+        /// Devices page). Off by default: the file is kept and deleted from the WoT Files page.
+        /// </summary>
+        public const string DeleteWoTFileOnAssetDeleteVariable = "DELETE_WOT_FILE_ON_ASSET_DELETE";
+
+        private static bool DeleteWoTFileOnAssetDelete =>
+            Environment.GetEnvironmentVariable(DeleteWoTFileOnAssetDeleteVariable) is "1" or "true" or "True" or "TRUE";
+
         private const int _cMaxAssetNameLength = 128;
 
         private bool IsSafeAssetName(string name)
@@ -495,35 +505,19 @@ namespace Opc.Ua.Edge.Translator
         /// is derived from a file on the trusted server disk; the OPC UA
         /// upload path still rejects unsafe names outright.
         /// </summary>
-        private static string SanitizeAssetName(string raw)
+        /// <summary>
+        /// The asset name for a Thing Description: its <c>name</c>, which also names the asset
+        /// node, the settings file, the namespace URI and the driver/tag dictionaries.
+        /// </summary>
+        private string ThingDescriptionName(string contents)
         {
-            if (string.IsNullOrWhiteSpace(raw))
+            ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(contents.Trim('\uFEFF'));
+            if (td == null || !IsSafeAssetName(td.Name))
             {
-                return "Asset";
+                throw new ServiceResultException(StatusCodes.BadInvalidArgument, "Invalid Thing Description name.");
             }
 
-            char[] chars = raw.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-            {
-                char c = chars[i];
-                if (!(char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-'))
-                {
-                    chars[i] = '_';
-                }
-            }
-
-            string sanitized = new string(chars);
-            if (sanitized[0] == '.')
-            {
-                sanitized = "_" + sanitized;
-            }
-
-            if (sanitized.Length > _cMaxAssetNameLength)
-            {
-                sanitized = sanitized.Substring(0, _cMaxAssetNameLength);
-            }
-
-            return sanitized;
+            return td.Name;
         }
 
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
@@ -566,17 +560,8 @@ namespace Opc.Ua.Edge.Translator
                 try
                 {
                     string contents = System.IO.File.ReadAllText(file);
-                    string fileName = Path.GetFileNameWithoutExtension(file);
-
-                    // Files in the local settings directory live on the trusted
-                    // server disk, so sanitize the asset name instead of
-                    // skipping the file. The OPC UA upload path still rejects
-                    // unsafe names outright via IsSafeAssetName.
-                    string assetName = SanitizeAssetName(fileName);
-                    if (!string.Equals(assetName, fileName, StringComparison.Ordinal))
-                    {
-                        Log.Logger.Warning("Sanitized WoT file name [{Original}] -> [{Sanitized}] for {File}", fileName, assetName, file);
-                    }
+                    // The asset is always named after its Thing Description, whatever the file is called.
+                    string assetName = ThingDescriptionName(contents);
 
                     if (!CreateAssetNode(assetName, out NodeState assetNode))
                     {
@@ -829,6 +814,90 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        /// <summary>
+        /// The host of an asset endpoint, whatever form the driver uses: a URI
+        /// (<c>eip://host/1,0/</c>), <c>host:port</c>, <c>[ipv6]:port</c> or a bare host.
+        /// Empty when there is none.
+        /// </summary>
+        public static string GetEndpointHost(string endpoint)
+        {
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                return string.Empty;
+            }
+
+            string text = endpoint.Trim();
+            if (text.Contains("://", StringComparison.Ordinal))
+            {
+                return Uri.TryCreate(text, UriKind.Absolute, out Uri uri) ? uri.Host.Trim('[', ']') : string.Empty;
+            }
+
+            if (text.StartsWith('['))
+            {
+                int close = text.IndexOf(']');
+                return close > 0 ? text.Substring(1, close - 1) : text;
+            }
+
+            int slash = text.IndexOf('/');
+            if (slash >= 0)
+            {
+                text = text.Substring(0, slash);
+            }
+
+            // host:port, but leave a bare IPv6 address alone
+            int colon = text.IndexOf(':');
+            return colon > 0 && colon == text.LastIndexOf(':') ? text.Substring(0, colon) : text;
+        }
+
+        /// <summary>Dashboard entry point for DiscoverAssets: the endpoints the drivers report.</summary>
+        public IReadOnlyList<string> DiscoverAssetEndpoints()
+        {
+            List<Variant> outputs = new() { Variant.Null };
+            ServiceResult result = OnDiscoverAssets(SystemContext, null, default, outputs);
+            if (ServiceResult.IsBad(result))
+            {
+                throw new ServiceResultException(result);
+            }
+
+            return outputs[0].TryGetValue(out ArrayOf<string> endpoints) ? endpoints.ToArray() : Array.Empty<string>();
+        }
+
+        /// <summary>Dashboard entry point for CreateAssetForEndpoint.</summary>
+        public async Task<ServiceResult> CreateAssetForEndpointAsync(string assetName, string endpoint, CancellationToken cancellationToken = default)
+        {
+            List<Variant> outputs = new() { Variant.Null };
+            ArrayOf<Variant> inputs = new ArrayOf<Variant>(new[] { Variant.From(assetName), Variant.From(endpoint) });
+            return await OnCreateAssetForEndpointAsync(SystemContext, null, NodeId.Null, inputs, outputs, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>Dashboard entry point for DeleteAsset, by asset name.</summary>
+        public async Task<ServiceResult> DeleteAssetByNameAsync(string assetName, CancellationToken cancellationToken = default)
+        {
+            NodeId assetId = NodeId.Null;
+            lock (Lock)
+            {
+                INodeBrowser browser = _assetManagement.CreateBrowser(SystemContext, null, ReferenceTypeIds.Organizes, true, BrowseDirection.Forward, QualifiedName.Null, null, true);
+                for (IReference reference = browser.Next(); reference != null; reference = browser.Next())
+                {
+                    NodeState target = Find(ExpandedNodeId.ToNodeId(reference.TargetId, Server.NamespaceUris));
+                    if (target != null && target.DisplayName.Text == assetName)
+                    {
+                        assetId = target.NodeId;
+                        break;
+                    }
+                }
+            }
+
+            if (assetId.IsNull)
+            {
+                return StatusCodes.BadNodeIdUnknown;
+            }
+
+            List<Variant> outputs = new();
+            ArrayOf<Variant> inputs = new ArrayOf<Variant>(new[] { Variant.From(assetId) });
+            return await OnDeleteAssetAsync(SystemContext, null, NodeId.Null, inputs, outputs, cancellationToken).ConfigureAwait(false);
+        }
+
         private bool CreateAssetNode(string assetName, out NodeState assetNode)
         {
             lock (Lock)
@@ -954,13 +1023,16 @@ namespace Opc.Ua.Edge.Translator
 
                 DeleteNode(SystemContext, assetId);
 
-                IEnumerable<string> WoTFiles = Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld");
-                foreach (string file in WoTFiles)
+                // The Thing Description file in settings/ is kept by default: deleting WoT
+                // files is the WoT Files page's job. DELETE_WOT_FILE_ON_ASSET_DELETE=1 opts in
+                // to removing <asset name>.jsonld (the file the asset is persisted as) here too.
+                if (DeleteWoTFileOnAssetDelete)
                 {
-                    string fileName = Path.GetFileNameWithoutExtension(file);
-                    if (fileName == assetName)
+                    string settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld");
+                    if (System.IO.File.Exists(settingsFile))
                     {
-                        System.IO.File.Delete(file);
+                        System.IO.File.Delete(settingsFile);
+                        Log.Logger.Information("Deleted WoT file [{File}] with asset [{AssetName}].", Path.GetFileName(settingsFile), assetName);
                     }
                 }
 
@@ -1046,49 +1118,98 @@ namespace Opc.Ua.Edge.Translator
         }
 
         /// <summary>
-        /// Unloads a WoT file from the running server: it locates the asset created
-        /// from the file by name and removes it through the same code path used by the
-        /// OPC UA DeleteAsset method (<see cref="OnDeleteAsset"/>), which deletes the
-        /// address-space nodes, disconnects the southbound driver, prunes the tag state
-        /// and removes the .jsonld file from the settings folder. Returns true when a
-        /// matching asset was found and unloaded.
+        /// Deletes a WoT file from the settings folder. When its asset (named after the
+        /// Thing Description) is loaded, it is first offboarded through the DeleteAsset
+        /// code path, which removes the nodes, disconnects the driver and prunes the tag
+        /// state. DeleteAsset itself never touches the settings folder. Returns true when
+        /// the file was deleted.
         /// </summary>
         public async Task<bool> UnloadWoTFileAsync(string fileName, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
+            if (string.IsNullOrWhiteSpace(fileName) || !string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal))
             {
                 return false;
             }
 
-            // The asset node display name matches the settings file name without its
-            // extension (see LoadLocalWoTFilesAsync / ImportWoTFileAsync).
-            string assetName = Path.GetFileNameWithoutExtension(fileName);
-
-            NodeId assetId;
-            lock (Lock)
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "settings", fileName);
+            if (!System.IO.File.Exists(path))
             {
-                assetId = FindAssetNodeIdByName(assetName);
-            }
-
-            if (assetId.IsNull)
-            {
-                Log.Logger.Warning("Cannot unload WoT file [{FileName}]: no matching asset is currently loaded.", fileName);
+                Log.Logger.Warning("Cannot delete WoT file [{FileName}]: it does not exist.", fileName);
                 return false;
             }
 
-            ServiceResult result = await OnDeleteAssetAsync(SystemContext, null, NodeId.Null, new ArrayOf<Variant>(new[] { Variant.From(assetId) }), new List<Variant>(), cancellationToken).ConfigureAwait(false);
-
-            bool success = result.StatusCode == StatusCodes.Good;
-            if (success)
+            // The asset is named after the Thing Description inside the file. Offboard it
+            // first when it is loaded; a file that does not parse is simply deleted.
+            string assetName = null;
+            try
             {
-                Log.Logger.Information("Unloaded WoT file [{FileName}] (asset [{AssetName}]).", fileName, assetName);
+                assetName = ThingDescriptionName(System.IO.File.ReadAllText(path));
             }
-            else
+            catch (Exception ex) when (ex is JsonException or ServiceResultException)
             {
-                Log.Logger.Warning("Failed to unload WoT file [{FileName}]: {Status}", fileName, result.StatusCode);
+                Log.Logger.Warning("WoT file [{FileName}] has no valid Thing Description name; deleting the file only.", fileName);
             }
 
-            return success;
+            NodeId assetId = NodeId.Null;
+            if (assetName != null)
+            {
+                lock (Lock)
+                {
+                    assetId = FindAssetNodeIdByName(assetName);
+                }
+            }
+
+            if (!assetId.IsNull)
+            {
+                ServiceResult result = await OnDeleteAssetAsync(SystemContext, null, NodeId.Null, new ArrayOf<Variant>(new[] { Variant.From(assetId) }), new List<Variant>(), cancellationToken).ConfigureAwait(false);
+                if (ServiceResult.IsBad(result))
+                {
+                    Log.Logger.Warning("Failed to offboard asset [{AssetName}] of WoT file [{FileName}]: {Status}", assetName, fileName, result.StatusCode);
+                    return false;
+                }
+            }
+
+            // DELETE_WOT_FILE_ON_ASSET_DELETE may already have removed it with the asset.
+            if (System.IO.File.Exists(path))
+            {
+                System.IO.File.Delete(path);
+            }
+
+            Log.Logger.Information("Deleted WoT file [{FileName}] (asset [{AssetName}]).", fileName, assetName);
+            return true;
+        }
+
+        /// <summary>
+        /// Onboards every WoT file in the settings folder whose asset is not loaded yet.
+        /// Returns the number onboarded, already loaded, and failed.
+        /// </summary>
+        public async Task<(int Onboarded, int AlreadyLoaded, int Failed)> OnboardLocalWoTFilesAsync()
+        {
+            int onboarded = 0, alreadyLoaded = 0, failed = 0;
+            foreach (string file in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "*.jsonld"))
+            {
+                try
+                {
+                    string contents = System.IO.File.ReadAllText(file);
+                    string assetName = ThingDescriptionName(contents);
+                    if (!CreateAssetNode(assetName, out NodeState assetNode))
+                    {
+                        alreadyLoaded++;
+                        continue;
+                    }
+
+                    await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+                    RaiseModelChangedEvent(assetNode.NodeId, ModelChangeStructureVerbMask.NodeAdded);
+                    onboarded++;
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Error(ex, "Failed to onboard WoT file: {FileName}", file);
+                    failed++;
+                }
+            }
+
+            return (onboarded, alreadyLoaded, failed);
         }
 
         // Resolves the NodeId of an asset under the AssetManagement object by its
@@ -1124,12 +1245,32 @@ namespace Opc.Ua.Edge.Translator
 
             List<string> allAddresses = new();
 
+            // Hosts of assets already onboarded, and of endpoints already reported in this
+            // run. Drivers report onboarded endpoints in their own form (a URI, host:port or
+            // a bare gateway), so compare on the host, not the endpoint string.
+            HashSet<string> knownHosts = new(StringComparer.OrdinalIgnoreCase);
+            foreach (ConnectedAssetInfo asset in GetConnectedAssets())
+            {
+                string host = GetEndpointHost(asset.Endpoint);
+                if (!string.IsNullOrEmpty(host))
+                {
+                    knownHosts.Add(host);
+                }
+            }
+
             try
             {
                 foreach (var drv in Program.Drivers.AllDrivers)
                 {
                     foreach (string endpoint in drv.Discover())
                     {
+                        string host = GetEndpointHost(endpoint);
+                        if (!string.IsNullOrEmpty(host) && !knownHosts.Add(host))
+                        {
+                            Log.Logger.Information("DiscoverAssets skipped endpoint {Endpoint}: already onboarded or discovered.", endpoint);
+                            continue;
+                        }
+
                         // WoT-Con 1.1 §Security: endpoints DiscoverAssets reports get the
                         // same endpoint policy as caller-supplied ones, so a driver can't
                         // surface (and a client can't then onboard) a blocked address.
@@ -1405,11 +1546,8 @@ namespace Opc.Ua.Edge.Translator
                 throw new ArgumentException("The Thing Description file is empty.", nameof(contents));
             }
 
-            // Derive a safe asset name from the uploaded file name, mirroring the
-            // trusted local-file load path (LoadLocalWoTFilesAsync). The OPC UA
-            // upload path inside OnboardAssetFromWoTFileAsync still validates the
-            // Thing Description's own name via IsSafeAssetName.
-            string assetName = SanitizeAssetName(Path.GetFileNameWithoutExtension(fileName));
+            // The asset (and its settings file) is always named after the Thing Description.
+            string assetName = ThingDescriptionName(contents);
 
             if (!CreateAssetNode(assetName, out NodeState assetNode))
             {

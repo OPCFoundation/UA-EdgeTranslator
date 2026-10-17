@@ -3,11 +3,9 @@
 <div class="app-shell">
     <aside class="sidebar">
         <div class="brand">
-            <div class="brand-mark">UA</div>
-            <div class="brand-text">
-                <span class="brand-title">Edge Translator</span>
-                <span class="brand-subtitle">Diagnostics</span>
-            </div>
+            <img class="brand-logo brand-logo-light" src="images/opcfoundation-logo.jpg" alt="OPC Foundation" />
+            <img class="brand-logo brand-logo-dark" src="images/opclogo-white.png" alt="OPC Foundation" />
+            <span class="brand-title">UA Edge Translator</span>
         </div>
 
         <nav class="nav">
@@ -53,7 +51,7 @@
                         <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
                     </svg>
                 </span>
-                <span class="nav-label">Devices</span>
+                <span class="nav-label">Assets</span>
             </NavLink>
 
             <NavLink class="nav-item" href="drivers">
@@ -95,7 +93,17 @@
         </div>
     </aside>
 
-    <main class="content">
+    <button type="button" class="theme-toggle" data-theme-toggle title="Toggle dark theme" aria-label="Toggle dark theme">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+</button>
+
+<main class="content">
         <div class="content-inner">
             @Body
         </div>

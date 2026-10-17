@@ -69,40 +69,25 @@ a {
 
 .brand {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     padding: 6px 10px 22px;
 }
 
-.brand-mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 11px;
-    background: linear-gradient(135deg, #0a84ff, #0071e3);
-    color: #fff;
-    font-weight: 700;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: -0.02em;
-    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.35);
+.brand-logo {
+    display: block;
+    max-width: 180px;
+    max-height: 48px;
+    height: auto;
 }
 
-.brand-text {
-    display: flex;
-    flex-direction: column;
-}
+.brand-logo-dark { display: none; }
 
 .brand-title {
     font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.01em;
-}
-
-.brand-subtitle {
-    font-size: 12px;
-    color: var(--text-tertiary);
 }
 
 .nav {
@@ -1396,4 +1381,98 @@ a {
     .explorer-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* ---------- Dark theme ---------- */
+/* Applied by data-theme="dark" on <html>; set before first paint by the inline script in App.razor. */
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --text: #f5f5f7;
+    --text-secondary: #aeaeb2;
+    --text-tertiary: #8e8e93;
+    --separator: rgba(255, 255, 255, 0.12);
+    --accent: #0a84ff;
+    --accent-hover: #409cff;
+    --green: #30d158;
+    --red: #ff453a;
+    --orange: #ff9f0a;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .sidebar { background: rgba(28, 28, 30, 0.72); }
+html[data-theme="dark"] .brand-logo-light { display: none; }
+html[data-theme="dark"] .brand-logo-dark { display: block; }
+html[data-theme="dark"] .nav-item:hover,
+html[data-theme="dark"] .list-item:hover,
+html[data-theme="dark"] .jtn-row.is-parent:hover { background: rgba(255, 255, 255, 0.06); }
+html[data-theme="dark"] .btn-refresh:hover { background: #3a3a3c; }
+html[data-theme="dark"] .seg { background: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .code-block { background: #0b0b0c; color: #f5f5f7; border: 1px solid var(--separator); }
+html[data-theme="dark"] .banner-warning { background: rgba(255, 159, 10, 0.14); color: #ffd28a; border-color: rgba(255, 159, 10, 0.35); }
+html[data-theme="dark"] .banner-success { background: rgba(48, 209, 88, 0.14); color: #8ce99a; border-color: rgba(48, 209, 88, 0.35); }
+html[data-theme="dark"] .banner-namespace { background: rgba(10, 132, 255, 0.14); }
+html[data-theme="dark"] .pill-green { background: rgba(48, 209, 88, 0.18); color: #6ee08a; }
+html[data-theme="dark"] .pill-red { background: rgba(255, 69, 58, 0.18); color: #ff8a80; }
+html[data-theme="dark"] .pill-orange { background: rgba(255, 159, 10, 0.18); color: #ffc266; }
+html[data-theme="dark"] .pill-blue { background: rgba(10, 132, 255, 0.2); color: #7cb8ff; }
+html[data-theme="dark"] .pill-gray { background: rgba(142, 142, 147, 0.2); color: #c7c7cc; }
+html[data-theme="dark"] .json-tree::-webkit-scrollbar-thumb,
+html[data-theme="dark"] .list-pane::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .ns-select { background: var(--surface-2); color: var(--text); border-color: var(--separator); }
+
+/* Theme toggle, fixed to the top right of the window. */
+.theme-toggle {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 100;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--separator);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.theme-toggle:hover { transform: scale(1.06); }
+
+.theme-toggle svg { width: 18px; height: 18px; }
+
+.theme-toggle .icon-sun { display: none; }
+html[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* Keep page actions clear of the fixed theme toggle. */
+.page-actions { padding-right: 44px; }
+
+/* All action buttons use the accent blue. */
+.btn-refresh,
+html[data-theme="dark"] .btn-refresh {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+}
+
+.btn-refresh:hover,
+html[data-theme="dark"] .btn-refresh:hover {
+    background: var(--accent-hover);
+}
+
+.btn-refresh:disabled {
+    opacity: 0.5;
+    cursor: default;
 }

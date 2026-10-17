@@ -279,6 +279,7 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 * `OPCUA_CLIENT_USERNAME` - OPC UA client username to connect to an OPC UA asset.
 * `OPCUA_CLIENT_PASSWORD` - OPC UA client password to connect to an OPC UA asset.
 * `DISABLE_ASSET_CONNECTION_TEST` - Set to `1` to disable the connection test when mapping an asset to OPC UA.
+* `DELETE_WOT_FILE_ON_ASSET_DELETE` - Set to `1` to also delete an asset's Thing Description file (`settings/<asset name>.jsonld`) when the asset is deleted, through the OPC UA `DeleteAsset` method or the **Delete** button on the dashboard's [Connected Devices](#connected-devices-devices) page. Disabled by default: deleting an asset then only offboards it (removes its OPC UA nodes, disconnects the driver and prunes its tags) and keeps the file, so the asset is onboarded again on the next restart. Thing Description files are deleted from the [WoT Files](#wot-files-wot) page.
 * `IGNORE_PROVISIONING_MODE` - Set to `1` to ignore provisioning mode and allow access to WoT-Connectivity-related OPC UA nodes in the address space. This also takes manual control of client-certificate trust: while the issuer store is empty, untrusted client certificates are **rejected** (not auto-accepted) and must be trusted manually. See [Provisioning mode, `IGNORE_PROVISIONING_MODE` and client-certificate trust](#provisioning-mode-ignore_provisioning_mode-and-client-certificate-trust).
 * `OPC_UA_GDS_ENDPOINT_URL` - The endpoint URL of an OPC UA Global Discovery Server on the network, which will then be used during network discovery.
 * `DISABLE_TLS` - Set to `1` to turn off TLS for OCPP and LoRaWAN connections.
@@ -340,14 +341,14 @@ UA Edge Translator can be controlled through the use of just 2 OPC UA methods (a
 
 ### Asset name rules
 
-Asset names supplied to `CreateAsset` / `CreateAssetForEndpoint`, the `name` field of an uploaded Thing Description, and `*.jsonld` filenames placed in `settings/` must:
+An asset is always named after the `name` field of its Thing Description, whatever its `*.jsonld` file in `settings/` is called; that name also names the asset's OPC UA node, its namespace URI, the file the asset is persisted as (`settings/<name>.jsonld`) and, for the [WoT Connectivity 1.1 registry](#wot-connectivity-11-registry-preview), the registry resource each file in `settings/` is imported as. A Thing Description without a `name` falls back to its `title` for the registry resource. Asset names supplied to `CreateAsset` / `CreateAssetForEndpoint` and the `name` field of every Thing Description (uploaded, imported or placed in `settings/`) must:
 
 * be 1-128 characters long,
 * contain only ASCII letters, digits, `.`, `_` or `-`,
 * not start with `.`, and
 * not contain path separators or relative-path segments (`..`, `/`, `\`, etc.).
 
-Names that don't satisfy these rules are rejected with `BadInvalidArgument` and logged. The restriction prevents a client from writing outside `settings/` or hijacking another asset's polling state through a path-traversal name.
+Names that don't satisfy these rules are rejected with `BadInvalidArgument` and logged; they are never rewritten into a valid name. A file in `settings/` with an invalid Thing Description `name` is skipped at startup and by **Onboard All**. The restriction prevents a client from writing outside `settings/` or hijacking another asset's polling state through a path-traversal name.
 
 ## Diagnostics Dashboard (Web UI)
 
@@ -379,7 +380,7 @@ An OPC UA address-space browser for the running server. The left pane is a tree 
 
 ### Connected Devices (`/devices`)
 
-The southbound asset connection status — one row per onboarded asset, showing its name, detected protocol, remote endpoint, mapped tag count and a connected/disconnected status pill.
+The southbound asset connection status — one row per onboarded asset, showing its name, detected protocol, remote endpoint, mapped tag count and a connected/disconnected status pill. A **Delete** button on each row offboards the asset through the same code path as the OPC UA `DeleteAsset` method. Its Thing Description file is kept in `settings/` unless [`DELETE_WOT_FILE_ON_ASSET_DELETE`](#optional-environment-variables) is set. A **Discover** button in the page header asks every protocol driver for assets on the network (`DiscoverAssets`) and lists each new endpoint as an extra row with an editable asset name and a **Create** button, which browses the asset and onboards it (`CreateAssetForEndpoint`).
 
 ![UA Edge Translator — Connected Devices page](docs/screenshots/diagnostics-devices.png)
 
@@ -391,7 +392,7 @@ The loaded southbound protocol drivers — one row per registered driver, showin
 
 ### WoT Files (`/wot`)
 
-The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. The selected file also has a **Delete** button that unloads its asset — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
+The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. An **Onboard All** button onboards every file in `settings/` whose asset is not loaded yet; files whose asset (identified by the Thing Description `name`) is already onboarded are skipped, and a summary reports how many were onboarded, skipped and failed. The selected file also has a **Delete** button that offboards its asset, if loaded — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. This is the only place the dashboard deletes Thing Description files. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
 
 ![UA Edge Translator — WoT Files page](docs/screenshots/diagnostics-wot-files.png)
 
@@ -873,11 +874,19 @@ UA Edge Translator uses a zero trust security model and implements the following
 
 ### STRIDE Analysis of OPC UA server interface
 * Spoofing: Mitigated by OPC UA username/password authentication and client certificate authentication.
-* Tampering: Mitigated by OPC UA message signing and encryption.
+* Tampering: Mitigated by OPC UA message signing and encryption. Asset-management methods that alter the address space require a `SignAndEncrypt` secure channel. Asset names (taken from the Thing Description `name`) are validated against the [asset name rules](#asset-name-rules) and rejected rather than rewritten, so a crafted name cannot write outside `settings/` or take over another asset's polling state. Deleting an asset keeps its Thing Description file by default (see `DELETE_WOT_FILE_ON_ASSET_DELETE`), so an asset deleted by mistake or by a compromised client is restored from `settings/` on restart.
 * Repudiation: Mitigated by OPC UA message signing and encryption, as well as append-only logging.
 * Information Disclosure: Mitigated by OPC UA message encryption.
 * Denial of Service: Mitigated by OPC UA secure channels and session management with maximums set for sessions, subscriptions, monitored items and message size limits.
-* Elevation of Privilege: Mitigated by OPC UA user authentication as well as a provisioning mode preventing read/write access to variables before GDS Push is carried out.
+* Elevation of Privilege: Mitigated by OPC UA user authentication, role-based access to the asset-management methods (`WOTCON_MANAGEMENT_ROLE`, `ConfigureAdmin` by default) as well as a provisioning mode preventing read/write access to variables before GDS Push is carried out.
+
+### STRIDE Analysis of the Diagnostics Dashboard (Web UI)
+* Spoofing: Mitigated by mandatory HTTP Basic authentication with the `OPCUA_USERNAME` / `OPCUA_PASSWORD` credentials.
+* Tampering: Mitigated by running every management action (Discover, Create, Delete, Import WoT File, Onboard All, certificate trust) through the same validated code paths as the OPC UA control interface, including the [asset name rules](#asset-name-rules) and the endpoint policy. Thing Description files are only deleted from the WoT Files page, or with the asset when `DELETE_WOT_FILE_ON_ASSET_DELETE` is set.
+* Repudiation: Mitigated by append-only logging of every management action.
+* Information Disclosure: HTTP Basic credentials are only Base64-encoded; place port `8081` behind a TLS-terminating reverse proxy when remote access is required.
+* Denial of Service: Mitigated by serving the dashboard on a separate port from the OPC UA endpoint, so it can be firewalled independently.
+* Elevation of Privilege: The dashboard is a trusted, authenticated administrator interface; do not expose port `8081` to untrusted networks.
 
 ### STRIDE Analysis of LoRaWAN and OCPP Secure Websocket server interfaces
 * Spoofing: Mitigated by TLS client certificate authentication for the LoRaWAN Network and communication for OCPP Central System.

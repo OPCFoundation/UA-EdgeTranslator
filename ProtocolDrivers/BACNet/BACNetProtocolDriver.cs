@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Newtonsoft.Json;
     using Opc.Ua.Edge.Translator.Interfaces;
     using Opc.Ua.Edge.Translator.Models;
+    using Serilog;
     using System;
     using System.Collections.Generic;
     using System.IO.BACnet;
@@ -15,7 +16,59 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private List<string> _discoverdAssets = new();
 
-        private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false));
+        private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false, localEndpointIp: GetLocalEndpointIp()));
+
+        // Picks the IPv4 interface used for BACnet/IP broadcasts. Override with the
+        // BACNET_LOCAL_IP environment variable; otherwise prefer an operational,
+        // non-virtual interface that has a default gateway (skips Docker/WSL/VPN adapters).
+        private static string GetLocalEndpointIp()
+        {
+            string configured = Environment.GetEnvironmentVariable("BACNET_LOCAL_IP");
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                Log.Logger.Information("BACNet: using local interface {LocalIp} for discovery (from BACNET_LOCAL_IP).", configured.Trim());
+                return configured.Trim();
+            }
+
+            foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up
+                    || nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback
+                    || nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Tunnel)
+                {
+                    continue;
+                }
+
+                var props = nic.GetIPProperties();
+                bool hasIpv4Gateway = false;
+                foreach (var gw in props.GatewayAddresses)
+                {
+                    if (gw.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !gw.Address.Equals(System.Net.IPAddress.Any))
+                    {
+                        hasIpv4Gateway = true;
+                        break;
+                    }
+                }
+
+                if (!hasIpv4Gateway)
+                {
+                    continue;
+                }
+
+                foreach (var addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    {
+                        Log.Logger.Information("BACNet: using local interface {LocalIp} ({Interface}) for discovery.", addr.Address, nic.Name);
+                        return addr.Address.ToString();
+                    }
+                }
+            }
+
+            // Fall back to the library's automatic selection.
+            Log.Logger.Warning("BACNet: no IPv4 interface with a default gateway found; letting the BACnet library pick the local interface for discovery. Set BACNET_LOCAL_IP to choose one.");
+            return string.Empty;
+        }
 
         private bool _started = false;
 

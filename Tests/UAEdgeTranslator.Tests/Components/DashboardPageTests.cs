@@ -91,7 +91,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             // The empty state is the first thing a new operator sees.
             IRenderedComponent<Devices> page = Render<Devices>();
 
-            Assert.Contains("Connected Devices", page.Markup, System.StringComparison.Ordinal);
+            Assert.Contains("Connected Assets", page.Markup, System.StringComparison.Ordinal);
         }
 
         [Fact]

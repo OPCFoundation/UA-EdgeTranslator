@@ -16,6 +16,7 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     using System.Reflection;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 
     /// <summary>
     /// Read-only provider that produces point-in-time snapshots for the
@@ -204,6 +205,64 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             }
 
             return result.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Runs DiscoverAssets: the endpoints every protocol driver reports, after the
+        /// endpoint policy. Empty when the server is not running.
+        /// </summary>
+        public IReadOnlyList<string> DiscoverAssets()
+        {
+            return UANodeManager.Instance?.DiscoverAssetEndpoints() ?? Array.Empty<string>();
+        }
+
+        /// <summary>Runs CreateAssetForEndpoint; returns null on success, else the reason.</summary>
+        public async Task<string> CreateAssetForEndpointAsync(string assetName, string endpoint)
+        {
+            UANodeManager manager = UANodeManager.Instance;
+            if (manager == null)
+            {
+                return "The OPC UA server is not running.";
+            }
+
+            try
+            {
+                ServiceResult result = await manager.CreateAssetForEndpointAsync(assetName, endpoint).ConfigureAwait(false);
+                return ServiceResult.IsGood(result) ? null : Describe(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Creating asset {AssetName} for {Endpoint} from the dashboard failed.", assetName, endpoint);
+                return ex.Message;
+            }
+        }
+
+        /// <summary>Runs DeleteAsset for the named asset; returns null on success, else the reason.</summary>
+        public async Task<string> DeleteAssetAsync(string assetName)
+        {
+            UANodeManager manager = UANodeManager.Instance;
+            if (manager == null)
+            {
+                return "The OPC UA server is not running.";
+            }
+
+            try
+            {
+                ServiceResult result = await manager.DeleteAssetByNameAsync(assetName).ConfigureAwait(false);
+                return ServiceResult.IsGood(result) ? null : Describe(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Deleting asset {AssetName} from the dashboard failed.", assetName);
+                return ex.Message;
+            }
+        }
+
+        private static string Describe(ServiceResult result)
+        {
+            string text = result.LocalizedText.Text;
+            string status = result.StatusCode.ToString();
+            return string.IsNullOrEmpty(text) ? status : status + " (" + text + ")";
         }
 
         /// <summary>

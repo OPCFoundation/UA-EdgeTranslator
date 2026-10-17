@@ -18,6 +18,12 @@
             <span>@(_importing ? "Importing…" : "Import WoT File")</span>
             <InputFile @key="_inputKey" OnChange="ImportFileAsync" accept=".jsonld,.json" disabled="@_importing" style="display:none" />
         </label>
+        <button type="button" class="btn-refresh" disabled="@(_onboarding || _importing)" @onclick="OnboardAllAsync" title="Onboard every WoT file in the settings folder that is not loaded yet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12l5 5L20 7" />
+            </svg>
+            <span>@(_onboarding ? "Onboarding\u2026" : "Onboard All")</span>
+        </button>
     </Actions>
 </PageHeader>
 
@@ -133,6 +139,7 @@ else
 
     private bool _importing;
     private bool _unloading;
+    private bool _onboarding;
     private string _importError;
     private string _importMessage;
     private Guid _inputKey = Guid.NewGuid();
@@ -239,6 +246,39 @@ else
         }
     }
 
+    private async Task OnboardAllAsync()
+    {
+        _onboarding = true;
+        _importError = null;
+        _importMessage = null;
+
+        try
+        {
+            UANodeManager manager = UANodeManager.Instance
+                ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+            var (onboarded, alreadyLoaded, failed) = await manager.OnboardLocalWoTFilesAsync();
+            string summary = $"Onboarded {onboarded} WoT file(s); {alreadyLoaded} already onboarded.";
+            if (failed > 0)
+            {
+                _importError = summary + $" {failed} failed; see the server log for details.";
+            }
+            else
+            {
+                _importMessage = summary;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Onboarding failed: {ex.Message}";
+        }
+        finally
+        {
+            _onboarding = false;
+            Reload();
+        }
+    }
+
     private async Task UnloadAsync(WoTFileInfo file)
     {
         if (file is null)
@@ -269,7 +309,7 @@ else
             }
             else
             {
-                _importError = $"Could not delete '{DisplayName(file)}': it is not currently loaded.";
+                _importError = $"Could not delete '{DisplayName(file)}'; see the server log for details.";
             }
         }
         catch (Exception ex)

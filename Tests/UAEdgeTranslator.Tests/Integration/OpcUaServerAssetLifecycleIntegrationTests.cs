@@ -114,6 +114,38 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.True(StatusCode.IsGood(deleted.StatusCode), $"DeleteAsset returned {deleted.StatusCode}");
         }
 
+        [Theory]
+        [InlineData(null, true)]
+        [InlineData("1", false)]
+        public async Task DeleteAsset_keeps_the_WoT_file_unless_configured(string deleteFiles, bool fileKept)
+        {
+            NodeId assetManagement = await ResolveAssetManagementNodeIdAsync().ConfigureAwait(false);
+            NodeId createAsset = await ResolveAssetManagementChildAsync("CreateAsset").ConfigureAwait(false);
+            NodeId deleteAsset = await ResolveAssetManagementChildAsync("DeleteAsset").ConfigureAwait(false);
+
+            string assetName = "keepfile" + Guid.NewGuid().ToString("N").Substring(0, 6);
+            IList<object> created = await CallMethodAsync(assetManagement, createAsset, new object[] { assetName }).ConfigureAwait(false);
+            NodeId assetId = Assert.IsType<NodeId>(created[0]);
+
+            string settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld");
+            Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
+            File.WriteAllText(settingsFile, "{}");
+
+            string previous = Environment.GetEnvironmentVariable(UANodeManager.DeleteWoTFileOnAssetDeleteVariable);
+            Environment.SetEnvironmentVariable(UANodeManager.DeleteWoTFileOnAssetDeleteVariable, deleteFiles);
+            try
+            {
+                CallMethodResult deleted = await CallMethodRawAsync(assetManagement, deleteAsset, new object[] { assetId }).ConfigureAwait(false);
+                Assert.True(StatusCode.IsGood(deleted.StatusCode), $"DeleteAsset returned {deleted.StatusCode}");
+                Assert.Equal(fileKept, File.Exists(settingsFile));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(UANodeManager.DeleteWoTFileOnAssetDeleteVariable, previous);
+                File.Delete(settingsFile);
+            }
+        }
+
         [Fact]
         public async Task CreateAsset_yields_a_spec_compliant_asset_reachable_via_Organizes()
         {

@@ -2,22 +2,37 @@
 @implements IDisposable
 @inject DiagnosticsService Diagnostics
 
-<PageTitle>Connected Devices &middot; UA Edge Translator</PageTitle>
+<PageTitle>Connected Assets &middot; UA Edge Translator</PageTitle>
 
-<PageHeader Title="Connected Devices" Subtitle="Southbound asset connection status" OnRefresh="Reload" />
+<PageHeader Title="Connected Assets" Subtitle="Southbound asset connection status" OnRefresh="Reload">
+    <Actions>
+        <button type="button" class="btn-refresh" disabled="@_busy" @onclick="Discover" title="Ask every protocol driver for assets on the network">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <span>@(_discovering ? "Discovering\u2026" : "Discover")</span>
+        </button>
+    </Actions>
+</PageHeader>
 
 @if (_tagAccessBlocked)
 {
     <div class="banner banner-warning">
-        <strong>Asset tag access blocked</strong> — the server is in provisioning mode and <span class="mono">IGNORE_PROVISIONING_MODE</span> is not set, so OPC UA clients cannot read or write any asset tags. Provide an issuer certificate, or set <span class="mono">IGNORE_PROVISIONING_MODE=1</span> to allow tag access.
+        <strong>Asset tag access blocked</strong> &mdash; the server is in provisioning mode and <span class="mono">IGNORE_PROVISIONING_MODE</span> is not set, so OPC UA clients cannot read or write any asset tags. Provide an issuer certificate, or set <span class="mono">IGNORE_PROVISIONING_MODE=1</span> to allow tag access.
     </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="banner @(_messageIsError ? "banner-warning" : "banner-success")">@_message</div>
 }
 
 @if (_devices is null)
 {
-    <div class="loading">Loading…</div>
+    <div class="loading">Loading&hellip;</div>
 }
-else if (_devices.Count == 0)
+else if (_devices.Count == 0 && _discovered.Count == 0)
 {
     <div class="empty-state">
         <div class="empty-state-icon">
@@ -27,8 +42,8 @@ else if (_devices.Count == 0)
                 <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
             </svg>
         </div>
-        <h2>No devices onboarded</h2>
-        <p>Create an asset through the OPC UA WoT-Con interface, or drop a Thing Description into the settings folder.</p>
+        <h2>No assets onboarded</h2>
+        <p>Press Discover to find assets on the network, create an asset through the OPC UA WoT-Con interface, or drop a Thing Description into the settings folder.</p>
     </div>
 }
 else
@@ -37,11 +52,12 @@ else
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Device</th>
+                    <th>Asset</th>
                     <th>Protocol</th>
                     <th>Endpoint</th>
                     <th class="num">Tags</th>
                     <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,9 +66,27 @@ else
                     <tr>
                         <td class="strong">@device.Name</td>
                         <td><span class="pill pill-blue">@device.Protocol</span></td>
-                        <td class="mono">@(string.IsNullOrEmpty(device.Endpoint) ? "—" : device.Endpoint)</td>
+                        <td class="mono">@(string.IsNullOrEmpty(device.Endpoint) ? "-" : device.Endpoint)</td>
                         <td class="num">@device.TagCount</td>
                         <td><StatusPill Status="@(device.IsConnected ? "Connected" : "Disconnected")" /></td>
+                        <td>
+                            <button type="button" class="btn-danger" disabled="@_busy" @onclick="() => DeleteAsync(device.Name)" title="Delete this asset (DeleteAsset)">Delete</button>
+                        </td>
+                    </tr>
+                }
+                @foreach (var endpoint in _discovered)
+                {
+                    <tr>
+                        <td>
+                            <input class="mono" @bind="_names[endpoint]" placeholder="asset name" title="Name of the asset to create" />
+                        </td>
+                        <td><span class="pill pill-blue">@Scheme(endpoint)</span></td>
+                        <td class="mono">@endpoint</td>
+                        <td class="num">-</td>
+                        <td><StatusPill Status="Discovered" /></td>
+                        <td>
+                            <button type="button" class="btn-trust" disabled="@_busy" @onclick="() => CreateAsync(endpoint)" title="Browse the asset and onboard it (CreateAssetForEndpoint)">Create</button>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -62,7 +96,13 @@ else
 
 @code {
     private IReadOnlyList<DeviceStatus> _devices;
+    private List<string> _discovered = new();
+    private Dictionary<string, string> _names = new(StringComparer.Ordinal);
     private bool _tagAccessBlocked;
+    private bool _busy;
+    private bool _discovering;
+    private string _message;
+    private bool _messageIsError;
     private PeriodicTimer _timer;
 
     protected override void OnInitialized()
@@ -92,6 +132,122 @@ else
     {
         _devices = Diagnostics.GetConnectedDevices();
         _tagAccessBlocked = Diagnostics.IsTagAccessBlocked();
+
+        // An endpoint that has since been onboarded is no longer a discovery.
+        HashSet<string> onboarded = OnboardedHosts();
+        _discovered = _discovered.Where(e => !onboarded.Contains(UANodeManager.GetEndpointHost(e))).ToList();
+    }
+
+    // Drivers report onboarded endpoints in their own form, so compare on the host.
+    private HashSet<string> OnboardedHosts() =>
+        new(_devices.Select(d => UANodeManager.GetEndpointHost(d.Endpoint)).Where(h => !string.IsNullOrEmpty(h)), StringComparer.OrdinalIgnoreCase);
+
+    private async Task Discover()
+    {
+        _busy = _discovering = true;
+        _message = null;
+        try
+        {
+            IReadOnlyList<string> endpoints = await Task.Run(() => Diagnostics.DiscoverAssets());
+            Reload();
+            HashSet<string> known = OnboardedHosts();
+            foreach (string existing in _discovered)
+            {
+                known.Add(UANodeManager.GetEndpointHost(existing));
+            }
+
+            int added = 0;
+            foreach (string endpoint in endpoints)
+            {
+                string host = UANodeManager.GetEndpointHost(endpoint);
+                if (!string.IsNullOrEmpty(host) && !known.Add(host))
+                {
+                    continue;
+                }
+
+                _discovered.Add(endpoint);
+                _names.TryAdd(endpoint, SuggestName(endpoint));
+                added++;
+            }
+
+            ShowMessage(added == 0 ? "Discovery found no new assets." : $"Discovery found {added} new asset(s).", false);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Discovery failed: " + ex.Message, true);
+        }
+        finally
+        {
+            _busy = _discovering = false;
+        }
+    }
+
+    private async Task CreateAsync(string endpoint)
+    {
+        string name = _names.TryGetValue(endpoint, out string n) ? n?.Trim() : null;
+        if (string.IsNullOrEmpty(name))
+        {
+            ShowMessage("Enter an asset name before creating the asset.", true);
+            return;
+        }
+
+        _busy = true;
+        _message = null;
+        try
+        {
+            string error = await Diagnostics.CreateAssetForEndpointAsync(name, endpoint);
+            if (error == null)
+            {
+                _discovered.Remove(endpoint);
+                ShowMessage($"Created asset {name} for {endpoint}.", false);
+            }
+            else
+            {
+                ShowMessage($"Creating asset {name} failed: {error}", true);
+            }
+
+            Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            string error = await Diagnostics.DeleteAssetAsync(name);
+            ShowMessage(error == null ? $"Deleted asset {name}." : $"Deleting asset {name} failed: {error}", error != null);
+            Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ShowMessage(string message, bool isError)
+    {
+        _message = message;
+        _messageIsError = isError;
+    }
+
+    private static string Scheme(string endpoint)
+    {
+        int index = endpoint?.IndexOf("://", StringComparison.Ordinal) ?? -1;
+        return index > 0 ? endpoint.Substring(0, index) : "unknown";
+    }
+
+    // A safe default name: letters, digits, '.', '_' and '-' only, as the server requires.
+    private static string SuggestName(string endpoint)
+    {
+        string host = Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri) ? uri.Host : endpoint;
+        string raw = Scheme(endpoint) + "-" + host;
+        return new string(raw.Select(c => char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-' ? c : '-').ToArray());
     }
 
     public void Dispose() => _timer?.Dispose();

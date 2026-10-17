@@ -172,7 +172,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         /// <summary>
         /// Imports the Thing Descriptions in <paramref name="settingsFolder"/> (*.jsonld)
-        /// into the registry, one resource per file, named after the file. A file whose
+        /// into the registry, one resource per file, named after its Thing Description. A file whose
         /// content already is the resource's default version is skipped, so restarts do
         /// not pile up versions; a changed file becomes the new default version. Files
         /// written for the 1.02 asset management are normalized on the way in; see
@@ -187,12 +187,19 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             foreach (string file in Directory.EnumerateFiles(settingsFolder, "*.jsonld"))
             {
-                string resourceId = Path.GetFileNameWithoutExtension(file);
-
                 try
                 {
                     byte[] content = WotImportNormalizer.Normalize(
                         await File.ReadAllBytesAsync(file, cancellationToken).ConfigureAwait(false));
+
+                    // The resource is named after the Thing Description, like the asset of the
+                    // 1.02 asset management, whatever the file is called.
+                    string resourceId = ThingName(content);
+                    if (resourceId == null)
+                    {
+                        Log.Logger.Warning("Skipping WoT file {File}: its Thing Description has no valid name.", file);
+                        continue;
+                    }
 
                     if (await IsCurrentDefaultAsync(resourceId, content, cancellationToken).ConfigureAwait(false))
                     {
@@ -221,6 +228,25 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     Log.Logger.Warning(ex, "Could not import WoT file {File} into the WoT Connectivity registry.", file);
                 }
             }
+        }
+
+        /// <summary>
+        /// The resource id of a Thing Description: its <c>name</c>, or its <c>title</c> when it has
+        /// none. Null when that is not a valid asset name (letters, digits, '.', '_', '-').
+        /// </summary>
+        internal static string ThingName(byte[] content)
+        {
+            System.Text.Json.Nodes.JsonObject document = System.Text.Json.Nodes.JsonNode.Parse(content) as System.Text.Json.Nodes.JsonObject;
+            string name = (document?["name"] as System.Text.Json.Nodes.JsonValue)?.GetValue<string>()
+                ?? (document?["title"] as System.Text.Json.Nodes.JsonValue)?.GetValue<string>();
+
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 128 || name[0] == '.'
+                || !name.All(c => char.IsAsciiLetterOrDigit(c) || c == '.' || c == '_' || c == '-'))
+            {
+                return null;
+            }
+
+            return name;
         }
 
         private async Task<bool> IsCurrentDefaultAsync(string resourceId, byte[] content, CancellationToken cancellationToken)

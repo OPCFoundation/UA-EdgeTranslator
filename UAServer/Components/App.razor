@@ -12,6 +12,23 @@
     <base href="/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="app.css?v=@AssetVersion" />
+    <script>
+        // Apply the saved theme (or the OS preference) before the first paint, and
+        // toggle it from any element with data-theme-toggle, including Blazor-rendered ones.
+        (function () {
+            var root = document.documentElement;
+            var saved = null;
+            try { saved = localStorage.getItem('theme'); } catch (e) { }
+            var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest || !e.target.closest('[data-theme-toggle]')) { return; }
+                var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                try { localStorage.setItem('theme', next); } catch (e2) { }
+            });
+        })();
+    </script>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 

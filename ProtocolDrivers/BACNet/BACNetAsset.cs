@@ -20,7 +20,35 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private BacnetAddress _deviceAddress = null;
 
-        private BacnetClient _client = new(new BacnetIpUdpProtocolTransport(0xBAC0, false));
+        private BacnetClient _client = null;
+
+        private static string GetLocalIpForTarget(string targetIp)
+        {
+            if (!System.Net.IPAddress.TryParse(targetIp, out var target))
+            {
+                target = System.Net.Dns.GetHostAddresses(targetIp).First(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+            }
+
+            byte[] t = target.GetAddressBytes();
+            foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                foreach (var ua in nic.GetIPProperties().UnicastAddresses)
+                {
+                    if (ua.Address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork || ua.IPv4Mask == null) continue;
+                    byte[] l = ua.Address.GetAddressBytes();
+                    byte[] m = ua.IPv4Mask.GetAddressBytes();
+                    bool match = true;
+                    for (int i = 0; i < 4; i++) { if ((l[i] & m[i]) != (t[i] & m[i])) { match = false; break; } }
+                    if (match) return ua.Address.ToString();
+                }
+            }
+
+            // fallback: let the OS routing table pick the interface
+            using var s = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, System.Net.Sockets.ProtocolType.Udp);
+            s.Connect(target, 0xBAC0);
+            return ((System.Net.IPEndPoint)s.LocalEndPoint).Address.ToString();
+        }
 
         public bool IsConnected { get; private set; } = false;
 
@@ -35,6 +63,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     _deviceId = uint.Parse(addresses[1], CultureInfo.InvariantCulture);
                     _deviceAddress = new BacnetAddress(BacnetAddressTypes.IP, _endpoint);
 
+                    string localIp = GetLocalIpForTarget(_endpoint);
+                    Log.Logger.Information("BACNet: using local interface {LocalIp} to reach device at {Endpoint}", localIp, _endpoint);
+                    _client = new BacnetClient(new BacnetIpUdpProtocolTransport(port > 0 ? port : 0xBAC0, false, localEndpointIp: localIp));
                     _client.Start();
 
                     Connect(_deviceAddress, _deviceId, 0, BacnetSegmentations.SEGMENTATION_NONE, 0);

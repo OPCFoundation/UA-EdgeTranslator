@@ -34,74 +34,139 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             List<string> assets = new();
 
-            // Ethernet/IP uses the boradcast message "ListIdentity" to discover PLCs on the network
-            var broadcastAddress = GetBroadcastAddress();
+            // Ethernet/IP uses the broadcast message "ListIdentity" (command 0x63) to discover PLCs on the network
+            (IPAddress localIp, IPAddress broadcastAddress) = GetDiscoveryInterface();
 
-            // Create a UDP client
-            using (var udpClient = new UdpClient())
+            try
             {
+                using var udpClient = new UdpClient(AddressFamily.InterNetwork);
                 udpClient.EnableBroadcast = true;
 
+                // Bind to the chosen interface so the broadcast leaves on the PLC network,
+                // not on a Docker/WSL/VPN adapter the OS might prefer.
+                udpClient.Client.Bind(new IPEndPoint(localIp, 0));
+
                 var listIdentityMessage = new byte[24];
-                for (var i = 0; i < listIdentityMessage.Length; i++)
-                {
-                    listIdentityMessage[i] = 0;
-                }
                 listIdentityMessage[0] = 0x63;
 
-                var endPoint = new IPEndPoint(IPAddress.Parse(broadcastAddress), 0xAF12);
-                udpClient.Send(listIdentityMessage, listIdentityMessage.Length, endPoint);
-                udpClient.Client.ReceiveTimeout = 10000;
+                udpClient.Send(listIdentityMessage, listIdentityMessage.Length, new IPEndPoint(broadcastAddress, EipEndpoint.DefaultPort));
+                Log.Logger.Information("Ethernet/IP discovery: sent ListIdentity from {LocalIp} to {Broadcast}.", localIp, broadcastAddress);
 
-                try
+                udpClient.Client.ReceiveTimeout = 3000;
+                DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+
+                while (DateTime.UtcNow < deadline)
                 {
-                    while (true)
+                    var receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] response;
+                    try
                     {
-                        var receiveEndPoint = new IPEndPoint(IPAddress.Any, 0xAF12);
-                        var response = udpClient.Receive(ref receiveEndPoint);
+                        response = udpClient.Receive(ref receiveEndPoint);
+                    }
+                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+                    {
+                        // ICMP port unreachable from some host; keep listening
+                        continue;
+                    }
+                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)
+                    {
+                        break;
+                    }
 
-                        Log.Logger.Information($"Ethernet/IP discovery: Received response from {receiveEndPoint.Address}");
+                    // only accept ListIdentity replies
+                    if (response.Length < 24 || response[0] != 0x63 || response[1] != 0x00)
+                    {
+                        continue;
+                    }
 
-                        assets.Add("eip://" + receiveEndPoint.Address.ToString());
+                    if (receiveEndPoint.Address.Equals(localIp))
+                    {
+                        continue;
+                    }
+
+                    // W3C EtherNet/IP binding form: eip://host/1,0/
+                    if (EipEndpoint.TryParse("eip://" + receiveEndPoint.Address, out EipEndpoint endpoint))
+                    {
+                        string uri = endpoint.ToBaseUri();
+                        if (!assets.Contains(uri))
+                        {
+                            Log.Logger.Information("Ethernet/IP discovery: received response from {Address}.", receiveEndPoint.Address);
+                            assets.Add(uri);
+                        }
                     }
                 }
-                catch (SocketException)
-                {
-                    // do nothing
-                }
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Error(ex, "Ethernet/IP discovery failed.");
             }
 
             return assets;
         }
 
-        private string GetBroadcastAddress()
+        /// <summary>
+        /// Picks the local IPv4 interface and its subnet broadcast address for discovery:
+        /// ROCKWELL_LOCAL_IP if set, else the first operational, non-loopback, non-tunnel
+        /// interface with an IPv4 default gateway (skips Docker/WSL/VPN adapters).
+        /// </summary>
+        private static (IPAddress Local, IPAddress Broadcast) GetDiscoveryInterface()
         {
-            // try to restricted local broadcast
-            foreach (var adapter in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            string configured = Environment.GetEnvironmentVariable("ROCKWELL_LOCAL_IP");
+            IPAddress configuredIp = null;
+            if (!string.IsNullOrWhiteSpace(configured) && !IPAddress.TryParse(configured.Trim(), out configuredIp))
             {
-                foreach (var ip in adapter.GetIPProperties().UnicastAddresses)
+                Log.Logger.Warning("Ethernet/IP discovery: ignoring invalid ROCKWELL_LOCAL_IP {Value}.", configured);
+            }
+
+            foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up
+                    || nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback
+                    || nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Tunnel)
                 {
-                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork
-                     && !ip.Address.ToString().StartsWith("169.254.")
-                     && !ip.Address.ToString().StartsWith("127.0."))
+                    continue;
+                }
+
+                var props = nic.GetIPProperties();
+                bool hasIpv4Gateway = props.GatewayAddresses.Any(gw =>
+                    gw.Address.AddressFamily == AddressFamily.InterNetwork && !gw.Address.Equals(IPAddress.Any));
+
+                foreach (var addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily != AddressFamily.InterNetwork)
                     {
-                        var strCurrentIP = ip.Address.ToString().Split('.');
-                        var strIPNetMask = ip.IPv4Mask.ToString().Split('.');
-                        var BroadcastStr = new StringBuilder();
+                        continue;
+                    }
 
-                        for (var i = 0; i < 4; i++)
-                        {
-                            BroadcastStr.Append(((byte)(int.Parse(strCurrentIP[i]) | ~int.Parse(strIPNetMask[i]))).ToString());
-                            if (i != 3) BroadcastStr.Append('.');
-                        }
-
-                        return BroadcastStr.ToString();
+                    bool match = configuredIp != null ? addr.Address.Equals(configuredIp) : hasIpv4Gateway;
+                    if (match)
+                    {
+                        Log.Logger.Information("Ethernet/IP discovery: using local interface {LocalIp} ({Interface}).", addr.Address, nic.Name);
+                        return (addr.Address, GetSubnetBroadcast(addr.Address, addr.IPv4Mask));
                     }
                 }
             }
 
-            // return generic broadcast address
-            return "255.255.255.255";
+            Log.Logger.Warning("Ethernet/IP discovery: no IPv4 interface with a default gateway found; using 255.255.255.255. Set ROCKWELL_LOCAL_IP to choose one.");
+            return (IPAddress.Any, IPAddress.Broadcast);
+        }
+
+        private static IPAddress GetSubnetBroadcast(IPAddress address, IPAddress mask)
+        {
+            if (mask == null || mask.Equals(IPAddress.Any))
+            {
+                return IPAddress.Broadcast;
+            }
+
+            byte[] ip = address.GetAddressBytes();
+            byte[] m = mask.GetAddressBytes();
+            var result = new byte[4];
+            for (int i = 0; i < 4; i++)
+            {
+                result[i] = (byte)(ip[i] | ~m[i]);
+            }
+
+            return new IPAddress(result);
         }
 
         public ThingDescription BrowseAndGenerateTD(string assetName, string assetEndpoint)
