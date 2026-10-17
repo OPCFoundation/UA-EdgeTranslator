@@ -387,11 +387,16 @@ else
         }
 
         // Keep the detail panel pinned to the same node when it still exists.
-        _selectedNodeId = previouslySelected;
-
-        if (!string.IsNullOrEmpty(previouslySelected))
+        // The browse above is awaited, so the user may have selected another
+        // node meanwhile; that newer selection wins and must not be clobbered.
+        if (string.Equals(_selectedNodeId, previouslySelected, StringComparison.Ordinal)
+            && !string.IsNullOrEmpty(previouslySelected))
         {
-            _detail = await AddressSpace.GetNodeDetailAsync(previouslySelected);
+            NodeDetail detail = await AddressSpace.GetNodeDetailAsync(previouslySelected);
+            if (string.Equals(_selectedNodeId, previouslySelected, StringComparison.Ordinal))
+            {
+                _detail = detail;
+            }
         }
 
         await RefreshValuesAsync();
