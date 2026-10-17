@@ -32,6 +32,10 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         [JsonProperty("maxEvents")]
         public int MaxEvents { get; set; } = 1000;
 
+        /// <summary>Subscription keep-alive in ms (OPC A&amp;E 1.10); 0 disables it.</summary>
+        [JsonProperty("keepAlive")]
+        public int KeepAlive { get; set; }
+
         [JsonProperty("refreshOnConnect")]
         public bool RefreshOnConnect { get; set; } = true;
     }

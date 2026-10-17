@@ -25,11 +25,15 @@
       "forms": [
         {
           "href": "opc.ae://localhost/Matrikon.OPC.Simulation.1",
+          "categories": [],
+          "areas": [],
+          "sources": [],
           "eventTypes": 7,
           "lowSeverity": 1,
           "highSeverity": 1000,
           "bufferTime": 1000,
           "maxEvents": 1000,
+          "keepAlive": 0,
           "refreshOnConnect": true
         }
       ]

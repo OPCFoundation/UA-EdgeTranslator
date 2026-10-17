@@ -26,7 +26,14 @@ The event form supports these optional filters:
 - `categories`: integer event-category IDs
 - `areas`: process-area IDs
 - `sources`: source IDs
-- `eventTypes`, `lowSeverity`, `highSeverity`, `bufferTime`, and `maxEvents`
+- `eventTypes`: bit mask of event types (1 = simple, 2 = tracking, 4 = condition; default 7)
+- `lowSeverity`, `highSeverity`: severity range 1-1000 (defaults 1 and 1000)
+- `bufferTime`: event buffering in ms (default 1000)
+- `maxEvents`: maximum events per callback (default 1000)
+- `keepAlive`: subscription keep-alive in ms, 0 to disable (default 0; needs an A&E 1.10 server)
+- `refreshOnConnect`: request a condition refresh after subscribing (default true)
+
+Empty `categories`, `areas` and `sources` arrays mean no filtering.
 
 On successful onboarding, the translator logs both `Loaded protocol driver: opc.ae` and `Successfully parsed WoT file for asset: MatrikonAe`.
 

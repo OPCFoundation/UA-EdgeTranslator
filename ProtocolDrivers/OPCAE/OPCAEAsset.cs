@@ -154,6 +154,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     SetRequiredProperty(state, "BufferTime", Math.Max(0, _form.BufferTime));
                     SetRequiredProperty(state, "MaxSize", Math.Max(1, _form.MaxEvents));
 
+                    // KeepAlive only exists in OPC A&E 1.10 builds of OpcNetApi; skip it on older ones.
+                    PropertyInfo keepAlive = stateType.GetProperty("KeepAlive");
+                    if (keepAlive != null && keepAlive.CanWrite)
+                    {
+                        keepAlive.SetValue(state, Math.Max(0, _form.KeepAlive));
+                    }
+
                     _subscription = InvokeRequired(_server, "CreateSubscription", [stateType], [state])
                         ?? throw new InvalidOperationException("OPC A&E server did not create a subscription.");
 
