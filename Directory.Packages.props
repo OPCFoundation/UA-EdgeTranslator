@@ -13,9 +13,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- OPC UA SDK -->
-    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="2.0.1" />
-    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="2.0.1" />
-    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="2.0.1" />
+    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="2.0.0" />
+    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="2.0.0" />
+    <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="2.0.0" />
     <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Server" Version="2.0.0-preview.200" />
     <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Bindings" Version="2.0.0-preview.200" />
     <!-- Logging -->
@@ -31,7 +31,7 @@
     <!-- Engineering tool integration -->
     <PackageVersion Include="Aml.Engine" Version="4.5.2" />
     <!-- Tooling / build -->
-    <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.24.2-preview.1" />
     <!-- Protocol drivers -->
     <PackageVersion Include="BACnet" Version="4.0.0" />
     <PackageVersion Include="Viscon.Communication.Ads" Version="0.2.0" />
@@ -54,14 +54,5 @@
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <!-- Blazor component testing for the diagnostics dashboard pages. -->
     <PackageVersion Include="bunit" Version="2.11.3" />
-    <!--
-		bUnit 1.40.0 pulls AngleSharp 1.2.0 transitively, which is affected by
-		GHSA-pgww-w46g-26qg (mXSS via annotation-xml HTML integration point
-		bypass; affects < 1.5.0). NuGet audit runs as an error here because
-		TreatWarningsAsErrors is on, so the transitive version is overridden with
-		a direct reference to a patched release. Remove this pin once a bUnit
-		release depends on AngleSharp >= 1.5.0 by itself.
-	-->
-    <PackageVersion Include="AngleSharp" Version="1.8.5" />
   </ItemGroup>
 </Project>

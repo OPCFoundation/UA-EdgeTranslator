@@ -46,8 +46,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Server" />
