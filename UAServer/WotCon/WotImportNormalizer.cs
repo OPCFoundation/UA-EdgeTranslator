@@ -79,6 +79,12 @@ namespace Opc.Ua.Edge.Translator.WotCon
         {
             ArgumentNullException.ThrowIfNull(content);
 
+            // Strip a UTF-8 byte order mark; System.Text.Json rejects it in raw UTF-8 input.
+            if (content.Length >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF)
+            {
+                content = content.AsSpan(3).ToArray();
+            }
+
             JsonObject document;
             try
             {
