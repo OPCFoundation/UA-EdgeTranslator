@@ -28,6 +28,7 @@
 - [Operation](#operation)
 - [Diagnostics Dashboard (Web UI)](#diagnostics-dashboard-web-ui)
 - [How to build your own Protocol Driver](#how-to-build-your-own-protocol-driver)
+  - [Publishing the protocol drivers locally](#publishing-the-protocol-drivers-locally)
 - [Protocol driver allow-list (trust manifest)](#protocol-driver-allow-list-trust-manifest)
 - [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools)
 - [Generating a Thing Description for a Fixed-Function Asset](#generating-a-thing-description-for-a-fixed-function-asset)
@@ -475,6 +476,29 @@ Notes:
   `AssetActionResult.Outputs` and the protocol unit id in `AssetConnection.UnitId`.
 * Drivers whose transport is genuinely synchronous can simply wrap their existing code, e.g.
   `return Task.FromResult(value);` / `return Task.CompletedTask;`.
+
+### Publishing the protocol drivers locally
+
+When running UA Edge Translator from Visual Studio (natively or via the Docker launch profile), the drivers are loaded from `UAServer\drivers\<name>`. The Docker launch profile mounts the `UAServer` folder as `/app`, so the same folder is used inside the container. Each driver project has a `Properties\PublishProfiles\FolderProfile.pubxml` that publishes into that folder.
+
+To republish every driver in one go, run the script in the repo root from PowerShell:
+
+```powershell
+.\publish-drivers.ps1
+```
+
+If script execution is blocked by policy, use `powershell -ExecutionPolicy Bypass -File .\publish-drivers.ps1`.
+
+The script:
+
+* finds every driver with a `FolderProfile.pubxml` (the test-only Mock driver has none and is skipped);
+* runs `dotnet publish <driver>.csproj -c Debug -p:PublishProfile=FolderProfile` for each one, adding `-f net10.0` for the multi-targeted Matter driver. Both are passed explicitly because `dotnet publish` does not honor `Configuration` and `TargetFramework` from the publish profile;
+* verifies that the deployed driver DLL in `UAServer\drivers\<name>` is identical (SHA-256) to the `bin\Debug\<tfm>` build output;
+* prints one `OK`/`FAIL` line per driver, writes the full build output to `publish-logs\<driver>.log`, and exits with code 1 if any driver failed.
+
+Stop any running UA Edge Translator instance (including the Docker debug container, e.g. `docker stop UAEdgeTranslator`) first, so the driver DLLs are not locked.
+
+Republish the drivers whenever the OPC UA SDK version in `Directory.Packages.props` changes. Drivers built against a different SDK version than the server fail to load with `Could not load file or assembly 'Opc.Ua.Types, Version=...'`, and assets for those protocols then report `No driver installed for base URI`.
 
 ## Protocol driver allow-list (trust manifest)
 
