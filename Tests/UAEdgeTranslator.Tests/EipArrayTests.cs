@@ -150,7 +150,8 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.Equal(new object[] { 100, 101, 102 }, Array.ConvertAll(elements, e => e["X"]));
             Assert.Equal(new object[] { false, true, false }, Array.ConvertAll(elements, e => e["Ok"]));
             Assert.Null(new EIPForm { Dimensions = [3], StructureDefinition = Point(8) }.ValidateArray());
-            Assert.Equal(8, (int)JObject.FromObject(Point(8))["eipv:size"]);
+            Assert.Equal(8, (int)JObject.FromObject(Point(8))["eipv:byteSize"]);
+            Assert.NotNull(new EIPForm { Dimensions = [3], StructureDefinition = Point(null) }.ValidateArray());
         }
 
         [Fact]

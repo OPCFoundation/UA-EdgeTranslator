@@ -75,9 +75,13 @@ namespace Opc.Ua.Edge.Translator.Tests
                 }
                 else
                 {
-                    // Structured tags are named only; the driver reads their live layout.
+                    // Structured tags, and arrays of them, are named only; the driver reads their
+                    // live layout and dimensions.
                     Assert.Null(form.StructureDefinition);
-                    Assert.Equal(form.IsArray ? "array" : "object", (string)property.Value["type"]);
+                    Assert.False(form.IsArray);
+                    Assert.Null(form.Validate(EIPController.ControlLogix));
+                    string schemaType = (string)property.Value["type"];
+                    Assert.True(schemaType == "object" || (schemaType == "array" && (string)property.Value["items"]["type"] == "object"), schemaType);
                 }
             }
         }
@@ -119,9 +123,19 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.Equal(new[] { 10 }, form.Dimensions);
             Assert.Equal("./Program:Mixer.AlarmRC", form.Href);
 
-            // Arrays the extension does not describe are still skipped, with the reason.
-            Assert.Equal(TypeEnum.Array, result.ThingModel.Properties["LineData"].Type);
-            Assert.Equal(TypeEnum.Object, result.ThingModel.Properties["LineData"].Items.Type);
+            Assert.Equal(int.MinValue, alarms.Items.Minimum);
+            Assert.Equal(int.MaxValue, alarms.Items.Maximum);
+
+            // An array of structures names the tag only; the driver reads its layout and
+            // dimensions from the controller, the data schema keeps the array shape.
+            Property lineData = result.ThingModel.Properties["LineData"];
+            Assert.Equal(TypeEnum.Array, lineData.Type);
+            Assert.Equal(TypeEnum.Object, lineData.Items.Type);
+            EIPForm lineForm = (EIPForm)lineData.Forms[0];
+            Assert.Null(lineForm.Dimensions);
+            Assert.Null(lineForm.Type);
+            Assert.Null(lineForm.StructureDefinition);
+            Assert.Null(lineForm.Validate(EIPController.ControlLogix));
         }
 
         [Theory]

@@ -3219,6 +3219,50 @@ namespace Opc.Ua.Edge.Translator
 
         private void EncodeField(BinaryEncoder encoder, StructureField field, object value)
         {
+            // An array field: an Int32 length followed by the elements.
+            if (field.ValueRank >= ValueRanks.OneDimension)
+            {
+                List<object> elements = new();
+                if (value is System.Collections.IEnumerable items && value is not string)
+                {
+                    foreach (object item in items)
+                    {
+                        elements.Add(item);
+                    }
+                }
+
+                encoder.WriteInt32(field.Name, elements.Count);
+                StructureField elementField = new()
+                {
+                    Name = field.Name,
+                    DataType = field.DataType,
+                    ValueRank = ValueRanks.Scalar
+                };
+
+                foreach (object element in elements)
+                {
+                    EncodeField(encoder, elementField, element);
+                }
+
+                return;
+            }
+
+            // A nested structure field: its fields follow inline.
+            if (field.DataType.NamespaceIndex != 0
+                && Find(field.DataType) is DataTypeState nestedType
+                && TryGetStructureDefinition(nestedType, out StructureDefinition nestedDef))
+            {
+                IDictionary<string, object> nestedValues = value as IDictionary<string, object>;
+                foreach (StructureField nestedField in nestedDef.Fields)
+                {
+                    object nestedValue = null;
+                    nestedValues?.TryGetValue(nestedField.Name, out nestedValue);
+                    EncodeField(encoder, nestedField, nestedValue);
+                }
+
+                return;
+            }
+
             uint fieldDataType = 0;
             field.DataType.TryGetValue(out fieldDataType);
 

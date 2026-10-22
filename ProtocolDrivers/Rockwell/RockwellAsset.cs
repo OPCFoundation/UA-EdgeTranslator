@@ -24,6 +24,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         private string _routePath = EipEndpoint.DefaultRoutePath;
 
+        private EIPController _controller = EIPControllers.Default;
+
         /// <summary>
         /// The form of each tag href, registered by the protocol driver when the tag is
         /// created: its type, conversion, timeout and structure definition.
@@ -34,6 +36,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
         /// <summary>The CIP route path from the communication module to the controller.</summary>
         public string RoutePath => _routePath;
+
+        /// <summary>The controller family (<c>eipv:controller</c>) that selects the address grammar and services.</summary>
+        public EIPController Controller => _controller;
 
         /// <summary>Registers the form of a tag so reads and writes can encode its value.</summary>
         public void RegisterForm(string href, EIPForm form)
@@ -47,8 +52,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         /// <summary>Connects to the controller an <c>eip</c> endpoint names, through its route path.</summary>
         public Task ConnectAsync(EipEndpoint endpoint, CancellationToken cancellationToken = default)
         {
+            return ConnectAsync(endpoint, EIPControllers.Default, cancellationToken);
+        }
+
+        /// <summary>Connects to a controller of the given family through the endpoint's route path.</summary>
+        public Task ConnectAsync(EipEndpoint endpoint, EIPController controller, CancellationToken cancellationToken = default)
+        {
             ArgumentNullException.ThrowIfNull(endpoint);
             _routePath = endpoint.RoutePath;
+            _controller = controller;
             ConnectCore(endpoint.Gateway);
             return Task.CompletedTask;
         }
@@ -72,10 +84,14 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 _gateway = gateway;
 
-                Tag tags = NewTag("@tags", null);
-                tags.Read();
+                // Only the Logix families have a tag list to probe; the others connect on first access.
+                if (EIPControllers.IsBrowsable(_controller))
+                {
+                    Tag tags = NewTag("@tags", null);
+                    tags.Read();
+                }
 
-                Log.Logger.Information("Connected to Rockwell ControlLogix PLC at " + gateway + " (route " + _routePath + ")");
+                Log.Logger.Information("Connected to Rockwell " + _controller + " PLC at " + gateway + " (route " + _routePath + ")");
                 IsConnected = true;
             }
             catch (Exception ex)
@@ -91,7 +107,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 Name = name,
                 Gateway = _gateway,
                 Path = _routePath,
-                PlcType = PlcType.ControlLogix,
+                PlcType = ToPlcType(_controller),
                 Protocol = Protocol.ab_eip,
                 Timeout = form?.Timeout is > 0 ? TimeSpan.FromMilliseconds(form.Timeout.Value) : s_defaultTimeout
             };
@@ -103,6 +119,53 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             return tag;
+        }
+
+        /// <summary>The libplctag PLC type that speaks the services of a controller family.</summary>
+        public static PlcType ToPlcType(EIPController controller)
+        {
+            return controller switch
+            {
+                EIPController.Micro800 => PlcType.Micro800,
+                EIPController.MicroLogix => PlcType.MicroLogix,
+                EIPController.SLC500 => PlcType.Slc500,
+                EIPController.PLC5 => PlcType.Plc5,
+                EIPController.Omron => PlcType.Omron,
+                _ => PlcType.ControlLogix
+            };
+        }
+
+        /// <summary>
+        /// True when the tag path selects a single bit: <c>StatusWord.3</c> in the symbolic
+        /// grammar or <c>B3:0/3</c> in the PCCC file address grammar.
+        /// </summary>
+        public static bool IsBitPath(string tagPath, EIPController controller)
+        {
+            if (string.IsNullOrEmpty(tagPath))
+            {
+                return false;
+            }
+
+            if (EIPControllers.IsPccc(controller))
+            {
+                return tagPath.Contains('/');
+            }
+
+            int dot = tagPath.LastIndexOf('.');
+            if (dot < 0 || dot == tagPath.Length - 1)
+            {
+                return false;
+            }
+
+            for (int i = dot + 1; i < tagPath.Length; i++)
+            {
+                if (!char.IsAsciiDigit(tagPath[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void DisconnectCore()
@@ -160,6 +223,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             if (reference.Offset + ByteSize(type) > size)
             {
                 throw new ArgumentOutOfRangeException(nameof(tag), $"Offset {reference.Offset} exceeds the {size}-byte tag {reference.TagPath}.");
+            }
+
+            // A bit reference (StatusWord.3, B3:0/3) is read as the addressed bit.
+            if (type == EIPTypeString.BOOL && IsBitPath(reference.TagPath, _controller))
+            {
+                return plcTag.GetBit(0);
             }
 
             return form.ToApplicationValue(GetValue(plcTag, reference.Offset, type));
@@ -268,7 +337,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
             else if (form?.Type is EIPTypeString type)
             {
-                SetValue(plcTag, reference.Offset, type, form.ToControllerValue(value));
+                if (reference.Offset + ByteSize(type) > plcTag.GetSize())
+                {
+                    throw new ArgumentOutOfRangeException(nameof(tag), $"Offset {reference.Offset} exceeds the {plcTag.GetSize()}-byte tag {reference.TagPath}.");
+                }
+
+                if (type == EIPTypeString.BOOL && IsBitPath(reference.TagPath, _controller))
+                {
+                    plcTag.SetBit(0, Convert.ToBoolean(value, CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    SetValue(plcTag, reference.Offset, type, form.ToControllerValue(value));
+                }
             }
             else
             {
@@ -295,6 +376,15 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             foreach (EIPFieldDefinition field in structDef.Fields)
             {
                 int offset = baseOffset + field.ByteOffset;
+                if (field.IsArray)
+                {
+                    // An array member is exposed as a flat array of its elements.
+                    result[field.Name] = field.StructureDefinition != null
+                        ? DecodeStructureArray(buffer, offset, field.ElementCount, field.StructureDefinition)
+                        : DecodeArray(buffer, offset, field.Type.Value, field.ElementCount);
+                    continue;
+                }
+
                 result[field.Name] = field.StructureDefinition != null
                     ? DecodeUdtFields(buffer, offset, field.StructureDefinition)
                     : ExtractFieldValue(buffer, offset, field);
@@ -410,7 +500,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         }
 
         /// <summary>
-        /// The byte stride of one structure element: the definition's <c>eipv:size</c>, or
+        /// The byte stride of one structure element: the definition's <c>eipv:byteSize</c>, or
         /// the bytes after <paramref name="offset"/> shared evenly by the elements.
         /// </summary>
         public static int StructureStride(EIPStructureDefinition definition, int bufferLength, int offset, int count)
@@ -423,7 +513,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             int available = bufferLength - offset;
             if (count <= 0 || available <= 0 || available % count != 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), $"Cannot divide {available} bytes into {count} elements of {definition.TypeName}; eipv:size is needed.");
+                throw new ArgumentOutOfRangeException(nameof(count), $"Cannot divide {available} bytes into {count} elements of {definition.TypeName}; eipv:byteSize is needed.");
             }
 
             return available / count;
@@ -563,11 +653,40 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 int offset = baseOffset + field.ByteOffset;
 
+                if (field.IsArray)
+                {
+                    // An array member is an OPC UA array in the body: an Int32 length, then the elements.
+                    int length = BitConverter.ToInt32(body, bodyOffset);
+                    bodyOffset += 4;
+                    if (length != field.ElementCount)
+                    {
+                        throw new ArgumentException($"{Math.Max(0, length)} elements given for the {field.ElementCount}-element member {field.Name}.");
+                    }
+
+                    int stride = field.StructureDefinition != null
+                        ? field.StructureDefinition.Size ?? throw new ArgumentException($"Member {field.Name} needs eipv:byteSize.")
+                        : ByteSize(field.Type.Value);
+                    EIPFieldDefinition element = new() { Name = field.Name, Type = field.Type, StructureDefinition = field.StructureDefinition };
+                    for (int i = 0; i < length; i++)
+                    {
+                        WriteFieldFromBody(plcTag, body, ref bodyOffset, offset + i * stride, element);
+                    }
+
+                    continue;
+                }
+
+                WriteFieldFromBody(plcTag, body, ref bodyOffset, offset, field);
+            }
+        }
+
+        private static void WriteFieldFromBody(Tag plcTag, byte[] body, ref int bodyOffset, int offset, EIPFieldDefinition field)
+        {
+            {
                 if (field.StructureDefinition != null)
                 {
                     // Nested UDT: its fields follow inline in the OPC UA body.
                     WriteFieldsFromBody(plcTag, body, ref bodyOffset, offset, field.StructureDefinition);
-                    continue;
+                    return;
                 }
 
                 switch (field.Type)

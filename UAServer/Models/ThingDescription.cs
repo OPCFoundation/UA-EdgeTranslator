@@ -80,6 +80,14 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("observable")]
         public bool Observable { get; set; }
 
+        /// <summary>The smallest value of a numeric property.</summary>
+        [JsonProperty("minimum", NullValueHandling = NullValueHandling.Ignore)]
+        public long? Minimum { get; set; }
+
+        /// <summary>The largest value of a numeric property.</summary>
+        [JsonProperty("maximum", NullValueHandling = NullValueHandling.Ignore)]
+        public long? Maximum { get; set; }
+
         /// <summary>For an <c>array</c> property, the schema of its elements.</summary>
         [JsonProperty("items", NullValueHandling = NullValueHandling.Ignore)]
         public ArrayItems Items { get; set; }
@@ -101,6 +109,14 @@ namespace Opc.Ua.Edge.Translator.Models
     {
         [JsonProperty("type")]
         public TypeEnum Type { get; set; }
+
+        /// <summary>The smallest value of a numeric element.</summary>
+        [JsonProperty("minimum", NullValueHandling = NullValueHandling.Ignore)]
+        public long? Minimum { get; set; }
+
+        /// <summary>The largest value of a numeric element.</summary>
+        [JsonProperty("maximum", NullValueHandling = NullValueHandling.Ignore)]
+        public long? Maximum { get; set; }
     }
 
     public class TDAction

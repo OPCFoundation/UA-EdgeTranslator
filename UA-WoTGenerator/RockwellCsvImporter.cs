@@ -143,9 +143,14 @@ namespace Opc.Ua.Edge.Translator.Tools
                 {
                     form.Dimensions = dimensions;
                     property.Items = new ArrayItems { Type = property.Type };
+                    ApplyBounds(type, property.Items);
                     property.Type = TypeEnum.Array;
                     property.MinItems = form.EffectiveElementCount;
                     property.MaxItems = form.EffectiveElementCount;
+                }
+                else
+                {
+                    ApplyBounds(type, property);
                 }
             }
             else
@@ -154,14 +159,30 @@ namespace Opc.Ua.Edge.Translator.Tools
                 // named only, decoded from the definition the driver reads from the controller.
                 property.Type = TypeEnum.Object;
 
+                // An array of structures: the export has no UDT layout or eipv:byteSize, and a
+                // form with eipv:dimensions must name its element type, so the form names the
+                // tag only. The driver reads the layout and the dimensions from the controller;
+                // the data schema keeps the array shape from the export.
                 if (dimensions != null)
                 {
-                    form.Dimensions = dimensions;
+                    int count = 1;
+                    foreach (int dimension in dimensions)
+                    {
+                        count *= dimension;
+                    }
+
                     property.Items = new ArrayItems { Type = TypeEnum.Object };
                     property.Type = TypeEnum.Array;
-                    property.MinItems = form.EffectiveElementCount;
-                    property.MaxItems = form.EffectiveElementCount;
+                    property.MinItems = count;
+                    property.MaxItems = count;
                 }
+            }
+
+            string problem = form.Validate(EIPController.ControlLogix);
+            if (problem != null)
+            {
+                result.Skipped.Add(displayName + ": " + problem);
+                return;
             }
 
             if (!result.ThingModel.Properties.ContainsKey(displayName))
@@ -206,6 +227,27 @@ namespace Opc.Ua.Edge.Translator.Tools
                 case EIPTypeString.STRING: return TypeEnum.String;
                 default: return TypeEnum.Integer;
             }
+        }
+
+        /// <summary>The minimum and maximum the binding recommends for a Logix integer type.</summary>
+        public static void ApplyBounds(EIPTypeString type, Property schema)
+        {
+            Bounds(type, out long? minimum, out long? maximum);
+            schema.Minimum = minimum;
+            schema.Maximum = maximum;
+        }
+
+        /// <summary>The minimum and maximum the binding recommends for array elements.</summary>
+        public static void ApplyBounds(EIPTypeString type, ArrayItems schema)
+        {
+            Bounds(type, out long? minimum, out long? maximum);
+            schema.Minimum = minimum;
+            schema.Maximum = maximum;
+        }
+
+        private static void Bounds(EIPTypeString type, out long? minimum, out long? maximum)
+        {
+            EIPTypes.Bounds(type, out minimum, out maximum);
         }
 
         /// <summary>
@@ -278,7 +320,7 @@ namespace Opc.Ua.Edge.Translator.Tools
         }
 
         /// <summary>Controller family term of the binding; the export comes from Studio 5000 (Logix).</summary>
-        public const string ControllerFamily = "ControlLogix";
+        public const string ControllerFamily = nameof(EIPController.ControlLogix);
 
         /// <summary>
         /// Serializes a Thing Model without the null terms the shared model would write,
@@ -288,7 +330,10 @@ namespace Opc.Ua.Edge.Translator.Tools
         {
             JsonSerializer serializer = JsonSerializer.Create(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             Newtonsoft.Json.Linq.JObject json = Newtonsoft.Json.Linq.JObject.FromObject(thingModel, serializer);
-            json.Property("base")?.AddAfterSelf(new Newtonsoft.Json.Linq.JProperty(EIPForm.Prefix + ":controller", ControllerFamily));
+            if (json.Property(EIPControllers.Term) == null)
+            {
+                json.Property("base")?.AddAfterSelf(new Newtonsoft.Json.Linq.JProperty(EIPControllers.Term, ControllerFamily));
+            }
             return json.ToString(Formatting.Indented);
         }
     }

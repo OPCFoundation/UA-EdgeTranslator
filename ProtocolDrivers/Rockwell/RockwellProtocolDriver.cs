@@ -195,6 +195,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             td.Base = endpoint.ToBaseUri();
             td.Context = ["https://www.w3.org/2022/wot/td/v1.1", new Dictionary<string, string> { [EIPForm.Prefix] = EIPForm.BindingNamespace }];
 
+            // Browsing reads the Logix tag list, so the controller is a Logix family.
+            td.AdditionalData = new Dictionary<string, object> { [EIPControllers.Term] = EIPController.ControlLogix.ToString() };
+
             string gateway = endpoint.Gateway;
             string routePath = endpoint.RoutePath;
 
@@ -313,9 +316,18 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     if (form.IsArray)
                     {
                         property.Items = new ArrayItems { Type = property.Type };
+                        EIPTypes.Bounds(primitiveType, out long? itemMin, out long? itemMax);
+                        property.Items.Minimum = itemMin;
+                        property.Items.Maximum = itemMax;
                         property.Type = TypeEnum.Array;
                         property.MinItems = form.EffectiveElementCount;
                         property.MaxItems = form.EffectiveElementCount;
+                    }
+                    else
+                    {
+                        EIPTypes.Bounds(primitiveType, out long? min, out long? max);
+                        property.Minimum = min;
+                        property.Maximum = max;
                     }
 
                     if (!td.Properties.ContainsKey(properyName))
@@ -362,6 +374,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             {
                 var field = udt.Fields[i];
 
+                // An array member: the template's member info word holds its element count.
+                int[] memberDimensions = (field.Type & TYPE_IS_ARRAY_MEMBER) != 0 && field.Metadata > 0 ? [field.Metadata] : null;
+
                 if (FieldIsUdt(field))
                 {
                     // Nested UDT: recursively resolve its definition
@@ -371,7 +386,8 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                     structDef.Fields[i] = new EIPFieldDefinition {
                         Name = field.Name,
                         ByteOffset = (int)field.Offset,
-                        StructureDefinition = nestedDef
+                        StructureDefinition = nestedDef,
+                        Dimensions = memberDimensions
                     };
 
                     Log.Logger.Information(
@@ -379,11 +395,13 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 }
                 else
                 {
+                    ushort atomicType = memberDimensions != null ? (ushort)(field.Type & 0xFF) : field.Type;
                     structDef.Fields[i] = new EIPFieldDefinition {
                         Name = field.Name,
-                        Type = ParseDataType(field.Type),
+                        Type = ParseDataType(atomicType),
                         ByteOffset = (int)field.Offset,
-                        BitOffset = IsBool(field.Type) ? BitOf(field) : null
+                        BitOffset = memberDimensions == null && IsBool(field.Type) ? BitOf(field) : null,
+                        Dimensions = memberDimensions
                     };
                 }
             }
@@ -391,6 +409,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             _udtDefinitionCache[udtTypeId] = structDef;
             return structDef;
         }
+
+        /// <summary>The bit of a template member type that marks an array member.</summary>
+        private const ushort TYPE_IS_ARRAY_MEMBER = 0x2000;
 
         /// <summary>
         /// Checks whether a UDT field is itself a nested UDT (struct).
@@ -560,7 +581,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                         Name = eipField.Name,
                         Description = new LocalizedText("en", eipField.Description ?? string.Empty),
                         DataType = fieldDataType,
-                        ValueRank = ValueRanks.Scalar,
+                        ValueRank = eipField.IsArray ? ValueRanks.OneDimension : ValueRanks.Scalar,
                         ArrayDimensions = default,
                         MaxStringLength = 0,
                         IsOptional = false
@@ -1094,7 +1115,7 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             }
 
             RockwellAsset asset = new();
-            await asset.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
+            await asset.ConnectAsync(endpoint, EIPControllers.FromThingDescription(td), cancellationToken).ConfigureAwait(false);
 
             _assets[td.Name] = asset;
 
@@ -1112,31 +1133,36 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             EIPForm eipForm = JsonConvert.DeserializeObject<EIPForm>(form.ToString());
 
-            // The binding allows a primitive type or a structure definition, never both.
-            if (eipForm.Type != null && eipForm.StructureDefinition != null)
-            {
-                throw new ArgumentException($"Form {eipForm.Href} has both eipv:type and eipv:structureDefinition.");
-            }
-
-            string arrayProblem = eipForm.ValidateArray();
-            if (arrayProblem != null)
-            {
-                throw new ArgumentException($"Form {eipForm.Href}: {arrayProblem}");
-            }
-
             _assets.TryGetValue(td.Name, out RockwellAsset asset);
+            EIPController controller = asset?.Controller ?? EIPControllers.FromThingDescription(td);
 
-            // A structured tag may be named only (as a CSV-generated Thing Model does): the
-            // binding has a Consumer that can browse the controller prefer the live layout.
-            if (eipForm.Type == null && eipForm.StructureDefinition == null && asset != null)
+            // A Consumer that can browse the controller prefers the live structure layout
+            // over an embedded one, which can go stale after a program download.
+            if (eipForm.Type == null && asset != null && EIPControllers.IsBrowsable(controller))
             {
-                eipForm.StructureDefinition = ResolveLiveDefinition(asset, EipTagReference.Parse(eipForm.Href).TagPath, out int[] liveDimensions);
-
-                // An array of the structure keeps the dimensions the TD states, or the live ones.
-                if (eipForm.StructureDefinition != null && eipForm.Dimensions == null)
+                EIPStructureDefinition live = ResolveLiveDefinition(asset, EipTagReference.Parse(eipForm.Href).TagPath, out int[] liveDimensions);
+                if (live != null)
                 {
-                    eipForm.Dimensions = liveDimensions;
+                    if (eipForm.StructureDefinition != null && !SameLayout(eipForm.StructureDefinition, live))
+                    {
+                        Log.Logger.Warning($"EIP tag {eipForm.Href}: the embedded eipv:structureDefinition differs from the controller's; using the controller's.");
+                    }
+
+                    eipForm.StructureDefinition = live;
+
+                    // An array of the structure keeps the dimensions the TD states, or the live ones.
+                    if (eipForm.Dimensions == null)
+                    {
+                        eipForm.Dimensions = liveDimensions;
+                    }
                 }
+            }
+
+            // Every normative rule of the binding, for the declared controller family.
+            string problem = eipForm.Validate(controller);
+            if (problem != null)
+            {
+                throw new ArgumentException($"Form {eipForm.Href}: {problem}");
             }
 
             // The asset encodes and decodes the value from the form: its type, conversion,
@@ -1153,6 +1179,42 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 MappedUAExpandedNodeID = mappedUAExpandedNodeId,
                 MappedUAFieldPath = mappedUAFieldPath
             };
+        }
+
+        /// <summary>
+        /// True when two structure definitions describe the same wire layout: the same
+        /// fields, types, byte and bit offsets, array dimensions and, when both state it,
+        /// the same byte size.
+        /// </summary>
+        internal static bool SameLayout(EIPStructureDefinition a, EIPStructureDefinition b)
+        {
+            if (a == null || b == null)
+            {
+                return a == b;
+            }
+
+            if ((a.Size.HasValue && b.Size.HasValue && a.Size != b.Size)
+                || (a.Fields?.Length ?? 0) != (b.Fields?.Length ?? 0))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < (a.Fields?.Length ?? 0); i++)
+            {
+                EIPFieldDefinition x = a.Fields[i];
+                EIPFieldDefinition y = b.Fields[i];
+                if (!string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase)
+                    || x.Type != y.Type
+                    || x.ByteOffset != y.ByteOffset
+                    || (x.Type == EIPTypeString.BOOL && (x.BitOffset ?? 0) != (y.BitOffset ?? 0))
+                    || x.ElementCount != y.ElementCount
+                    || !SameLayout(x.StructureDefinition, y.StructureDefinition))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

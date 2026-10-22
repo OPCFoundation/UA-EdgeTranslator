@@ -143,6 +143,11 @@ namespace Opc.Ua.Edge.Translator.Models
                 return "STRING arrays are not supported.";
             }
 
+            if (Type == null && StructureDefinition == null)
+            {
+                return "An array form names its element type with eipv:type or eipv:structureDefinition.";
+            }
+
             long declared = 1;
             foreach (int dimension in Dimensions)
             {
@@ -152,6 +157,123 @@ namespace Opc.Ua.Edge.Translator.Models
             if (ElementCount.HasValue && (ElementCount.Value <= 0 || ElementCount.Value > declared))
             {
                 return "eipv:elementCount must be between 1 and the number of declared elements.";
+            }
+
+            if (StructureDefinition != null && !(StructureDefinition.Size is int size && size >= 1))
+            {
+                return "An array of structures needs eipv:byteSize in its eipv:structureDefinition.";
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Checks the form against every normative rule of the binding for the declared
+        /// controller family. Returns null when the form is valid, otherwise the reason.
+        /// </summary>
+        public string Validate(EIPController controller)
+        {
+            if (string.IsNullOrWhiteSpace(Href))
+            {
+                return "href is required.";
+            }
+
+            if (Op == null || Op.Length == 0)
+            {
+                return "op is required.";
+            }
+
+            foreach (Op op in Op)
+            {
+                if (op != Models.Op.Readproperty && op != Models.Op.Writeproperty && op != Models.Op.Observeproperty)
+                {
+                    return $"The operation {op} has no EtherNet/IP mapping.";
+                }
+            }
+
+            if (Type != null && StructureDefinition != null)
+            {
+                return "A form has an eipv:type or an eipv:structureDefinition, not both.";
+            }
+
+            if (Scale.HasValue && Scale.Value == 0.0)
+            {
+                return "eipv:scale must not be zero.";
+            }
+
+            if (PollingTime.HasValue && PollingTime.Value < 0)
+            {
+                return "eipv:pollingTime must not be negative.";
+            }
+
+            if (Timeout.HasValue && Timeout.Value < 0)
+            {
+                return "eipv:timeout must not be negative.";
+            }
+
+            string serviceProblem = ValidateService(controller);
+            if (serviceProblem != null)
+            {
+                return serviceProblem;
+            }
+
+            if (EIPControllers.IsPccc(controller))
+            {
+                if (StructureDefinition != null || Dimensions != null || ElementCount.HasValue)
+                {
+                    return "eipv:structureDefinition, eipv:dimensions and eipv:elementCount apply to the symbolic families only.";
+                }
+
+                if (Href.IndexOf('?') >= 0)
+                {
+                    return "The ?offset= query applies to the symbolic families only.";
+                }
+
+                if (Type == null)
+                {
+                    return "A PCCC file address needs an eipv:type.";
+                }
+            }
+
+            string arrayProblem = ValidateArray();
+            if (arrayProblem != null)
+            {
+                return arrayProblem;
+            }
+
+            if (IsArray && StructureDefinition != null && (Scale.HasValue || Offset.HasValue))
+            {
+                return "eipv:scale and eipv:offset must not be used with an array of structures.";
+            }
+
+            return StructureDefinition?.Validate(IsArray);
+        }
+
+        /// <summary>Checks <see cref="Service"/> against the operations and the controller family.</summary>
+        private string ValidateService(EIPController controller)
+        {
+            if (Service == null)
+            {
+                return null;
+            }
+
+            if (!EIPServices.IsKnown(Service))
+            {
+                return $"Unknown eipv:service {Service}.";
+            }
+
+            if (EIPControllers.IsPccc(controller) != (Service == EIPServices.ExecutePCCC))
+            {
+                return $"The {controller} controller family does not support eipv:service {Service}.";
+            }
+
+            foreach (Op op in Op)
+            {
+                bool isWrite = op == Models.Op.Writeproperty;
+                if ((EIPServices.IsRead(Service) && isWrite) || (EIPServices.IsWrite(Service) && !isWrite))
+                {
+                    return $"eipv:service {Service} does not perform the operation {op}.";
+                }
             }
 
             return null;
@@ -225,7 +347,39 @@ namespace Opc.Ua.Edge.Translator.Models
             }
 
             double raw = (System.Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture) - (Offset ?? 0.0)) / (Scale ?? 1.0);
-            return Type == null || Type == EIPTypeString.REAL || Type == EIPTypeString.LREAL ? raw : System.Math.Round(raw, System.MidpointRounding.AwayFromZero);
+            if (Type == null || Type == EIPTypeString.REAL || Type == EIPTypeString.LREAL)
+            {
+                return raw;
+            }
+
+            // The nearest representable value of the declared integer type.
+            raw = System.Math.Round(raw, System.MidpointRounding.AwayFromZero);
+            double min;
+            double max;
+            switch (Type)
+            {
+                case EIPTypeString.SINT: min = sbyte.MinValue; max = sbyte.MaxValue; break;
+                case EIPTypeString.INT: min = short.MinValue; max = short.MaxValue; break;
+                case EIPTypeString.DINT: min = int.MinValue; max = int.MaxValue; break;
+                case EIPTypeString.LINT: min = long.MinValue; max = long.MaxValue; break;
+                case EIPTypeString.USINT:
+                case EIPTypeString.BYTE: min = byte.MinValue; max = byte.MaxValue; break;
+                case EIPTypeString.UINT:
+                case EIPTypeString.WORD: min = ushort.MinValue; max = ushort.MaxValue; break;
+                case EIPTypeString.UDINT:
+                case EIPTypeString.DWORD: min = uint.MinValue; max = uint.MaxValue; break;
+                case EIPTypeString.ULINT:
+                case EIPTypeString.LWORD: min = ulong.MinValue; max = ulong.MaxValue; break;
+                default: return raw;
+            }
+
+            // long/ulong bounds round up as doubles, so stay just inside them.
+            if (raw >= max)
+            {
+                return max >= long.MaxValue ? System.BitConverter.Int64BitsToDouble(System.BitConverter.DoubleToInt64Bits(max) - 1) : max;
+            }
+
+            return raw <= min ? min : raw;
         }
     }
 
@@ -239,11 +393,53 @@ namespace Opc.Ua.Edge.Translator.Models
         public EIPFieldDefinition[] Fields { get; set; }
 
         /// <summary>
-        /// Proposed extension: the padded size of one instance in bytes, as the Logix
+        /// <c>eipv:byteSize</c>: the padded size of one instance in bytes, as the Logix
         /// template reports it; the element stride of an array of this structure.
         /// </summary>
-        [JsonProperty("eipv:size", NullValueHandling = NullValueHandling.Ignore)]
+        [JsonProperty("eipv:byteSize", NullValueHandling = NullValueHandling.Ignore)]
         public int? Size { get; set; }
+
+        [JsonProperty("eipv:size")]
+        private int? LegacySize { set => Size ??= value; }
+
+        /// <summary>
+        /// Checks the definition, recursively: a type name and fields, a byte size when it
+        /// is an array element, and per field either a primitive type or a nested
+        /// structure, the bit of a BOOL, and valid array dimensions.
+        /// </summary>
+        public string Validate(bool isArrayElement = false)
+        {
+            if (string.IsNullOrWhiteSpace(TypeName))
+            {
+                return "eipv:structureDefinition needs eipv:typeName.";
+            }
+
+            if (Fields == null)
+            {
+                return $"eipv:structureDefinition {TypeName} needs eipv:fields.";
+            }
+
+            if (isArrayElement && !(Size is int size && size >= 1))
+            {
+                return $"eipv:structureDefinition {TypeName} is an array element and needs eipv:byteSize.";
+            }
+
+            if (Size is int declared && declared < 1)
+            {
+                return $"eipv:byteSize of {TypeName} must be at least 1.";
+            }
+
+            foreach (EIPFieldDefinition field in Fields)
+            {
+                string problem = field == null ? $"{TypeName} has an empty field." : field.Validate(TypeName);
+                if (problem != null)
+                {
+                    return problem;
+                }
+            }
+
+            return null;
+        }
 
         [JsonProperty("typeName")]
         private string LegacyTypeName { set => TypeName ??= value; }
@@ -276,6 +472,85 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>Nested UDT definition, processed recursively.</summary>
         [JsonProperty("eipv:structureDefinition", NullValueHandling = NullValueHandling.Ignore)]
         public EIPStructureDefinition StructureDefinition { get; set; }
+
+        /// <summary>Declared dimensions of an array member, outermost first.</summary>
+        [JsonProperty("eipv:dimensions", NullValueHandling = NullValueHandling.Ignore)]
+        public int[] Dimensions { get; set; }
+
+        /// <summary>True when the field is an array member.</summary>
+        [JsonIgnore]
+        public bool IsArray => Dimensions != null && Dimensions.Length > 0;
+
+        /// <summary>The number of elements of an array member (the product of its dimensions); 1 otherwise.</summary>
+        [JsonIgnore]
+        public int ElementCount
+        {
+            get
+            {
+                int total = 1;
+                if (IsArray)
+                {
+                    foreach (int dimension in Dimensions)
+                    {
+                        total *= dimension;
+                    }
+                }
+
+                return total;
+            }
+        }
+
+        /// <summary>Checks the field; returns null when valid, otherwise the reason.</summary>
+        public string Validate(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                return $"A field of {typeName} needs eipv:name.";
+            }
+
+            if ((Type == null) == (StructureDefinition == null))
+            {
+                return $"Field {typeName}.{Name} needs either eipv:type or eipv:structureDefinition.";
+            }
+
+            if (ByteOffset < 0)
+            {
+                return $"Field {typeName}.{Name} has a negative eipv:byteOffset.";
+            }
+
+            if (Type == EIPTypeString.BOOL && !BitOffset.HasValue)
+            {
+                return $"BOOL field {typeName}.{Name} needs eipv:bitOffset.";
+            }
+
+            if (BitOffset.HasValue && (BitOffset.Value < 0 || BitOffset.Value > 7))
+            {
+                return $"eipv:bitOffset of {typeName}.{Name} must be between 0 and 7.";
+            }
+
+            if (Dimensions != null)
+            {
+                if (Dimensions.Length < 1 || Dimensions.Length > 3)
+                {
+                    return $"eipv:dimensions of {typeName}.{Name} must have one to three dimensions.";
+                }
+
+                foreach (int dimension in Dimensions)
+                {
+                    if (dimension < 1)
+                    {
+                        return $"eipv:dimensions of {typeName}.{Name} must be positive.";
+                    }
+                }
+
+                if (Type == EIPTypeString.BOOL || Type == EIPTypeString.STRING)
+                {
+                    return $"Field {typeName}.{Name}: {Type} must not be used with eipv:dimensions.";
+                }
+            }
+
+            return StructureDefinition?.Validate(IsArray);
+        }
 
         [JsonProperty("name")]
         private string LegacyName { set => Name ??= value; }
@@ -382,5 +657,121 @@ namespace Opc.Ua.Edge.Translator.Models
 
         /// <summary>The binding term for <paramref name="type"/>, such as <c>eipv:REAL</c>.</summary>
         public static string ToTerm(EIPTypeString type) => EIPForm.Prefix + ":" + type;
+
+        /// <summary>
+        /// The minimum and maximum of the WoT data schema the binding recommends for a
+        /// Logix integer type; null where the binding gives none.
+        /// </summary>
+        public static void Bounds(EIPTypeString type, out long? minimum, out long? maximum)
+        {
+            minimum = null;
+            maximum = null;
+            switch (type)
+            {
+                case EIPTypeString.SINT: minimum = sbyte.MinValue; maximum = sbyte.MaxValue; break;
+                case EIPTypeString.INT: minimum = short.MinValue; maximum = short.MaxValue; break;
+                case EIPTypeString.DINT: minimum = int.MinValue; maximum = int.MaxValue; break;
+                case EIPTypeString.USINT:
+                case EIPTypeString.BYTE: minimum = 0; maximum = byte.MaxValue; break;
+                case EIPTypeString.UINT:
+                case EIPTypeString.WORD: minimum = 0; maximum = ushort.MaxValue; break;
+                case EIPTypeString.UDINT:
+                case EIPTypeString.DWORD:
+                case EIPTypeString.ULINT:
+                case EIPTypeString.LWORD: minimum = 0; break;
+            }
+        }
+    }
+
+    /// <summary>The controller families of the binding (<c>eipv:controller</c>).</summary>
+    public enum EIPController
+    {
+        ControlLogix,
+        CompactLogix,
+        Micro800,
+        MicroLogix,
+        SLC500,
+        PLC5,
+        Omron
+    }
+
+    /// <summary>Reads <c>eipv:controller</c> and classifies the controller families.</summary>
+    public static class EIPControllers
+    {
+        /// <summary>The Thing-level term naming the controller family.</summary>
+        public const string Term = EIPForm.Prefix + ":controller";
+
+        /// <summary>The family assumed when <c>eipv:controller</c> is absent.</summary>
+        public const EIPController Default = EIPController.ControlLogix;
+
+        /// <summary>True for the families accessed with PCCC file addresses.</summary>
+        public static bool IsPccc(EIPController controller) =>
+            controller == EIPController.MicroLogix || controller == EIPController.SLC500 || controller == EIPController.PLC5;
+
+        /// <summary>True for the families whose tag list and UDT templates can be browsed.</summary>
+        public static bool IsBrowsable(EIPController controller) =>
+            controller == EIPController.ControlLogix || controller == EIPController.CompactLogix;
+
+        /// <summary>Parses a family name exactly as the binding writes it.</summary>
+        public static bool TryParse(string text, out EIPController controller)
+        {
+            controller = Default;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            foreach (EIPController value in System.Enum.GetValues(typeof(EIPController)))
+            {
+                if (string.Equals(value.ToString(), text.Trim(), System.StringComparison.Ordinal))
+                {
+                    controller = value;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// The family a Thing Description declares with <c>eipv:controller</c>, or
+        /// <see cref="Default"/> when absent. An unknown family is rejected.
+        /// </summary>
+        public static EIPController FromThingDescription(ThingDescription td)
+        {
+            if (td?.AdditionalData == null || !td.AdditionalData.TryGetValue(Term, out object value) || value == null)
+            {
+                return Default;
+            }
+
+            string text = value.ToString();
+            if (!TryParse(text, out EIPController controller))
+            {
+                throw new System.ArgumentException($"Unknown {Term} '{text}'.");
+            }
+
+            return controller;
+        }
+    }
+
+    /// <summary>The CIP service names of <c>eipv:service</c>.</summary>
+    public static class EIPServices
+    {
+        public const string ReadTag = "ReadTag";
+
+        public const string ReadTagFragmented = "ReadTagFragmented";
+
+        public const string WriteTag = "WriteTag";
+
+        public const string WriteTagFragmented = "WriteTagFragmented";
+
+        public const string ExecutePCCC = "ExecutePCCC";
+
+        public static bool IsKnown(string service) =>
+            IsRead(service) || IsWrite(service) || service == ExecutePCCC;
+
+        public static bool IsRead(string service) => service == ReadTag || service == ReadTagFragmented;
+
+        public static bool IsWrite(string service) => service == WriteTag || service == WriteTagFragmented;
     }
 }
