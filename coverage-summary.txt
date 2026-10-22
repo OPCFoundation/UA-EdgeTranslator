@@ -1,25 +1,25 @@
 Summary
-  Generated on: 10/19/2026 - 13:00:15
-  Coverage date: 10/19/2026 - 13:00:12
+  Generated on: 10/22/2026 - 17:51:41
+  Coverage date: 10/22/2026 - 17:51:39
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
   Files: 55
-  Line coverage: 80.2%
-  Covered lines: 4465
-  Uncovered lines: 1100
-  Coverable lines: 5565
-  Total lines: 14919
-  Branch coverage: 70.6% (2329 of 3298)
-  Covered branches: 2329
-  Total branches: 3298
+  Line coverage: 79.9%
+  Covered lines: 4468
+  Uncovered lines: 1121
+  Coverable lines: 5589
+  Total lines: 14963
+  Branch coverage: 70.3% (2333 of 3318)
+  Covered branches: 2333
+  Total branches: 3318
   Method coverage: 89.1% (479 of 537)
-  Full method coverage: 58.4% (314 of 537)
+  Full method coverage: 58.1% (312 of 537)
   Covered methods: 479
-  Fully covered methods: 314
+  Fully covered methods: 312
   Total methods: 537
 
-UAEdgeTranslator                                                  80.2%
+UAEdgeTranslator                                                  79.9%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -59,8 +59,8 @@ UAEdgeTranslator                                                  80.2%
   Opc.Ua.Edge.Translator.Program                                  36.4%
   Opc.Ua.Edge.Translator.ProtocolDrivers.ProtocolDriverRegistry    100%
   Opc.Ua.Edge.Translator.TlsServerCertificates                    65.3%
-  Opc.Ua.Edge.Translator.UACloudLibraryClient                     97.7%
-  Opc.Ua.Edge.Translator.UANodeManager                            74.7%
+  Opc.Ua.Edge.Translator.UACloudLibraryClient                     95.4%
+  Opc.Ua.Edge.Translator.UANodeManager                            73.7%
   Opc.Ua.Edge.Translator.UANodeManagerFactory                       50%
   Opc.Ua.Edge.Translator.UAServer                                 97.4%
   Opc.Ua.Edge.Translator.VariantConversion                        93.7%
@@ -79,5 +79,5 @@ UAEdgeTranslator                                                  80.2%
   Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               93.7%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   89.1%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                     90%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
