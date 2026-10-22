@@ -78,4 +78,11 @@
     </None>
   </ItemGroup>
 
+  <!-- The Siemens sample Thing Description is checked against the S7Comm binding. -->
+  <ItemGroup>
+    <None Include="..\..\Samples\Siemens_S7_PLC.td.jsonld" Link="TestData\Siemens_S7_PLC.td.jsonld">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

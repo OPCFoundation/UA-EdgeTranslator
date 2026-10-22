@@ -289,20 +289,18 @@ namespace Opc.Ua.Edge.Translator.Tools
                     // reuse for Id, Name and the output file name.
                     string assetName = SanitizeAssetName(device.Name + "." + cpuItem.Name);
 
-                    // S7Comm base URL: only emit the rack component. TIA's
-                    // CPU PositionNumber (typically 1 for an S7-1500) is the
-                    // *engineering* rack slot and is NOT the same as Sharp7's
-                    // "slot" connection parameter (which feeds the TSAP and
-                    // is 0 for S7-1200/1500). SiemensProtocolDriver.ParseEndpoint
-                    // therefore treats "s7://ip:n" as (rack 0, slot n), which
-                    // matches what Sharp7 expects when n = 0. Baking a third
-                    // ":slot" component would mis-route the connection, so the
-                    // generator only emits "s7://ip:{rack}".
-                    string baseUrl = $"s7://{ipAddress}:{rack}";
+                    // S7Comm binding endpoint: s7://host/rack,slot/. TIA's CPU
+                    // PositionNumber is the slot of the CPU in its rack (1 for an
+                    // S7-1200/1500, typically 2 for an S7-300/400), which is the
+                    // slot the binding expects.
+                    string baseUrl = new S7Endpoint(ipAddress, S7Endpoint.DefaultPort, rack, slot).ToBaseUri();
+
+                    // The family decides which types and areas the controller supports.
+                    S7Controller? controller = S7Controllers.FromOrderNumber(SafeGetAttribute(cpuItem, "OrderNumber") as string);
 
                     ThingDescription td = new ThingDescription()
                     {
-                        Context = new string[1] { "https://www.w3.org/2022/wot/td/v1.1" },
+                        Context = new object[] { "https://www.w3.org/2022/wot/td/v1.1", new Dictionary<string, string> { { S7Form.Prefix, S7Form.BindingNamespace } } },
                         Id = "urn:" + assetName,
                         SecurityDefinitions = new SecurityDefinitions { NosecSc = new NosecSc { Scheme = "nosec" } },
                         Security = new string[1] { "nosec_sc" },
@@ -313,6 +311,13 @@ namespace Opc.Ua.Edge.Translator.Tools
                         Properties = new Dictionary<string, Property>(),
                         Actions = new Dictionary<string, TDAction>()
                     };
+
+                    if (controller.HasValue)
+                    {
+                        td.AdditionalData = new Dictionary<string, object> { { S7Controllers.ControllerTerm, controller.Value.ToString() } };
+                    }
+
+                    s_controller = controller;
 
                     // Export every PLC type (UDT) exactly once and keep a
                     // name -> <Sections> catalog so that UDT-typed members
@@ -334,7 +339,7 @@ namespace Opc.Ua.Edge.Translator.Tools
                         Directory.GetCurrentDirectory(),
                         SanitizeAssetName(Path.GetFileNameWithoutExtension(filename) + "_" + plcSoftware.Name) + ".td.jsonld");
 
-                    File.WriteAllText(outputPath, JsonConvert.SerializeObject(td, Formatting.Indented));
+                    File.WriteAllText(outputPath, JsonConvert.SerializeObject(td, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
                     Console.WriteLine($"  Wrote {td.Properties.Count} properties to {outputPath}");
                 }
             }
@@ -377,6 +382,10 @@ namespace Opc.Ua.Edge.Translator.Tools
         }
 
 #if SIEMENS_ENGINEERING
+        // Controller family of the PLC being imported; the binding rules for its
+        // types and areas decide which members become properties.
+        private static S7Controller? s_controller;
+
         private static (PlcSoftware plc, DeviceItem cpuItem) FindPlcSoftware(Device device)
         {
             foreach (DeviceItem item in EnumerateDeviceItems(device))
@@ -1306,24 +1315,45 @@ namespace Opc.Ua.Edge.Translator.Tools
             string dataType,
             Dictionary<string, Property> properties)
         {
-            S7Form form = new S7Form()
+            if (!S7DataTypes.TryParse(s7TypeName, out S7DataType type))
             {
-                Href = $"DB{dbNumber}?{byteOffset}",
-                Op = new[] { Op.Readproperty, Op.Observeproperty },
-                PollingTime = 1000,
-                S7Target = S7Target.DataBlock,
-                S7DBNumber = dbNumber,
-                S7Start = byteOffset,
-                S7Pos = bitOffset,
-                S7Size = sizeBytes,
-                S7MaxLen = maxLen,
-                S7S7Type = string.IsNullOrEmpty(s7TypeName) ? null : s7TypeName,
-                Type = tdType
+                Console.WriteLine($"      {fullPath} ({dataType}) skipped — no S7Comm binding type.");
+                return;
+            }
+
+            // The binding's address of the value: %DB<n>.DB<code><byte>[.<bit>]:<type>.
+            S7Address address = new S7Address()
+            {
+                Area = S7MemoryArea.DB,
+                DbNumber = dbNumber,
+                ByteOffset = byteOffset,
+                BitOffset = type == S7DataType.BOOL ? bitOffset : (int?)null,
+                Type = type,
+                Length = (type == S7DataType.STRING || type == S7DataType.WSTRING) && maxLen > 0 ? maxLen : (int?)null
             };
 
+            S7Form form = new S7Form()
+            {
+                Href = S7Address.ToHref(address.ToString()),
+                Op = new[] { Op.Readproperty, Op.Observeproperty },
+                PollingTime = 1000,
+                Type = type
+            };
+
+            // Every form follows the binding for the controller family, or is left out.
+            string problem = form.Validate(s_controller);
+            if (problem != null)
+            {
+                Console.WriteLine($"      {fullPath} ({dataType}) skipped — {problem}");
+                return;
+            }
+
+            S7DataTypes.Bounds(type, out long? minimum, out long? maximum);
             Property property = new Property()
             {
-                Type = typeEnum,
+                Type = S7DataTypes.WotTypeOf(type),
+                Minimum = minimum,
+                Maximum = maximum,
                 ReadOnly = false,
                 Observable = true,
                 Forms = new object[1] { form }
