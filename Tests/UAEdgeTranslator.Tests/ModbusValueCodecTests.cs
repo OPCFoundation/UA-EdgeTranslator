@@ -135,6 +135,22 @@ namespace Opc.Ua.Edge.Translator.Tests
         }
 
         [Fact]
+        public void String_encodes_utf8_padded_to_whole_registers()
+        {
+            Assert.Equal(new byte[] { (byte)'H', (byte)'i' }, ModbusValueCodec.Encode(Tag("String"), "Hi"));
+            Assert.Equal(new byte[] { (byte)'a', (byte)'b', (byte)'c', 0x00 }, ModbusValueCodec.Encode(Tag("String"), "abc"));
+        }
+
+        [Fact]
+        public void String_encodes_null_as_no_registers_and_round_trips()
+        {
+            Assert.Empty(ModbusValueCodec.Encode(Tag("String"), null));
+
+            byte[] wire = ModbusValueCodec.Encode(Tag("String"), "Pump 7");
+            Assert.Equal("Pump 7", ModbusValueCodec.Decode(Tag("String"), wire));
+        }
+
+        [Fact]
         public void Multiplier_scales_reading_and_returns_float()
         {
             byte[] wire = BitConverter.GetBytes((short)5);
