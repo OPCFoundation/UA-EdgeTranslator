@@ -1,13 +1,13 @@
 Summary
-  Generated on: 10/23/2026 - 18:59:05
-  Coverage date: 10/23/2026 - 18:59:02
+  Generated on: 10/23/2026 - 19:43:06
+  Coverage date: 10/23/2026 - 19:43:04
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
   Files: 55
   Line coverage: 81.6%
-  Covered lines: 4562
-  Uncovered lines: 1027
+  Covered lines: 4564
+  Uncovered lines: 1025
   Coverable lines: 5589
   Total lines: 14963
   Branch coverage: 72.8% (2417 of 3318)
@@ -79,5 +79,5 @@ UAEdgeTranslator                                                  81.6%
   Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               99.2%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   89.1%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                     90%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
