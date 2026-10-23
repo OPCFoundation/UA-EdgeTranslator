@@ -7,6 +7,9 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
     using Serilog;
     using System;
     using System.Collections.Generic;
+    using System.IO;
+    using System.Reflection;
+    using System.Runtime.InteropServices;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Linq;
@@ -16,6 +19,38 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
 
     public class RockwellProtocolDriver : IProtocolDriver
     {
+        // libplctag.NativeImport extracts the native library matching the current
+        // OS/architecture into AppContext.BaseDirectory (the host's /app), but this
+        // driver runs in its own plugin load context from /app/drivers/rockwell, so
+        // default probing never looks there. Point the "plctag" import at the
+        // extracted file explicitly; returning IntPtr.Zero falls back to default
+        // probing.
+        static RockwellProtocolDriver()
+        {
+            try
+            {
+                NativeLibrary.SetDllImportResolver(typeof(libplctag.NativeImport.plctag).Assembly, ResolvePlcTagNativeLibrary);
+            }
+            catch (InvalidOperationException)
+            {
+                // A resolver is already registered for this assembly instance.
+            }
+        }
+
+        private static IntPtr ResolvePlcTagNativeLibrary(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        {
+            if (libraryName != "plctag")
+            {
+                return IntPtr.Zero;
+            }
+
+            string fileName = OperatingSystem.IsWindows() ? "plctag.dll"
+                : OperatingSystem.IsMacOS() ? "libplctag.dylib"
+                : "libplctag.so";
+
+            return NativeLibrary.TryLoad(Path.Combine(AppContext.BaseDirectory, fileName), out IntPtr handle) ? handle : IntPtr.Zero;
+        }
+
         public string Scheme => "eip";
 
         public string WoTBindingUri => EIPForm.BindingNamespace;

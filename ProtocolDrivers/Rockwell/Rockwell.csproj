@@ -11,12 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="libplctag.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
