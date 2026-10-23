@@ -123,16 +123,38 @@ UA Edge Translator is available as a pre-built Docker container (supporting both
 docker volume create translator_drivers
 
 # 2) Copy drivers from the driver-pack image into the volume
-docker run --rm -v translator_drivers:/out ghcr.io/opcfoundation/ua-edgetranslator-drivers:main /bin/sh -c 'cp -a /drivers/. /out/'
+docker run --rm \
+  -v translator_drivers:/out \
+  ghcr.io/opcfoundation/ua-edgetranslator-drivers:main \
+  /bin/sh -c 'cp -a /drivers/. /out/'
 
-# 3) Run UA Edge Translator with the drivers volume mounted to /app/drivers
-docker run -d --name ua-edge-translator -v translator_drivers:/app/drivers -e OPCUA_USERNAME="REPLACE_ME" -e OPCUA_PASSWORD="REPLACE_ME" -p 4840:4840 ghcr.io/opcfoundation/ua-edgetranslator:main
+# 3) Create a persistent settings directory
+sudo mkdir -p /uaedgetranslator/settings
+
+# 4) Determine the UID and GID used by the container
+docker run --rm --entrypoint id ghcr.io/opcfoundation/ua-edgetranslator:main
+
+# 5) Set ownership of the settings directory
+sudo chown -R <UID>:<GID> /uaedgetranslator/settings
+
+# 6) Run UA Edge Translator
+docker run -itd \
+  --name ua-edge-translator \
+  --restart unless-stopped \
+  -v translator_drivers:/app/drivers \
+  -v /uaedgetranslator/settings:/app/settings \
+  -e OPCUA_USERNAME="REPLACE_ME" \
+  -e OPCUA_PASSWORD="REPLACE_ME" \
+  -p 4840:4840 \
+  -p 8081:8081 \
+  ghcr.io/opcfoundation/ua-edgetranslator:main
 ```
+
+> **Note**: UA Edge Translator writes runtime configuration data to /app/settings. When using a bind mount for this directory, the host directory must be writable by the user running UA Edge Translator inside the container. The bind mount also preserves the settings when the container is removed or recreated.
 
 In addition, the following folders within the Docker container store certificates, secrets and settings and should be mapped and persisted (-v argument in Docker command line) to the Docker host to encrypted folders, e.g. protected folders using BitLocker:
 * `/app/logs` (log files)
 * `/app/pki` (certificates and keys)
-* `/app/settings` (WoT Thing Descriptions)
 * `/app/nodesets` (OPC UA nodesets for referenced companion specifications)
 * `/app/drivers` (protocol driver DLLs, see above)
 
