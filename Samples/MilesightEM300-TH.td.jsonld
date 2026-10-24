@@ -65,7 +65,7 @@
           "type": "xsd:short",
           "lorav:tag": [ 3, 103 ],
           "lorav:wireType": "xsd:short",
-          "lorav:endian": "big",
+          "lorav:endian": "little",
           "lorav:divisor": 10
         }
       ]
