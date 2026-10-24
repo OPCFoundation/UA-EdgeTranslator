@@ -94,6 +94,63 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             Assert.Contains("Connected Assets", page.Markup, System.StringComparison.Ordinal);
         }
 
+        private const string AddButton = "button[title^='Create an asset for an endpoint']";
+
+        [Fact]
+        public void Devices_add_dialog_suggests_a_name_from_the_endpoint()
+        {
+            IRenderedComponent<Devices> page = Render<Devices>();
+
+            Assert.Empty(page.FindAll("form.dialog"));
+            page.Find(AddButton).Click();
+
+            var inputs = page.FindAll("form.dialog input");
+            inputs[0].Input("modbus://192.168.1.10:502");
+
+            Assert.Equal("modbus-192.168.1.10", page.FindAll("form.dialog input")[1].GetAttribute("value"));
+        }
+
+        [Fact]
+        public void Devices_add_dialog_keeps_a_name_the_user_typed()
+        {
+            IRenderedComponent<Devices> page = Render<Devices>();
+            page.Find(AddButton).Click();
+
+            page.FindAll("form.dialog input")[1].Input("my-plc");
+            page.FindAll("form.dialog input")[0].Input("modbus://192.168.1.10:502");
+
+            Assert.Equal("my-plc", page.FindAll("form.dialog input")[1].GetAttribute("value"));
+        }
+
+        [Fact]
+        public void Devices_add_dialog_closes_on_cancel()
+        {
+            IRenderedComponent<Devices> page = Render<Devices>();
+            page.Find(AddButton).Click();
+
+            page.Find("form.dialog button[type='button']").Click();
+
+            Assert.Empty(page.FindAll("form.dialog"));
+        }
+
+        [Fact]
+        public void Devices_add_dialog_stays_open_and_reports_why_creating_failed()
+        {
+            // No driver serves this scheme, so CreateAssetForEndpoint must reject it
+            // and the dialog keeps the endpoint for correction.
+            IRenderedComponent<Devices> page = Render<Devices>();
+            page.Find(AddButton).Click();
+            page.FindAll("form.dialog input")[0].Input("nosuchprotocol://10.0.0.1/");
+
+            page.Find("form.dialog").Submit();
+
+            page.WaitForAssertion(() =>
+            {
+                Assert.Single(page.FindAll("form.dialog"));
+                Assert.Contains("failed", page.Find("form.dialog .banner-warning").TextContent, System.StringComparison.Ordinal);
+            }, System.TimeSpan.FromSeconds(10));
+        }
+
         [Fact]
         public void Certificates_page_renders_the_application_certificate()
         {

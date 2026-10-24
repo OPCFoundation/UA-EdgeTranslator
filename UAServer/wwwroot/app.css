@@ -1476,3 +1476,74 @@ html[data-theme="dark"] .btn-refresh:hover {
     opacity: 0.5;
     cursor: default;
 }
+
+/* Add-asset dialog (Connected Assets page) */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 100;
+}
+
+.dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 101;
+    width: min(480px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 24px;
+    background: var(--surface);
+    color: var(--text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow), 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+    .dialog .banner {
+        margin: 0;
+    }
+
+.dialog-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.dialog-hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.dialog-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+    .dialog-field input {
+        padding: 9px 12px;
+        border: 1px solid var(--separator);
+        border-radius: var(--radius-md);
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+    }
+
+    .dialog-field input:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+    }
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}

@@ -6,6 +6,12 @@
 
 <PageHeader Title="Connected Assets" Subtitle="Southbound asset connection status" OnRefresh="Reload">
     <Actions>
+        <button type="button" class="btn-refresh" disabled="@_busy" @onclick="OpenAddDialog" title="Create an asset for an endpoint you enter (CreateAssetForEndpoint)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Add</span>
+        </button>
         <button type="button" class="btn-refresh" disabled="@_busy" @onclick="Discover" title="Ask every protocol driver for assets on the network">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="7" />
@@ -15,6 +21,35 @@
         </button>
     </Actions>
 </PageHeader>
+
+@if (_addOpen)
+{
+    <div class="dialog-backdrop" @onclick="CloseAddDialog"></div>
+    <form class="dialog" role="dialog" aria-modal="true" aria-labelledby="add-asset-title" @onsubmit="AddAsync" @onkeydown="OnDialogKeyDown">
+        <h2 id="add-asset-title" class="dialog-title">Add asset</h2>
+        <p class="dialog-hint">Enter the endpoint of an asset on the network. The matching protocol driver browses it and creates the asset.</p>
+
+        <label class="dialog-field">
+            <span>Endpoint</span>
+            <input class="mono" autofocus @bind="_addEndpoint" @bind:event="oninput" @bind:after="OnAddEndpointChanged" placeholder="e.g. modbus://192.168.1.10:502" />
+        </label>
+
+        <label class="dialog-field">
+            <span>Asset name</span>
+            <input class="mono" @bind="_addName" @bind:event="oninput" @bind:after="() => _addNameEdited = true" placeholder="letters, digits, '.', '_' and '-'" />
+        </label>
+
+        @if (!string.IsNullOrEmpty(_addError))
+        {
+            <div class="banner banner-warning">@_addError</div>
+        }
+
+        <div class="dialog-actions">
+            <button type="button" class="btn-refresh" disabled="@_busy" @onclick="CloseAddDialog">Cancel</button>
+            <button type="submit" class="btn-trust" disabled="@(_busy || string.IsNullOrWhiteSpace(_addEndpoint) || string.IsNullOrWhiteSpace(_addName))">@(_busy ? "Adding\u2026" : "Add")</button>
+        </div>
+    </form>
+}
 
 @if (_tagAccessBlocked)
 {
@@ -43,7 +78,7 @@ else if (_devices.Count == 0 && _discovered.Count == 0)
             </svg>
         </div>
         <h2>No assets onboarded</h2>
-        <p>Press Discover to find assets on the network, create an asset through the OPC UA WoT-Con interface, or drop a Thing Description into the settings folder.</p>
+        <p>Press Add to enter an asset endpoint, press Discover to find assets on the network, create an asset through the OPC UA WoT-Con interface, or drop a Thing Description into the settings folder.</p>
     </div>
 }
 else
@@ -103,6 +138,11 @@ else
     private bool _discovering;
     private string _message;
     private bool _messageIsError;
+    private bool _addOpen;
+    private string _addEndpoint;
+    private string _addName;
+    private bool _addNameEdited;
+    private string _addError;
     private PeriodicTimer _timer;
 
     protected override void OnInitialized()
@@ -204,6 +244,74 @@ else
             else
             {
                 ShowMessage($"Creating asset {name} failed: {error}", true);
+            }
+
+            Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _addEndpoint = _addName = _addError = null;
+        _addNameEdited = false;
+        _addOpen = true;
+    }
+
+    private void CloseAddDialog()
+    {
+        if (!_busy)
+        {
+            _addOpen = false;
+        }
+    }
+
+    private void OnDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseAddDialog();
+        }
+    }
+
+    // Keep suggesting a name from the endpoint until the user types one of their own.
+    private void OnAddEndpointChanged()
+    {
+        if (!_addNameEdited)
+        {
+            _addName = string.IsNullOrWhiteSpace(_addEndpoint) ? null : SuggestName(_addEndpoint.Trim());
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        string endpoint = _addEndpoint?.Trim();
+        string name = _addName?.Trim();
+        if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(name))
+        {
+            _addError = "Enter both an endpoint and an asset name.";
+            return;
+        }
+
+        _busy = true;
+        _addError = null;
+        _message = null;
+        try
+        {
+            string error = await Diagnostics.CreateAssetForEndpointAsync(name, endpoint);
+            if (error == null)
+            {
+                _addOpen = false;
+                _discovered.Remove(endpoint);
+                ShowMessage($"Created asset {name} for {endpoint}.", false);
+            }
+            else
+            {
+                // Keep the dialog open so the endpoint or name can be corrected.
+                _addError = $"Creating asset {name} failed: {error}";
             }
 
             Reload();
