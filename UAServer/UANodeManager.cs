@@ -2166,6 +2166,14 @@ namespace Opc.Ua.Edge.Translator
                         else
                         {
                             // No field path — check if it's a structure type that needs an initialized ExtensionObject, or a simple built-in type.
+                            if (dataType == null)
+                            {
+                                // The namespace is known but holds no such DataType: neither a loaded companion
+                                // model nor the protocol driver (RegisterStructureTypes) defines this mapping type.
+                                throw new InvalidOperationException(
+                                    $"uav:mapToType '{property.Value.OpcUaType}' names a DataType that does not exist. Neither a loaded companion model nor the protocol driver for '{td.Base}' defines it.");
+                            }
+
                             if (TryGetStructureDefinition(dataType, out StructureDefinition structDef))
                             {
                                 NodeId defaultBinaryEncodingId = GetDefaultBinaryEncodingId(dataType);
