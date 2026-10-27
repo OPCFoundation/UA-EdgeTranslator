@@ -7,10 +7,14 @@ namespace Opc.Ua.Edge.Translator.WotCon
     using global::Opc.Ua.WotCon.Server;
     using global::Opc.Ua.WotCon.Server.Materialization;
     using global::Opc.Ua.WotCon.Server.Registry;
+    using Newtonsoft.Json;
+    using Opc.Ua.Edge.Translator.Models;
     using Serilog;
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -289,9 +293,45 @@ namespace Opc.Ua.Edge.Translator.WotCon
         /// </summary>
         private async Task LoadCompanionModelsAsync(byte[] thingDescription, CancellationToken cancellationToken)
         {
-            foreach (string namespaceUri in WotImportNormalizer.MappingTypeNamespaces(thingDescription))
+            IReadOnlyList<string> namespaces = WotImportNormalizer.MappingTypeNamespaces(thingDescription);
+
+            RegisterOwnStructureTypes(thingDescription, namespaces);
+
+            foreach (string namespaceUri in namespaces)
             {
                 await LoadCompanionModelAsync(namespaceUri, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Mapping types in the Thing's own namespace are defined by its protocol driver
+        /// (for example Rockwell UDTs embedded in the forms), not by a companion model.
+        /// Registers them before the Thing is materialized. Without this they existed only
+        /// when legacy onboarding happened to load the same file first, so the registry
+        /// looked the asset's namespace up in the Cloud Library, failed, and materialized
+        /// the mapped variables without their structure type.
+        /// </summary>
+        private static void RegisterOwnStructureTypes(byte[] thingDescription, IReadOnlyList<string> mappingNamespaces)
+        {
+            UANodeManager manager = UANodeManager.Instance;
+            if (manager == null || mappingNamespaces.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                ThingDescription td = JsonConvert.DeserializeObject<ThingDescription>(Encoding.UTF8.GetString(thingDescription).Trim('\uFEFF'));
+                if (td?.Name == null || !mappingNamespaces.Contains(UANodeManager.AssetNamespaceUri(td.Name), StringComparer.Ordinal))
+                {
+                    return;
+                }
+
+                manager.RegisterOwnStructureTypes(td);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Could not register the protocol driver's structure types for a Thing Description.");
             }
         }
 

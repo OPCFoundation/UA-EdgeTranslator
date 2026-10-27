@@ -568,7 +568,7 @@ namespace Opc.Ua.Edge.Translator
                         throw new Exception("Asset already exists");
                     }
 
-                    await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+                    await OnboardNewAssetAsync(assetNode, contents).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -995,6 +995,16 @@ namespace Opc.Ua.Edge.Translator
 
             NodeId assetId = (NodeId)inputArguments[0];
 
+            return await RemoveAssetAsync(assetId, DeleteWoTFileOnAssetDelete, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Removes an asset node and everything onboarding attached to it: tags, the
+        /// driver connection, event subscriptions and address-space bookkeeping. The
+        /// asset's WoT file in settings/ is deleted only when <paramref name="deleteWoTFile"/> is set.
+        /// </summary>
+        private async ValueTask<ServiceResult> RemoveAssetAsync(NodeId assetId, bool deleteWoTFile, CancellationToken cancellationToken)
+        {
             // The driver's connection is released after the lock: C# cannot await
             // inside a lock, and the asset is already unreachable by then.
             IAsset assetToDisconnect = null;
@@ -1026,7 +1036,7 @@ namespace Opc.Ua.Edge.Translator
                 // The Thing Description file in settings/ is kept by default: deleting WoT
                 // files is the WoT Files page's job. DELETE_WOT_FILE_ON_ASSET_DELETE=1 opts in
                 // to removing <asset name>.jsonld (the file the asset is persisted as) here too.
-                if (DeleteWoTFileOnAssetDelete)
+                if (deleteWoTFile)
                 {
                     string settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld");
                     if (System.IO.File.Exists(settingsFile))
@@ -1118,6 +1128,43 @@ namespace Opc.Ua.Edge.Translator
         }
 
         /// <summary>
+        /// Onboards a Thing Description into an asset node that was just created for it.
+        /// If onboarding fails, the half-built asset is removed again. Otherwise the node
+        /// stays in the address space without ever reaching the connected-asset list, so
+        /// it is invisible on the dashboard's Assets page yet makes every retry fail with
+        /// "already exists". The WoT file in settings/ is never deleted here.
+        /// </summary>
+        private async Task OnboardNewAssetAsync(NodeState assetNode, string contents)
+        {
+            try
+            {
+                await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+            }
+            catch
+            {
+                await RemoveFailedAssetAsync(assetNode).ConfigureAwait(false);
+                throw;
+            }
+        }
+
+        private async Task RemoveFailedAssetAsync(NodeState assetNode)
+        {
+            string assetName = assetNode.DisplayName.Text;
+            try
+            {
+                ServiceResult removed = await RemoveAssetAsync(assetNode.NodeId, deleteWoTFile: false, CancellationToken.None).ConfigureAwait(false);
+                if (ServiceResult.IsBad(removed))
+                {
+                    Log.Logger.Warning("Could not remove asset [{AssetName}] after it failed to onboard: {Status}", assetName, removed.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Could not remove asset [{AssetName}] after it failed to onboard.", assetName);
+            }
+        }
+
+        /// <summary>
         /// Deletes a WoT file from the settings folder. When its asset (named after the
         /// Thing Description) is loaded, it is first offboarded through the DeleteAsset
         /// code path, which removes the nodes, disconnects the driver and prunes the tag
@@ -1198,7 +1245,7 @@ namespace Opc.Ua.Edge.Translator
                         continue;
                     }
 
-                    await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+                    await OnboardNewAssetAsync(assetNode, contents).ConfigureAwait(false);
                     RaiseModelChangedEvent(assetNode.NodeId, ModelChangeStructureVerbMask.NodeAdded);
                     onboarded++;
                 }
@@ -1342,14 +1389,24 @@ namespace Opc.Ua.Edge.Translator
             {
                 outputArguments[0] = assetNode.NodeId;
 
-                // generate WoT File contents
-                ThingDescription td = drv.BrowseAndGenerateTD(assetName, assetEndpoint);
+                string contents;
+                try
+                {
+                    // generate WoT File contents
+                    ThingDescription td = drv.BrowseAndGenerateTD(assetName, assetEndpoint);
 
-                string contents = JsonConvert.SerializeObject(td, Formatting.Indented);
+                    contents = JsonConvert.SerializeObject(td, Formatting.Indented);
 
-                _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
+                    _fileManagers[assetNode.NodeId].Write(context, Encoding.UTF8.GetBytes(contents));
+                }
+                catch
+                {
+                    // Browsing failed before onboarding started; don't leave the new node behind.
+                    await RemoveFailedAssetAsync(assetNode).ConfigureAwait(false);
+                    throw;
+                }
 
-                await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+                await OnboardNewAssetAsync(assetNode, contents).ConfigureAwait(false);
 
                 System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "settings", assetName + ".jsonld"), contents);
 
@@ -1455,6 +1512,33 @@ namespace Opc.Ua.Edge.Translator
             }
         }
 
+        /// <summary>The namespace an asset's own nodes and driver-defined types are created in.</summary>
+        public static string AssetNamespaceUri(string assetName) => "http://opcfoundation.org/UA/" + assetName + "/";
+
+        /// <summary>
+        /// Creates the Thing Description's own namespace and lets its protocol driver
+        /// register the structure types its forms define (for example EIP UDTs) there.
+        /// Both legacy onboarding and the WoT Connectivity registry call this, so the
+        /// types exist whichever of them loads the Thing Description first. Returns false,
+        /// registering nothing, when the name is not a safe asset name.
+        /// </summary>
+        public bool RegisterOwnStructureTypes(ThingDescription td)
+        {
+            if (td == null || !IsSafeAssetName(td.Name))
+            {
+                return false;
+            }
+
+            AddNamespace(AssetNamespaceUri(td.Name));
+
+            if (Program.Drivers.TryGetByUri(td.Base, out IProtocolDriver driver))
+            {
+                driver.RegisterStructureTypes(td, this);
+            }
+
+            return true;
+        }
+
         public async Task OnboardAssetFromWoTFileAsync(NodeState parent, string contents)
         {
             // parse WoT TD file contents
@@ -1473,16 +1557,9 @@ namespace Opc.Ua.Edge.Translator
 
             await LoadNamespacesFromThingDescriptionAsync(td).ConfigureAwait(false);
 
-            // add a new namespace for the Thing Description itself
-            string namespaceUri = "http://opcfoundation.org/UA/" + td.Name + "/";
-            AddNamespace(namespaceUri);
-
-            // let the protocol driver register any structure types (e.g. EIP UDTs)
-            // into the address space before we create variables that reference them
-            if (Program.Drivers.TryGetByUri(td.Base, out var driver))
-            {
-                driver.RegisterStructureTypes(td, this);
-            }
+            // add the Thing Description's own namespace and let its protocol driver register
+            // any structure types (e.g. EIP UDTs) before we create variables that reference them
+            RegisterOwnStructureTypes(td);
 
             byte unitId = 1;
             bool requiresEventConnection = td.Events?.Count > 0;
@@ -1554,7 +1631,7 @@ namespace Opc.Ua.Edge.Translator
                 throw new InvalidOperationException($"An asset named '{assetName}' already exists.");
             }
 
-            await OnboardAssetFromWoTFileAsync(assetNode, contents).ConfigureAwait(false);
+            await OnboardNewAssetAsync(assetNode, contents).ConfigureAwait(false);
 
             // Persist to the settings folder so the import survives a restart and
             // appears in the WoT file list served by the diagnostics dashboard.
