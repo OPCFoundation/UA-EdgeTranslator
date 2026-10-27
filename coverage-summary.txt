@@ -1,23 +1,23 @@
 Summary
-  Generated on: 10/27/2026 - 12:00:54
-  Coverage date: 10/27/2026 - 12:00:52
+  Generated on: 10/27/2026 - 13:37:45
+  Coverage date: 10/27/2026 - 13:37:43
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
   Files: 55
   Line coverage: 81.8%
-  Covered lines: 4661
-  Uncovered lines: 1031
-  Coverable lines: 5692
-  Total lines: 15255
-  Branch coverage: 73% (2466 of 3374)
-  Covered branches: 2466
-  Total branches: 3374
-  Method coverage: 91.6% (503 of 549)
-  Full method coverage: 60.2% (331 of 549)
-  Covered methods: 503
+  Covered lines: 4677
+  Uncovered lines: 1034
+  Coverable lines: 5711
+  Total lines: 15301
+  Branch coverage: 73.1% (2475 of 3382)
+  Covered branches: 2475
+  Total branches: 3382
+  Method coverage: 91.6% (504 of 550)
+  Full method coverage: 60.1% (331 of 550)
+  Covered methods: 504
   Fully covered methods: 331
-  Total methods: 549
+  Total methods: 550
 
 UAEdgeTranslator                                                  81.8%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
@@ -43,7 +43,7 @@ UAEdgeTranslator                                                  81.8%
   Opc.Ua.Edge.Translator.Components.Shared.StatusPill              100%
   Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceNode                0%
   Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          86.8%
-  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService           81.1%
+  Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService             81%
   Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsWebHost            100%
   Opc.Ua.Edge.Translator.Diagnostics.TelemetryCounters             100%
   Opc.Ua.Edge.Translator.DriverLoadContext                        84.2%
