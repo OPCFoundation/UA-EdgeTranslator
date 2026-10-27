@@ -60,7 +60,7 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("s7v:area", NullValueHandling = NullValueHandling.Ignore)]
         public S7MemoryArea? Area { get; set; }
 
-        /// <summary>Data block number; required for the DB and DBI areas.</summary>
+        /// <summary>Data block number; required for the DB area.</summary>
         [JsonProperty("s7v:dbNumber", NullValueHandling = NullValueHandling.Ignore)]
         public int? DbNumber { get; set; }
 
@@ -153,7 +153,7 @@ namespace Opc.Ua.Edge.Translator.Models
 
             // Legacy forms carried a DB number of 0 and a bit position of 0 for every area
             // and type; they mean "none" outside data blocks and BOOL values.
-            if (Area != null && Area != S7MemoryArea.DB && Area != S7MemoryArea.DBI && DbNumber == 0)
+            if (Area != null && Area != S7MemoryArea.DB && DbNumber == 0)
             {
                 DbNumber = null;
             }
@@ -393,8 +393,8 @@ namespace Opc.Ua.Edge.Translator.Models
 
         public int? Length { get; set; }
 
-        /// <summary>True for the data block areas, which carry a DB number.</summary>
-        public bool IsDataBlock => Area == S7MemoryArea.DB || Area == S7MemoryArea.DBI;
+        /// <summary>True for the data block area, which carries a DB number.</summary>
+        public bool IsDataBlock => Area == S7MemoryArea.DB;
 
         /// <summary>The bit offset of a BOOL value; 0 otherwise.</summary>
         public int EffectiveBitOffset => BitOffset ?? 0;
@@ -422,7 +422,7 @@ namespace Opc.Ua.Edge.Translator.Models
 
             if (IsDataBlock && !(DbNumber.HasValue && DbNumber.Value >= 1))
             {
-                return "s7v:dbNumber must be a positive integer for the DB and DBI areas.";
+                return "s7v:dbNumber must be a positive integer for the DB area.";
             }
 
             if (ByteOffset < 0)
@@ -555,11 +555,15 @@ namespace Opc.Ua.Edge.Translator.Models
             var result = new S7Address { Type = type, Length = length };
             int position = 0;
 
-            if (location.StartsWith("DB", StringComparison.Ordinal) && location.Length > 2
-                && (char.IsDigit(location[2]) || (location[2] == 'I' && location.Length > 3 && char.IsDigit(location[3]))))
+            if (location.StartsWith("DBI", StringComparison.Ordinal) && location.Length > 3 && char.IsDigit(location[3]))
             {
-                result.Area = location[2] == 'I' ? S7MemoryArea.DBI : S7MemoryArea.DB;
-                position = result.Area == S7MemoryArea.DBI ? 3 : 2;
+                return $"'{text}' uses the DBI memory area, which the binding no longer has; address instance data blocks like any data block (%DB<n>.DB<code><offset>).";
+            }
+
+            if (IsDataBlockNotation(location))
+            {
+                result.Area = S7MemoryArea.DB;
+                position = 2;
                 result.DbNumber = ReadNumber(location, ref position);
 
                 if (position < location.Length && location[position] == ':')
@@ -568,7 +572,7 @@ namespace Opc.Ua.Edge.Translator.Models
                     position++;
                 }
                 else if (position < location.Length && location[position] == '.'
-                    && (string.CompareOrdinal(location, position + 1, "DB", 0, 2) == 0 || string.CompareOrdinal(location, position + 1, "DI", 0, 2) == 0))
+                    && string.CompareOrdinal(location, position + 1, "DB", 0, 2) == 0)
                 {
                     // Long notation: %DB1.DBW20:INT
                     position += 3;
@@ -638,6 +642,22 @@ namespace Opc.Ua.Edge.Translator.Models
         }
 
         private static bool IsShortCode(char c) => c == 'X' || c == 'B' || c == 'W' || c == 'D';
+
+        // A data block address continues after "%DB<n>" with ":" (short notation) or ".DB" (long
+        // notation). Anything else, such as "%DB10:BYTE" or "%DB10.3:BOOL", is the peripheral area D
+        // with the short code B, which the binding allows after every memory area letter.
+        private static bool IsDataBlockNotation(string location)
+        {
+            if (!location.StartsWith("DB", StringComparison.Ordinal) || location.Length <= 2 || !char.IsDigit(location[2]))
+            {
+                return false;
+            }
+
+            int position = 2;
+            ReadNumber(location, ref position);
+            return position < location.Length
+                && (location[position] == ':' || string.CompareOrdinal(location, position, ".DB", 0, 3) == 0);
+        }
 
         private static int? ReadNumber(string text, ref int position)
         {
@@ -891,8 +911,6 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>Data blocks (%DBn).</summary>
         [EnumMember(Value = "DB")] DB,
 
-        /// <summary>Instance data blocks (%DBIn).</summary>
-        [EnumMember(Value = "DBI")] DBI,
 
         /// <summary>Counters (%C, %Z).</summary>
         [EnumMember(Value = "C")] C,
@@ -1169,18 +1187,19 @@ namespace Opc.Ua.Edge.Translator.Models
         /// <summary>The base URI of the binding, ending in <c>/</c> so relative addresses resolve below it.</summary>
         public string ToBaseUri()
         {
-            string host = Host.IndexOf(':') >= 0 && !Host.StartsWith("[", StringComparison.Ordinal) ? "[" + Host + "]" : Host;
             string port = Port == DefaultPort ? string.Empty : ":" + Port.ToString(CultureInfo.InvariantCulture);
-            return $"{Scheme}://{host}{port}/{Rack.ToString(CultureInfo.InvariantCulture)},{Slot.ToString(CultureInfo.InvariantCulture)}/";
+            return $"{Scheme}://{Host}{port}/{Rack.ToString(CultureInfo.InvariantCulture)},{Slot.ToString(CultureInfo.InvariantCulture)}/";
         }
 
         /// <summary>Parses an <c>s7</c> URI, such as a Thing Description <c>base</c>.</summary>
         public static bool TryParse(string uri, out S7Endpoint endpoint)
         {
             endpoint = null;
+            // S7 controllers do not support IPv6, and the binding forbids it.
             if (string.IsNullOrWhiteSpace(uri) || !Uri.TryCreate(uri.Trim(), UriKind.Absolute, out Uri parsed)
                 || !string.Equals(parsed.Scheme, Scheme, StringComparison.OrdinalIgnoreCase)
-                || string.IsNullOrEmpty(parsed.Host))
+                || string.IsNullOrEmpty(parsed.Host)
+                || parsed.HostNameType == UriHostNameType.IPv6)
             {
                 return false;
             }

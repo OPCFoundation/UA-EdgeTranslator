@@ -38,6 +38,16 @@ namespace UAEdgeTranslator.Tests
             Assert.Equal(slot, endpoint.Slot);
         }
 
+        [Theory]
+        [InlineData("s7://[fe80::1]/0,1/")]
+        [InlineData("s7://[2001:db8::10]:102/")]
+        public void Ipv6_endpoints_are_rejected(string uri)
+        {
+            Assert.False(S7Endpoint.TryParse(uri, out _));
+            ArgumentException error = Assert.Throws<ArgumentException>(() => SiemensProtocolDriver.ParseEndpoint(uri));
+            Assert.Contains("IPv6", error.Message, System.StringComparison.Ordinal);
+        }
+
         [Fact]
         public void Base_uri_ends_with_a_slash_and_omits_the_default_port()
         {
@@ -57,7 +67,10 @@ namespace UAEdgeTranslator.Tests
         [InlineData("%DB1.DBX0.3:BOOL", S7MemoryArea.DB, 1, 0, 3, S7DataType.BOOL)]
         [InlineData("%DB1.DBW20:INT", S7MemoryArea.DB, 1, 20, null, S7DataType.INT)]
         [InlineData("%DB5:10:INT", S7MemoryArea.DB, 5, 10, null, S7DataType.INT)]
-        [InlineData("%DBI3.DBD4:REAL", S7MemoryArea.DBI, 3, 4, null, S7DataType.REAL)]
+        [InlineData("%IX0.3:BOOL", S7MemoryArea.I, null, 0, 3, S7DataType.BOOL)]
+        [InlineData("%MW10:INT", S7MemoryArea.M, null, 10, null, S7DataType.INT)]
+        [InlineData("%DB10:BYTE", S7MemoryArea.D, null, 10, null, S7DataType.BYTE)]
+        [InlineData("%DB10.3:BOOL", S7MemoryArea.D, null, 10, 3, S7DataType.BOOL)]
         [InlineData("%C5:WORD", S7MemoryArea.C, null, 5, null, S7DataType.WORD)]
         [InlineData("%Z5:WORD", S7MemoryArea.C, null, 5, null, S7DataType.WORD)]
         [InlineData("%T2:S5TIME", S7MemoryArea.T, null, 2, null, S7DataType.S5TIME)]
@@ -90,6 +103,8 @@ namespace UAEdgeTranslator.Tests
         [InlineData("%DB1.DBW20:FOO")]
         [InlineData("%DB1.DBW20.3:INT")]
         [InlineData("%DB1.DBW:INT")]
+        [InlineData("%DBI3.DBD4:REAL")]
+        [InlineData("%DB1.DIW20:INT")]
         public void Malformed_addresses_are_rejected(string text)
         {
             Assert.NotNull(S7Address.TryParse(text, out _));

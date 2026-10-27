@@ -174,6 +174,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
         {
             if (!S7Endpoint.TryParse(endpoint, out S7Endpoint parsed))
             {
+                if (Uri.TryCreate(endpoint?.Trim(), UriKind.Absolute, out Uri uri) && uri.HostNameType == UriHostNameType.IPv6)
+                {
+                    throw new ArgumentException(
+                        $"S7 controllers do not support IPv6; use an IPv4 address or a host name, not '{endpoint}'.");
+                }
+
                 throw new ArgumentException(
                     $"Expected S7 PLC address in the format s7://host[:port][/rack,slot]/, not '{endpoint}'.");
             }

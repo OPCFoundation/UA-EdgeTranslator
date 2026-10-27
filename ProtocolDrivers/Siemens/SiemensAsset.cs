@@ -235,9 +235,6 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             S7MemoryArea.Q => (int)S7Area.PA,
             S7MemoryArea.M => (int)S7Area.MK,
             S7MemoryArea.DB => (int)S7Area.DB,
-
-            // Instance data blocks are data blocks in absolute addressing.
-            S7MemoryArea.DBI => (int)S7Area.DB,
             S7MemoryArea.C => (int)S7Area.CT,
             S7MemoryArea.T => (int)S7Area.TM,
             S7MemoryArea.D => AreaPeripheral,
