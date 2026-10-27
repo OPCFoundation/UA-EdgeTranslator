@@ -132,6 +132,15 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
                     ? Results.NotFound()
                     : Results.File(file.Content, file.ContentType, file.FileName);
             });
+
+            // Exports a WoT file from the settings folder as a download, the same way.
+            app.MapGet("/wot/download/{fileName}", (string fileName, DiagnosticsService diagnostics) =>
+            {
+                WoTFileDownload file = diagnostics.GetWoTFileDownload(fileName);
+                return file == null
+                    ? Results.NotFound()
+                    : Results.File(file.Content, file.ContentType, file.FileName);
+            });
         }
 
         private static bool IsAuthorized(HttpContext context)

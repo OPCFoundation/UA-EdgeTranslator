@@ -33,6 +33,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>The raw public certificate file served as a browser download.</summary>
     public sealed record CertificateFile(byte[] Content, string FileName, string ContentType);
 
+    /// <summary>A WoT file from the settings folder, served by the WoT Files page's export download.</summary>
+    public sealed record WoTFileDownload(byte[] Content, string FileName, string ContentType);
+
     /// <summary>A namespace registered in the server's namespace table.</summary>
     public sealed record NamespaceInfo(int Index, string Uri);
 

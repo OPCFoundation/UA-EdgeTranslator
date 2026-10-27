@@ -312,6 +312,18 @@ a {
     margin-left: auto;
 }
 
+/* Export and Delete on a WoT file, together at the right of the detail header. */
+.detail-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+    .detail-actions a.btn-trust {
+        text-decoration: none;
+    }
+
 .table-action {
     text-align: right;
     white-space: nowrap;

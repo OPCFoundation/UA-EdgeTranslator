@@ -313,6 +313,37 @@ using System.Threading.Tasks;
             return drivers.OrderBy(d => d.Scheme, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
+        /// <summary>
+        /// A WoT file from the settings folder for the WoT Files page's export download;
+        /// null unless <paramref name="fileName"/> is a plain *.jsonld file name that exists there.
+        /// </summary>
+        public WoTFileDownload GetWoTFileDownload(string fileName)
+        {
+            // Only a bare file name: no directory part, so nothing outside settings/ is served.
+            if (string.IsNullOrWhiteSpace(fileName)
+                || !string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal)
+                || !fileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "settings", fileName);
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                return new WoTFileDownload(File.ReadAllBytes(path), fileName, "application/td+json");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Logger.Warning(ex, "Could not read WoT file {FileName} for export.", fileName);
+                return null;
+            }
+        }
+
         public IReadOnlyList<WoTFileInfo> GetWoTFiles()
         {
             string directory = Path.Combine(Directory.GetCurrentDirectory(), "settings");

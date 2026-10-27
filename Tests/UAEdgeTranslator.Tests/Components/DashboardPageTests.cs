@@ -170,6 +170,47 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             Assert.Contains("WoT Files", page.Markup, System.StringComparison.Ordinal);
         }
 
+        private const string ExportTd = "{ \"@context\": [\"https://www.w3.org/2022/wot/td/v1.1\"], \"@type\": [\"Thing\"], \"name\": \"export-me\", \"title\": \"Export me\", \"base\": \"mock://127.0.0.1:1234/1\", \"securityDefinitions\": { \"nosec_sc\": { \"scheme\": \"nosec\" } }, \"security\": [\"nosec_sc\"], \"properties\": {} }";
+
+        [Fact]
+        public void WotFiles_page_offers_an_export_link_for_the_selected_file()
+        {
+            // A name with a space, as WoT files exported from TIA Portal have.
+            System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "settings", "Export me.jsonld"), ExportTd);
+
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
+
+            var link = page.Find("a[download]");
+            Assert.Equal("wot/download/Export%20me.jsonld", link.GetAttribute("href"));
+            Assert.Equal("Export me.jsonld", link.GetAttribute("download"));
+        }
+
+        [Fact]
+        public void A_wot_file_is_served_for_export()
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "settings", "Export me.jsonld"), ExportTd);
+
+            WoTFileDownload file = Services.GetRequiredService<DiagnosticsService>().GetWoTFileDownload("Export me.jsonld");
+
+            Assert.NotNull(file);
+            Assert.Equal("Export me.jsonld", file.FileName);
+            Assert.Equal("application/td+json", file.ContentType);
+            Assert.Equal(ExportTd, System.Text.Encoding.UTF8.GetString(file.Content));
+        }
+
+        [Theory]
+        [InlineData("missing.jsonld")]
+        [InlineData("../Ua.Edge.Translator.Config.xml")]
+        [InlineData("../settings/Export me.jsonld")]
+        [InlineData("Export me.json")]
+        [InlineData("")]
+        public void Only_wot_files_in_the_settings_folder_are_served_for_export(string fileName)
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "settings", "Export me.jsonld"), ExportTd);
+
+            Assert.Null(Services.GetRequiredService<DiagnosticsService>().GetWoTFileDownload(fileName));
+        }
+
         [Fact]
         public void Pages_can_be_re_rendered_without_throwing()
         {

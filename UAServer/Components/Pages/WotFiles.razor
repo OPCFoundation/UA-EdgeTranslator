@@ -79,9 +79,12 @@ else
                     {
                         <span class="pill pill-blue">@Scheme(_selected.Base)</span>
                     }
-                    <button type="button" class="btn-danger detail-unload" disabled="@_unloading" @onclick="() => UnloadAsync(_selected)" title="Delete this Thing Description and remove it from the server">
-                        @(_unloading ? "Deleting\u2026" : "Delete")
-                    </button>
+                    <div class="detail-actions">
+                        <a class="btn-trust" href="@($"wot/download/{Uri.EscapeDataString(_selected.FileName)}")" download="@_selected.FileName" title="Download this Thing Description file">Export</a>
+                        <button type="button" class="btn-danger detail-unload" disabled="@_unloading" @onclick="() => UnloadAsync(_selected)" title="Delete this Thing Description and remove it from the server">
+                            @(_unloading ? "Deleting\u2026" : "Delete")
+                        </button>
+                    </div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(_selected.ParseError))
