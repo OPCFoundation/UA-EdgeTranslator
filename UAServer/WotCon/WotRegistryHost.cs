@@ -74,6 +74,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         public IWotRegistryService Registry { get; }
 
+        /// <summary>The running registry host, or null when the registry is disabled or stopped.</summary>
+        public static WotRegistryHost Current { get; private set; }
+
         /// <summary>The materialization coordinator; exposed for refresh and diagnostics.</summary>
         public WotMaterializationCoordinator Coordinator => _coordinator;
 
@@ -170,6 +173,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 Path.Combine(Directory.GetCurrentDirectory(), "settings"),
                 cancellationToken).ConfigureAwait(false);
 
+            Current = host;
             Log.Logger.Information("WoT Connectivity registry is hosted (storage: {StorageFolder}).", storageFolder);
             return host;
         }
@@ -232,6 +236,39 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     Log.Logger.Warning(ex, "Could not import WoT file {File} into the WoT Connectivity registry.", file);
                 }
             }
+        }
+
+        /// <summary>
+        /// Removes the registry Thing a settings file was imported as (see
+        /// <see cref="ImportSettingsFilesAsync"/>), so deleting the file also stops the Thing
+        /// from being rematerialized, and its asset reconnected, on every startup. Returns
+        /// true when a Thing was removed.
+        /// </summary>
+        public async Task<bool> RemoveImportedThingAsync(byte[] fileContent, CancellationToken cancellationToken = default)
+        {
+            string resourceId = ThingName(WotImportNormalizer.Normalize(fileContent));
+            if (resourceId == null)
+            {
+                return false;
+            }
+
+            WotResource resource = Registry.Current
+                .ResourcesOfKind(WoTDocumentKindEnum.ThingDescription)
+                .FirstOrDefault(r => string.Equals(r.ResourceId, resourceId, StringComparison.OrdinalIgnoreCase));
+            if (resource == null)
+            {
+                return false;
+            }
+
+            var result = await Registry.DeleteResourceAsync(resource.GroupId, resource.ResourceId, null, cancellationToken).ConfigureAwait(false);
+            if (!result.Changed)
+            {
+                Log.Logger.Warning("Could not remove WoT Connectivity registry Thing {ResourceId}: {Outcome} {Message}", resource.ResourceId, result.Outcome, result.Message);
+                return false;
+            }
+
+            Log.Logger.Information("Removed WoT Connectivity registry Thing {ResourceId}.", resource.ResourceId);
+            return true;
         }
 
         /// <summary>
@@ -506,6 +543,11 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         public async ValueTask DisposeAsync()
         {
+            if (ReferenceEquals(Current, this))
+            {
+                Current = null;
+            }
+
             Registry.Changed -= OnRegistryChanged;
 
             // Cancel pending change work and wait for a refresh in progress, so nothing

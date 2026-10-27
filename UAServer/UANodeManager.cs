@@ -1185,6 +1185,8 @@ namespace Opc.Ua.Edge.Translator
                 return false;
             }
 
+            byte[] content = await System.IO.File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+
             // The asset is named after the Thing Description inside the file. Offboard it
             // first when it is loaded; a file that does not parse is simply deleted.
             string assetName = null;
@@ -1220,6 +1222,21 @@ namespace Opc.Ua.Edge.Translator
             if (System.IO.File.Exists(path))
             {
                 System.IO.File.Delete(path);
+            }
+
+            // The WoT Connectivity registry keeps its own copy of every imported file and
+            // rematerializes it - reconnecting its asset - on every startup. Remove it too.
+            WotCon.WotRegistryHost registry = WotCon.WotRegistryHost.Current;
+            if (registry != null)
+            {
+                try
+                {
+                    await registry.RemoveImportedThingAsync(content, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Log.Logger.Warning(ex, "Could not remove the WoT Connectivity registry Thing of WoT file [{FileName}].", fileName);
+                }
             }
 
             Log.Logger.Information("Deleted WoT file [{FileName}] (asset [{AssetName}]).", fileName, assetName);
