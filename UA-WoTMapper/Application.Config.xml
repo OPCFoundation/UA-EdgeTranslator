@@ -139,7 +139,7 @@
     </UserTokenPolicies>
 
     <DiagnosticsEnabled>true</DiagnosticsEnabled>
-    <MaxSessionCount>1000</MaxSessionCount>
+    <MaxSessionCount>100</MaxSessionCount>
     <MinSessionTimeout>10000</MinSessionTimeout>
     <MaxSessionTimeout>3600000</MaxSessionTimeout>
     <MaxBrowseContinuationPoints>10</MaxBrowseContinuationPoints>

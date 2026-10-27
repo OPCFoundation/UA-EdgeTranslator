@@ -101,7 +101,7 @@
             <h2>OPC UA Information Model</h2>
             <label class="btn btn-file">
                 Open NodeSet2 XML&hellip;
-                <InputFile OnChange="OnNodesetFileSelected" accept=".xml" hidden />
+                <InputFile OnChange="OnNodesetFileSelected" accept=".xml" multiple hidden />
             </label>
             <span class="cloud-select-wrap">
                 <select class="cloud-select" @onchange="OnCloudNodesetSelected" disabled="@_loadingCloudList">
@@ -187,8 +187,16 @@
         <div class="modal-card" @onclick:stopPropagation="true">
             <h3>Select field path</h3>
             <p>
-                The OPC UA type <b>@_pendingMapping.DisplayName</b> is a complex type.
-                Select which field of the type maps to WoT property <b>@_pendingProperty?.Name</b>.
+                @if (_pendingMapping.IsObjectType)
+                {
+                    <text>The OPC UA ObjectType <b>@_pendingMapping.DisplayName</b> is mapped through one of its variables.
+                    Select which variable maps to WoT property <b>@_pendingProperty?.Name</b>.</text>
+                }
+                else
+                {
+                    <text>The OPC UA type <b>@_pendingMapping.DisplayName</b> is a complex type.
+                    Select which field of the type maps to WoT property <b>@_pendingProperty?.Name</b>.</text>
+                }
             </p>
             <div class="field-list">
                 @foreach (var field in _pendingMapping.Fields)
@@ -275,6 +283,10 @@
     private bool _loadingCloudList;
     private bool _loadingNodeset;
     private string? _nodesetError;
+
+    // Nodesets picked along with the top-level one; its dependencies are looked up here first.
+    private LocalNodesetFiles _localNodesets = new();
+    private const int MaxPickedNodesets = 100;
 
     // inline NodeId editing
     private WotProperty? _editingNodeIdProp;
@@ -503,9 +515,30 @@
     {
         try
         {
-            using var reader = new StreamReader(e.File.OpenReadStream(50 * 1024 * 1024));
-            var xml = await reader.ReadToEndAsync();
-            await LoadNodesetXml(xml, e.File.Name);
+            // Picking several files - the top-level nodeset and the other files of its folder -
+            // makes those the first place its dependencies are looked up.
+            var picked = new LocalNodesetFiles();
+            foreach (IBrowserFile file in e.GetMultipleFiles(MaxPickedNodesets))
+            {
+                using var reader = new StreamReader(file.OpenReadStream(50 * 1024 * 1024));
+                picked.Add(file.Name, await reader.ReadToEndAsync());
+            }
+
+            if (picked.Count == 0)
+            {
+                _nodesetError = "None of the selected files is a NodeSet2 XML document.";
+                return;
+            }
+
+            string? xml = picked.FindTopLevel(out string fileName, out string? error);
+            if (xml == null)
+            {
+                _nodesetError = error;
+                return;
+            }
+
+            _localNodesets = picked;
+            await LoadNodesetXml(xml, fileName);
         }
         catch (Exception ex)
         {
@@ -535,6 +568,9 @@
                 _nodesetError = "Could not download the selected nodeset from the Cloud Library.";
                 return;
             }
+
+            // A Cloud Library nodeset resolves its dependencies there, not from earlier picked files.
+            _localNodesets = new LocalNodesetFiles();
             await LoadNodesetXml(xml, title);
         }
         catch (Exception ex)
@@ -592,6 +628,13 @@
 
     private async Task<string?> ResolveDependencyAsync(string namespaceUri)
     {
+        // The nodesets picked with the top-level one (its folder) first, then the Cloud Library.
+        string? local = _localNodesets.FindXml(namespaceUri);
+        if (local != null)
+        {
+            return local;
+        }
+
         var identifier = await CloudLib.FindIdentifierByNamespaceAsync(namespaceUri);
         if (string.IsNullOrEmpty(identifier))
         {
@@ -646,6 +689,12 @@
         if (mapping == null)
         {
             _nodesetError = "Could not resolve mapping information for the dragged node.";
+            return;
+        }
+
+        if (mapping.IsObjectType && mapping.Fields.Count == 0)
+        {
+            _nodesetError = $"The ObjectType {mapping.DisplayName} has no variables a WoT property could be mapped onto.";
             return;
         }
 

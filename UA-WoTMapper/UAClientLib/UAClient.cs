@@ -37,6 +37,34 @@ namespace WotOpcUaMapper.UAClientLib
 
         public bool IsLoaded => _session is { Connected: true };
 
+        private static void AdvancePort()
+        {
+            _port++;
+            if (_port > 10000)
+            {
+                _port = 5000;
+            }
+        }
+
+        // True when nothing listens on the port, such as this application's own web UI on 5000.
+        private static bool IsPortFree(uint port)
+        {
+            System.Net.Sockets.TcpListener listener = System.Net.Sockets.TcpListener.Create((int)port);
+            try
+            {
+                listener.Start();
+                return true;
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                return false;
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
         /// <summary>
         /// Loads the given main nodeset XML together with all of its dependencies. The
         /// <paramref name="dependencyResolver"/> is invoked for each required namespace URI and
@@ -52,33 +80,35 @@ namespace WotOpcUaMapper.UAClientLib
             _telemetry = _opcUaApp.Telemetry;
             ApplicationConfiguration appConfig = app.ApplicationConfiguration ?? throw new InvalidOperationException("OPC UA application configuration is not loaded.");
 
-            EndpointDescription? selectedEndpoint = null;
-            int maxRetry = 200;
-            while (selectedEndpoint == null)
+            // Pick a free port first, so that a failure to start the server is reported as what
+            // it is. Retrying every failure on the next port turned errors such as an invalid
+            // configuration into 200 attempts ending in a misleading "no free port".
+            int candidates = 200;
+            while (!IsPortFree(_port))
             {
-                if (maxRetry-- < 1)
+                if (--candidates < 1)
                 {
-                    throw new InvalidOperationException("Failed to start local OPC UA server (no free port).");
+                    throw new InvalidOperationException("Failed to start the local OPC UA server: no free port found between 5000 and 10000.");
                 }
 
-                try
-                {
-                    _server = new SimpleServer(app, _port, _telemetry);
-                    await app.StartAsync(_server).ConfigureAwait(false);
-                    selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(
-                        appConfig, "opc.tcp://localhost:" + _port, false, _telemetry).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to start OPC UA server on port {_port}: {ex.Message}");
-                    selectedEndpoint = null;
-                }
+                AdvancePort();
+            }
 
-                _port++;
-                if (_port > 10000)
-                {
-                    _port = 5000;
-                }
+            uint port = _port;
+            AdvancePort();
+
+            EndpointDescription selectedEndpoint;
+            try
+            {
+                _server = new SimpleServer(app, port, _telemetry);
+                await app.StartAsync(_server).ConfigureAwait(false);
+                selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(
+                    appConfig, "opc.tcp://localhost:" + port, false, _telemetry).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("The server offers no endpoint.");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to start the local OPC UA server on port {port}: {ex.Message}", ex);
             }
 
             var nodeManager = (NodesetFileNodeManager)_server!.CurrentInstance.NodeManager.NodeManagers[2];
@@ -333,6 +363,15 @@ namespace WotOpcUaMapper.UAClientLib
                     info.Fields = fields;
                     info.IsComplex = fields.Count > 0;
                 }
+                else if (node.NodeClass == NodeClass.ObjectType)
+                {
+                    // A property maps onto an ObjectType through one of its variables:
+                    // uav:mapToType names the type, uav:mapByFieldPath the variable.
+                    info.TypeNodeId = ExpandedNodeIdString(localNodeId);
+                    info.IsObjectType = true;
+                    info.Fields = await GetObjectTypeVariablesAsync(localNodeId).ConfigureAwait(false);
+                    info.IsComplex = info.Fields.Count > 0;
+                }
 
                 return info;
             }
@@ -341,6 +380,52 @@ namespace WotOpcUaMapper.UAClientLib
                 Console.WriteLine("GetNodeMappingAsync: " + ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// The variables an instance of the ObjectType carries: its own HasComponent and
+        /// HasProperty children. Edge Translator matches uav:mapByFieldPath against their
+        /// display names exactly, placeholders such as "&lt;MeasurementValue&gt;" included.
+        /// </summary>
+        private async Task<List<ComplexTypeField>> GetObjectTypeVariablesAsync(NodeId objectTypeId)
+        {
+            var fields = new List<ComplexTypeField>();
+            try
+            {
+                List<ReferenceDescription> references = await Browse(new BrowseDescription
+                {
+                    NodeId = objectTypeId,
+                    BrowseDirection = BrowseDirection.Forward,
+                    ReferenceTypeId = ReferenceTypeIds.Aggregates,
+                    IncludeSubtypes = true,
+                    NodeClassMask = (uint)NodeClass.Variable,
+                    ResultMask = (uint)BrowseResultMask.All
+                }).ConfigureAwait(false);
+
+                foreach (ReferenceDescription reference in references)
+                {
+                    if (reference.ReferenceTypeId != ReferenceTypeIds.HasComponent
+                        && reference.ReferenceTypeId != ReferenceTypeIds.HasProperty)
+                    {
+                        continue;
+                    }
+
+                    string name = reference.DisplayName.Text ?? string.Empty;
+                    string dataType = string.Empty;
+                    NodeId childId = ExpandedNodeId.ToNodeId(reference.NodeId, _session!.NamespaceUris);
+                    if (await _session.ReadNodeAsync(childId).ConfigureAwait(false) is VariableNode variable)
+                    {
+                        dataType = ExpandedNodeIdString(ExpandedNodeId.ToNodeId(variable.DataType, _session.NamespaceUris));
+                    }
+
+                    fields.Add(new ComplexTypeField { Name = name, DataType = dataType, Path = name });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("GetObjectTypeVariablesAsync: " + ex.Message);
+            }
+            return fields;
         }
 
         private async Task<List<ComplexTypeField>> GetComplexTypeFieldsAsync(NodeId dataTypeId)
@@ -485,6 +570,10 @@ namespace WotOpcUaMapper.UAClientLib
         public string TypeNodeId { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public bool IsComplex { get; set; }
+
+        /// <summary>True for an ObjectType, which maps through one of its variables (see <see cref="Fields"/>).</summary>
+        public bool IsObjectType { get; set; }
+
         public List<ComplexTypeField> Fields { get; set; } = new();
     }
 }
