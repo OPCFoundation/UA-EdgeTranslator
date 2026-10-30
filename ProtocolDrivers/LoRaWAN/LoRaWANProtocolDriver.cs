@@ -157,6 +157,12 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
                 // plausible-looking wrong value.
                 RejectUnsupportedTerms(form, variableId);
 
+                if (lorawanForm.ContentType != LoRaWANForm.OctetStream)
+                {
+                    throw new NotSupportedException(
+                        $"The form of '{variableId}' has contentType '{lorawanForm.ContentType}'. The W3C WoT LoRaWAN binding requires {LoRaWANForm.OctetStream}.");
+                }
+
                 // The official binding locates a field with lorav:byteOffset /
                 // lorav:byteLength. The asset's address scheme already encodes
                 // exactly that as "<devEUI>[/<channel>]/<offset>?quantity=<len>",

@@ -29,6 +29,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX0.0:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -45,6 +46,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB1:CHAR",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -63,6 +65,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB2:BYTE",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -81,6 +84,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB3:SINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -99,6 +103,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB4:USINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -117,6 +122,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW6:WORD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -135,6 +141,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW8:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -153,6 +160,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW10:UINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -169,6 +177,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW12:WCHAR",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -186,6 +195,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD14:DWORD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -204,6 +214,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD18:DINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -221,6 +232,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD22:UDINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -237,6 +249,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD26:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -253,6 +266,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD30:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -269,6 +283,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX34:LREAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -285,6 +300,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX42:LINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -302,6 +318,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX50:ULINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -319,6 +336,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX58:LWORD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -335,6 +353,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB66:STRING(80)",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -351,6 +370,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW148:WSTRING(64)",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -367,6 +387,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB280:DTL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -383,6 +404,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBB292:DT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -399,6 +421,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW300:DATE",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -415,6 +438,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD302:TOD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -431,6 +455,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX306:LTOD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -447,6 +472,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX314:LDT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -463,6 +489,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD322:TIME",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -479,6 +506,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX326:LTIME",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -495,6 +523,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW334:S5TIME",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -511,6 +540,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.0:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -527,6 +557,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.1:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -543,6 +574,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.2:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -559,6 +591,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.3:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -575,6 +608,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.4:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -591,6 +625,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.5:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -607,6 +642,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.6:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -623,6 +659,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX336.7:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -639,6 +676,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.0:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -655,6 +693,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.1:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -671,6 +710,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.2:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -687,6 +727,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.3:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -703,6 +744,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.4:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -719,6 +761,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.5:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -735,6 +778,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.6:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -751,6 +795,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBX337.7:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -769,6 +814,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW338:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -787,6 +833,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW340:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -805,6 +852,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW342:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -823,6 +871,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW344:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -841,6 +890,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW346:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -859,6 +909,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW348:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -877,6 +928,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW350:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -895,6 +947,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBW352:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -911,6 +964,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD354:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -927,6 +981,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD358:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -943,6 +998,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD362:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -959,6 +1015,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD366:REAL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -976,6 +1033,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD370:DWORD",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -994,6 +1052,7 @@
       "forms": [
         {
           "href": "./%25DB1.DBD374:DINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -1012,6 +1071,7 @@
       "forms": [
         {
           "href": "./%25M100:BYTE",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -1030,6 +1090,7 @@
       "forms": [
         {
           "href": "./%25M102:INT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -1048,6 +1109,7 @@
       "forms": [
         {
           "href": "./%25M104:DINT",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -1064,6 +1126,7 @@
       "forms": [
         {
           "href": "./%25M120.0:BOOL",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"
@@ -1082,6 +1145,7 @@
       "forms": [
         {
           "href": "./%25Q0:BYTE",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty"

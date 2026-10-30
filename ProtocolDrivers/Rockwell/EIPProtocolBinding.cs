@@ -28,7 +28,14 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("op")]
         public Op[] Op { get; set; }
 
-        /// <summary>Primitive type of the tag; absent for a structured tag.</summary>
+        /// <summary>Media type of the payload; the binding requires <c>application/octet-stream</c>.</summary>
+        [JsonProperty("contentType")]
+        public string ContentType { get; set; } = OctetStream;
+
+        /// <summary>The only content type the binding allows.</summary>
+        public const string OctetStream = "application/octet-stream";
+
+        /// <summary>Primitive type
         [JsonProperty("eipv:type", NullValueHandling = NullValueHandling.Ignore)]
         public EIPTypeString? Type { get; set; }
 
@@ -189,6 +196,11 @@ namespace Opc.Ua.Edge.Translator.Models
                 {
                     return $"The operation {op} has no EtherNet/IP mapping.";
                 }
+            }
+
+            if (ContentType != OctetStream)
+            {
+                return $"contentType must be {OctetStream}.";
             }
 
             if (Type != null && StructureDefinition != null)

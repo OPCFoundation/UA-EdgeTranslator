@@ -39,6 +39,7 @@
       "forms": [
         {
           "href": "uplink",
+          "contentType": "application/octet-stream",
           "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
           "lorav:byteOffset": 0,
@@ -58,6 +59,7 @@
       "forms": [
         {
           "href": "uplink",
+          "contentType": "application/octet-stream",
           "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
           "lorav:byteOffset": 2,
@@ -76,6 +78,7 @@
       "forms": [
         {
           "href": "uplink",
+          "contentType": "application/octet-stream",
           "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
           "lorav:byteOffset": 4,
@@ -94,6 +97,7 @@
       "forms": [
         {
           "href": "uplink",
+          "contentType": "application/octet-stream",
           "op": [ "subscribeevent", "unsubscribeevent" ],
           "type": "xsd:short",
           "lorav:byteOffset": 7,

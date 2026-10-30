@@ -40,7 +40,14 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("op")]
         public Op[] Op { get; set; }
 
-        /// <summary>S7 data type used to encode and decode the value.</summary>
+        /// <summary>Media type of the payload; the binding requires <c>application/octet-stream</c>.</summary>
+        [JsonProperty("contentType")]
+        public string ContentType { get; set; } = OctetStream;
+
+        /// <summary>The only content type the binding allows.</summary>
+        public const string OctetStream = "application/octet-stream";
+
+        /// <summary>S7 data type
         [JsonProperty("s7v:type", NullValueHandling = NullValueHandling.Ignore)]
         public S7DataType? Type { get; set; }
 
@@ -264,6 +271,11 @@ namespace Opc.Ua.Edge.Translator.Models
                 {
                     return $"The operation {op} has no S7Comm mapping.";
                 }
+            }
+
+            if (ContentType != OctetStream)
+            {
+                return $"contentType must be {OctetStream}.";
             }
 
             if (Scale.HasValue && Scale.Value == 0.0)

@@ -29,6 +29,7 @@
       "forms": [
         {
           "href": "./Local:2:O",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty",
@@ -56,6 +57,7 @@
       "forms": [
         {
           "href": "Production_Data",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty",
@@ -123,6 +125,7 @@
       "forms": [
         {
           "href": "Previous_Shift_Production_Data",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty",
@@ -190,6 +193,7 @@
       "forms": [
         {
           "href": "IO_Control",
+          "contentType": "application/octet-stream",
           "op": [
             "readproperty",
             "observeproperty",

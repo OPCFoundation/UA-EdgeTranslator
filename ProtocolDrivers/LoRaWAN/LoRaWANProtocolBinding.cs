@@ -33,6 +33,13 @@ namespace Opc.Ua.Edge.Translator.Models
         [JsonProperty("type")]
         public TypeString Type { get; set; }
 
+        /// <summary>Media type of the payload; the binding requires <c>application/octet-stream</c>.</summary>
+        [JsonProperty("contentType")]
+        public string ContentType { get; set; } = OctetStream;
+
+        /// <summary>The only content type the binding allows.</summary>
+        public const string OctetStream = "application/octet-stream";
+
         // ----- Official field location terms --------------------------------
 
         /// <summary>Zero-based offset of the field within the decrypted payload.</summary>
