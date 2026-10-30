@@ -1,25 +1,25 @@
 Summary
-  Generated on: 10/27/2026 - 17:15:29
-  Coverage date: 10/27/2026 - 17:15:27
+  Generated on: 10/30/2026 - 14:19:22
+  Coverage date: 10/30/2026 - 14:19:19
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
   Files: 55
-  Line coverage: 81.8%
-  Covered lines: 4676
-  Uncovered lines: 1035
+  Line coverage: 81.9%
+  Covered lines: 4679
+  Uncovered lines: 1032
   Coverable lines: 5711
   Total lines: 15301
-  Branch coverage: 73.1% (2475 of 3382)
-  Covered branches: 2475
+  Branch coverage: 73.2% (2477 of 3382)
+  Covered branches: 2477
   Total branches: 3382
   Method coverage: 91.6% (504 of 550)
-  Full method coverage: 60.1% (331 of 550)
+  Full method coverage: 60.3% (332 of 550)
   Covered methods: 504
-  Fully covered methods: 331
+  Fully covered methods: 332
   Total methods: 550
 
-UAEdgeTranslator                                                  81.8%
+UAEdgeTranslator                                                  81.9%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -59,7 +59,7 @@ UAEdgeTranslator                                                  81.8%
   Opc.Ua.Edge.Translator.Program                                  36.4%
   Opc.Ua.Edge.Translator.ProtocolDrivers.ProtocolDriverRegistry    100%
   Opc.Ua.Edge.Translator.TlsServerCertificates                    65.3%
-  Opc.Ua.Edge.Translator.UACloudLibraryClient                     95.4%
+  Opc.Ua.Edge.Translator.UACloudLibraryClient                     97.7%
   Opc.Ua.Edge.Translator.UANodeManager                            76.5%
   Opc.Ua.Edge.Translator.UANodeManagerFactory                       50%
   Opc.Ua.Edge.Translator.UAServer                                 97.4%
