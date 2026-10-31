@@ -53,6 +53,6 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <!-- Blazor component testing for the diagnostics dashboard pages. -->
-    <PackageVersion Include="bunit" Version="2.12.5" />
+    <PackageVersion Include="bunit" Version="2.13.3" />
   </ItemGroup>
 </Project>
