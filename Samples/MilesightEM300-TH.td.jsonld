@@ -32,6 +32,7 @@
   "lorav:devEUI": "24E124136E440353",
   "lorav:joinEUI": "0000000000000000",
   "lorav:macVersion": "1.0.3",
+  "lorav:defaultEventingFrequencyMinutes": 10,
   "schema:manufacturer": "Milesight",
   "schema:mpn": "EM300-TH",
   "events": {

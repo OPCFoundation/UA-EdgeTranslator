@@ -60,6 +60,19 @@ namespace Opc.Ua.Edge.Translator.ProtocolDrivers
             // a leaked secret.
             RejectEmbeddedSecrets(td);
 
+            if ((td.AdditionalData is not null)
+                && td.AdditionalData.TryGetValue("lorav:defaultEventingFrequencyMinutes", out object frequency))
+            {
+                double? minutes = ReadEventingFrequencyMinutes(td);
+                if (minutes is null)
+                {
+                    throw new NotSupportedException(
+                        $"lorav:defaultEventingFrequencyMinutes '{frequency}' is invalid. The W3C WoT LoRaWAN binding requires a number greater than 0.");
+                }
+
+                Log.Logger.Information("LoRaWAN device {Name} sends periodic uplinks every {Minutes} minutes by default.", td.Name, minutes);
+            }
+
             LoRaWANUri uri = LoRaWANUri.Parse(td.Base);
 
             // The device identity is a thing-level term; the URI restates it.
