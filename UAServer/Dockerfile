@@ -31,7 +31,7 @@ RUN mkdir -p /app/pki /app/logs /app/settings /app/nodesets /app/drivers \
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/4840' || exit 1
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG BUILD_CONFIGURATION
 ARG INFORMATIONAL_VERSION=local-dev
 ARG BUILD_NUMBER=0
