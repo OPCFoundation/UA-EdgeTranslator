@@ -27,7 +27,7 @@ RUN make dynlib -j"$(nproc)" \
 # -----------------------------------------------------------------------------
 # Stage 2: assemble the driver pack image.
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
+FROM mcr.microsoft.com/dotnet/runtime:11.0-alpine
 
 # We'll assemble a clean /drivers/<driverName>/ layout in the image.
 WORKDIR /drivers
