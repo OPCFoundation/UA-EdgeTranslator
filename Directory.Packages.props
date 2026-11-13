@@ -38,7 +38,7 @@
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="Linux.Bluetooth" Version="5.67.1" />
     <PackageVersion Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
-    <PackageVersion Include="Tmds.DBus" Version="0.92.0" />
+    <PackageVersion Include="Tmds.DBus" Version="0.95.2" />
     <PackageVersion Include="McProtocol" Version="1.2.5" />
     <PackageVersion Include="NModbus" Version="3.0.83" />
     <PackageVersion Include="NModbus.Serial" Version="3.0.83" />
