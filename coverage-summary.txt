@@ -1,6 +1,6 @@
 Summary
-  Generated on: 11/14/2026 - 10:19:01
-  Coverage date: 11/14/2026 - 10:19:00
+  Generated on: 11/14/2026 - 10:19:33
+  Coverage date: 11/14/2026 - 10:19:31
   Parser: Cobertura
   Assemblies: 1
   Classes: 61
@@ -10,8 +10,8 @@ Summary
   Uncovered lines: 1034
   Coverable lines: 5711
   Total lines: 15301
-  Branch coverage: 73.1% (2475 of 3382)
-  Covered branches: 2475
+  Branch coverage: 73.2% (2477 of 3382)
+  Covered branches: 2477
   Total branches: 3382
   Method coverage: 91.6% (504 of 550)
   Full method coverage: 60.1% (331 of 550)
