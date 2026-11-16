@@ -17,7 +17,7 @@ foreach ($pubxml in $profiles) {
 	$log = Join-Path $logDir "$name.log"
 
 	$tfArgs = @()
-	if ($name -eq 'Matter') { $tfArgs = @('-f', 'net10.0') }
+	if ($name -eq 'Matter') { $tfArgs = @('-f', 'net11.0') }
 
 	& dotnet publish $csproj.FullName -c Debug -p:PublishProfile=FolderProfile @tfArgs *> $log
 	if ($LASTEXITCODE -ne 0) {
@@ -28,10 +28,10 @@ foreach ($pubxml in $profiles) {
 
 	# Resolve the built assembly, the TFM and the publish folder from MSBuild itself.
 	$msbuildArgs = @($csproj.FullName, '-p:Configuration=Debug', '-p:PublishProfile=FolderProfile')
-	if ($name -eq 'Matter') { $msbuildArgs += '-p:TargetFramework=net10.0' }
+	if ($name -eq 'Matter') { $msbuildArgs += '-p:TargetFramework=net11.0' }
 	$props = & dotnet msbuild @msbuildArgs -getProperty:TargetFileName -getProperty:TargetFramework -getProperty:PublishDir | ConvertFrom-Json
 	$p = $props.Properties
-	$tfm = if ($name -eq 'Matter') { 'net10.0' } else { $p.TargetFramework }
+	$tfm = if ($name -eq 'Matter') { 'net11.0' } else { $p.TargetFramework }
 	$built = Join-Path $projectDir "bin\Debug\$tfm\$($p.TargetFileName)"
 	$publishDir = if ([System.IO.Path]::IsPathRooted($p.PublishDir)) { $p.PublishDir } else { Join-Path $projectDir $p.PublishDir }
 	$deployed = Join-Path $publishDir $p.TargetFileName

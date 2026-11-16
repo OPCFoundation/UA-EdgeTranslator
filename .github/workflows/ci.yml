@@ -42,8 +42,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Linux validates net10.0; Windows is required for the
-        # net10.0-windows / net10.0-windows10.0.26100.0 TFMs and the
+        # Linux validates net11.0; Windows is required for the
+        # net11.0-windows / net11.0-windows10.0.26100.0 TFMs and the
         # OPCDA driver.
         os: [ubuntu-latest, windows-latest]
 
@@ -54,7 +54,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Restore
         run: dotnet restore UAEdgeTranslator.sln
@@ -121,7 +121,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Restore
         run: dotnet restore UAEdgeTranslator.sln

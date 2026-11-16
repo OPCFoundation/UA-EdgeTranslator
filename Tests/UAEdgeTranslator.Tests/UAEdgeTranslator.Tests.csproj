@@ -2,12 +2,12 @@
 
   <!--
     UA Edge Translator unit / contract test project.
-    Targets net10.0 to match the bulk of the protocol drivers and runs on
+    Targets net11.0 to match the bulk of the protocol drivers and runs on
     Linux and Windows in CI. Test packages are pinned in
     Directory.Packages.props (Central Package Management).
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <IsPackable>false</IsPackable>
@@ -44,11 +44,11 @@
   </ItemGroup>
 
   <!--
-    NOT referenced: OPCDA and OPCAE. Both target net10.0-windows (they wrap
-    OPC Classic COM interop), and a net10.0 project cannot reference a
-    net10.0-windows one regardless of the host OS (NU1201) — an OS condition
+    NOT referenced: OPCDA and OPCAE. Both target net11.0-windows (they wrap
+    OPC Classic COM interop), and a net11.0 project cannot reference a
+    net11.0-windows one regardless of the host OS (NU1201) — an OS condition
     is not sufficient. Covering them would require multi-targeting this
-    project to net10.0;net10.0-windows, which doubles the runtime of the
+    project to net11.0;net11.0-windows, which doubles the runtime of the
     entire suite for two drivers. They are therefore deliberately excluded
     from code coverage; see ProtocolDriverContractTests for the full list of
     drivers under contract test.

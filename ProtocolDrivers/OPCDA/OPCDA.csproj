@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <Platforms>x86;x64</Platforms>
     <!-- Deliberately no explicit <PlatformTarget>. This driver wraps a 32-bit
          COM/DCOM OPC Classic stack, but that is a *runtime* concern: it is
@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
-      <SetTargetFramework>TargetFramework=net10.0-windows</SetTargetFramework>
+      <SetTargetFramework>TargetFramework=net11.0-windows</SetTargetFramework>
       <!-- OPCDA wraps a 32-bit DCOM/COM OPC Classic stack and is therefore
            PlatformTarget=x86. The C# compiler emits CS8012 if it sees an
            x64-marked reference from an x86-marked project, so force the inner

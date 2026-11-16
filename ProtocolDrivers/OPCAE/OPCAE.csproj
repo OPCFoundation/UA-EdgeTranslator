@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <Platforms>x86;x64</Platforms>
     <!-- Deliberately no explicit <PlatformTarget>. Like OPCDA, this driver's
          x86 requirement is a runtime concern satisfied by publishing with
@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Official OPC Foundation Classic .NET API. Its net10.0-windows target
+    <!-- Official OPC Foundation Classic .NET API. Its net11.0-windows target
          brings the COM RCW and managed API needed for local OPC A&E. -->
     <PackageReference Include="Quick.OpcNetApi" />
     <PackageReference Include="Quick.OpcNetApi.Com" />
@@ -22,7 +22,7 @@
     <ProjectReference Include="..\..\UAServer\UAEdgeTranslator.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
-      <SetTargetFramework>TargetFramework=net10.0-windows</SetTargetFramework>
+      <SetTargetFramework>TargetFramework=net11.0-windows</SetTargetFramework>
       <SetPlatform>Platform=x86</SetPlatform>
       <GlobalPropertiesToRemove>RuntimeIdentifier</GlobalPropertiesToRemove>
     </ProjectReference>

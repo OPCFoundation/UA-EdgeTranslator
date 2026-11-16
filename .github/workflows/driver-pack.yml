@@ -63,7 +63,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Publish driver (self-contained folder with deps)
         run: |
@@ -71,7 +71,7 @@ jobs:
           dotnet publish ${{ matrix.driver.csproj }} \
             -c Release \
             -o drivers/_driverpack/${{ matrix.driver.name }} \
-            -f net10.0 \
+            -f net11.0 \
             /p:PlatformTarget=AnyCPU
 
       - name: Upload staged drivers as artifact (debug aid)
@@ -99,12 +99,12 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Publish driver (self-contained folder with deps)
         run: |
           New-Item -ItemType Directory -Force -Path drivers/_driverpack/${{ matrix.driver.name }}
-          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net10.0-windows -r win-x86 -p:Platform=x86
+          dotnet publish ${{ matrix.driver.csproj }} -c Release -o drivers/_driverpack/${{ matrix.driver.name }} -f net11.0-windows -r win-x86 -p:Platform=x86
 
       - name: Upload staged drivers as artifact (debug aid)
         uses: actions/upload-artifact@v7

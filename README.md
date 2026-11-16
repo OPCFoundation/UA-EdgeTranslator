@@ -458,7 +458,7 @@ In this branch you will find a variable "IPAddress" that was defined in the "Sim
 
 For more details on the Web of Things file format and description see https://www.w3.org/TR/wot-thing-description-2.0/
 
-To build your own protocol driver, create a new .NET10 Class Library project and add a project reference to the UA-EdgeTranslator, making sure that only the protocol driver DLL is published:
+To build your own protocol driver, create a new .NET 11 Class Library project and add a project reference to the UA-EdgeTranslator, making sure that only the protocol driver DLL is published:
 ```
 <ItemGroup>
   <ProjectReference Include="..\..\UAServer\UaEdgeTranslator.csproj">
@@ -514,7 +514,7 @@ If script execution is blocked by policy, use `powershell -ExecutionPolicy Bypas
 The script:
 
 * finds every driver with a `FolderProfile.pubxml` (the test-only Mock driver has none and is skipped);
-* runs `dotnet publish <driver>.csproj -c Debug -p:PublishProfile=FolderProfile` for each one, adding `-f net10.0` for the multi-targeted Matter driver. Both are passed explicitly because `dotnet publish` does not honor `Configuration` and `TargetFramework` from the publish profile;
+* runs `dotnet publish <driver>.csproj -c Debug -p:PublishProfile=FolderProfile` for each one, adding `-f net11.0` for the multi-targeted Matter driver. Both are passed explicitly because `dotnet publish` does not honor `Configuration` and `TargetFramework` from the publish profile;
 * verifies that the deployed driver DLL in `UAServer\drivers\<name>` is identical (SHA-256) to the `bin\Debug\<tfm>` build output;
 * prints one `OK`/`FAIL` line per driver, writes the full build output to `publish-logs\<driver>.log`, and exits with code 1 if any driver failed.
 
@@ -637,7 +637,7 @@ The tool scans its **current working directory**, processes every recognised fil
 
 ### Building the UA-WoTGenerator Tool
 
-`UA-WoTGenerator` multi-targets `net48` (.NET Framework 4.8) and `net10.0`, x64 only. The `net48` build is what loads the Siemens TIA Openness API (Openness is x64-only and ships as .NET Framework assemblies); the `net10.0` build is used by the other importers (AutomationML, Beckhoff TMC, Rockwell CSV, Modbus CSV, OPC UA NodeSet2, AAS).
+`UA-WoTGenerator` multi-targets `net48` (.NET Framework 4.8) and `net11.0`, x64 only. The `net48` build is what loads the Siemens TIA Openness API (Openness is x64-only and ships as .NET Framework assemblies); the `net11.0` build is used by the other importers (AutomationML, Beckhoff TMC, Rockwell CSV, Modbus CSV, OPC UA NodeSet2, AAS).
 
 ```powershell
 cd UA-EdgeTranslator
@@ -651,7 +651,7 @@ cd <folder containing your engineering exports>
 & "<repo>\UA-WoTGenerator\bin\x64\Release\net48\UA-WoTGenerator.exe"
 ```
 
-> Use the `net48` output for Siemens TIA projects (Openness requires .NET Framework). Use `net10.0` for the other importers if you prefer a modern runtime.
+> Use the `net48` output for Siemens TIA projects (Openness requires .NET Framework). Use `net11.0` for the other importers if you prefer a modern runtime.
 
 Each generated `*.td.jsonld` can then be uploaded to UA Edge Translator via the OPC UA File API exposed under the asset node, or copied into `/app/settings` for it to be picked up at start‑up (after replacing the `{{...}}` placeholders with the real values for your asset).
 
@@ -872,7 +872,7 @@ docker run -d --name ua-wotmapper -p 8080:8080 `
 
 ### Building and running UA-WoTMapper
 
-`UA-WoTMapper` targets `net10.0` and runs as a standard ASP.NET Core / Blazor Server web app.
+`UA-WoTMapper` targets `net11.0` and runs as a standard ASP.NET Core / Blazor Server web app.
 
 Run it locally from the repository:
 
