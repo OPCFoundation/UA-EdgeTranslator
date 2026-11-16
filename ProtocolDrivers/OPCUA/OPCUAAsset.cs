@@ -338,7 +338,7 @@ using Opc.Ua;
             WriteResponse response = _session.WriteAsync(
                 requestHeader,
                 nodesToWrite,
-                CancellationToken.None).GetAwaiter().GetResult();
+                CancellationToken.None).AsTask().GetAwaiter().GetResult();
 
             ClientBase.ValidateResponse(response.Results, nodesToWrite);
             ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToWrite);
@@ -719,7 +719,7 @@ using Opc.Ua;
                     null,
                     0u,
                     nodesToBrowse,
-                    CancellationToken.None).GetAwaiter().GetResult();
+                    CancellationToken.None).AsTask().GetAwaiter().GetResult();
 
                 // A null ArrayOf reports Count == 0, so this covers the old null check.
                 ArrayOf<BrowseResult> browseResults = browseResponse.Results;
@@ -750,7 +750,7 @@ using Opc.Ua;
                         null,
                         false,
                         continuationPoints,
-                        CancellationToken.None).GetAwaiter().GetResult();
+                        CancellationToken.None).AsTask().GetAwaiter().GetResult();
 
                     ArrayOf<BrowseResult> nextResults = browseNextResponse.Results;
                     if (nextResults.Count == 0 || StatusCode.IsBad(nextResults[0].StatusCode))
@@ -865,7 +865,7 @@ using Opc.Ua;
                     }
                 });
 
-                BrowseResponse response = _session.BrowseAsync(null, null, 0u, nodesToBrowse, CancellationToken.None).GetAwaiter().GetResult();
+                BrowseResponse response = _session.BrowseAsync(null, null, 0u, nodesToBrowse, CancellationToken.None).AsTask().GetAwaiter().GetResult();
                 if (response.Results.Count > 0 && StatusCode.IsGood(response.Results[0].StatusCode))
                 {
                     foreach (ReferenceDescription argument in response.Results[0].References)
@@ -901,7 +901,7 @@ using Opc.Ua;
         private Dictionary<string, Property> ReadArguments(NodeId argumentsId)
         {
             ArrayOf<ReadValueId> nodesToRead = new(new[] { new ReadValueId() { NodeId = argumentsId, AttributeId = Attributes.Value } });
-            ReadResponse readResponse = _session.ReadAsync(null, 0, TimestampsToReturn.Neither, nodesToRead, CancellationToken.None).GetAwaiter().GetResult();
+            ReadResponse readResponse = _session.ReadAsync(null, 0, TimestampsToReturn.Neither, nodesToRead, CancellationToken.None).AsTask().GetAwaiter().GetResult();
             if (readResponse.Results.Count == 0 || VariantConversion.ToClrValue(readResponse.Results[0].WrappedValue) is not System.Collections.IEnumerable values)
             {
                 return null;
@@ -945,7 +945,7 @@ using Opc.Ua;
                     0,
                     TimestampsToReturn.Neither,
                     nodesToRead,
-                    CancellationToken.None).GetAwaiter().GetResult();
+                    CancellationToken.None).AsTask().GetAwaiter().GetResult();
 
                 // A null ArrayOf reports Count == 0, so this covers the old null check.
                 ArrayOf<DataValue> values = readResponse.Results;

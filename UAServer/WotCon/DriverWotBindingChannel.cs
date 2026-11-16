@@ -83,7 +83,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                     return ReadStructure(fields);
                 }
 
-                return new WotReadResult(StatusCodes.Good, new DataValue(ToVariant(value), StatusCodes.Good, DateTime.UtcNow));
+                return WithServerContext(new WotReadResult(StatusCodes.Good, new DataValue(ToVariant(value), StatusCodes.Good, DateTime.UtcNow)));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -212,7 +212,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
             IWotSubscription subscription = new PollingWotSubscription(Form, async token =>
             {
                 WotReadResult result = await ReadAsync(token).ConfigureAwait(false);
-                onNotification(new WotNotification(result.Value));
+                WotNotification notification = new(result.Value);
+                onNotification(result.Context == null ? notification : notification.WithContext(result.Context));
                 return result.Success;
             }, interval);
 
@@ -256,9 +257,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
             if (!string.IsNullOrEmpty(typeId) && nodeManager != null)
             {
                 NodeId dataTypeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(typeId), nodeManager.Server.NamespaceUris);
-                if (nodeManager.TryEncodeStructureArray(dataTypeId, elements, out ExtensionObject[] encoded))
+                if (nodeManager.TryEncodeStructureArray(dataTypeId, elements, out ExtensionObject[] encoded, decoded: true))
                 {
-                    return new WotReadResult(StatusCodes.Good, new DataValue(Variant.From(new ArrayOf<ExtensionObject>(encoded)), StatusCodes.Good, DateTime.UtcNow));
+                    return WithServerContext(new WotReadResult(StatusCodes.Good, new DataValue(Variant.From(new ArrayOf<ExtensionObject>(encoded)), StatusCodes.Good, DateTime.UtcNow)));
                 }
             }
 
@@ -273,14 +274,25 @@ namespace Opc.Ua.Edge.Translator.WotCon
             if (!string.IsNullOrEmpty(typeId) && nodeManager != null)
             {
                 NodeId dataTypeId = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(typeId), nodeManager.Server.NamespaceUris);
-                if (nodeManager.TryEncodeStructure(dataTypeId, fields, out ExtensionObject encoded))
+                if (nodeManager.TryEncodeStructure(dataTypeId, fields, out ExtensionObject encoded, decoded: true))
                 {
-                    return new WotReadResult(StatusCodes.Good, new DataValue(new Variant(encoded), StatusCodes.Good, DateTime.UtcNow));
+                    return WithServerContext(new WotReadResult(StatusCodes.Good, new DataValue(new Variant(encoded), StatusCodes.Good, DateTime.UtcNow)));
                 }
             }
 
             Log.Logger.Warning("Structure value of tag {TagName} on asset {AssetId} cannot be encoded as type {Type}.", _tag?.Name, _assetName, typeId);
             return new WotReadResult(StatusCodes.BadTypeMismatch, DataValue.FromStatusCode(StatusCodes.BadTypeMismatch));
+        }
+
+        /// <summary>
+        /// Tags a read result with the server's namespace and encoding context. The
+        /// registry translates values that can carry namespace indexes (structures,
+        /// NodeIds, ...) from that context, and rejects them without one.
+        /// </summary>
+        private static WotReadResult WithServerContext(WotReadResult result)
+        {
+            IServiceMessageContext context = UANodeManager.Instance?.Server?.MessageContext;
+            return context == null ? result : result.WithContext(context);
         }
 
         private static Variant ToVariant(object value)

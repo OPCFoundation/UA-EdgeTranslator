@@ -36,6 +36,9 @@ namespace Opc.Ua.Edge.Translator
  
         private readonly NodeFactory _nodeFactory;
 
+        // Serializes registering dynamic structure types in the server's encodeable factory.
+        private readonly object _structureTypesLock = new();
+
         private BaseObjectState _assetManagement;
 
         // The four dictionaries below are mutated from OPC UA service threads
@@ -3257,7 +3260,8 @@ namespace Opc.Ua.Edge.Translator
         /// Encodes an array of decoded structures (one field dictionary per element) as
         /// ExtensionObjects of <paramref name="dataTypeId"/>.
         /// </summary>
-        public bool TryEncodeStructureArray(NodeId dataTypeId, System.Collections.IEnumerable elements, out ExtensionObject[] encoded)
+        /// <param name="decoded">See <see cref="TryEncodeStructure"/>.</param>
+        public bool TryEncodeStructureArray(NodeId dataTypeId, System.Collections.IEnumerable elements, out ExtensionObject[] encoded, bool decoded = false)
         {
             encoded = null;
             if (elements == null)
@@ -3268,7 +3272,7 @@ namespace Opc.Ua.Edge.Translator
             var result = new List<ExtensionObject>();
             foreach (object element in elements)
             {
-                if (element is not IDictionary<string, object> fields || !TryEncodeStructure(dataTypeId, fields, out ExtensionObject item))
+                if (element is not IDictionary<string, object> fields || !TryEncodeStructure(dataTypeId, fields, out ExtensionObject item, decoded))
                 {
                     return false;
                 }
@@ -3286,7 +3290,13 @@ namespace Opc.Ua.Edge.Translator
             return value is IDictionary<string, object>[];
         }
 
-        public bool TryEncodeStructure(NodeId dataTypeId, IDictionary<string, object> fieldValues, out ExtensionObject encoded)
+        /// <param name="decoded">
+        /// When true, the ExtensionObject holds a decoded structure of a type registered
+        /// in the server's encodeable factory instead of opaque binary bytes. WoT
+        /// Connectivity bindings only accept decoded structures, as the registry
+        /// translates every structured value between namespace tables.
+        /// </param>
+        public bool TryEncodeStructure(NodeId dataTypeId, IDictionary<string, object> fieldValues, out ExtensionObject encoded, bool decoded = false)
         {
             encoded = ExtensionObject.Null;
             if (fieldValues == null || Find(dataTypeId) is not DataTypeState dataType
@@ -3297,26 +3307,121 @@ namespace Opc.Ua.Edge.Translator
 
             try
             {
-                using var encoder = new BinaryEncoder(new ServiceMessageContext(Program.Telemetry, Server.Factory)
+                var context = new ServiceMessageContext(Program.Telemetry, Server.Factory)
                 {
                     NamespaceUris = Server.NamespaceUris
-                });
+                };
 
-                foreach (StructureField field in structDef.Fields)
+                byte[] body;
+                using (var encoder = new BinaryEncoder(context))
                 {
-                    fieldValues.TryGetValue(field.Name, out object fieldVal);
-                    EncodeField(encoder, field, fieldVal);
+                    foreach (StructureField field in structDef.Fields)
+                    {
+                        fieldValues.TryGetValue(field.Name, out object fieldVal);
+                        EncodeField(encoder, field, fieldVal);
+                    }
+
+                    body = encoder.CloseAndReturnBuffer();
+                }
+
+                if (decoded)
+                {
+                    if (!TryGetStructureType(dataTypeId, 0, out IEncodeableType type))
+                    {
+                        Log.Logger.Warning("Cannot register an encodeable type for structure {DataType}.", dataTypeId);
+                        return false;
+                    }
+
+                    IEncodeable structure = type.CreateInstance();
+                    using var decoder = new BinaryDecoder(body, context);
+                    structure.Decode(decoder);
+                    encoded = new ExtensionObject(structure);
+                    return true;
                 }
 
                 NodeId encodingId = structDef.DefaultEncodingId.IsNull ? dataTypeId : structDef.DefaultEncodingId;
-                encoded = new ExtensionObject(NodeId.ToExpandedNodeId(encodingId, Server.NamespaceUris), new ByteString(encoder.CloseAndReturnBuffer()));
+                encoded = new ExtensionObject(NodeId.ToExpandedNodeId(encodingId, Server.NamespaceUris), new ByteString(body));
                 return true;
             }
-            catch (NotImplementedException ex)
+            catch (Exception ex) when (ex is NotImplementedException or ServiceResultException)
             {
                 Log.Logger.Warning("Cannot encode a value of structure {DataType}: {Reason}", dataTypeId, ex.Message);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Returns the encodeable type the server's factory knows for the structure
+        /// <paramref name="dataTypeId"/>. Driver-created structures (such as Rockwell
+        /// UDTs) have no generated CLR type, so the SDK's dynamic <see cref="Opc.Ua.Encoders.Structure"/>
+        /// is registered for them - and for their nested structure fields - from the
+        /// DataType's <c>DataTypeDefinition</c>.
+        /// </summary>
+        private bool TryGetStructureType(NodeId dataTypeId, int depth, out IEncodeableType type)
+        {
+            ExpandedNodeId typeId = NodeId.ToExpandedNodeId(dataTypeId, Server.NamespaceUris);
+#pragma warning disable UA_NETStandard_1 // the dynamic-type registration API is marked experimental
+            var lookup = (IEncodeableTypeLookup)Server.Factory;
+            if (lookup.TryGetEncodeableType(typeId, out type))
+            {
+                return true;
+            }
+
+            if (depth > 16 || Find(dataTypeId) is not DataTypeState dataType
+                || !TryGetStructureDefinition(dataType, out StructureDefinition definition))
+            {
+                return false;
+            }
+
+            Dictionary<string, BuiltInType> fieldTypes = new(StringComparer.Ordinal);
+            foreach (StructureField field in definition.Fields)
+            {
+                BuiltInType builtInType = TypeInfo.GetBuiltInType(field.DataType);
+
+                // A structure field is decoded through the factory, so its type must be known too.
+                if (builtInType == BuiltInType.Null && !TryGetStructureType(field.DataType, depth + 1, out _))
+                {
+                    return false;
+                }
+
+                fieldTypes[field.Name] = builtInType;
+            }
+
+            ExpandedNodeId binaryEncodingId = definition.DefaultEncodingId.IsNull
+                ? typeId
+                : NodeId.ToExpandedNodeId(definition.DefaultEncodingId, Server.NamespaceUris);
+
+            var structure = new Opc.Ua.Encoders.Structure(
+                new System.Xml.XmlQualifiedName(
+                    dataType.BrowseName.Name ?? dataTypeId.ToString(),
+                    Server.NamespaceUris.GetString(dataTypeId.NamespaceIndex) ?? string.Empty),
+                typeId,
+                binaryEncodingId,
+                ExpandedNodeId.Null,
+                definition,
+                fieldTypes);
+
+            lock (_structureTypesLock)
+            {
+                if (lookup.TryGetEncodeableType(typeId, out type))
+                {
+                    return true;
+                }
+
+                IEncodeableFactoryBuilder builder = Server.Factory.Builder;
+                builder.AddEncodeableType(typeId, structure);
+                if (binaryEncodingId != typeId)
+                {
+                    builder.AddEncodeableType(binaryEncodingId, structure);
+                }
+
+                builder.Commit();
+            }
+#pragma warning restore UA_NETStandard_1
+
+            Log.Logger.Debug("Registered a dynamic encodeable type for structure DataType {DataType}.", dataTypeId);
+            type = structure;
+            return true;
         }
 
         private void EncodeField(BinaryEncoder encoder, StructureField field, object value)

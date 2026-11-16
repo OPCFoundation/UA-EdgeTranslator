@@ -98,6 +98,20 @@ namespace Opc.Ua.Edge.Translator.WotCon
             return scheme is null || !_drivers.AllDrivers.Any(driver => string.Equals(driver.Scheme, scheme, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// The href exactly as authored. The binding package normalizes hrefs that read as
+        /// a URI, lowercasing what it takes for a scheme, but driver addresses are case
+        /// sensitive (a Rockwell tag <c>Local:2:O</c> must not become <c>local:2:O</c>).
+        /// </summary>
+        private static string RawHref(WotAffordanceForm form)
+        {
+            return form.FormElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && form.FormElement.TryGetProperty("href", out System.Text.Json.JsonElement raw)
+                && raw.ValueKind == System.Text.Json.JsonValueKind.String
+                ? raw.GetString()
+                : null;
+        }
+
         public override WotBindingCompilation Compile(WotAffordanceForm form, WotBindingPlanContext context)
         {
             ArgumentNullException.ThrowIfNull(form);
@@ -147,7 +161,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             WotEndpointDescriptor endpoint = new(driver.Scheme, endpointUri.Host, endpointUri.Port, baseUri);
 
             WotAddressingDescriptor addressing = new(
-                href,
+                relative ? RawHref(form) ?? href : href,
                 ImmutableDictionary<string, string>.Empty.Add(FormMetadataKey, form.FormElement.GetRawText()));
 
             ImmutableArray<WotCompiledForm>.Builder entries = ImmutableArray.CreateBuilder<WotCompiledForm>();

@@ -866,7 +866,9 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         /// <para>
         /// The translator stores structures as an <see cref="ExtensionObject"/>
         /// whose body is a positionally binary-encoded <c>byte[]</c> written by
-        /// <c>UANodeManager.EncodeField</c>. There is no self-describing header,
+        /// <c>UANodeManager.EncodeField</c> (values served through the WoT
+        /// Connectivity registry carry a decoded structure, which is binary-encoded
+        /// into that same layout first). There is no self-describing header,
         /// so the only way to read it back is to walk the
         /// <see cref="StructureDefinition"/> fields in declaration order using
         /// the same type switch the encoder used. This mirror must stay in
@@ -877,12 +879,44 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         {
             List<StructureFieldValue> fields = [];
 
-            if (extension.IsNull || !extension.TryGetAsBinary(out ByteString bodyBytes) || bodyBytes.IsEmpty)
+            if (extension.IsNull)
             {
                 return fields;
             }
 
-            byte[] body = bodyBytes.ToArray();
+            ServiceMessageContext messageContext = ServiceMessageContext.Create(Program.Telemetry);
+            messageContext.NamespaceUris = server.NamespaceUris;
+
+            byte[] body;
+            if (extension.TryGetAsBinary(out ByteString bodyBytes))
+            {
+                body = bodyBytes.IsEmpty ? null : bodyBytes.ToArray();
+            }
+            else if (extension.TryGetValue(out IEncodeable encodeable))
+            {
+                // Values served through the WoT Connectivity registry carry a decoded
+                // structure; its binary encoding has the same positional layout.
+                try
+                {
+                    using BinaryEncoder encoder = new(messageContext);
+                    encodeable.Encode(encoder);
+                    body = encoder.CloseAndReturnBuffer();
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Failed to encode structure value for data type {DataType}.", dataTypeId);
+                    return fields;
+                }
+            }
+            else
+            {
+                return fields;
+            }
+
+            if (body == null || body.Length == 0)
+            {
+                return fields;
+            }
 
             StructureDefinition definition = GetStructureDefinition(dataTypeId);
 
@@ -893,9 +927,6 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
 
             try
             {
-                ServiceMessageContext messageContext = ServiceMessageContext.Create(Program.Telemetry);
-                messageContext.NamespaceUris = server.NamespaceUris;
-
                 using BinaryDecoder decoder = new(body, messageContext);
 
                 foreach (StructureField field in definition.Fields)

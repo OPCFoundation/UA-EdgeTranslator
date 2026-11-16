@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using Opc.Ua;
 using Opc.Ua.Configuration;
 using Opc.Ua.Server;
@@ -12,6 +12,7 @@ namespace WotOpcUaMapper.UAClientLib
     public class SimpleServer : StandardServer
     {
         private readonly ApplicationInstance _app;
+        private readonly NodesetFileNodeManagerFactory _nodeManagerFactory = new();
 
         public SimpleServer(ApplicationInstance app, uint port, ITelemetryContext telemetry)
             : base(telemetry)
@@ -19,16 +20,25 @@ namespace WotOpcUaMapper.UAClientLib
             _app = app;
 
             _app.ApplicationConfiguration!.ServerConfiguration!.BaseAddresses = new[] { "opc.tcp://localhost:" + port };
+
+            AddNodeManager(_nodeManagerFactory);
         }
 
-        protected override MasterNodeManager CreateMasterNodeManager(IServerInternal server, ApplicationConfiguration configuration)
-        {
-            List<INodeManager> nodeManagers = new()
-            {
-                new NodesetFileNodeManager(server, configuration)
-            };
+        /// <summary>The node manager NodeSet2 files are loaded into, available once the server has started.</summary>
+        public NodesetFileNodeManager? NodesetNodeManager => _nodeManagerFactory.Instance;
 
-            return new MasterNodeManager(server, configuration, null, nodeManagers.ToArray());
+        private sealed class NodesetFileNodeManagerFactory : INodeManagerFactory
+        {
+            public NodesetFileNodeManager? Instance { get; private set; }
+
+            // Namespaces are registered on demand as NodeSet2 files are loaded.
+            public ArrayOf<string> NamespacesUris => Array.Empty<string>();
+
+            public INodeManager Create(IServerInternal server, ApplicationConfiguration configuration)
+            {
+                Instance = new NodesetFileNodeManager(server, configuration);
+                return Instance;
+            }
         }
     }
 }

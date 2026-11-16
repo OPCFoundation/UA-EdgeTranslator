@@ -111,7 +111,8 @@ namespace WotOpcUaMapper.UAClientLib
                 throw new InvalidOperationException($"Failed to start the local OPC UA server on port {port}: {ex.Message}", ex);
             }
 
-            var nodeManager = (NodesetFileNodeManager)_server!.CurrentInstance.NodeManager.NodeManagers[2];
+            NodesetFileNodeManager nodeManager = _server!.NodesetNodeManager
+                ?? throw new InvalidOperationException("The local OPC UA server did not create its NodeSet node manager.");
 
             var loaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

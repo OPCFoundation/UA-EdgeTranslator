@@ -42,6 +42,8 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly IWotNodeSetResolver _nodeSetResolver;
 
+        private readonly LeasingWotBlobResourceStore _documents;
+
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, NodeManagerRegistration> _companionModels = new(StringComparer.Ordinal);
 
         private NodeManagerRegistration _registration;
@@ -61,11 +63,13 @@ namespace Opc.Ua.Edge.Translator.WotCon
             WotMaterializationCoordinator coordinator,
             DriverWotBindingExecutor executor,
             ThingDescriptionCache thingDescriptions,
-            IWotNodeSetResolver nodeSetResolver)
+            IWotNodeSetResolver nodeSetResolver,
+            LeasingWotBlobResourceStore documents)
         {
             _standardServer = server;
             _server = server.CurrentInstance;
             _nodeSetResolver = nodeSetResolver;
+            _documents = documents;
             Registry = registry;
             _coordinator = coordinator;
             _executor = executor;
@@ -131,16 +135,19 @@ namespace Opc.Ua.Edge.Translator.WotCon
             };
 
             Directory.CreateDirectory(storageFolder);
-            var deferredRegistry = new DeferredWotRegistryService(
-                new WotRegistryService(new FileWotRegistryStore(storageFolder), options.Bounds));
-            IWotRegistryService registry = deferredRegistry;
+
+            // The package's default document store only supports the content leases that
+            // materialization requires on Windows; see LeasingWotBlobResourceStore.
+            var documents = LeasingWotBlobResourceStore.OpenForRegistry(storageFolder);
+            var registry = new WotRegistryService(new FileWotRegistryStore(storageFolder, documents), options.Bounds);
 
             var projectionHost = new LifecycleWotProjectionHost(
                 server.NodeManagerLifecycle,
                 new ObjectTypeMappingRuntimeFactory(
                     new WotProjectionBindingRuntimeFactory(binderRegistry, targetResolver),
                     targetResolver,
-                    thingDescriptions));
+                    thingDescriptions,
+                    xid => string.IsNullOrEmpty(xid) ? null : registry.Current.FindResourceByXid(xid)?.ThingId));
 
             var nodeSetResolver = new CloudLibraryNodeSetResolver(new UACloudLibraryClient());
             var coordinator = new WotMaterializationCoordinator(
@@ -150,24 +157,20 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 nodeSetResolver: nodeSetResolver,
                 viewProjectionHost: new LifecycleWotViewProjectionHost(server.NodeManagerLifecycle));
 
-            var host = new WotRegistryHost(server, registry, coordinator, executor, thingDescriptions, nodeSetResolver);
-            registry.Changed += host.OnRegistryChanged;
+            var host = new WotRegistryHost(server, registry, coordinator, executor, thingDescriptions, nodeSetResolver, documents);
 
-            // The registry node manager loads and materializes the registry inside its
-            // own registration, while NodeManagerLifecycle holds the semaphore that
-            // materializing needs too; with persisted Things present the server would
-            // never finish starting. Register it against an empty registry, then load
-            // the persisted content and materialize it once the registration returned.
-            // See DeferredWotRegistryService.
-            host._registration = await server.NodeManagerLifecycle.AddAsync(
-                new WotRegistryNodeManagerFactory(options, registry, coordinator),
-                null,
-                cancellationToken).ConfigureAwait(false);
-
-            await deferredRegistry.LoadAsync(cancellationToken).ConfigureAwait(false);
+            // Drivers need the persisted Things' Thing Descriptions, and target mappings
+            // the companion models their uav:mapToType names, before the registry node
+            // manager materializes them; it does so while it is registered.
+            await registry.InitializeAsync(cancellationToken).ConfigureAwait(false);
             await host.CacheThingDescriptionsAsync(registry.Current, cancellationToken).ConfigureAwait(false);
             await host.LoadCompanionModelsAsync(registry.Current, cancellationToken).ConfigureAwait(false);
-            await coordinator.RefreshAsync(new WotRefreshRequest { RequestId = "startup" }, cancellationToken).ConfigureAwait(false);
+            registry.Changed += host.OnRegistryChanged;
+
+            host._registration = await CommitChangeAsync(
+                server.NodeManagerLifecycle,
+                NodeManagerBatchChange.Add(new WotRegistryNodeManagerFactory(options, registry, coordinator)),
+                cancellationToken).ConfigureAwait(false);
 
             await host.ImportSettingsFilesAsync(
                 Path.Combine(Directory.GetCurrentDirectory(), "settings"),
@@ -260,7 +263,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 return false;
             }
 
-            var result = await Registry.DeleteResourceAsync(resource.GroupId, resource.ResourceId, null, cancellationToken).ConfigureAwait(false);
+            var result = await Registry.DeleteResourceAsync(resource.GroupId, resource.ResourceId, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (!result.Changed)
             {
                 Log.Logger.Warning("Could not remove WoT Connectivity registry Thing {ResourceId}: {Outcome} {Message}", resource.ResourceId, result.Outcome, result.Message);
@@ -431,9 +434,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
                 })
             };
 
-            NodeManagerRegistration registration = await Ua.Server.RuntimeNodeSet.RuntimeNodeSetLifecycleExtensions
-                .AddRuntimeNodeSetAsync(_standardServer.NodeManagerLifecycle, options, null, cancellationToken)
-                .ConfigureAwait(false);
+            NodeManagerRegistration registration = await CommitChangeAsync(
+                _standardServer.NodeManagerLifecycle,
+                NodeManagerBatchChange.Add(new Ua.Server.RuntimeNodeSet.RuntimeNodeSetNodeManagerFactory(options)),
+                cancellationToken).ConfigureAwait(false);
 
             foreach (string uri in owned)
             {
@@ -571,8 +575,10 @@ namespace Opc.Ua.Edge.Translator.WotCon
             {
                 try
                 {
-                    await _standardServer.NodeManagerLifecycle
-                        .RemoveAsync(_registration, null).ConfigureAwait(false);
+                    await CommitChangeAsync(
+                        _standardServer.NodeManagerLifecycle,
+                        NodeManagerBatchChange.Remove(_registration),
+                        CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException)
                 {
@@ -582,7 +588,41 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
             _coordinator.Dispose();
             await _executor.DisposeAsync().ConfigureAwait(false);
+            _documents.Dispose();
             _ = _server;
+        }
+
+        /// <summary>
+        /// Prepares and publishes a single node manager addition or removal.
+        /// </summary>
+        /// <returns>The committed registration for an addition, or null for a removal.</returns>
+        private static async Task<NodeManagerRegistration> CommitChangeAsync(
+            INodeManagerLifecycle lifecycle,
+            NodeManagerBatchChange change,
+            CancellationToken cancellationToken)
+        {
+            var batch = await lifecycle.PrepareAsync(
+                new ArrayOf<NodeManagerBatchChange>(new[] { change }),
+                cancellationToken).ConfigureAwait(false);
+
+            await using (batch.ConfigureAwait(false))
+            {
+                var result = await batch.CommitAsync(
+                    static _ => default,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (result.CleanupFailure != null)
+                {
+                    Log.Logger.Warning(result.CleanupFailure, "Node manager change was published, but cleanup failed.");
+                }
+
+                foreach (NodeManagerRegistration registration in result.Registrations)
+                {
+                    return registration;
+                }
+
+                return null;
+            }
         }
     }
 }

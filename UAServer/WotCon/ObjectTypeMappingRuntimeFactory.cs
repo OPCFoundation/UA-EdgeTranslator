@@ -28,15 +28,22 @@ namespace Opc.Ua.Edge.Translator.WotCon
 
         private readonly ThingDescriptionCache _thingDescriptions;
 
+        private readonly Func<string, string> _thingIdOf;
+
         /// <param name="thingDescriptions">
         /// Told which registry resource each wired form belongs to, so the executor
         /// can give drivers that resource's Thing Description.
         /// </param>
-        public ObjectTypeMappingRuntimeFactory(IWotProjectionBindingRuntimeFactory inner, CreatingTargetVariableResolver resolver, ThingDescriptionCache thingDescriptions = null)
+        /// <param name="thingIdOf">
+        /// Returns the Thing id of a registry resource Xid. Used when the resource's Thing
+        /// Description is not cached yet, as for a Thing materialized while it is upserted.
+        /// </param>
+        public ObjectTypeMappingRuntimeFactory(IWotProjectionBindingRuntimeFactory inner, CreatingTargetVariableResolver resolver, ThingDescriptionCache thingDescriptions = null, Func<string, string> thingIdOf = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             _thingDescriptions = thingDescriptions;
+            _thingIdOf = thingIdOf;
         }
 
         public ValueTask<IAsyncDisposable> CreateAsync(INodeManagerBuilder builder, ArrayOf<WotBindingPlan> bindingPlans, CancellationToken cancellationToken = default)
@@ -139,12 +146,13 @@ namespace Opc.Ua.Edge.Translator.WotCon
         private string ThingObjectPrefix(string resourceXid)
         {
             Models.ThingDescription td = _thingDescriptions?.GetOrCreate(resourceXid, string.Empty);
-            if (string.IsNullOrEmpty(td?.Id))
+            string thingId = string.IsNullOrEmpty(td?.Id) ? _thingIdOf?.Invoke(resourceXid) : td.Id;
+            if (string.IsNullOrEmpty(thingId))
             {
                 return null;
             }
 
-            return "/nsu=" + Uri.EscapeDataString(td.Id) + ";";
+            return "/nsu=" + Uri.EscapeDataString(thingId) + ";";
         }
 
         /// <summary>
