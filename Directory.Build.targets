@@ -1,0 +1,20 @@
+<Project>
+	<!--
+	Pin every ProjectReference to UAEdgeTranslator.csproj to the referencing project's own
+	target framework.
+
+	UAEdgeTranslator multi-targets, so without this MSBuild asks it for its TargetFrameworks
+	and picks the nearest match. Inside Visual Studio that answer can come from a stale
+	evaluation (e.g. after a .NET version bump), which silently resolves the reference to an
+	old bin\<platform>\<config>\<previous tfm>\UAEdgeTranslator.dll left over from earlier
+	builds; drivers then fail with CS0117/CS1061 on recently added members, or worse, compile
+	against an outdated API. Setting SetTargetFramework skips that negotiation entirely.
+
+	References that already set SetTargetFramework (e.g. OPCDA/OPCAE) are left untouched.
+	-->
+	<ItemGroup Condition="'$(TargetFramework)' != ''">
+		<ProjectReference Update="@(ProjectReference)">
+			<SetTargetFramework Condition="'%(Filename)%(Extension)' == 'UAEdgeTranslator.csproj' and '%(SetTargetFramework)' == ''">TargetFramework=$(TargetFramework)</SetTargetFramework>
+		</ProjectReference>
+	</ItemGroup>
+</Project>

@@ -29,10 +29,12 @@ foreach ($pubxml in $profiles) {
 	# Resolve the built assembly, the TFM and the publish folder from MSBuild itself.
 	$msbuildArgs = @($csproj.FullName, '-p:Configuration=Debug', '-p:PublishProfile=FolderProfile')
 	if ($name -eq 'Matter') { $msbuildArgs += '-p:TargetFramework=net11.0' }
-	$props = & dotnet msbuild @msbuildArgs -getProperty:TargetFileName -getProperty:TargetFramework -getProperty:PublishDir | ConvertFrom-Json
+	$props = & dotnet msbuild @msbuildArgs -getProperty:TargetFileName -getProperty:TargetFramework -getProperty:PublishDir -getProperty:RuntimeIdentifier | ConvertFrom-Json
 	$p = $props.Properties
 	$tfm = if ($name -eq 'Matter') { 'net11.0' } else { $p.TargetFramework }
-	$built = Join-Path $projectDir "bin\Debug\$tfm\$($p.TargetFileName)"
+	# Profiles that set a RuntimeIdentifier (OPCDA/OPCAE: win-x86) build into bin\Debug\<tfm>\<rid>.
+	$builtDir = if ($p.RuntimeIdentifier) { "bin\Debug\$tfm\$($p.RuntimeIdentifier)" } else { "bin\Debug\$tfm" }
+	$built = Join-Path $projectDir "$builtDir\$($p.TargetFileName)"
 	$publishDir = if ([System.IO.Path]::IsPathRooted($p.PublishDir)) { $p.PublishDir } else { Join-Path $projectDir $p.PublishDir }
 	$deployed = Join-Path $publishDir $p.TargetFileName
 
