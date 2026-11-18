@@ -1,0 +1,900 @@
+@page "/projections"
+@using System.IO
+@using System.Text
+@using Opc.Ua.Edge.Translator
+@using Opc.Ua.Edge.Translator.Models
+@using Opc.Ua.Edge.Translator.WotCon
+@inject AddressSpaceService AddressSpace
+@inject DiagnosticsService Diagnostics
+
+<PageTitle>Projections &middot; UA Edge Translator</PageTitle>
+
+<PageHeader Title="Projections" Subtitle="Map WoT properties onto OPC UA types" OnRefresh="ReloadAsync">
+    <Actions>
+        <div class="ns-filter">
+            <label for="wot-file-select">WoT file</label>
+            <select id="wot-file-select" class="ns-select" value="@_selectedFile" @onchange="SelectWoTFile" disabled="@_busy">
+                <option value="">(choose a Thing Description)</option>
+                @foreach (WoTFileInfo file in _files)
+                {
+                    <option value="@file.FileName">@DisplayName(file)</option>
+                }
+            </select>
+        </div>
+        <label class="btn-refresh import-wot-btn @(_busy ? "is-busy" : null)" title="Open a Thing Model or Thing Description (.jsonld) file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
+            <span>Open File</span>
+            <InputFile @key="_wotInputKey" OnChange="OpenWoTFileAsync" accept=".jsonld,.json" disabled="@_busy" style="display:none" />
+        </label>
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="banner banner-warning">@_error</div>
+}
+else if (!string.IsNullOrEmpty(_message))
+{
+    <div class="banner banner-success">@_message</div>
+}
+
+@if (!_available)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v5M12 16h.01" />
+            </svg>
+        </div>
+        <h2>The address space is not available</h2>
+        <p>The OPC UA server is still starting up, or it failed to start. Refresh once the server is running.</p>
+    </div>
+}
+else
+{
+    <div class="explorer-grid">
+        <div class="card projection-wot-card">
+            <div class="card-header">
+                <h2 class="card-title">@(_document?.Title ?? _document?.Name ?? "WoT Properties")</h2>
+                @if (_document is not null)
+                {
+                    <div class="projection-actions">
+                        @if (_document.IsThingModel)
+                        {
+                            <button type="button" class="btn-trust" disabled="@_busy" @onclick="OpenThingDescriptionDialog" title="Fill in the Thing Model's placeholders to create a Thing Description">Create Thing Description&#8230;</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn-trust" disabled="@_busy" @onclick="SaveAndApplyAsync" title="Save the Thing Description to the settings folder and onboard its asset with these projections">
+                                @(_busy ? "Applying\u2026" : "Save & Apply")
+                            </button>
+                        }
+                        <a class="btn-refresh projection-download" href="@DownloadHref" download="@DownloadName" title="Download the mapped document">Download</a>
+                    </div>
+                }
+            </div>
+            <div class="card-body projection-body">
+                @if (_document is null)
+                {
+                    <div class="as-tree-empty">Choose a Thing Description from the settings folder, or open a Thing Model or Thing Description file, to list its properties.</div>
+                }
+                else
+                {
+                    <div class="projection-file">
+                        <span class="mono">@_document.FileName</span>
+                        <span class="pill @(_document.IsThingModel ? "pill-orange" : "pill-blue")">@(_document.IsThingModel ? "Thing Model" : "Thing Description")</span>
+                        <span class="pill pill-gray">@_document.Properties.Count(p => p.IsMapped) / @_document.Properties.Count mapped</span>
+                        @if (_dirty)
+                        {
+                            <span class="pill pill-orange">Unsaved changes</span>
+                        }
+                    </div>
+
+                    @if (_document.Properties.Count == 0)
+                    {
+                        <div class="as-tree-empty">The document has no properties.</div>
+                    }
+
+                    <div class="prop-list">
+                        @foreach (WotMappingProperty property in _document.Properties)
+                        {
+                            <div class="prop-card @(property.IsMapped ? "mapped" : null) @(ReferenceEquals(_dropTarget, property) ? "drop-hover" : null)"
+                                 @key="property.Name"
+                                 @ondragover:preventDefault="true"
+                                 @ondragenter="() => _dropTarget = property"
+                                 @ondragleave="() => DragLeave(property)"
+                                 @ondrop="() => DropOnPropertyAsync(property)">
+                                <div class="prop-name">
+                                    @property.Name
+                                    @if (!string.IsNullOrEmpty(property.Type))
+                                    {
+                                        <span class="prop-type">@property.Type</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(property.Description))
+                                {
+                                    <div class="prop-desc">@property.Description</div>
+                                }
+                                <div class="prop-nodeid">
+                                    <span class="prop-key">NodeId</span>
+                                    @if (ReferenceEquals(_editingProperty, property))
+                                    {
+                                        <input class="nodeid-edit mono" autofocus
+                                               @bind="_nodeIdEditValue" @bind:event="oninput"
+                                               @onblur="() => CommitNodeId(property)"
+                                               @onkeydown="e => NodeIdKeyDown(e, property)" />
+                                    }
+                                    else
+                                    {
+                                        <span class="nodeid-value mono" title="Click to edit the target OPC UA NodeId" @onclick="() => BeginEditNodeId(property)">@property.MapToNodeId</span>
+                                    }
+                                </div>
+                                @if (property.IsMapped)
+                                {
+                                    <div class="prop-map">
+                                        <div><span class="prop-key">Type</span> <span class="mono">@property.MapToType</span></div>
+                                        @if (!string.IsNullOrEmpty(property.MapByFieldPath))
+                                        {
+                                            <div><span class="prop-key">Field</span> <span class="mono">@property.MapByFieldPath</span></div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="prop-drophint">Drop an OPC UA type here to map it</div>
+                                }
+                                <div class="prop-actions">
+                                    @if (!string.IsNullOrEmpty(_selectedNodeId))
+                                    {
+                                        <button type="button" class="btn-refresh btn-xs" disabled="@_busy" @onclick="() => MapSelectedAsync(property)" title="Map the type selected in the OPC UA type tree">Map selected type</button>
+                                    }
+                                    @if (property.IsMapped)
+                                    {
+                                        <button type="button" class="btn-danger btn-xs" disabled="@_busy" @onclick="() => ClearMapping(property)">Remove mapping</button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card projection-types-card">
+            <div class="card-header">
+                <h2 class="card-title">OPC UA Types</h2>
+                <div class="ns-filter">
+                    <label for="projection-ns-select">Namespace</label>
+                    <select id="projection-ns-select" class="ns-select" @bind="SelectedNamespace" @bind:after="OnNamespaceChanged">
+                        <option value="-1">(none)</option>
+                        @foreach (NamespaceInfo ns in _namespaces)
+                        {
+                            <option value="@ns.Index">@ns.Index — @(string.IsNullOrEmpty(ns.Uri) ? "(empty)" : ns.Uri)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="projection-companion">
+                @if (WotRegistryHost.Current is null && UANodeManager.Instance is null)
+                {
+                    <span class="muted">Companion models can be loaded once the OPC UA server is running.</span>
+                }
+                else
+                {
+                    <input class="ns-select mono projection-companion-uri" list="projection-companion-models"
+                           placeholder="Companion model namespace, e.g. http://opcfoundation.org/UA/PNEM/"
+                           disabled="@_busy"
+                           @bind="_companionUri" @bind:event="oninput" />
+                    <datalist id="projection-companion-models">
+                        @foreach (string uri in _availableModels)
+                        {
+                            <option value="@uri"></option>
+                        }
+                    </datalist>
+                    <button type="button" class="btn-trust" disabled="@(_busy || string.IsNullOrWhiteSpace(_companionUri))" @onclick="AddCompanionModelAsync" title="Load the companion model from the nodesets folder or the UA Cloud Library">Load</button>
+                    <label class="btn-refresh import-wot-btn @(_busy ? "is-busy" : null)" title="Upload a companion model NodeSet2 (.xml) file">
+                        <span>Upload NodeSet2</span>
+                        <InputFile @key="_nodesetInputKey" OnChange="UploadNodeSetAsync" accept=".xml" disabled="@_busy" style="display:none" />
+                    </label>
+                }
+            </div>
+            <div class="card-body explorer-tree-body">
+                @if (_rootNodes is null)
+                {
+                    <div class="loading">Loading&#8230;</div>
+                }
+                else if (_rootNodes.Count == 0)
+                {
+                    <div class="as-tree-empty">The Types folder could not be browsed.</div>
+                }
+                else
+                {
+                    <AddressSpaceTree Nodes="_rootNodes"
+                                      ExpandedNodes="_expandedNodes"
+                                      SelectedNodeId="@_selectedNodeId"
+                                      HighlightNamespaceIndex="HighlightNamespaceIndex"
+                                      Draggable="true"
+                                      OnNodeExpand="BrowseChildrenAsync"
+                                      OnNodeSelect="SelectNode"
+                                      OnNodeDragStart="DragStart" />
+                }
+            </div>
+            <p class="projection-hint">Drag a DataType, an ObjectType or a Variable onto a WoT property, or select it and press <b>Map selected type</b>. Structures and ObjectTypes are mapped through one of their fields.</p>
+        </div>
+    </div>
+}
+
+@if (_pendingMapping is not null)
+{
+    <div class="dialog-backdrop" @onclick="CancelFieldDialog"></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
+        <h2 id="field-dialog-title" class="dialog-title">Select field path</h2>
+        <p class="dialog-hint">
+            @if (_pendingMapping.IsObjectType)
+            {
+                <text>The ObjectType <b>@_pendingMapping.DisplayName</b> is mapped through one of its variables. Select the variable WoT property <b>@_pendingProperty?.Name</b> maps to.</text>
+            }
+            else
+            {
+                <text>The structure <b>@_pendingMapping.DisplayName</b> is mapped through one of its fields. Select the field WoT property <b>@_pendingProperty?.Name</b> maps to.</text>
+            }
+        </p>
+        <div class="field-list">
+            @foreach (MappingField field in _pendingMapping.Fields)
+            {
+                <label class="field-option">
+                    <input type="radio" name="fieldpath" value="@field.Path"
+                           checked="@(_selectedFieldPath == field.Path)"
+                           @onchange="() => _selectedFieldPath = field.Path" />
+                    <span>@field.Name</span>
+                    <small class="mono">@field.DataType</small>
+                </label>
+            }
+        </div>
+        <div class="dialog-actions">
+            <button type="button" class="btn-refresh" @onclick="CancelFieldDialog">Cancel</button>
+            <button type="button" class="btn-trust" disabled="@string.IsNullOrEmpty(_selectedFieldPath)" @onclick="ConfirmFieldDialog">Map</button>
+        </div>
+    </div>
+}
+
+@if (_showTdDialog)
+{
+    <div class="dialog-backdrop" @onclick="CancelThingDescriptionDialog"></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="td-dialog-title">
+        <h2 id="td-dialog-title" class="dialog-title">Create Thing Description</h2>
+        @if (_tdPlaceholders.Count == 0)
+        {
+            <p class="dialog-hint">The Thing Model has no placeholders; the Thing Description is created by removing its <span class="mono">tm:ThingModel</span> marker.</p>
+        }
+        else
+        {
+            <p class="dialog-hint">Provide a value for each Thing Model placeholder.</p>
+            <div class="td-placeholders">
+                @foreach (string name in _tdPlaceholders)
+                {
+                    <label class="dialog-field">
+                        <span class="mono">@name</span>
+                        <input class="mono" value="@(_tdValues.TryGetValue(name, out string value) ? value : string.Empty)"
+                               @onchange="e => _tdValues[name] = e.Value?.ToString() ?? string.Empty" />
+                    </label>
+                }
+            </div>
+        }
+        <label class="dialog-field">
+            <span>Name</span>
+            <input class="mono" @bind="_tdName" @bind:event="oninput" placeholder="letters, digits, '.', '_' and '-'" />
+        </label>
+        <p class="dialog-hint">The name identifies the asset, its settings file and its OPC UA namespace.</p>
+        @if (!string.IsNullOrEmpty(_tdError))
+        {
+            <div class="banner banner-warning">@_tdError</div>
+        }
+        <div class="dialog-actions">
+            <button type="button" class="btn-refresh" @onclick="CancelThingDescriptionDialog">Cancel</button>
+            <button type="button" class="btn-trust" disabled="@string.IsNullOrWhiteSpace(_tdName)" @onclick="ConfirmThingDescriptionDialog">Create</button>
+        </div>
+    </div>
+}
+
+@code {
+    // Thing Descriptions are small JSON-LD documents; NodeSets can be large.
+    private const long MaxWoTFileSize = 16 * 1024 * 1024;
+    private const long MaxNodeSetFileSize = 128 * 1024 * 1024;
+
+    private bool _available;
+    private bool _busy;
+    private string _error;
+    private string _message;
+
+    private IReadOnlyList<WoTFileInfo> _files = [];
+    private string _selectedFile = string.Empty;
+    private Guid _wotInputKey = Guid.NewGuid();
+    private Guid _nodesetInputKey = Guid.NewGuid();
+
+    private WotMappingDocument _document;
+    private bool _dirty;
+
+    // The settings file the document was opened from; it is replaced when the document is applied.
+    private string _sourceSettingsFile;
+
+    private WotMappingProperty _editingProperty;
+    private string _nodeIdEditValue;
+
+    private List<AddressSpaceNode> _rootNodes;
+    private readonly HashSet<string> _expandedNodes = new(StringComparer.Ordinal);
+    private string _selectedNodeId;
+    private IReadOnlyList<NamespaceInfo> _namespaces = [];
+    private int _selectedNamespaceIndex = -1;
+
+    private AddressSpaceNode _draggedNode;
+    private WotMappingProperty _dropTarget;
+
+    private NodeMappingInfo _pendingMapping;
+    private WotMappingProperty _pendingProperty;
+    private string _selectedFieldPath;
+
+    private bool _showTdDialog;
+    private IReadOnlyList<string> _tdPlaceholders = [];
+    private readonly Dictionary<string, string> _tdValues = new(StringComparer.Ordinal);
+    private string _tdName;
+    private string _tdError;
+
+    private string _companionUri;
+    private IReadOnlyList<string> _availableModels = [];
+
+    /// <summary>Bound to the dropdown; kept as a string so "(none)" round-trips cleanly.</summary>
+    private string SelectedNamespace { get; set; } = "-1";
+
+    private int? HighlightNamespaceIndex => _selectedNamespaceIndex < 0 ? null : _selectedNamespaceIndex;
+
+    private string DownloadName => string.IsNullOrEmpty(_document?.FileName) ? "thing.jsonld" : _document.FileName;
+
+    // The dashboard has no JavaScript interop, so the document is downloaded from a data URI.
+    private string DownloadHref => _document is null
+        ? null
+        : "data:application/ld+json;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes(_document.Serialize()));
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReloadFiles();
+        await ReloadTreeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Listing the UA Cloud Library logs in to it, so it is done after the first render
+        // rather than holding the page up.
+        if (firstRender)
+        {
+            try
+            {
+                _availableModels = WotRegistryHost.Current is WotRegistryHost registry
+                    ? await registry.GetAvailableCompanionModelsAsync()
+                    : UANodeManager.Instance is UANodeManager manager
+                        ? await manager.GetAvailableCompanionModelsAsync()
+                        : [];
+                StateHasChanged();
+            }
+            catch (Exception)
+            {
+                // The list only feeds the suggestions; a namespace can still be typed in.
+            }
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _error = null;
+        _message = null;
+        ReloadFiles();
+        await ReloadTreeAsync();
+    }
+
+    private void ReloadFiles()
+    {
+        _files = Diagnostics.GetWoTFiles();
+    }
+
+    /// <summary>
+    /// Re-browses the type tree, keeping the branches the user had open: loading a
+    /// companion model adds types below folders that are already expanded.
+    /// </summary>
+    private async Task ReloadTreeAsync()
+    {
+        _available = AddressSpace.IsAvailable;
+        _namespaces = AddressSpace.GetNamespaces();
+
+        HashSet<string> previouslyExpanded = new(_expandedNodes, StringComparer.Ordinal);
+        _expandedNodes.Clear();
+        _rootNodes = null;
+
+        if (!_available)
+        {
+            return;
+        }
+
+        _rootNodes = (await AddressSpace.GetTypesRootNodesAsync()).ToList();
+
+        foreach (AddressSpaceNode root in _rootNodes)
+        {
+            previouslyExpanded.Add(root.Id);
+            await RestoreBranchAsync(root, previouslyExpanded);
+        }
+    }
+
+    private async Task RestoreBranchAsync(AddressSpaceNode node, HashSet<string> expanded)
+    {
+        if (!expanded.Contains(node.Id))
+        {
+            return;
+        }
+
+        node.Children = null;
+        await BrowseChildrenAsync(node);
+        _expandedNodes.Add(node.Id);
+
+        foreach (AddressSpaceNode child in node.Children)
+        {
+            await RestoreBranchAsync(child, expanded);
+        }
+    }
+
+    private async Task BrowseChildrenAsync(AddressSpaceNode node)
+    {
+        if (node.Children is not null)
+        {
+            return;
+        }
+
+        node.Children = (await AddressSpace.BrowseChildrenAsync(node.Id)).ToList();
+    }
+
+    private void SelectNode(AddressSpaceNode node) => _selectedNodeId = node.Id;
+
+    private void DragStart(AddressSpaceNode node) => _draggedNode = node;
+
+    private void DragLeave(WotMappingProperty property)
+    {
+        if (ReferenceEquals(_dropTarget, property))
+        {
+            _dropTarget = null;
+        }
+    }
+
+    private void OnNamespaceChanged()
+    {
+        _selectedNamespaceIndex = int.TryParse(SelectedNamespace, out int index) ? index : -1;
+    }
+
+    private void HighlightNamespace(string namespaceUri)
+    {
+        NamespaceInfo ns = _namespaces.FirstOrDefault(n => string.Equals(n.Uri, namespaceUri, StringComparison.Ordinal));
+        if (ns is not null)
+        {
+            _selectedNamespaceIndex = ns.Index;
+            SelectedNamespace = ns.Index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    // ---------- Loading WoT documents ----------
+
+    private void SelectWoTFile(ChangeEventArgs e)
+    {
+        _error = null;
+        _message = null;
+        _selectedFile = e.Value?.ToString() ?? string.Empty;
+
+        WoTFileInfo file = _files.FirstOrDefault(f => string.Equals(f.FileName, _selectedFile, StringComparison.Ordinal));
+        if (file is null)
+        {
+            return;
+        }
+
+        if (TryLoadDocument(file.RawJson, file.FileName))
+        {
+            _sourceSettingsFile = file.FileName;
+        }
+    }
+
+    private async Task OpenWoTFileAsync(InputFileChangeEventArgs e)
+    {
+        IBrowserFile file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _message = null;
+        _busy = true;
+
+        try
+        {
+            string contents;
+            using (StreamReader reader = new(file.OpenReadStream(MaxWoTFileSize)))
+            {
+                contents = await reader.ReadToEndAsync();
+            }
+
+            if (TryLoadDocument(contents, file.Name))
+            {
+                _sourceSettingsFile = null;
+                _selectedFile = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to open '{file.Name}': {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            _wotInputKey = Guid.NewGuid();
+        }
+    }
+
+    private bool TryLoadDocument(string json, string fileName)
+    {
+        try
+        {
+            WotMappingDocument document = WotMappingDocument.Parse(json);
+            document.FileName = fileName;
+
+            _document = document;
+            _dirty = false;
+            _editingProperty = null;
+            _dropTarget = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"'{fileName}' is not a valid WoT document: {ex.Message}";
+            return false;
+        }
+    }
+
+    // ---------- Mapping ----------
+
+    private async Task DropOnPropertyAsync(WotMappingProperty property)
+    {
+        _dropTarget = null;
+
+        AddressSpaceNode node = _draggedNode;
+        _draggedNode = null;
+
+        if (node is not null)
+        {
+            await MapNodeAsync(property, node.Id);
+        }
+    }
+
+    private Task MapSelectedAsync(WotMappingProperty property)
+    {
+        return string.IsNullOrEmpty(_selectedNodeId) ? Task.CompletedTask : MapNodeAsync(property, _selectedNodeId);
+    }
+
+    private async Task MapNodeAsync(WotMappingProperty property, string nodeId)
+    {
+        _error = null;
+        _message = null;
+
+        NodeMappingInfo mapping = await AddressSpace.GetNodeMappingAsync(nodeId);
+        if (!string.IsNullOrEmpty(mapping.Error))
+        {
+            _error = mapping.Error;
+            return;
+        }
+
+        if (mapping.IsComplex)
+        {
+            _pendingMapping = mapping;
+            _pendingProperty = property;
+
+            // Preselect the field the property is already mapped to, or the one it is named after.
+            _selectedFieldPath = mapping.Fields.FirstOrDefault(f => string.Equals(f.Path, property.MapByFieldPath, StringComparison.Ordinal))?.Path
+                ?? mapping.Fields.FirstOrDefault(f => string.Equals(f.Name, property.Name, StringComparison.OrdinalIgnoreCase))?.Path;
+            return;
+        }
+
+        ApplyMapping(property, mapping, null);
+    }
+
+    private void ConfirmFieldDialog()
+    {
+        if (_pendingMapping is not null && _pendingProperty is not null && !string.IsNullOrEmpty(_selectedFieldPath))
+        {
+            ApplyMapping(_pendingProperty, _pendingMapping, _selectedFieldPath);
+        }
+
+        CancelFieldDialog();
+    }
+
+    private void CancelFieldDialog()
+    {
+        _pendingMapping = null;
+        _pendingProperty = null;
+        _selectedFieldPath = null;
+    }
+
+    private void ApplyMapping(WotMappingProperty property, NodeMappingInfo mapping, string fieldPath)
+    {
+        property.ApplyMapping(mapping.TypeNodeId, fieldPath);
+        _document.DeclareNamespace(mapping.NamespaceUri);
+        _dirty = true;
+    }
+
+    private void ClearMapping(WotMappingProperty property)
+    {
+        property.ClearMapping();
+        _dirty = true;
+    }
+
+    private void BeginEditNodeId(WotMappingProperty property)
+    {
+        _editingProperty = property;
+        _nodeIdEditValue = property.MapToNodeId;
+    }
+
+    private void CommitNodeId(WotMappingProperty property)
+    {
+        if (!ReferenceEquals(_editingProperty, property))
+        {
+            return;
+        }
+
+        if (!string.Equals(property.MapToNodeId, _nodeIdEditValue?.Trim(), StringComparison.Ordinal))
+        {
+            property.SetNodeId(_nodeIdEditValue);
+            _dirty = true;
+        }
+
+        _editingProperty = null;
+    }
+
+    private void NodeIdKeyDown(KeyboardEventArgs e, WotMappingProperty property)
+    {
+        if (e.Key == "Enter")
+        {
+            CommitNodeId(property);
+        }
+        else if (e.Key == "Escape")
+        {
+            _editingProperty = null;
+        }
+    }
+
+    // ---------- Thing Model -> Thing Description ----------
+
+    private void OpenThingDescriptionDialog()
+    {
+        _tdPlaceholders = _document.FindPlaceholders();
+        _tdValues.Clear();
+        _tdName = _document.HasName && !_document.Name.Contains("{{", StringComparison.Ordinal) ? _document.Name : string.Empty;
+        _tdError = null;
+        _showTdDialog = true;
+    }
+
+    private void CancelThingDescriptionDialog()
+    {
+        _showTdDialog = false;
+        _tdError = null;
+    }
+
+    private void ConfirmThingDescriptionDialog()
+    {
+        try
+        {
+            string json = _document.CreateThingDescriptionJson(_tdValues, _tdName);
+            WotMappingDocument created = WotMappingDocument.Parse(json);
+            created.FileName = created.Name + ".jsonld";
+
+            _document = created;
+            _sourceSettingsFile = null;
+            _selectedFile = string.Empty;
+            _dirty = true;
+            _showTdDialog = false;
+            _message = $"Created the Thing Description '{created.Name}'. Map its properties, then press Save & Apply.";
+        }
+        catch (Exception ex)
+        {
+            _tdError = "The Thing Description could not be created: " + ex.Message;
+        }
+    }
+
+    // ---------- Applying ----------
+
+    /// <summary>
+    /// Replaces the asset's Thing Description with the mapped one through the same paths
+    /// the WoT Files page uses: the files that define the asset are unloaded (offboarding
+    /// it), the new document is imported (onboarding it and writing its settings file),
+    /// and the settings folder is re-imported into the WoT Connectivity registry, which
+    /// loads the companion models the projections name.
+    /// </summary>
+    private async Task SaveAndApplyAsync()
+    {
+        if (_document is null || _document.IsThingModel)
+        {
+            return;
+        }
+
+        _error = null;
+        _message = null;
+
+        if (!_document.HasName)
+        {
+            _error = "The Thing Description has no 'name'; the translator names the asset after it.";
+            return;
+        }
+
+        _busy = true;
+        string name = _document.Name;
+
+        try
+        {
+            UANodeManager manager = UANodeManager.Instance
+                ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+            string json = _document.Serialize();
+
+            List<WoTFileInfo> replaced = Diagnostics.GetWoTFiles()
+                .Where(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(f.FileName, _sourceSettingsFile, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (WoTFileInfo file in replaced)
+            {
+                if (!await manager.UnloadWoTFileAsync(file.FileName))
+                {
+                    throw new InvalidOperationException($"'{file.FileName}' could not be unloaded; see the server log for details.");
+                }
+            }
+
+            string settingsFile;
+            try
+            {
+                settingsFile = await manager.ImportWoTFileAsync(_document.FileName ?? name + ".jsonld", json);
+            }
+            catch
+            {
+                // Put the previous Thing Descriptions back, so a failed apply does not lose the asset.
+                foreach (WoTFileInfo file in replaced)
+                {
+                    try
+                    {
+                        await manager.ImportWoTFileAsync(file.FileName, file.RawJson);
+                    }
+                    catch (Exception)
+                    {
+                        // Best effort; the original error is reported.
+                    }
+                }
+
+                throw;
+            }
+
+            if (WotRegistryHost.Current is WotRegistryHost registry)
+            {
+                await registry.ImportSettingsFilesAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), CancellationToken.None);
+            }
+
+            _document.FileName = settingsFile;
+            _sourceSettingsFile = settingsFile;
+            _selectedFile = settingsFile;
+            _dirty = false;
+            _message = $"Saved '{settingsFile}' and onboarded the asset '{name}' with {_document.Properties.Count(p => p.IsMapped)} projection(s).";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to apply '{name}': {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            ReloadFiles();
+            await ReloadTreeAsync();
+        }
+    }
+
+    // ---------- Companion models ----------
+
+    // With the WoT Connectivity registry enabled, companion models are loaded the way its
+    // projections load them; otherwise the way onboarding a Thing Description does.
+    private static Task<bool> LoadCompanionModelAsync(string uri)
+        => WotRegistryHost.Current is WotRegistryHost registry ? registry.AddCompanionModelAsync(uri)
+            : UANodeManager.Instance is UANodeManager manager ? manager.AddCompanionModelAsync(uri)
+                : throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+    private static Task<IReadOnlyList<string>> LoadCompanionModelAsync(byte[] nodeSetXml)
+        => WotRegistryHost.Current is WotRegistryHost registry ? registry.AddCompanionModelAsync(nodeSetXml)
+            : UANodeManager.Instance is UANodeManager manager ? manager.AddCompanionModelAsync(nodeSetXml)
+                : throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+    private async Task AddCompanionModelAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_companionUri))
+        {
+            return;
+        }
+
+        string uri = _companionUri.Trim();
+        _error = null;
+        _message = null;
+        _busy = true;
+
+        try
+        {
+            if (await LoadCompanionModelAsync(uri))
+            {
+                _message = $"Loaded the companion model '{uri}'.";
+                await ReloadTreeAsync();
+                HighlightNamespace(uri);
+            }
+            else
+            {
+                _error = $"The companion model '{uri}' could not be found in the nodesets folder or the UA Cloud Library; see the server log for details.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load the companion model '{uri}': {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UploadNodeSetAsync(InputFileChangeEventArgs e)
+    {
+        IBrowserFile file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _message = null;
+        _busy = true;
+
+        try
+        {
+            byte[] xml;
+            using (MemoryStream buffer = new())
+            {
+                await using Stream stream = file.OpenReadStream(MaxNodeSetFileSize);
+                await stream.CopyToAsync(buffer);
+                xml = buffer.ToArray();
+            }
+
+            IReadOnlyList<string> loaded = await LoadCompanionModelAsync(xml);
+            if (loaded.Count == 0)
+            {
+                _error = $"No model of '{file.Name}' could be loaded; see the server log for details.";
+            }
+            else
+            {
+                _message = $"Loaded {string.Join(", ", loaded)} from '{file.Name}'.";
+                await ReloadTreeAsync();
+                HighlightNamespace(loaded[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load '{file.Name}': {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            _nodesetInputKey = Guid.NewGuid();
+        }
+    }
+
+    private static string DisplayName(WoTFileInfo file)
+        => !string.IsNullOrEmpty(file.Title) ? $"{file.Title} ({file.FileName})"
+            : !string.IsNullOrEmpty(file.Name) ? $"{file.Name} ({file.FileName})"
+                : file.FileName;
+}

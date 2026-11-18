@@ -448,6 +448,64 @@ namespace Opc.Ua.Edge.Translator.WotCon
         }
 
         /// <summary>
+        /// The companion models that can be loaded for target mappings: the ones in the local
+        /// nodesets folder and the ones in the UA Cloud Library (when configured), sorted.
+        /// </summary>
+        public Task<IReadOnlyList<string>> GetAvailableCompanionModelsAsync()
+        {
+            return UACloudLibraryClient.GetCompanionModelUrisAsync((_nodeSetResolver as CloudLibraryNodeSetResolver)?.Client);
+        }
+
+        /// <summary>
+        /// Loads a companion model, with its required models, into the address space the same
+        /// way a <c>uav:mapToType</c> naming it does, so its types can be mapped onto WoT
+        /// properties before any Thing uses them. Returns true when the namespace is in the
+        /// address space afterwards.
+        /// </summary>
+        public async Task<bool> AddCompanionModelAsync(string namespaceUri, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(namespaceUri))
+            {
+                return false;
+            }
+
+            namespaceUri = namespaceUri.Trim();
+
+            await _changeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await LoadCompanionModelAsync(namespaceUri, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _changeGate.Release();
+            }
+
+            return _server.NamespaceUris.GetIndex(namespaceUri) >= 0;
+        }
+
+        /// <summary>
+        /// Stores an uploaded NodeSet2 document in the local nodesets folder, where the
+        /// node-set resolver looks first, and loads the models it defines. Returns the model
+        /// URIs that are in the address space afterwards.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> AddCompanionModelAsync(byte[] nodeSetXml, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<string> models = await UACloudLibraryClient.SaveLocalNodesetAsync(nodeSetXml).ConfigureAwait(false);
+
+            List<string> loaded = [];
+            foreach (string model in models)
+            {
+                if (await AddCompanionModelAsync(model, cancellationToken).ConfigureAwait(false))
+                {
+                    loaded.Add(model);
+                }
+            }
+
+            return loaded;
+        }
+
+        /// <summary>
         /// Opens a fresh read-only stream over a companion NodeSet. The runtime NodeSet
         /// loader takes ownership: it disposes the stream once the NodeSet is parsed, and
         /// calls this again for every (re)load, so the stream must not be shared or cached.

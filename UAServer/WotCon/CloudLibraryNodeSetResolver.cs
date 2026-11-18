@@ -21,6 +21,9 @@ namespace Opc.Ua.Edge.Translator.WotCon
             _client = client ?? throw new ArgumentNullException(nameof(client));
         }
 
+        /// <summary>The Cloud Library client the resolver downloads through.</summary>
+        public UACloudLibraryClient Client => _client;
+
         public async ValueTask<Stream> TryResolveAsync(string namespaceUri, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(namespaceUri))

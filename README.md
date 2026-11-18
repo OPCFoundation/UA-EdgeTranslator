@@ -80,7 +80,7 @@ Other southbound asset interfaces can easily be added by implementing the IAsset
 
 There is also a tool provided (UA-WoTGenerator) that can convert from an OPC UA nodeset file (with instance variable nodes defined in it), an AutomationML file, a Beckhoff TwinCAT module class file, a Rockwell Studio 5000 tag CSV export, an Asset Admin Shell file, or a Siemens TIA Portal project file (via TIA Openness) to a WoT Thing Model file. See [Generating WoT Thing Descriptions from PLC Engineering Tools](#generating-wot-thing-descriptions-from-plc-engineering-tools) below for details.
 
-Additionally, a browser-based tool (UA-WoTMapper) is provided that lets you interactively map the properties of a WoT Thing Model onto the types of an OPC UA information models via drag & drop. See [UA WoT Mapper](#ua-wot-mapper) below for details.
+Additionally, a browser-based tool (UA-WoTMapper) is provided that lets you interactively map the properties of a WoT Thing Model onto the types of an OPC UA information models via drag & drop. See [UA WoT Mapper](#ua-wot-mapper) below for details. The same mapping is built into the translator's dashboard as the [Projections](#projections-projections) page, which maps onto the running server's types and applies the result directly.
 
 ## Installation
 
@@ -418,6 +418,15 @@ The loaded southbound protocol drivers — one row per registered driver, showin
 The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. An **Onboard All** button onboards every file in `settings/` whose asset is not loaded yet; files whose asset (identified by the Thing Description `name`) is already onboarded are skipped, and a summary reports how many were onboarded, skipped and failed. The selected file also has a **Delete** button that offboards its asset, if loaded — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. This is the only place the dashboard deletes Thing Description files. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
 
 ![UA Edge Translator — WoT Files page](docs/screenshots/diagnostics-wot-files.png)
+
+### Projections (`/projections`)
+
+The [UA WoT Mapper](#ua-wot-mapper) built into the dashboard: it maps the properties of a Thing Model or Thing Description onto OPC UA types by drag and drop, writing the `uav:mapToNodeId`, `uav:mapToType` and `uav:mapByFieldPath` projection terms, and applies the result to the running server. Unlike the standalone tool, it starts no OPC UA server of its own; it maps onto the types of the running translator.
+
+* **Left pane - WoT properties.** Choose a Thing Description from `settings/` in the **WoT file** dropdown, or open a Thing Model or Thing Description with **Open File**. Each property shows its target `NodeId`, which defaults to `s=<property name>` and can be edited inline by clicking it (**Enter** applies, **Escape** discards), and, once mapped, the OPC UA type and field path. **Remove mapping** removes a projection again. A Thing Model has a **Create Thing Description...** button that fills in its `{{placeholders}}`, removes the `tm:ThingModel` marker and sets the Thing Description `name`.
+* **Right pane - OPC UA types.** The server's `Types` folder, core types and every loaded companion model included, with the **Namespace** dropdown highlighting the types of one namespace. More companion models can be loaded into the running server: by namespace URI with **Load**, from the `nodesets/` folder or the [UA Cloud Library](https://uacloudlibrary.opcfoundation.org/) (when `UACLURL`, `UACLUsername` and `UACLPassword` are set), with their required models, or by uploading a `NodeSet2` file with **Upload NodeSet2**, which is stored in `nodesets/` too. While the [WoT Connectivity registry](#wot-connectivity-11-registry-preview) is enabled, they are loaded the way its projections load them; otherwise they are loaded the way onboarding a Thing Description loads the namespaces of its `@context`.
+* **Mapping.** Drag a DataType, an ObjectType or a Variable (which maps onto its DataType) onto a property, or select it in the tree and press **Map selected type** on the property. Structures are mapped through one of their fields and ObjectTypes through one of their variables, picked in a dialog that preselects the one named like the property. Each companion namespace a mapping uses is declared in the document's `@context`.
+* **Save & Apply.** Saves the Thing Description to `settings/<name>.jsonld` and onboards its asset with the projections, replacing the asset and file it was opened from, through the same code paths as the [WoT Files](#wot-files-wot) page. When the registry is enabled, the file is also imported into it. **Download** saves the mapped document locally instead.
 
 ### Certificates (`/certificates`)
 
@@ -835,6 +844,8 @@ Recommended workflow:
 ### Mapping WoT Properties to OPC UA Information Model Types
 
 `UA-WoTGenerator` (above) produces WoT Thing Models whose properties are addressed by their native protocol binding (Modbus register, S7 offset, EtherNet/IP tag, etc.). To also surface that data in a specific OPC UA information model type, the `UA-WoTMapper` tool in this repository is a browser-based application that makes this mapping a drag-and-drop exercise.
+
+> The same mapping is available inside UA Edge Translator itself, on the dashboard's [Projections](#projections-projections) page, which maps onto the running server's types and saves and onboards the result in one step.
 
 ![UA WoT Mapper](docs/screenshots/wotmapper.png)
 

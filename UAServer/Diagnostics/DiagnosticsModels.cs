@@ -120,6 +120,38 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
     /// <summary>One decoded field of a structure (UDT) value.</summary>
     public sealed record StructureFieldValue(string Name, string DataType, string Value);
 
+    /// <summary>A field a WoT property can be mapped onto: a structure field or an ObjectType's variable.</summary>
+    public sealed record MappingField(string Name, string Path, string DataType);
+
+    /// <summary>
+    /// What the Projections page needs to map a WoT property onto a node dropped from the
+    /// type tree: the type to write into uav:mapToType and, for structures and
+    /// ObjectTypes, the fields selectable as uav:mapByFieldPath.
+    /// </summary>
+    public sealed class NodeMappingInfo
+    {
+        public string NodeId { get; init; } = string.Empty;
+
+        public string DisplayName { get; init; } = string.Empty;
+
+        /// <summary>The type as an expanded node id, e.g. <c>nsu=http://opcfoundation.org/UA/PNEM/;i=3005</c>.</summary>
+        public string TypeNodeId { get; init; } = string.Empty;
+
+        /// <summary>The namespace URI of <see cref="TypeNodeId"/>; empty for the OPC UA core namespace.</summary>
+        public string NamespaceUri { get; init; } = string.Empty;
+
+        /// <summary>True for an ObjectType, which maps through one of its variables (see <see cref="Fields"/>).</summary>
+        public bool IsObjectType { get; init; }
+
+        /// <summary>True when a field path must be chosen from <see cref="Fields"/>.</summary>
+        public bool IsComplex => Fields.Count > 0;
+
+        public IReadOnlyList<MappingField> Fields { get; init; } = [];
+
+        /// <summary>Set instead of the above when the node cannot be mapped.</summary>
+        public string Error { get; init; }
+    }
+
     /// <summary>High-level snapshot rendered on the Overview page.</summary>
     public sealed class ServerOverview
     {

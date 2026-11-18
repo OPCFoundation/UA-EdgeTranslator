@@ -1389,6 +1389,201 @@ a {
     word-break: break-word;
 }
 
+/* ---------------------------------------------------------------------------
+   Projections (WoT property -> OPC UA type mapping)
+   --------------------------------------------------------------------------- */
+
+.projection-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+    .projection-actions a.btn-refresh {
+        text-decoration: none;
+    }
+
+.projection-body {
+    max-height: 700px;
+    overflow: auto;
+    padding-top: 14px;
+}
+
+.projection-file {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.projection-companion {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--separator);
+}
+
+.projection-companion-uri {
+    flex: 1 1 260px;
+    max-width: none;
+}
+
+.projection-hint {
+    margin: 0;
+    padding: 10px 22px 16px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    border-top: 1px solid var(--separator);
+}
+
+.as-tree-label.is-draggable {
+    cursor: grab;
+}
+
+.prop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prop-card {
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    background: var(--surface-2);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+    .prop-card.mapped {
+        border-color: rgba(52, 199, 89, 0.55);
+        background: rgba(52, 199, 89, 0.06);
+    }
+
+    .prop-card.drop-hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.25);
+    }
+
+.prop-name {
+    font-weight: 600;
+}
+
+.prop-type {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-tertiary);
+}
+
+.prop-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.prop-key {
+    display: inline-block;
+    min-width: 52px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.prop-nodeid {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.nodeid-value {
+    cursor: text;
+    border-bottom: 1px dashed var(--text-tertiary);
+    padding: 0 2px;
+    word-break: break-all;
+}
+
+    .nodeid-value:hover {
+        background: rgba(0, 113, 227, 0.08);
+    }
+
+.nodeid-edit {
+    flex: 1 1 auto;
+    min-width: 12rem;
+    font-size: 12px;
+    padding: 3px 6px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.prop-map {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #1c7a3a;
+    word-break: break-all;
+}
+
+.prop-drophint {
+    margin-top: 6px;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-tertiary);
+}
+
+.prop-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+    .prop-actions:empty {
+        display: none;
+    }
+
+.btn-xs {
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.field-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 45vh;
+    overflow: auto;
+}
+
+.field-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+    .field-option small {
+        margin-left: auto;
+        color: var(--text-tertiary);
+    }
+
+.td-placeholders {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 40vh;
+    overflow: auto;
+}
+
 @media (max-width: 1100px) {
     .explorer-grid {
         grid-template-columns: 1fr;
@@ -1439,6 +1634,8 @@ html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea,
 html[data-theme="dark"] .ns-select { background: var(--surface-2); color: var(--text); border-color: var(--separator); }
+html[data-theme="dark"] .prop-card.mapped { border-color: rgba(48, 209, 88, 0.5); background: rgba(48, 209, 88, 0.08); }
+html[data-theme="dark"] .prop-map { color: #8ce99a; }
 
 /* Theme toggle, fixed to the top right of the window. */
 .theme-toggle {

@@ -27,6 +27,14 @@
                 root.setAttribute('data-theme', next);
                 try { localStorage.setItem('theme', next); } catch (e2) { }
             });
+            // Firefox only starts a drag when the drag carries data, so give draggable
+            // Blazor-rendered elements (the Projections type tree) some.
+            document.addEventListener('dragstart', function (e) {
+                if (e.dataTransfer && e.target.closest && e.target.closest('[draggable="true"]')) {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    try { e.dataTransfer.setData('text/plain', e.target.getAttribute('title') || ''); } catch (e3) { }
+                }
+            });
         })();
     </script>
     <HeadOutlet @rendermode="InteractiveServer" />

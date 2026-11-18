@@ -79,6 +79,9 @@ namespace Opc.Ua.Edge.Translator
 
         private readonly UACloudLibraryClient _uacloudLibraryClient = new();
 
+        // Serializes companion models loaded from the dashboard, so two requests do not import one twice.
+        private readonly SemaphoreSlim _companionModelGate = new(1, 1);
+
         private readonly Dictionary<NodeId, FileManager> _fileManagers = new();
 
         private const string _cWotCon = "http://opcfoundation.org/UA/WoT-Con/";
@@ -767,6 +770,67 @@ namespace Opc.Ua.Edge.Translator
 
                 RaiseModelChangedEvent(ObjectIds.TypesFolder, ModelChangeStructureVerbMask.NodeAdded);
             }
+        }
+
+        /// <summary>
+        /// The companion models <see cref="AddCompanionModelAsync(string)"/> can load: the ones
+        /// in the local nodesets folder and in the UA Cloud Library (when configured).
+        /// </summary>
+        public Task<IReadOnlyList<string>> GetAvailableCompanionModelsAsync()
+        {
+            return UACloudLibraryClient.GetCompanionModelUrisAsync(_uacloudLibraryClient);
+        }
+
+        /// <summary>
+        /// Loads a companion model, with its required models, into this node manager the same
+        /// way a Thing Description's <c>@context</c> naming it does, so its types can be mapped
+        /// onto WoT properties before an asset uses them. A model that is already loaded is not
+        /// loaded again. Returns true when the namespace is loaded afterwards.
+        /// </summary>
+        public async Task<bool> AddCompanionModelAsync(string namespaceUri)
+        {
+            if (string.IsNullOrWhiteSpace(namespaceUri))
+            {
+                return false;
+            }
+
+            namespaceUri = namespaceUri.Trim();
+
+            await _companionModelGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (!NamespaceUris.Contains(namespaceUri))
+                {
+                    await AddNodesetAsync(namespaceUri).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _companionModelGate.Release();
+            }
+
+            return NamespaceUris.Contains(namespaceUri);
+        }
+
+        /// <summary>
+        /// Stores an uploaded NodeSet2 document in the local nodesets folder, where
+        /// <see cref="AddNodesetAsync"/> looks first, and loads the models it defines.
+        /// Returns the model URIs that are loaded afterwards.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> AddCompanionModelAsync(byte[] nodeSetXml)
+        {
+            IReadOnlyList<string> models = await UACloudLibraryClient.SaveLocalNodesetAsync(nodeSetXml).ConfigureAwait(false);
+
+            List<string> loaded = [];
+            foreach (string model in models)
+            {
+                if (await AddCompanionModelAsync(model).ConfigureAwait(false))
+                {
+                    loaded.Add(model);
+                }
+            }
+
+            return loaded;
         }
 
         public override void DeleteAddressSpace()

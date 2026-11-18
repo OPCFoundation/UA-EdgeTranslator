@@ -12,6 +12,7 @@
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using System.Xml;
 
     public class UACloudLibraryClient
     {
@@ -155,21 +156,7 @@
                 }
             }
 
-            if (_namespacesInCloudLibrary.Count == 0)
-            {
-                await _loginLock.WaitAsync().ConfigureAwait(false);
-                try
-                {
-                    if (_namespacesInCloudLibrary.Count == 0)
-                    {
-                        await LoginAsync().ConfigureAwait(false);
-                    }
-                }
-                finally
-                {
-                    _loginLock.Release();
-                }
-            }
+            await EnsureLoggedInAsync().ConfigureAwait(false);
 
             string filePath = null;
 
@@ -212,10 +199,7 @@
 
                         if (!string.IsNullOrEmpty(nameSpace?.Nodeset?.NodesetXml))
                         {
-                            Uri nodeSetUri = new Uri(namespaceUrl);
-                            var fileName = (nodeSetUri.Host + nodeSetUri.PathAndQuery).TrimEnd('/').Replace('/', '.');
-                            filePath = Path.Combine(Directory.GetCurrentDirectory(), "nodesets", fileName + ".nodeset2.xml");
-                            await File.WriteAllTextAsync(filePath, nameSpace.Nodeset.NodesetXml).ConfigureAwait(false);
+                            filePath = await SaveLocalNodesetAsync(namespaceUrl, nameSpace.Nodeset.NodesetXml).ConfigureAwait(false);
                             Log.Logger.Information("Downloaded nodeset {NamespaceUrl} from cloud library.", namespaceUrl);
 
                             lock (_nodesetCache)
@@ -253,6 +237,183 @@
                 }
 
                 return nodesetXml;
+            }
+        }
+
+        /// <summary>
+        /// The namespace URIs of the nodesets available in the UA Cloud Library (latest
+        /// version each), sorted. Empty when the Cloud Library is not configured
+        /// (UACLURL, UACLUsername, UACLPassword) or cannot be reached.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> GetNamespaceUrisAsync()
+        {
+            if (string.IsNullOrEmpty(_uaCloudLibraryUrl))
+            {
+                return [];
+            }
+
+            await EnsureLoggedInAsync().ConfigureAwait(false);
+
+            // LoginAsync fills the dictionary under the login lock; copy it under the same lock.
+            List<string> uris;
+            await _loginLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                uris = new(_namespacesInCloudLibrary.Keys);
+            }
+            finally
+            {
+                _loginLock.Release();
+            }
+
+            uris.Sort(StringComparer.Ordinal);
+            return uris;
+        }
+
+        /// <summary>
+        /// The model URIs of the nodesets in the local nodesets folder, sorted. Only each
+        /// file's model table is read, so large nodesets are not parsed in full.
+        /// </summary>
+        public static IReadOnlyList<string> GetLocalNamespaceUris()
+        {
+            SortedSet<string> uris = new(StringComparer.Ordinal);
+
+            string nodesetsDir = Path.Combine(Directory.GetCurrentDirectory(), "nodesets");
+            if (!Directory.Exists(nodesetsDir))
+            {
+                return [];
+            }
+
+            foreach (string file in Directory.GetFiles(nodesetsDir))
+            {
+                try
+                {
+                    using XmlReader reader = XmlReader.Create(file, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+                    while (reader.Read())
+                    {
+                        if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Model")
+                        {
+                            string uri = reader.GetAttribute("ModelUri");
+                            if (!string.IsNullOrEmpty(uri) && reader.Depth == 2)
+                            {
+                                uris.Add(uri);
+                            }
+                        }
+                        else if (reader.NodeType == XmlNodeType.EndElement && reader.LocalName == "Models")
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Could not read the model table of nodeset candidate file {File}; skipping.", file);
+                }
+            }
+
+            return [.. uris];
+        }
+
+        /// <summary>
+        /// The companion models that can be loaded: the ones in the local nodesets folder and,
+        /// when <paramref name="cloudLibrary"/> is given and configured, the ones in the UA
+        /// Cloud Library, sorted and without the OPC UA core namespace.
+        /// </summary>
+        public static async Task<IReadOnlyList<string>> GetCompanionModelUrisAsync(UACloudLibraryClient cloudLibrary)
+        {
+            SortedSet<string> uris = new(GetLocalNamespaceUris(), StringComparer.Ordinal);
+
+            if (cloudLibrary != null)
+            {
+                foreach (string uri in await cloudLibrary.GetNamespaceUrisAsync().ConfigureAwait(false))
+                {
+                    uris.Add(uri);
+                }
+            }
+
+            uris.Remove(Namespaces.OpcUa);
+            return [.. uris];
+        }
+
+        /// <summary>
+        /// Stores an uploaded NodeSet2 document in the local nodesets folder, named after the
+        /// first model it defines, and returns the model URIs it defines. Throws when the
+        /// document is not a NodeSet2 document or declares no model.
+        /// </summary>
+        public static async Task<IReadOnlyList<string>> SaveLocalNodesetAsync(byte[] nodeSetXml)
+        {
+            ArgumentNullException.ThrowIfNull(nodeSetXml);
+
+            UANodeSet nodeSet;
+            using (MemoryStream read = new(nodeSetXml, writable: false))
+            {
+                nodeSet = UANodeSet.Read(read);
+            }
+
+            List<string> models = [];
+            foreach (ModelTableEntry model in nodeSet.Models ?? [])
+            {
+                if (!string.IsNullOrEmpty(model.ModelUri))
+                {
+                    models.Add(model.ModelUri);
+                }
+            }
+
+            if (models.Count == 0)
+            {
+                throw new InvalidOperationException("The NodeSet2 document does not declare a model.");
+            }
+
+            string xml;
+            using (StreamReader reader = new(new MemoryStream(nodeSetXml, writable: false), Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
+            {
+                xml = await reader.ReadToEndAsync().ConfigureAwait(false);
+            }
+
+            await SaveLocalNodesetAsync(models[0], xml).ConfigureAwait(false);
+            return models;
+        }
+
+        /// <summary>
+        /// Stores a nodeset in the local nodesets folder, where <see cref="DownloadNodesetAsync"/>
+        /// finds it before asking the Cloud Library. The file is named after the namespace, so
+        /// storing a namespace again replaces its file. Returns the file path.
+        /// </summary>
+        public static async Task<string> SaveLocalNodesetAsync(string namespaceUrl, string nodesetXml)
+        {
+            Uri nodeSetUri = new Uri(namespaceUrl);
+            string fileName = (nodeSetUri.Host + nodeSetUri.PathAndQuery).TrimEnd('/').Replace('/', '.');
+            foreach (char invalid in Path.GetInvalidFileNameChars())
+            {
+                fileName = fileName.Replace(invalid, '_');
+            }
+
+            string nodesetsDir = Path.Combine(Directory.GetCurrentDirectory(), "nodesets");
+            Directory.CreateDirectory(nodesetsDir);
+
+            string filePath = Path.Combine(nodesetsDir, fileName + ".nodeset2.xml");
+            await File.WriteAllTextAsync(filePath, nodesetXml).ConfigureAwait(false);
+            return filePath;
+        }
+
+        private async Task EnsureLoggedInAsync()
+        {
+            if (_namespacesInCloudLibrary.Count > 0)
+            {
+                return;
+            }
+
+            await _loginLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (_namespacesInCloudLibrary.Count == 0)
+                {
+                    await LoginAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _loginLock.Release();
             }
         }
 

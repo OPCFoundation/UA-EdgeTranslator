@@ -45,8 +45,10 @@
                     <svg aria-hidden="true"><use href="icons/ua-node-icons.svg#@(string.IsNullOrEmpty(node.Icon) ? "unknown" : node.Icon)" /></svg>
                 </span>
 
-                <span class="as-tree-label @(selected ? "is-selected" : null) @(inNamespace ? "is-in-namespace" : null)"
+                <span class="as-tree-label @(selected ? "is-selected" : null) @(inNamespace ? "is-in-namespace" : null) @(Draggable ? "is-draggable" : null)"
                       title="@node.Id"
+                      draggable="@(Draggable ? "true" : null)"
+                      @ondragstart="() => DragStartAsync(node)"
                       @onclick="() => SelectAsync(node)">
                     @node.Text
                 </span>
@@ -65,8 +67,10 @@
                                       SelectedNodeId="@SelectedNodeId"
                                       HighlightNamespaceIndex="HighlightNamespaceIndex"
                                       NodeValues="NodeValues"
+                                      Draggable="Draggable"
                                       OnNodeExpand="OnNodeExpand"
-                                      OnNodeSelect="OnNodeSelect" />
+                                      OnNodeSelect="OnNodeSelect"
+                                      OnNodeDragStart="OnNodeDragStart" />
                 </div>
             }
         </li>
@@ -94,6 +98,12 @@
 
     /// <summary>Invoked when a node is clicked.</summary>
     [Parameter] public EventCallback<AddressSpaceNode> OnNodeSelect { get; set; }
+
+    /// <summary>When true, node labels can be dragged, e.g. onto a WoT property on the Projections page.</summary>
+    [Parameter] public bool Draggable { get; set; }
+
+    /// <summary>Invoked when a node label starts being dragged.</summary>
+    [Parameter] public EventCallback<AddressSpaceNode> OnNodeDragStart { get; set; }
 
     private readonly HashSet<string> _loadingNodes = new(StringComparer.Ordinal);
 
@@ -129,6 +139,14 @@
         if (OnNodeSelect.HasDelegate)
         {
             await OnNodeSelect.InvokeAsync(node);
+        }
+    }
+
+    private async Task DragStartAsync(AddressSpaceNode node)
+    {
+        if (Draggable && OnNodeDragStart.HasDelegate)
+        {
+            await OnNodeDragStart.InvokeAsync(node);
         }
     }
 

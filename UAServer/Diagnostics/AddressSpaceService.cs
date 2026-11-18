@@ -472,6 +472,196 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
         }
 
         /// <summary>
+        /// Returns the Types folder as the root of the Projections page's type tree, so it
+        /// shows the OPC UA types (core and every loaded companion model) a WoT property can
+        /// be mapped onto, without the instance hierarchy.
+        /// </summary>
+        public async Task<IReadOnlyList<AddressSpaceNode>> GetTypesRootNodesAsync(CancellationToken cancellationToken = default)
+        {
+            AddressSpaceNode root = await GetNodeAsync(ObjectIds.TypesFolder, cancellationToken).ConfigureAwait(false);
+
+            return root is null ? [] : [root];
+        }
+
+        /// <summary>
+        /// Resolves what mapping a WoT property onto <paramref name="nodeId"/> means: a
+        /// DataType maps directly (structures through one of their fields), a Variable maps
+        /// onto its DataType, and an ObjectType maps through one of its variables, matched
+        /// by display name like the registry's target-variable resolution does.
+        /// </summary>
+        public async Task<NodeMappingInfo> GetNodeMappingAsync(string nodeId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId) || !TryParseNodeId(nodeId, out NodeId parsed))
+            {
+                return new NodeMappingInfo { NodeId = nodeId ?? string.Empty, Error = "The node id could not be parsed." };
+            }
+
+            try
+            {
+                if (!TryGetServer(out IServerInternal server))
+                {
+                    return new NodeMappingInfo { NodeId = nodeId, Error = "The OPC UA server is not running." };
+                }
+
+                ArrayOf<ReadValueId> reads = new ReadValueId[]
+                {
+                    NewRead(parsed, Attributes.NodeClass),
+                    NewRead(parsed, Attributes.DisplayName),
+                    NewRead(parsed, Attributes.DataType)
+                };
+
+                ArrayOf<DataValue> values = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+                if (values.IsNull || values.Count < reads.Count || !values[0].WrappedValue.TryGetValue(out int rawNodeClass))
+                {
+                    return new NodeMappingInfo { NodeId = nodeId, Error = "The node could not be read." };
+                }
+
+                NodeClass nodeClass = (NodeClass)rawNodeClass;
+                string displayName = FormatValue(values[1]);
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    displayName = parsed.ToString();
+                }
+
+                NodeId typeId;
+                IReadOnlyList<MappingField> fields;
+                switch (nodeClass)
+                {
+                    case NodeClass.Variable:
+                        if (!values[2].WrappedValue.TryGetValue(out typeId) || typeId.IsNull)
+                        {
+                            return new NodeMappingInfo { NodeId = nodeId, DisplayName = displayName, Error = $"The variable {displayName} has no data type." };
+                        }
+
+                        fields = await GetStructureFieldsAsync(server, typeId, cancellationToken).ConfigureAwait(false);
+                        break;
+
+                    case NodeClass.DataType:
+                        typeId = parsed;
+                        fields = await GetStructureFieldsAsync(server, typeId, cancellationToken).ConfigureAwait(false);
+                        break;
+
+                    case NodeClass.ObjectType:
+                        typeId = parsed;
+                        fields = await GetObjectTypeVariablesAsync(server, typeId, cancellationToken).ConfigureAwait(false);
+                        if (fields.Count == 0)
+                        {
+                            return new NodeMappingInfo { NodeId = nodeId, DisplayName = displayName, Error = $"The ObjectType {displayName} has no variables a WoT property could be mapped onto." };
+                        }
+
+                        break;
+
+                    default:
+                        return new NodeMappingInfo { NodeId = nodeId, DisplayName = displayName, Error = $"{displayName} is a {nodeClass}; drag a DataType, an ObjectType or a Variable onto a WoT property." };
+                }
+
+                return new NodeMappingInfo
+                {
+                    NodeId = parsed.ToString(),
+                    DisplayName = displayName,
+                    TypeNodeId = ToExpandedNodeIdString(server, typeId),
+                    NamespaceUri = typeId.NamespaceIndex == 0 ? string.Empty : GetNamespaceUri(server, typeId.NamespaceIndex),
+                    IsObjectType = nodeClass == NodeClass.ObjectType,
+                    Fields = fields
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Debug(ex, "Failed to resolve the mapping of {NodeId} for the Projections page.", nodeId);
+
+                return new NodeMappingInfo { NodeId = nodeId, Error = "The node could not be read: " + ex.Message };
+            }
+        }
+
+        /// <summary>The fields of a structure DataType, from its DataTypeDefinition; empty for any other type.</summary>
+        private static async Task<IReadOnlyList<MappingField>> GetStructureFieldsAsync(IServerInternal server, NodeId dataTypeId, CancellationToken cancellationToken)
+        {
+            List<MappingField> fields = [];
+
+            ArrayOf<DataValue> values = await ReadAsync(server, new ReadValueId[] { NewRead(dataTypeId, Attributes.DataTypeDefinition) }, cancellationToken).ConfigureAwait(false);
+            if (values.IsNull || values.Count == 0
+                || !values[0].WrappedValue.TryGetValue(out ExtensionObject extension)
+                || !extension.TryGetValue(out StructureDefinition definition, null)
+                || definition.Fields.IsNull)
+            {
+                return fields;
+            }
+
+            foreach (StructureField field in definition.Fields)
+            {
+                string name = field.Name ?? string.Empty;
+                fields.Add(new MappingField(name, name, FormatTypeName(server, field.DataType)));
+            }
+
+            return fields;
+        }
+
+        /// <summary>
+        /// The variables an instance of the ObjectType carries: its own HasComponent and
+        /// HasProperty children. uav:mapByFieldPath names one of them by display name,
+        /// placeholders such as "&lt;MeasurementValue&gt;" included.
+        /// </summary>
+        private static async Task<IReadOnlyList<MappingField>> GetObjectTypeVariablesAsync(IServerInternal server, NodeId objectTypeId, CancellationToken cancellationToken)
+        {
+            List<(string Name, NodeId Id)> variables = [];
+
+            ArrayOf<ReferenceDescription> references = await BrowseAsync(server, objectTypeId, cancellationToken, ReferenceTypeIds.Aggregates).ConfigureAwait(false);
+            foreach (ReferenceDescription reference in references)
+            {
+                if (reference.NodeClass != NodeClass.Variable
+                    || (reference.ReferenceTypeId != ReferenceTypeIds.HasComponent && reference.ReferenceTypeId != ReferenceTypeIds.HasProperty))
+                {
+                    continue;
+                }
+
+                NodeId id = ExpandedNodeId.ToNodeId(reference.NodeId, server.NamespaceUris);
+                string name = reference.DisplayName.Text;
+                variables.Add((string.IsNullOrEmpty(name) ? reference.BrowseName.Name ?? string.Empty : name, id));
+            }
+
+            List<MappingField> fields = [];
+            if (variables.Count == 0)
+            {
+                return fields;
+            }
+
+            ArrayOf<ReadValueId> reads = variables.Select(v => NewRead(v.Id, Attributes.DataType)).ToArray();
+            ArrayOf<DataValue> dataTypes = await ReadAsync(server, reads, cancellationToken).ConfigureAwait(false);
+
+            for (int i = 0; i < variables.Count; i++)
+            {
+                string dataType = !dataTypes.IsNull && i < dataTypes.Count && dataTypes[i].WrappedValue.TryGetValue(out NodeId dataTypeId)
+                    ? FormatTypeName(server, dataTypeId)
+                    : string.Empty;
+
+                fields.Add(new MappingField(variables[i].Name, variables[i].Name, dataType));
+            }
+
+            return fields;
+        }
+
+        /// <summary>A built-in type by name (Double, String, ...), anything else as an expanded node id.</summary>
+        private static string FormatTypeName(IServerInternal server, NodeId dataTypeId)
+        {
+            if (dataTypeId.IsNull)
+            {
+                return string.Empty;
+            }
+
+            BuiltInType builtInType = TypeInfo.GetBuiltInType(dataTypeId);
+
+            return dataTypeId.NamespaceIndex == 0 && builtInType != BuiltInType.Null && builtInType != BuiltInType.ExtensionObject
+                ? builtInType.ToString()
+                : ToExpandedNodeIdString(server, dataTypeId);
+        }
+
+        /// <summary>A node id with its namespace URI, e.g. <c>nsu=http://opcfoundation.org/UA/PNEM/;i=3005</c>.</summary>
+        private static string ToExpandedNodeIdString(IServerInternal server, NodeId nodeId)
+        {
+            return NodeId.ToExpandedNodeId(nodeId, server.NamespaceUris).ToString() ?? nodeId.ToString();
+        }
+
+        /// <summary>
         /// Builds a single tree node for an arbitrary node id, used to seed the root.
         /// </summary>
         private async Task<AddressSpaceNode> GetNodeAsync(NodeId nodeId, CancellationToken cancellationToken)
