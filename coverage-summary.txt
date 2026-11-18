@@ -1,25 +1,25 @@
 Summary
-  Generated on: 11/16/2026 - 13:00:34
-  Coverage date: 11/16/2026 - 13:00:32
+  Generated on: 11/18/2026 - 10:00:05
+  Coverage date: 11/18/2026 - 10:00:03
   Parser: Cobertura
   Assemblies: 1
-  Classes: 61
-  Files: 55
-  Line coverage: 81.8%
-  Covered lines: 4817
-  Uncovered lines: 1067
-  Coverable lines: 5884
-  Total lines: 15729
-  Branch coverage: 73.1% (2543 of 3478)
-  Covered branches: 2543
-  Total branches: 3478
-  Method coverage: 94.6% (518 of 547)
-  Full method coverage: 61.4% (336 of 547)
-  Covered methods: 518
-  Fully covered methods: 336
-  Total methods: 547
+  Classes: 65
+  Files: 57
+  Line coverage: 82.4%
+  Covered lines: 5357
+  Uncovered lines: 1144
+  Coverable lines: 6501
+  Total lines: 17463
+  Branch coverage: 73.2% (2851 of 3890)
+  Covered branches: 2851
+  Total branches: 3890
+  Method coverage: 94.8% (603 of 636)
+  Full method coverage: 62.5% (398 of 636)
+  Covered methods: 603
+  Fully covered methods: 398
+  Total methods: 636
 
-UAEdgeTranslator                                                  81.8%
+UAEdgeTranslator                                                  82.4%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -36,15 +36,17 @@ UAEdgeTranslator                                                  81.8%
   Opc.Ua.Edge.Translator.Components.Pages.Explorer                87.1%
   Opc.Ua.Edge.Translator.Components.Pages.OpcUaSettings           92.8%
   Opc.Ua.Edge.Translator.Components.Pages.Overview                83.3%
+  Opc.Ua.Edge.Translator.Components.Pages.Projections             84.7%
   Opc.Ua.Edge.Translator.Components.Pages.WotFiles                72.5%
   Opc.Ua.Edge.Translator.Components.Shared.AddressSpaceTree        100%
   Opc.Ua.Edge.Translator.Components.Shared.JsonTreeView           95.6%
   Opc.Ua.Edge.Translator.Components.Shared.PageHeader              100%
   Opc.Ua.Edge.Translator.Components.Shared.StatusPill              100%
   Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceNode                0%
-  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          86.1%
+  Opc.Ua.Edge.Translator.Diagnostics.AddressSpaceService          86.6%
   Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsService             81%
   Opc.Ua.Edge.Translator.Diagnostics.DiagnosticsWebHost            100%
+  Opc.Ua.Edge.Translator.Diagnostics.NodeMappingInfo               100%
   Opc.Ua.Edge.Translator.Diagnostics.TelemetryCounters             100%
   Opc.Ua.Edge.Translator.DriverLoadContext                        84.2%
   Opc.Ua.Edge.Translator.FileManager                              81.3%
@@ -54,19 +56,21 @@ UAEdgeTranslator                                                  81.8%
   Opc.Ua.Edge.Translator.Models.AssetActionResult                  100%
   Opc.Ua.Edge.Translator.Models.AssetConnection                    100%
   Opc.Ua.Edge.Translator.Models.ThingDescriptionId                66.6%
+  Opc.Ua.Edge.Translator.Models.WotMappingDocument                92.3%
+  Opc.Ua.Edge.Translator.Models.WotMappingProperty                 100%
   Opc.Ua.Edge.Translator.NodeFactory                               100%
   Opc.Ua.Edge.Translator.OpcUaHosting                             62.5%
   Opc.Ua.Edge.Translator.Program                                  36.4%
   Opc.Ua.Edge.Translator.ProtocolDrivers.ProtocolDriverRegistry    100%
   Opc.Ua.Edge.Translator.TlsServerCertificates                    65.3%
-  Opc.Ua.Edge.Translator.UACloudLibraryClient                     95.4%
-  Opc.Ua.Edge.Translator.UANodeManager                              75%
+  Opc.Ua.Edge.Translator.UACloudLibraryClient                     89.5%
+  Opc.Ua.Edge.Translator.UANodeManager                            75.4%
   Opc.Ua.Edge.Translator.UANodeManagerFactory                      100%
   Opc.Ua.Edge.Translator.UAServer                                 97.4%
   Opc.Ua.Edge.Translator.VariantConversion                        93.7%
   Opc.Ua.Edge.Translator.WotCon.AssetEndpointPolicy               90.3%
   Opc.Ua.Edge.Translator.WotCon.AssetManagementAuthorization      93.3%
-  Opc.Ua.Edge.Translator.WotCon.CloudLibraryNodeSetResolver       90.9%
+  Opc.Ua.Edge.Translator.WotCon.CloudLibraryNodeSetResolver       91.6%
   Opc.Ua.Edge.Translator.WotCon.CreatingTargetVariableResolver    87.8%
   Opc.Ua.Edge.Translator.WotCon.DriverEventSubscription           90.2%
   Opc.Ua.Edge.Translator.WotCon.DriverWotBinder                   83.1%
@@ -79,5 +83,5 @@ UAEdgeTranslator                                                  81.8%
   Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
   Opc.Ua.Edge.Translator.WotCon.WotImportNormalizer               99.2%
   Opc.Ua.Edge.Translator.WotCon.WotMappingTypeModel               59.4%
-  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   88.2%
+  Opc.Ua.Edge.Translator.WotCon.WotRegistryHost                   88.9%
   Opc.Ua.Edge.Translator.WotRegistryHostedService                    0%
