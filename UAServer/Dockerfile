@@ -17,7 +17,7 @@ EXPOSE 19521
 # Blazor diagnostics dashboard (HTTP), served on a fixed port.
 EXPOSE 8081
 
-# The base image already ships with a non-root `app` user at UID/GID 1000
+# The base image already ships with a non-root `app` user at UID/GID 1654 ($APP_UID).
 # Running the server as root would let a compromised protocol driver (loaded as a plain
 # .NET assembly) trivially escalate inside the container, especially when
 # operators add --privileged for serial / Matter use cases.

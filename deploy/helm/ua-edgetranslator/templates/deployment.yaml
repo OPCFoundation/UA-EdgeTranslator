@@ -23,8 +23,8 @@ spec:
     spec:
       {{- $secretName := include "ua-edgetranslator.secretName" . }}
       {{- $renderFix := include "ua-edgetranslator.renderFixHostPath" . }}
-      {{- $uid := .Values.podSecurityContext.runAsUser | default 1000 }}
-      {{- $gid := .Values.podSecurityContext.runAsGroup | default 1000 }}
+      {{- $uid := .Values.podSecurityContext.runAsUser | default 1654 }}
+      {{- $gid := .Values.podSecurityContext.runAsGroup | default 1654 }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

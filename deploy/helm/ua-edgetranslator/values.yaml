@@ -138,11 +138,14 @@ resources:
 #    keep this at 1.
 replicaCount: 1
 
+# -- Must match the `app` user of the .NET base image (UID/GID 1654), which owns
+#    /app. Any other UID cannot write to /app (e.g. libplctag native library
+#    extraction by the Rockwell driver fails with "Access ... denied").
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
   seccompProfile:
     type: RuntimeDefault
 

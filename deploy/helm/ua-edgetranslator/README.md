@@ -245,7 +245,7 @@ To disable the driver pack entirely (e.g. drivers provisioned another way), set
 | `service.ports.<name>.enabled`        | `opcua` only                                        | Publish the port (`opcua`, `diagnostics`, `lorawan*`, `ocpp*`).       |
 | `resources`                           | `200m`/`256Mi` .. `1000m`/`1Gi`                     | Requests / limits.                                                     |
 | `replicaCount`                        | `1`                                                 | Replicas (keep at 1 for RWO / hostPath).                              |
-| `podSecurityContext`                  | non-root 1000, RuntimeDefault                       | Pod-level security context.                                            |
+| `podSecurityContext`                  | non-root 1654, RuntimeDefault                       | Pod-level security context.                                            |
 | `containerSecurityContext`            | drop ALL, no priv-esc                               | Container-level security context.                                      |
 | `fixHostPathPerms.enabled`            | `auto`                                              | `auto` \| `true` \| `false` for the chown init container.             |
 | `fixHostPathPerms.image`              | `busybox:1.36`                                      | Image for the chown init container.                                    |

@@ -46,17 +46,21 @@ spec:
     spec:
       nodeSelector:
         "kubernetes.io/os": linux
+      # Must match the `app` user baked into the .NET base image (UID/GID 1654),
+      # which owns /app. Running as any other UID makes /app read-only for the
+      # process, e.g. "Access to the path '/app/libplctag.so' is denied." when
+      # the Rockwell (eip) driver extracts its native library.
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
         seccompProfile:
           type: RuntimeDefault
       initContainers:
       # hostPath volumes are NOT subject to the pod-level fsGroup, so when a
       # node-side directory is wiped (or first created), kubelet recreates it
-      # as root:root mode 0755 and the non-root `app` user (UID 1000) inside
+      # as root:root mode 0755 and the non-root `app` user (UID 1654) inside
       # the main container cannot write into /app/pki, /app/logs, etc.
       # Symptom: "UnauthorizedAccessException: Access to the path
       # '/app/pki/own' is denied." during certificate generation at startup.
@@ -65,7 +69,7 @@ spec:
       - name: fix-hostpath-perms
         image: busybox:1.36
         imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "chown -R 1000:1000 /app/settings /app/pki /app/logs /app/nodesets"]
+        command: ["sh", "-c", "chown -R 1654:1654 /app/settings /app/pki /app/logs /app/nodesets"]
         securityContext:
           # Override the pod-level runAsNonRoot/runAsUser=1000 so we can chown
           # files that are currently owned by root.
