@@ -290,6 +290,8 @@ Alternatively, OPC Publisher exposes IoT Hub direct methods (`PublishNodes_V1`, 
 
 ## Mandatory Environment Variables
 
+All environment variables of UA Edge Translator itself can also be viewed and changed on the dashboard's [Settings](#settings-settings) page. Values saved there are persisted in `settings/translator-settings.json` and take precedence over the environment. Variables read by protocol drivers (for example `OPCUA_CLIENT_USERNAME`, `DISABLE_TLS` or `REDFISH_USERNAME`) are not shown there, as the drivers are independent of the translator; set them in the environment.
+
 * `OPCUA_USERNAME` - OPC UA username to connect to UA Edge Translator. **The server refuses to start if this is missing or empty.**
 * `OPCUA_PASSWORD` - OPC UA password to connect to UA Edge Translator. **The server refuses to start if this is missing or empty.**
 
@@ -433,6 +435,10 @@ The [UA WoT Mapper](#ua-wot-mapper) built into the dashboard: it maps the proper
 The OPC UA application certificate(s) and trust lists: per-certificate details (subject, issuer, validity period, signature algorithm, key size, serial number and thumbprint) plus the trusted-peer, issuer and rejected stores with their counts and on-disk paths. A banner appears while in provisioning mode. Each rejected certificate has a **Trust** button that moves it from `pki/rejected/certs` to `pki/trusted/certs`, so an untrusted client can be trusted from the dashboard without touching the filesystem; the running server honours the change on the next connection attempt. Conversely, each trusted-peer certificate has a **Delete** button that removes it from `pki/trusted/certs`, revoking that client's trust directly from the dashboard — the change is likewise picked up on the next connection attempt.
 
 ![UA Edge Translator — Certificates page](docs/screenshots/diagnostics-certificates.png)
+
+### Settings (`/settings`)
+
+Every environment variable of UA Edge Translator itself, grouped by area, with its description, its effective value and where that value comes from (**Environment**, **Saved** or **Not set**). Variables read by protocol drivers are not listed, as the drivers are independent of the translator. Secrets such as passwords and keys are never shown. **Edit** saves a new value to `settings/translator-settings.json`; a saved value **takes precedence over the environment variable**, also across restarts, because it is applied to the process environment at startup before anything reads it. Saving an empty value stores the setting as unset, overriding an environment value (not allowed for `OPCUA_USERNAME`, `OPCUA_PASSWORD` and `APP_NAME`). **Reset** removes the saved value and returns to the environment value. Settings that are read on use (for example `IGNORE_PROVISIONING_MODE` or `LICENSE_KEY`) take effect immediately; settings marked **Restart** are only read at startup, and a banner lists those changed since startup. Because the file can hold secrets, it is created readable by the owner only on Linux; protect the `settings` volume accordingly.
 
 ## How to build your own Protocol Driver
 

@@ -47,6 +47,14 @@
 
         public static async Task Main()
         {
+            // Creating the telemetry configures the Serilog logger used by the settings below.
+            _ = Telemetry;
+
+            // Apply settings persisted from the dashboard before anything reads the
+            // environment, so a persisted value beats the environment variable.
+            TranslatorSettings.Current = new TranslatorSettings(TranslatorSettings.DefaultFilePath);
+            TranslatorSettings.Current.Load();
+
             // Validate required configuration BEFORE we start standing up the
             // OPC UA stack. Missing credentials are an operational mistake, not
             // a runtime condition — fail fast with a clear message instead of
@@ -85,7 +93,11 @@
             DriverLoadContext.LoadProtocolDrivers();
             Log.Logger.Information("Loaded {DriversCount} protocol drivers.", Drivers.AllDrivers.Count());
 
-            string appName = Environment.GetEnvironmentVariable("APP_NAME") ?? "UAEdgeTranslator";
+            string appName = Environment.GetEnvironmentVariable("APP_NAME");
+            if (string.IsNullOrWhiteSpace(appName))
+            {
+                appName = "UAEdgeTranslator";
+            }
 
             // Host the OPC UA server, the WoT Connectivity registry and the diagnostics
             // dashboard in one web application. The configuration file is applied as-is,

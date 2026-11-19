@@ -1,0 +1,228 @@
+@page "/settings"
+@inject TranslatorSettings Store
+
+<PageTitle>Settings &middot; UA Edge Translator</PageTitle>
+
+<PageHeader Title="Settings" Subtitle="Environment variables of the translator" OnRefresh="Reload" />
+
+<div class="banner banner-info">
+    Values are read from the environment at startup. A value saved here is stored in <span class="mono">@Store.FilePath</span> and
+    <strong>takes precedence over the environment variable</strong>, also after a restart. <strong>Reset</strong> removes the saved value and
+    returns to the environment value. Settings marked <span class="pill pill-orange">Restart</span> are only read at startup.
+</div>
+
+@if (_pendingRestart.Count > 0)
+{
+    <div class="banner banner-warning">
+        <strong>Restart required</strong> &mdash; restart UA Edge Translator to apply: <span class="mono">@string.Join(", ", _pendingRestart)</span>.
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="banner @(_messageSuccess ? "banner-success" : "banner-warning")">@_message</div>
+}
+
+@if (_editing != null)
+{
+    <div class="dialog-backdrop" @onclick="CloseDialog"></div>
+    <form class="dialog" role="dialog" aria-modal="true" aria-labelledby="edit-setting-title" @onsubmit="Save" @onkeydown="OnDialogKeyDown">
+        <h2 id="edit-setting-title" class="dialog-title">Edit @_editing.Name</h2>
+        <p class="dialog-hint">@_editing.Description</p>
+
+        <label class="dialog-field">
+            <span>Value</span>
+            <input class="mono" type="@(_editing.IsSecret ? "password" : "text")" autocomplete="off" autofocus
+                   @bind="_value" @bind:event="oninput" placeholder="@(_editing.IsSecret ? "enter a new value" : DefaultText(_editing))" />
+        </label>
+
+        <p class="dialog-hint">
+            @if (!_editing.AllowsEmpty)
+            {
+                <span>This setting cannot be empty.</span>
+            }
+            else
+            {
+                <span>Saving an empty value stores the setting as unset, overriding any environment value.</span>
+            }
+            @if (_editing.RequiresRestart)
+            {
+                <span> Takes effect after a restart.</span>
+            }
+        </p>
+
+        @if (!string.IsNullOrEmpty(_dialogError))
+        {
+            <div class="banner banner-warning">@_dialogError</div>
+        }
+
+        <div class="dialog-actions">
+            <button type="button" class="btn-refresh" @onclick="CloseDialog">Cancel</button>
+            <button type="submit" class="btn-trust" disabled="@(!_editing.AllowsEmpty && string.IsNullOrWhiteSpace(_value))">Save</button>
+        </div>
+    </form>
+}
+
+@if (_states is null)
+{
+    <div class="loading">Loading&hellip;</div>
+}
+else
+{
+    @foreach (string category in TranslatorSettings.Categories)
+    {
+        <h2 class="section-title">@category</h2>
+        <div class="card table-card">
+            <table class="data-table settings-table">
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Value</th>
+                        <th>Source</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (SettingState state in _states.Where(s => s.Definition.Category == category))
+                    {
+                        @RenderRow(state)
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private IReadOnlyList<SettingState> _states;
+    private List<string> _pendingRestart = new();
+    private string _message;
+    private bool _messageSuccess;
+
+    private SettingDefinition _editing;
+    private string _value;
+    private string _dialogError;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload()
+    {
+        _states = Store.GetAll();
+        _pendingRestart = _states.Where(s => s.PendingRestart).Select(s => s.Name).ToList();
+    }
+
+    private RenderFragment RenderRow(SettingState state) => __builder =>
+    {
+        <tr>
+            <td>
+                <div class="mono strong">@state.Name</div>
+                <div class="muted setting-description">@state.Definition.Description</div>
+            </td>
+            <td class="mono setting-value">
+                @if (!state.HasValue)
+                {
+                    <span class="muted">@DefaultText(state.Definition)</span>
+                }
+                else if (state.Definition.IsSecret)
+                {
+                    <span>&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                }
+                else
+                {
+                    <span>@state.EffectiveValue</span>
+                }
+                @if (state.Source == SettingSource.Persisted && state.Definition.IsSecret is false && !string.IsNullOrEmpty(state.EnvironmentValue))
+                {
+                    <div class="muted setting-description">Environment: @state.EnvironmentValue</div>
+                }
+                else if (state.Source == SettingSource.Persisted && !string.IsNullOrEmpty(state.EnvironmentValue))
+                {
+                    <div class="muted setting-description">Overrides an environment value</div>
+                }
+            </td>
+            <td>
+                <div class="pill-row">
+                    <span class="pill @SourceClass(state.Source)">@SourceText(state.Source)</span>
+                    @if (state.Definition.RequiresRestart)
+                    {
+                        <span class="pill pill-orange" title="Only read at startup">@(state.PendingRestart ? "Restart pending" : "Restart")</span>
+                    }
+                </div>
+            </td>
+            <td class="table-action">
+                <button type="button" class="btn-trust" @onclick="() => OpenEdit(state)">Edit</button>
+                @if (state.IsPersisted)
+                {
+                    <button type="button" class="btn-refresh" @onclick="() => Reset(state.Name)" title="Remove the saved value and use the environment value">Reset</button>
+                }
+            </td>
+        </tr>
+    };
+
+    private void OpenEdit(SettingState state)
+    {
+        _editing = state.Definition;
+        _value = state.Definition.IsSecret ? string.Empty : state.EffectiveValue ?? string.Empty;
+        _dialogError = null;
+    }
+
+    private void CloseDialog()
+    {
+        _editing = null;
+        _value = null;
+        _dialogError = null;
+    }
+
+    private void OnDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseDialog();
+        }
+    }
+
+    private void Save()
+    {
+        if (_editing == null)
+        {
+            return;
+        }
+
+        SettingChangeResult result = Store.Set(_editing.Name, _value);
+        if (!result.Success)
+        {
+            _dialogError = result.Message;
+            return;
+        }
+
+        _message = result.Message;
+        _messageSuccess = true;
+        CloseDialog();
+        Reload();
+    }
+
+    private void Reset(string name)
+    {
+        SettingChangeResult result = Store.Reset(name);
+        _message = result.Message;
+        _messageSuccess = result.Success;
+        Reload();
+    }
+
+    private static string DefaultText(SettingDefinition definition) =>
+        string.IsNullOrEmpty(definition.DefaultValue) ? "not set" : "default: " + definition.DefaultValue;
+
+    private static string SourceText(SettingSource source) => source switch
+    {
+        SettingSource.Persisted => "Saved",
+        SettingSource.Environment => "Environment",
+        _ => "Not set"
+    };
+
+    private static string SourceClass(SettingSource source) => source switch
+    {
+        SettingSource.Persisted => "pill-blue",
+        SettingSource.Environment => "pill-green",
+        _ => "pill-gray"
+    };
+}

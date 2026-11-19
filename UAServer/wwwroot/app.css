@@ -1082,6 +1082,31 @@ a {
     color: var(--text);
 }
 
+/* ---------- Settings ---------- */
+.banner-info {
+    background: rgba(0, 113, 227, 0.08);
+    color: var(--text);
+    border: 1px solid rgba(0, 113, 227, 0.18);
+}
+
+.settings-table td:first-child {
+    width: 45%;
+}
+
+.setting-description {
+    font-family: inherit;
+    font-size: 12.5px;
+    margin-top: 3px;
+}
+
+.setting-value {
+    word-break: break-all;
+}
+
+.settings-table .table-action button + button {
+    margin-left: 6px;
+}
+
 .explorer-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1622,6 +1647,7 @@ html[data-theme="dark"] .code-block { background: #0b0b0c; color: #f5f5f7; borde
 html[data-theme="dark"] .banner-warning { background: rgba(255, 159, 10, 0.14); color: #ffd28a; border-color: rgba(255, 159, 10, 0.35); }
 html[data-theme="dark"] .banner-success { background: rgba(48, 209, 88, 0.14); color: #8ce99a; border-color: rgba(48, 209, 88, 0.35); }
 html[data-theme="dark"] .banner-namespace { background: rgba(10, 132, 255, 0.14); }
+html[data-theme="dark"] .banner-info { background: rgba(10, 132, 255, 0.14); border-color: rgba(10, 132, 255, 0.35); }
 html[data-theme="dark"] .pill-green { background: rgba(48, 209, 88, 0.18); color: #6ee08a; }
 html[data-theme="dark"] .pill-red { background: rgba(255, 69, 58, 0.18); color: #ff8a80; }
 html[data-theme="dark"] .pill-orange { background: rgba(255, 159, 10, 0.18); color: #ffc266; }

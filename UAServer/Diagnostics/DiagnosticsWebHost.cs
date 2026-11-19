@@ -89,6 +89,16 @@ namespace Opc.Ua.Edge.Translator.Diagnostics
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
             builder.Services.AddSingleton<DiagnosticsService>();
             builder.Services.AddSingleton<AddressSpaceService>();
+            builder.Services.AddSingleton(_ => TranslatorSettings.Current ?? LoadSettings());
+        }
+
+        // Hosts started without Program.Main (tests) load the settings on first use.
+        private static TranslatorSettings LoadSettings()
+        {
+            var settings = new TranslatorSettings(TranslatorSettings.DefaultFilePath);
+            settings.Load();
+            TranslatorSettings.Current = settings;
+            return settings;
         }
 
         /// <summary>Returns the dashboard listen URL for <paramref name="port"/>.</summary>
