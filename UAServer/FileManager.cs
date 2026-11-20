@@ -110,6 +110,14 @@ using System.Threading.Tasks;
             }
         }
 
+        // Callers hold the _handles lock. Clearing the change masks is what
+        // notifies monitored items; setting the value alone does not.
+        private void UpdateOpenCount()
+        {
+            _file.OpenCount.Value = (ushort)_handles.Count;
+            _file.OpenCount.ClearChangeMasks(_nodeManager?.SystemContext, false);
+        }
+
         private Handle Find(ISystemContext _context, uint fileHandle)
         {
             Handle handle;
@@ -182,7 +190,7 @@ using System.Threading.Tasks;
                 {
                     fileHandle = ++_nextHandle;
                     _handles.Add(fileHandle, handle);
-                    _file.OpenCount.Value = (ushort)_handles.Count;
+                    UpdateOpenCount();
                 }
             }
 
@@ -318,7 +326,7 @@ using System.Threading.Tasks;
                 if (!writing)
                 {
                     _handles.Remove(fileHandle);
-                    _file.OpenCount.Value = (ushort)_handles.Count;
+                    UpdateOpenCount();
                     open.Stream.Dispose();
                     return new CloseMethodStateResult { ServiceResult = ServiceResult.Good };
                 }
@@ -364,7 +372,7 @@ using System.Threading.Tasks;
                 }
 
                 _handles.Remove(fileHandle);
-                _file.OpenCount.Value = (ushort)_handles.Count;
+                UpdateOpenCount();
             }
 
             try

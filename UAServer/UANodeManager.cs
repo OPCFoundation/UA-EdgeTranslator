@@ -2171,7 +2171,19 @@ namespace Opc.Ua.Edge.Translator
                                 childVariable = InstantiateObjectTypeChild(objectInstance, objectType, assetNamespaceIndex, variableName, property.Value.OpcUaFieldPath, !property.Value.ReadOnly);
                                 if (childVariable != null)
                                 {
-                                    if (!_uaVariables.ContainsKey(variableId))
+                                    // variableId names the object instance, which several fields
+                                    // can share. Key later children by their own name, or their
+                                    // tags would update the first child instead and this child
+                                    // would never change after its initial value.
+                                    NodeState registered = _uaVariables.TryGetValue(variableId, out BaseDataVariableState registeredVariable)
+                                        ? registeredVariable
+                                        : _uaProperties.GetValueOrDefault(variableId);
+                                    if (registered != null && !ReferenceEquals(registered, childVariable))
+                                    {
+                                        variableId = $"{variableId}/{childVariable.BrowseName.Name}";
+                                    }
+
+                                    if (!_uaVariables.ContainsKey(variableId) && !_uaProperties.ContainsKey(variableId))
                                     {
                                         if (childVariable is BaseDataVariableState)
                                         {

@@ -314,6 +314,79 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
             Assert.Equal(DataTypeIds.UInt16, ((BaseVariableState)peObjectNumber).DataType);
         }
 
+        [Fact]
+        public async Task Several_fields_mapped_onto_one_object_instance_each_update_their_own_child()
+        {
+            // Both properties share uav:mapToNodeId and so one object instance. Each
+            // child used to be registered under the shared id, so the second field's
+            // tag fed the first child and the second child never changed.
+            string nodesets = System.IO.Path.Combine(_fixture.WorkingDirectory, "nodesets");
+            foreach (string name in new[] { "opcfoundation.org.UA.DI.nodeset2.xml", "opcfoundation.org.UA.PNEM.nodeset2.xml" })
+            {
+                string source = FindRepositoryFile(System.IO.Path.Combine("Tests", "UAEdgeTranslator.Tests", "TestData", "nodesets", name));
+                System.IO.File.Copy(source, System.IO.Path.Combine(nodesets, name), overwrite: true);
+            }
+
+            const string td = """
+                {
+                  "@context": [ "https://www.w3.org/2022/wot/td/v1.1", { "uav": "http://opcfoundation.org/UA/PNEM/" } ],
+                  "id": "urn:objfields",
+                  "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+                  "security": [ "nosec_sc" ],
+                  "@type": [ "Thing" ],
+                  "name": "objfields",
+                  "base": "mock://127.0.0.1:1234/1",
+                  "properties": {
+                    "Voltage": {
+                      "type": "number",
+                      "readOnly": true,
+                      "uav:mapToNodeId": "s=Meter",
+                      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+                      "uav:mapByFieldPath": "<MeasurementValue>",
+                      "forms": [
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "readproperty" ], "type": "xsd:float", "pollingTime": 1000 },
+                        { "href": "127.0.0.1/1?quantity=2", "op": [ "observeproperty" ], "type": "xsd:float", "pollingTime": 1000 }
+                      ]
+                    },
+                    "ObjectNumber": {
+                      "type": "integer",
+                      "readOnly": true,
+                      "uav:mapToNodeId": "s=Meter",
+                      "uav:mapToType": "nsu=http://opcfoundation.org/UA/PNEM/;i=1006",
+                      "uav:mapByFieldPath": "PeObjectNumber",
+                      "forms": [
+                        { "href": "127.0.0.2/1?quantity=1", "op": [ "readproperty", "observeproperty" ], "type": "xsd:short", "pollingTime": 1000 }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+            await UANodeManager.Instance.ImportWoTFileAsync("objfields.jsonld", td).ConfigureAwait(false);
+
+            var variables = (ConcurrentDictionary<string, BaseDataVariableState>)typeof(UANodeManager).GetField("_uaVariables", _privateInstance).GetValue(UANodeManager.Instance);
+            var properties = (ConcurrentDictionary<string, PropertyState>)typeof(UANodeManager).GetField("_uaProperties", _privateInstance).GetValue(UANodeManager.Instance);
+            var tags = (ConcurrentDictionary<string, List<AssetTag>>)typeof(UANodeManager).GetField("_tags", _privateInstance).GetValue(UANodeManager.Instance);
+
+            KeyValuePair<string, BaseDataVariableState> measurement = Assert.Single(variables, v => v.Key.StartsWith("objfields:", StringComparison.Ordinal));
+            KeyValuePair<string, PropertyState> objectNumber = Assert.Single(properties, p => p.Key.StartsWith("objfields:", StringComparison.Ordinal));
+            Assert.Equal("MeasurementValue", measurement.Value.BrowseName.Name);
+            Assert.Equal("PeObjectNumber", objectNumber.Value.BrowseName.Name);
+            Assert.Same(measurement.Value.Parent, objectNumber.Value.Parent);
+            Assert.NotEqual(measurement.Key, objectNumber.Key);
+
+            // The two forms of Voltage stay on one child; ObjectNumber gets its own.
+            List<AssetTag> assetTags = tags["objfields"];
+            Assert.Equal(2, assetTags.Count(t => t.Name == measurement.Key));
+            AssetTag numberTag = Assert.Single(assetTags, t => t.Name == objectNumber.Key);
+
+            Update(new AssetTag { Name = measurement.Key }, 230.5f, connected: true);
+            UpdateProperty(numberTag, (ushort)7, connected: true);
+
+            Assert.Equal(230.5d, Convert.ToDouble(VariantConversion.ToClrValue(measurement.Value.Value), System.Globalization.CultureInfo.InvariantCulture));
+            Assert.Equal(7, Convert.ToInt32(VariantConversion.ToClrValue(objectNumber.Value.Value), System.Globalization.CultureInfo.InvariantCulture));
+        }
+
         private static string FindRepositoryFile(string relativePath)
         {
             for (System.IO.DirectoryInfo dir = new(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
@@ -380,6 +453,14 @@ namespace Opc.Ua.Edge.Translator.Tests.Integration
         private static void Update(AssetTag tag, object value, bool connected)
         {
             MethodInfo method = typeof(UANodeManager).GetMethod("UpdateUAServerVariable", _privateInstance);
+            Assert.NotNull(method);
+
+            method.Invoke(UANodeManager.Instance, [tag, value, connected]);
+        }
+
+        private static void UpdateProperty(AssetTag tag, object value, bool connected)
+        {
+            MethodInfo method = typeof(UANodeManager).GetMethod("UpdateUAServerProperty", _privateInstance);
             Assert.NotNull(method);
 
             method.Invoke(UANodeManager.Instance, [tag, value, connected]);

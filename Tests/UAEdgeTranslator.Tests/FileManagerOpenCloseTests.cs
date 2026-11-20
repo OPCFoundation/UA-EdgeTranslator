@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator.Tests
     using Opc.Ua;
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.IO;
     using System.Reflection;
     using System.Runtime.CompilerServices;
@@ -144,6 +145,36 @@ namespace Opc.Ua.Edge.Translator.Tests
 
             Assert.Equal((StatusCode)StatusCodes.Good, sr.StatusCode);
             Assert.True(GetWritingFlag(fm));
+        }
+
+        [Fact]
+        public void OnOpen_and_close_report_the_open_count_to_subscribers()
+        {
+            FileManager fm = NewBareFileManager();
+
+            FieldInfo fileField = _sut.GetField("_file", BindingFlags.NonPublic | BindingFlags.Instance);
+            Opc.Ua.FileState file = (Opc.Ua.FileState)FormatterServicesShim.CreateOpenCountStub();
+            fileField.SetValue(fm, file);
+
+            // Monitored items are notified through OnStateChanged, which only fires
+            // when the change masks are cleared after the value is set.
+            List<ushort> published = [];
+            file.OpenCount.OnStateChanged = (context, node, changes) =>
+            {
+                if ((changes & NodeStateChangeMasks.Value) != 0)
+                {
+                    published.Add(file.OpenCount.Value);
+                }
+            };
+
+            MethodInfo onOpen = _sut.GetMethod("OnOpen", BindingFlags.NonPublic | BindingFlags.Instance);
+            object[] args = new object[] { null, null, null, (byte)1, 0u };
+            Assert.Equal((StatusCode)StatusCodes.Good, ((ServiceResult)onOpen.Invoke(fm, args)).StatusCode);
+
+            CloseMethodStateResult closed = AsyncHandlerInvoker.Invoke<CloseMethodStateResult>(fm, "OnCloseAsync", null, null, NodeId.Null, (uint)args[4], System.Threading.CancellationToken.None);
+            Assert.Equal((StatusCode)StatusCodes.Good, closed.ServiceResult.StatusCode);
+
+            Assert.Equal([(ushort)1, (ushort)0], published);
         }
 
         [Fact]

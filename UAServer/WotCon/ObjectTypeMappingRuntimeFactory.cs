@@ -8,6 +8,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
     using System.Collections.Immutable;
     using System.Threading;
     using System.Threading.Tasks;
+    using WoTBindingCapabilityEnum = global::Opc.Ua.WotCon.WoTBindingCapabilityEnum;
 
     /// <summary>
     /// Rewrites WoT Connectivity 1.02 ObjectType target mappings in the binding
@@ -359,16 +360,21 @@ namespace Opc.Ua.Edge.Translator.WotCon
             ImmutableArray<WotCompiledForm>.Builder forms = ImmutableArray.CreateBuilder<WotCompiledForm>(plan.CompiledForms.Length);
             foreach (WotCompiledForm form in plan.CompiledForms)
             {
+                WotCompiledForm result = form;
+
                 WotTargetMappingDescriptor mapping = _resolver.RewriteObjectTypeMapping(form.TargetMapping);
                 if (!ReferenceEquals(mapping, form.TargetMapping))
                 {
-                    forms.Add(form.WithTargetMapping(mapping));
-                    changed = true;
+                    result = result.WithTargetMapping(mapping);
                 }
-                else
+
+                if (IsObserveSharingReadForm(plan, form))
                 {
-                    forms.Add(form);
+                    result = WithJsonPointer(result, form.JsonPointer + ObservePointerSuffix);
                 }
+
+                changed |= !ReferenceEquals(result, form);
+                forms.Add(result);
             }
 
             if (!changed)
@@ -379,6 +385,64 @@ namespace Opc.Ua.Edge.Translator.WotCon
             return new WotBindingPlan(plan.ResourceXid, plan.Capabilities, forms.MoveToImmutable(), plan.UnsupportedForms, plan.Diagnostics)
                 .WithProjectedAffordances(plan.ProjectedAffordances)
                 .WithDeclarationContext(plan.IsDeclarationContext);
+        }
+
+        private const string ObservePointerSuffix = "/op";
+
+        /// <summary>
+        /// Whether <paramref name="form"/> is the <c>observeproperty</c> half of a driver
+        /// form that also serves <c>readproperty</c>, which is how most Thing Descriptions
+        /// author an observable property.
+        /// </summary>
+        /// <remarks>
+        /// The registry treats an observe form that shares its authored form (JSON
+        /// Pointer) with the read form as served by the read handler and wires no
+        /// observation for it. Driver reads only run on demand, and the projection's
+        /// monitored items are not sampled, so a subscriber got the initial value and no
+        /// update after it. A distinct pointer makes the registry wire the observe form,
+        /// whose driver channel polls the asset and pushes each value to subscribers.
+        /// </remarks>
+        private static bool IsObserveSharingReadForm(WotBindingPlan plan, WotCompiledForm form)
+        {
+            if (form.Operation != WoTBindingCapabilityEnum.ObserveProperty
+                || !Equals(form.Binding, DriverWotBinder.BinderIdentity)
+                || string.IsNullOrEmpty(form.JsonPointer))
+            {
+                return false;
+            }
+
+            foreach (WotCompiledForm other in plan.CompiledForms)
+            {
+                if (other.Operation == WoTBindingCapabilityEnum.ReadProperty
+                    && other.AffordanceKind == form.AffordanceKind
+                    && string.Equals(other.AffordanceName, form.AffordanceName, StringComparison.Ordinal)
+                    && string.Equals(other.JsonPointer, form.JsonPointer, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static WotCompiledForm WithJsonPointer(WotCompiledForm form, string jsonPointer)
+        {
+            return new WotCompiledForm(
+                form.Binding,
+                form.AffordanceKind,
+                form.AffordanceName,
+                jsonPointer,
+                form.Operation,
+                form.OpToken,
+                form.Endpoint,
+                form.Addressing,
+                form.OperationInfo,
+                form.Payload,
+                form.Security,
+                form.IsExecutable,
+                form.TargetMapping,
+                form.EventSelection,
+                form.SecurityFloor);
         }
     }
 }
