@@ -417,7 +417,7 @@ The loaded southbound protocol drivers — one row per registered driver, showin
 
 ### WoT Files (`/wot`)
 
-The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. An **Onboard All** button onboards every file in `settings/` whose asset is not loaded yet; files whose asset (identified by the Thing Description `name`) is already onboarded are skipped, and a summary reports how many were onboarded, skipped and failed. The selected file also has a **Delete** button that offboards its asset, if loaded — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. This is the only place the dashboard deletes Thing Description files. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
+The loaded Thing Descriptions. The left pane lists every `*.jsonld` file in `settings/`; selecting one shows its parsed summary (name, description, base URI, property and action counts, size and last-modified time) and the document itself in either a collapsible **Tree** view — the `properties`, `actions` and `events` maps are expanded one level by default so each affordance is visible, while everything else starts collapsed — or a **Raw** JSON-LD view. An **Import WoT File** button in the page header opens a file picker and onboards the chosen Thing Description into the running server: it is parsed, its asset and address-space nodes are created, and the file is saved to `settings/` so it persists across restarts and appears in the list. The file picker also accepts **Thing Models** (`tm:ThingModel`, for example the `*.tm.jsonld` files produced by [UA-WoTGenerator](#generating-wot-thing-descriptions-from-plc-engineering-tools) or an [LLM](#option-b-generate-the-thing-description-from-the-user-manual-using-an-llm)), and Thing Descriptions that still contain `{{placeholders}}`. These cannot be onboarded as they are, so a **Create Thing Description** dialog opens instead. It lists every placeholder found in the document with an input for its value, and asks for the Thing Description **Name**, which names the asset, its `settings/<name>.jsonld` file and its OPC UA namespace (letters, digits, `.`, `_` and `-`). The name is prefilled when the document already has one without placeholders. **Create & Import** substitutes the values, removes the `tm:ThingModel` marker, sets the name, and imports the resulting Thing Description like any other file. **Cancel** imports nothing. An **Onboard All** button onboards every file in `settings/` whose asset is not loaded yet; files whose asset (identified by the Thing Description `name`) is already onboarded are skipped, and a summary reports how many were onboarded, skipped and failed. The selected file also has a **Delete** button that offboards its asset, if loaded — removing the OPC UA nodes, disconnecting the southbound driver and pruning its mapped tags — and deletes the `*.jsonld` file from `settings/`. This is the only place the dashboard deletes Thing Description files. Both actions reuse the same onboarding/teardown code paths as the OPC UA control interface, and the list refreshes automatically.
 
 ![UA Edge Translator — WoT Files page](docs/screenshots/diagnostics-wot-files.png)
 
@@ -634,7 +634,7 @@ Protocol driver allow-list /app/drivers/drivers.allowlist.json not found; loadin
 
 ## Generating WoT Thing Descriptions from PLC Engineering Tools
 
-The `UA-WoTGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in.
+The `UA-WoTGenerator` tool in this repository converts data exported from common PLC engineering tools into WoT Thing Model files (`*.tm.jsonld`) that UA Edge Translator can consume after the placeholders (e.g. `{{address}}`, `{{port}}`, `{{name}}`) have been filled in. The dashboard's [WoT Files](#wot-files-wot) page does this for you: import the Thing Model there and enter the placeholder values in its **Create Thing Description** dialog.
 
 It currently supports input from:
 
@@ -843,6 +843,8 @@ Recommended workflow:
 5. Replace the `{{name}}`, `{{address}}` and `{{port}}` placeholders with the real values for your asset (Eclipse's Edi{td}or WoT-file editor does this automatically for you).
 6. Upload the file to UA Edge Translator using the OPC UA File API exposed under the asset node (or drop it into `/app/settings`) and let the matching protocol driver onboard the asset.
 
+   Alternatively, skip step 5 and import the Thing Model directly with **Import WoT File** on the dashboard's [WoT Files](#wot-files-wot) page. It asks for the placeholder values and the asset name, creates the Thing Description and onboards it.
+
 > **Important**: an LLM can misread tables, especially in scanned PDFs, multi‑column layouts or manuals with several variants of the same register map. Always validate the produced Thing Description against the manual and against a live test read from the asset before deploying it to production.
 
 ## UA WoT Mapper
@@ -920,7 +922,7 @@ docker build -t ua-wotmapper .
 docker run -d --name ua-wotmapper -p 8080:8080 ua-wotmapper
 ```
 
-The resulting mapped WoT Thing Model can then be converted into a Thing Description by filling in any placeholders and subsequently uploaded to UA Edge Translator.
+The resulting mapped WoT Thing Model can then be converted into a Thing Description by filling in any placeholders and subsequently uploaded to UA Edge Translator, for example by importing the Thing Model on the dashboard's [WoT Files](#wot-files-wot) page, which asks for the placeholder values and creates the Thing Description for you.
 
 ## Threat Model and Security Considerations
 
