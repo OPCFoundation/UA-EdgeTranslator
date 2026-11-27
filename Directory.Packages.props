@@ -20,7 +20,7 @@
     <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua.WotCon.Bindings" Version="2.0.2-preview.300" />
     <!-- Logging -->
     <PackageVersion Include="Serilog" Version="4.4.0" />
-    <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="11.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="log4net" Version="3.6.0" />
