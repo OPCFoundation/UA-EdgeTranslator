@@ -2,6 +2,7 @@
 @using System.IO
 @using Newtonsoft.Json.Linq
 @using Opc.Ua.Edge.Translator
+@using Opc.Ua.Edge.Translator.Models
 @inject DiagnosticsService Diagnostics
 @implements IDisposable
 
@@ -9,7 +10,7 @@
 
 <PageHeader Title="WoT Files" Subtitle="Loaded Thing Descriptions" OnRefresh="Reload">
     <Actions>
-        <label class="btn-refresh import-wot-btn @(_importing ? "is-busy" : null)" title="Import a Thing Description (.jsonld) file">
+        <label class="btn-refresh import-wot-btn @(_importing ? "is-busy" : null)" title="Import a Thing Description or Thing Model (.jsonld) file">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <path d="M7 10l5 5 5-5" />
@@ -134,6 +135,46 @@ else
     </div>
 }
 
+@if (_thingModel is not null)
+{
+    <div class="dialog-backdrop" @onclick="CancelThingModelDialog"></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tm-dialog-title">
+        <h2 id="tm-dialog-title" class="dialog-title">Create Thing Description</h2>
+        <p class="dialog-hint"><span class="mono">@_thingModelFileName</span> is a Thing Model.</p>
+        @if (_tmPlaceholders.Count == 0)
+        {
+            <p class="dialog-hint">The Thing Model has no placeholders; the Thing Description is created by removing its <span class="mono">tm:ThingModel</span> marker.</p>
+        }
+        else
+        {
+            <p class="dialog-hint">Provide a value for each Thing Model placeholder.</p>
+            <div class="td-placeholders">
+                @foreach (string name in _tmPlaceholders)
+                {
+                    <label class="dialog-field">
+                        <span class="mono">@name</span>
+                        <input class="mono" value="@(_tmValues.TryGetValue(name, out string value) ? value : string.Empty)"
+                               @onchange="e => _tmValues[name] = e.Value?.ToString() ?? string.Empty" />
+                    </label>
+                }
+            </div>
+        }
+        <label class="dialog-field">
+            <span>Name</span>
+            <input class="mono tm-name" @bind="_tmName" @bind:event="oninput" placeholder="letters, digits, '.', '_' and '-'" />
+        </label>
+        <p class="dialog-hint">The name identifies the asset, its settings file and its OPC UA namespace.</p>
+        @if (!string.IsNullOrEmpty(_tmError))
+        {
+            <div class="banner banner-warning">@_tmError</div>
+        }
+        <div class="dialog-actions">
+            <button type="button" class="btn-refresh" disabled="@_importing" @onclick="CancelThingModelDialog">Cancel</button>
+            <button type="button" class="btn-trust tm-create" disabled="@(_importing || string.IsNullOrWhiteSpace(_tmName))" @onclick="ConfirmThingModelDialogAsync">@(_importing ? "Importing\u2026" : "Create & Import")</button>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<WoTFileInfo> _files;
     private WoTFileInfo _selected;
@@ -147,6 +188,14 @@ else
     private string _importMessage;
     private Guid _inputKey = Guid.NewGuid();
     private PeriodicTimer _timer;
+
+    // Thing Model -> Thing Description dialog, open while _thingModel is set.
+    private WotMappingDocument _thingModel;
+    private string _thingModelFileName;
+    private IReadOnlyList<string> _tmPlaceholders = [];
+    private readonly Dictionary<string, string> _tmValues = new(StringComparer.Ordinal);
+    private string _tmName;
+    private string _tmError;
 
     protected override void OnInitialized()
     {
@@ -213,9 +262,6 @@ else
 
         try
         {
-            UANodeManager manager = UANodeManager.Instance
-                ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
-
             // Thing Descriptions are small JSON-LD documents; cap the read at 16 MB.
             string contents;
             using (StreamReader reader = new(file.OpenReadStream(16 * 1024 * 1024)))
@@ -223,19 +269,12 @@ else
                 contents = await reader.ReadToEndAsync();
             }
 
-            string importedFileName = await manager.ImportWoTFileAsync(file.Name, contents);
-
-            Reload();
-
-            WoTFileInfo imported = _files?.FirstOrDefault(
-                f => string.Equals(f.FileName, importedFileName, StringComparison.OrdinalIgnoreCase));
-
-            if (imported is not null)
+            if (TryOpenThingModelDialog(file.Name, contents))
             {
-                Select(imported);
+                return;
             }
 
-            _importMessage = $"Imported '{file.Name}' successfully.";
+            await ImportContentsAsync(file.Name, contents);
         }
         catch (Exception ex)
         {
@@ -246,6 +285,96 @@ else
             _importing = false;
             // Reset the file input so the same file can be selected again.
             _inputKey = Guid.NewGuid();
+        }
+    }
+
+    private async Task ImportContentsAsync(string fileName, string contents)
+    {
+        UANodeManager manager = UANodeManager.Instance
+            ?? throw new InvalidOperationException("The OPC UA server is not ready yet. Please try again in a moment.");
+
+        string importedFileName = await manager.ImportWoTFileAsync(fileName, contents);
+
+        Reload();
+
+        WoTFileInfo imported = _files?.FirstOrDefault(
+            f => string.Equals(f.FileName, importedFileName, StringComparison.OrdinalIgnoreCase));
+
+        if (imported is not null)
+        {
+            Select(imported);
+        }
+
+        _importMessage = $"Imported '{fileName}' successfully.";
+    }
+
+    // ---------- Thing Model -> Thing Description ----------
+
+    /// <summary>
+    /// A Thing Model cannot be onboarded as is: its placeholders ("{{NAME}}") need real
+    /// values first, like in the UA-WoTMapper tool. Opens the dialog that asks for them
+    /// when <paramref name="contents"/> is a Thing Model or still has placeholders.
+    /// </summary>
+    private bool TryOpenThingModelDialog(string fileName, string contents)
+    {
+        WotMappingDocument document;
+        try
+        {
+            document = WotMappingDocument.Parse(contents);
+        }
+        catch (Exception)
+        {
+            // Not a JSON object; the regular import reports why.
+            return false;
+        }
+
+        IReadOnlyList<string> placeholders = document.FindPlaceholders();
+        if (!document.IsThingModel && placeholders.Count == 0)
+        {
+            return false;
+        }
+
+        _thingModel = document;
+        _thingModelFileName = fileName;
+        _tmPlaceholders = placeholders;
+        _tmValues.Clear();
+        _tmName = document.HasName && !document.Name.Contains("{{", StringComparison.Ordinal) ? document.Name : string.Empty;
+        _tmError = null;
+        return true;
+    }
+
+    private void CancelThingModelDialog()
+    {
+        _thingModel = null;
+        _tmError = null;
+    }
+
+    private async Task ConfirmThingModelDialogAsync()
+    {
+        if (_thingModel is null || string.IsNullOrWhiteSpace(_tmName))
+        {
+            return;
+        }
+
+        _importing = true;
+        _tmError = null;
+        _importError = null;
+        _importMessage = null;
+
+        try
+        {
+            string json = _thingModel.CreateThingDescriptionJson(_tmValues, _tmName);
+            await ImportContentsAsync(_thingModelFileName, json);
+            _thingModel = null;
+        }
+        catch (Exception ex)
+        {
+            // Keep the dialog open so the values can be corrected.
+            _tmError = $"Failed to import '{_thingModelFileName}': {ex.Message}";
+        }
+        finally
+        {
+            _importing = false;
         }
     }
 

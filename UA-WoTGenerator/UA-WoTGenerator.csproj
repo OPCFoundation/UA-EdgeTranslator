@@ -9,6 +9,15 @@
   </PropertyGroup>
 
   <!--
+    net48 is required by TIA Portal Openness. OPCFoundation.NetStandard.Opc.Ua.Core
+    pulls in Microsoft.Extensions.* 10.x transitively, which warns on every
+    .NET Framework target although its netstandard2.0 assets work there.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+  </PropertyGroup>
+
+  <!--
     Path to a local TIA Portal Openness install. Override on the command line:
       dotnet build /p:SiemensTIAPortalPath="C:\Program Files\Siemens\Automation\Portal V16"
     The default targets V21, but V15.1, V16, V17, V18, V19 and V20 are all

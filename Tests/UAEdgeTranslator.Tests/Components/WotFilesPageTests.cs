@@ -49,6 +49,34 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             }
             """;
 
+        private const string ThingModel = """
+            {
+              "@context": [ "https://www.w3.org/2022/wot/td/v1.1" ],
+              "@type": [ "tm:ThingModel" ],
+              "id": "urn:meter:{{DEVICE_IP}}",
+              "securityDefinitions": { "nosec_sc": { "scheme": "nosec" } },
+              "security": [ "nosec_sc" ],
+              "name": "meter-{{DEVICE_IP}}",
+              "title": "Meter Model",
+              "base": "mock://{{DEVICE_IP}}:1234/{{ UNIT }}",
+              "properties": {
+                "temperature": {
+                  "type": "number",
+                  "readOnly": true,
+                  "observable": true,
+                  "forms": [
+                    {
+                      "href": "{{DEVICE_IP}}/1?quantity=2",
+                      "op": [ "readproperty", "observeproperty" ],
+                      "type": "xsd:short",
+                      "pollingTime": 1000
+                    }
+                  ]
+                }
+              }
+            }
+            """;
+
         private OpcUaServerFixture _fixture;
 
         public Task InitializeAsync()
@@ -160,6 +188,87 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             page.Find(".btn-refresh[title='Refresh']").Click();
 
             Assert.Equal("WoT Page Asset", page.Find(".detail-title").TextContent);
+        }
+
+        [Fact]
+        public void Importing_a_thing_model_asks_for_its_placeholders_and_imports_the_result()
+        {
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
+
+            Import(page, "meter.tm.jsonld", ThingModel);
+
+            // Nothing is imported until the placeholders are filled in.
+            page.WaitForElement(".dialog");
+            Assert.Contains("No WoT files loaded", page.Markup, StringComparison.Ordinal);
+            Assert.Equal(["DEVICE_IP", "UNIT"], page.FindAll(".td-placeholders .dialog-field span").Select(s => s.TextContent));
+
+            // A name with a placeholder is not offered as the default.
+            Assert.Equal(string.Empty, page.Find(".tm-name").GetAttribute("value") ?? string.Empty);
+            Assert.True(page.Find(".tm-create").HasAttribute("disabled"));
+
+            page.FindAll(".td-placeholders input")[0].Change("10.0.0.7");
+            page.FindAll(".td-placeholders input")[1].Change("3");
+            page.Find(".tm-name").Input("meter1");
+            page.Find(".tm-create").Click();
+
+            page.WaitForAssertion(() =>
+            {
+                Assert.Empty(page.FindAll(".dialog"));
+                Assert.Contains("Imported 'meter.tm.jsonld' successfully.", page.Markup, StringComparison.Ordinal);
+                Assert.Contains("mock://10.0.0.7:1234/3", page.Markup, StringComparison.Ordinal);
+            });
+
+            page.FindAll(".seg-btn").Single(b => b.TextContent == "Raw").Click();
+            string raw = page.Find("pre.code-block").TextContent;
+            Assert.DoesNotContain("{{", raw, StringComparison.Ordinal);
+            Assert.DoesNotContain("tm:ThingModel", raw, StringComparison.Ordinal);
+            Assert.Contains("\"name\": \"meter1\"", raw, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void Cancelling_the_thing_model_dialog_imports_nothing()
+        {
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
+            Import(page, "meter.tm.jsonld", ThingModel);
+            page.WaitForElement(".dialog");
+
+            page.FindAll(".dialog-actions button").Single(b => b.TextContent == "Cancel").Click();
+
+            Assert.Empty(page.FindAll(".dialog"));
+            Assert.Contains("No WoT files loaded", page.Markup, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void An_invalid_name_keeps_the_thing_model_dialog_open_with_the_error()
+        {
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
+            Import(page, "meter.tm.jsonld", ThingModel);
+            page.WaitForElement(".dialog");
+
+            page.Find(".tm-name").Input("../escape");
+            page.Find(".tm-create").Click();
+
+            page.WaitForAssertion(() =>
+                Assert.Contains("Failed to import 'meter.tm.jsonld'", page.Find(".dialog .banner-warning").TextContent, StringComparison.Ordinal));
+            Assert.Contains("No WoT files loaded", page.Markup, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void A_thing_model_without_placeholders_keeps_its_name_as_the_default()
+        {
+            IRenderedComponent<WotFiles> page = Render<WotFiles>();
+            string model = ThingDescription.Replace("\"@type\": [ \"Thing\" ]", "\"@type\": [ \"tm:ThingModel\" ]", StringComparison.Ordinal);
+
+            Import(page, "plain.tm.jsonld", model);
+            page.WaitForElement(".dialog");
+
+            Assert.Contains("has no placeholders", page.Find(".dialog").TextContent, StringComparison.Ordinal);
+            Assert.Equal("wotpage", page.Find(".tm-name").GetAttribute("value"));
+
+            page.Find(".tm-create").Click();
+
+            page.WaitForAssertion(() =>
+                Assert.Contains("WoT Page Asset", page.Find(".detail-title").TextContent, StringComparison.Ordinal));
         }
 
         private static void Import(IRenderedComponent<WotFiles> page, string fileName, string contents)
