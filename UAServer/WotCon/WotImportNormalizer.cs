@@ -2,6 +2,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
 {
     using System;
     using System.Linq;
+    using System.Text.Encodings.Web;
     using System.Text.Json;
     using System.Text.Json.Nodes;
 
@@ -33,6 +34,14 @@ namespace Opc.Ua.Edge.Translator.WotCon
         public const string ObjectsFolder = "nsu=http://opcfoundation.org/UA/;i=85";
 
         private const string TdContext = "https://www.w3.org/2022/wot/td/v1.1";
+
+        // Thing Descriptions are JSON files, not HTML: keep "modbus+tcp://", "&", "<" etc. readable
+        // instead of writing them as \u002B escapes.
+        private static readonly JsonSerializerOptions s_serializerOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         /// <summary>
         /// Returns the namespace URIs named by the <c>uav:mapToType</c> terms of the
@@ -109,7 +118,7 @@ namespace Opc.Ua.Edge.Translator.WotCon
             changed |= MapPropertiesToThemselves(document);
 
             return changed
-                ? JsonSerializer.SerializeToUtf8Bytes(document, new JsonSerializerOptions { WriteIndented = true })
+                ? JsonSerializer.SerializeToUtf8Bytes(document, s_serializerOptions)
                 : content;
         }
 

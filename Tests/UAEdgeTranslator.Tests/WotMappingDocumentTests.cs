@@ -190,8 +190,71 @@ namespace Opc.Ua.Edge.Translator.Tests
             Assert.False(description.IsThingModel);
             Assert.Equal("meter-1", description.Name);
             Assert.Equal("Meter PAC \"4200\"", description.Title);
-            Assert.Null(JsonNode.Parse(json)["@type"]);
+            Assert.Equal(["Thing"], JsonNode.Parse(json)["@type"].AsArray().Select(t => t.GetValue<string>()));
             Assert.Equal("mock://10.0.0.5:502/1", JsonNode.Parse(json)["base"].GetValue<string>());
+
+            // The model has no id, so the Thing gets one from its name, after the JSON-LD keywords.
+            Assert.Equal("urn:meter-1", description.Id);
+            Assert.Equal(["@context", "@type", "id"], JsonNode.Parse(json).AsObject().Select(p => p.Key).Take(3));
+        }
+
+        [Theory]
+        [InlineData("\"tm:ThingModel\"", "\"Thing\"")]
+        [InlineData("[ \"brick:Meter\", \"tm:ThingModel\" ]", "[\"brick:Meter\",\"Thing\"]")]
+        [InlineData("[ \"Thing\", \"tm:ThingModel\" ]", "[\"Thing\"]")]
+        public void The_thing_model_type_becomes_thing_and_other_types_are_kept(string modelType, string expected)
+        {
+            WotMappingDocument model = WotMappingDocument.Parse(ThingModel.Replace("[ \"tm:ThingModel\" ]", modelType, StringComparison.Ordinal));
+
+            string json = model.CreateThingDescriptionJson(new Dictionary<string, string>(), "meter-1");
+
+            Assert.Equal(expected, JsonNode.Parse(json)["@type"].ToJsonString());
+            Assert.False(WotMappingDocument.Parse(json).IsThingModel);
+        }
+
+        [Fact]
+        public void The_created_thing_description_keeps_url_and_text_characters_unescaped()
+        {
+            WotMappingDocument model = WotMappingDocument.Parse(ThingModel.Replace("mock://", "modbus+tcp://", StringComparison.Ordinal));
+
+            string json = model.CreateThingDescriptionJson(
+                new Dictionary<string, string> { ["MODEL"] = "Zähler <A&B>", ["HOST"] = "10.0.0.5", ["PORT"] = "502" },
+                "meter-1");
+
+            Assert.Contains("\"base\": \"modbus+tcp://10.0.0.5:502/1\"", json, StringComparison.Ordinal);
+            Assert.Contains("\"title\": \"Meter Zähler <A&B>\"", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\\u", json, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void A_fixed_model_id_is_replaced_by_one_for_the_created_thing()
+        {
+            // The id names the model; every Thing created from it needs its own.
+            WotMappingDocument model = WotMappingDocument.Parse(ThingModel.Replace("\"@type\"", "\"id\": \"urn:pac4200\", \"@type\"", StringComparison.Ordinal));
+
+            WotMappingDocument first = WotMappingDocument.Parse(model.CreateThingDescriptionJson(new Dictionary<string, string>(), "meter-1"));
+            WotMappingDocument second = WotMappingDocument.Parse(model.CreateThingDescriptionJson(new Dictionary<string, string>(), "meter-2"));
+
+            Assert.Equal("urn:meter-1", first.Id);
+            Assert.Equal("urn:meter-2", second.Id);
+        }
+
+        [Fact]
+        public void A_model_id_built_from_placeholders_is_kept_with_its_values()
+        {
+            WotMappingDocument model = WotMappingDocument.Parse(ThingModel.Replace("\"@type\"", "\"id\": \"urn:meter:{{HOST}}\", \"@type\"", StringComparison.Ordinal));
+
+            string json = model.CreateThingDescriptionJson(new Dictionary<string, string> { ["HOST"] = "10.0.0.5" }, "meter-1");
+
+            Assert.Equal("urn:meter:10.0.0.5", WotMappingDocument.Parse(json).Id);
+        }
+
+        [Fact]
+        public void No_id_is_made_up_without_a_usable_name()
+        {
+            WotMappingDocument model = WotMappingDocument.Parse(ThingModel.Replace("\"title\"", "\"name\": \"m-{{HOST}}\", \"title\"", StringComparison.Ordinal));
+
+            Assert.Null(WotMappingDocument.Parse(model.CreateThingDescriptionJson(new Dictionary<string, string>())).Id);
         }
 
         [Fact]

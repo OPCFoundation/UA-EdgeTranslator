@@ -289,7 +289,7 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             JsonObject td = Downloaded(page);
             Assert.Equal("boiler-1", td["name"].GetValue<string>());
             Assert.Equal("mock://127.0.0.1:1234/1", td["base"].GetValue<string>());
-            Assert.Null(td["@type"]);
+            Assert.Equal(["Thing"], td["@type"].AsArray().Select(t => t.GetValue<string>()));
         }
 
         [Fact]

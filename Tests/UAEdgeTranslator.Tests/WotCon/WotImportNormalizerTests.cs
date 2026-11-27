@@ -51,6 +51,17 @@ namespace Opc.Ua.Edge.Translator.Tests.WotCon
         }
 
         [Fact]
+        public void A_rewritten_document_keeps_url_and_text_characters_unescaped()
+        {
+            string json = Encoding.UTF8.GetString(WotImportNormalizer.Normalize(Encoding.UTF8.GetBytes("""
+                { "@context": "https://www.w3.org/2022/wot/td/v1.1", "@type": "Thing", "title": "Zähler <A&B>", "base": "modbus+tcp://10.0.0.5:502/1" }
+                """)));
+
+            Assert.Contains("\"base\": \"modbus+tcp://10.0.0.5:502/1\"", json, System.StringComparison.Ordinal);
+            Assert.Contains("\"title\": \"Zähler <A&B>\"", json, System.StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void A_scalar_context_and_type_are_widened()
         {
             JsonObject td = Normalize("""{ "@context": "https://www.w3.org/2022/wot/td/v1.1", "@type": "Thing", "title": "x" }""");

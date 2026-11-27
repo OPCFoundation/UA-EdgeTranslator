@@ -3,6 +3,7 @@ namespace Opc.Ua.Edge.Translator.Models
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.Encodings.Web;
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using System.Text.RegularExpressions;
@@ -93,8 +94,15 @@ namespace Opc.Ua.Edge.Translator.Models
     public sealed class WotMappingDocument
     {
         private const string ThingModelType = "tm:ThingModel";
+        private const string ThingType = "Thing";
 
-        private static readonly JsonSerializerOptions _serializerOptions = new() { WriteIndented = true };
+        // Thing Descriptions are JSON files, not HTML: keep "modbus+tcp://", "&", "<" etc. readable
+        // instead of writing them as \u002B escapes.
+        private static readonly JsonSerializerOptions _serializerOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         private static readonly Regex _placeholderRegex = new(@"\{\{\s*([^{}]+?)\s*\}\}", RegexOptions.Compiled);
 
@@ -199,8 +207,9 @@ namespace Opc.Ua.Edge.Translator.Models
 
         /// <summary>
         /// Creates a Thing Description from this Thing Model: substitutes the placeholder
-        /// values, removes the "tm:ThingModel" @type marker and, when given, sets the Thing's
-        /// name (which the translator requires to name the asset).
+        /// values, turns the "tm:ThingModel" @type into "Thing", sets the Thing's name when given
+        /// (which the translator requires to name the asset) and gives the Thing its own
+        /// identifier (see <see cref="AssignThingId"/>).
         /// </summary>
         public string CreateThingDescriptionJson(IReadOnlyDictionary<string, string> placeholderValues, string name = null)
         {
@@ -214,14 +223,49 @@ namespace Opc.Ua.Edge.Translator.Models
                 throw new InvalidOperationException("The Thing Description's root must be a JSON object.");
             }
 
-            RemoveThingModelType(root);
+            ConvertThingModelType(root);
 
             if (!string.IsNullOrWhiteSpace(name))
             {
                 root["name"] = name.Trim();
             }
 
+            AssignThingId(root);
+
             return root.ToJsonString(_serializerOptions);
+        }
+
+        /// <summary>
+        /// Every Thing created from a model needs an identifier of its own: the registry
+        /// keys the Thing and its OPC UA namespace by it. A model's fixed "id" names the
+        /// model, so every Thing created from it would share it; it is replaced, like a
+        /// missing one, by "urn:&lt;name&gt;" (the convention of the bundled samples). An "id"
+        /// built from placeholders is already per Thing and is kept.
+        /// </summary>
+        private void AssignThingId(JsonObject root)
+        {
+            string modelId = GetString("id");
+            if (!string.IsNullOrWhiteSpace(modelId) && _placeholderRegex.IsMatch(modelId))
+            {
+                return;
+            }
+
+            string name = root["name"] is JsonValue value && value.TryGetValue(out string text) ? text : null;
+            if (string.IsNullOrWhiteSpace(name) || _placeholderRegex.IsMatch(name))
+            {
+                return;
+            }
+
+            string id = "urn:" + Uri.EscapeDataString(name.Trim());
+            if (root.ContainsKey("id"))
+            {
+                root["id"] = id;
+                return;
+            }
+
+            // Keep the conventional position, right after the JSON-LD keywords.
+            int index = root.TakeWhile(p => p.Key.StartsWith('@')).Count();
+            root.Insert(index, "id", id);
         }
 
         public string Serialize() => _root.ToJsonString(_serializerOptions);
@@ -255,33 +299,44 @@ namespace Opc.Ua.Edge.Translator.Models
             };
         }
 
-        private static void RemoveThingModelType(JsonObject root)
+        // Replaces the "tm:ThingModel" marker with "Thing" in place, keeping any other
+        // (e.g. semantic) types and never listing "Thing" twice.
+        private static void ConvertThingModelType(JsonObject root)
         {
             if (root["@type"] is JsonArray array)
             {
+                bool hasThing = array.Any(t => IsType(t, ThingType));
                 for (int i = array.Count - 1; i >= 0; i--)
                 {
-                    if (array[i] is JsonValue v && v.TryGetValue(out string s) && string.Equals(s, ThingModelType, StringComparison.Ordinal))
+                    if (!IsType(array[i], ThingModelType))
+                    {
+                        continue;
+                    }
+
+                    if (hasThing)
                     {
                         array.RemoveAt(i);
                     }
-                }
-
-                if (array.Count == 0)
-                {
-                    root.Remove("@type");
+                    else
+                    {
+                        array[i] = ThingType;
+                        hasThing = true;
+                    }
                 }
             }
-            else if (root["@type"] is JsonValue single && single.TryGetValue(out string s) && string.Equals(s, ThingModelType, StringComparison.Ordinal))
+            else if (IsType(root["@type"], ThingModelType))
             {
-                root.Remove("@type");
+                root["@type"] = ThingType;
             }
         }
+
+        private static bool IsType(JsonNode node, string type) =>
+            node is JsonValue value && value.TryGetValue(out string s) && string.Equals(s, type, StringComparison.Ordinal);
 
         // Escapes the value for embedding inside an existing JSON string literal.
         private static string JsonEscape(string value)
         {
-            string encoded = JsonSerializer.Serialize(value ?? string.Empty);
+            string encoded = JsonSerializer.Serialize(value ?? string.Empty, _serializerOptions);
             return encoded.Length >= 2 ? encoded[1..^1] : encoded;
         }
     }

@@ -222,7 +222,9 @@ namespace Opc.Ua.Edge.Translator.Tests.Components
             string raw = page.Find("pre.code-block").TextContent;
             Assert.DoesNotContain("{{", raw, StringComparison.Ordinal);
             Assert.DoesNotContain("tm:ThingModel", raw, StringComparison.Ordinal);
+            Assert.Matches("\"@type\":\\s*\\[\\s*\"Thing\"", raw);
             Assert.Contains("\"name\": \"meter1\"", raw, StringComparison.Ordinal);
+            Assert.Contains("\"id\": \"urn:meter:10.0.0.7\"", raw, StringComparison.Ordinal);
         }
 
         [Fact]
