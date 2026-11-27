@@ -1,25 +1,25 @@
 Summary
-  Generated on: 11/27/2026 - 09:04:54
-  Coverage date: 11/27/2026 - 09:04:51
+  Generated on: 11/27/2026 - 11:34:20
+  Coverage date: 11/27/2026 - 11:34:18
   Parser: Cobertura
   Assemblies: 1
   Classes: 69
   Files: 59
-  Line coverage: 83.8%
-  Covered lines: 5896
-  Uncovered lines: 1137
-  Coverable lines: 7033
-  Total lines: 18304
-  Branch coverage: 74.3% (3023 of 4066)
-  Covered branches: 3023
-  Total branches: 4066
-  Method coverage: 94.8% (642 of 677)
-  Full method coverage: 63.8% (432 of 677)
-  Covered methods: 642
-  Fully covered methods: 432
-  Total methods: 677
+  Line coverage: 83.6%
+  Covered lines: 5905
+  Uncovered lines: 1154
+  Coverable lines: 7059
+  Total lines: 18368
+  Branch coverage: 74.4% (3034 of 4076)
+  Covered branches: 3034
+  Total branches: 4076
+  Method coverage: 94.8% (644 of 679)
+  Full method coverage: 64.2% (436 of 679)
+  Covered methods: 644
+  Fully covered methods: 436
+  Total methods: 679
 
-UAEdgeTranslator                                                  83.8%
+UAEdgeTranslator                                                  83.6%
   Opc.Ua.Cloud.ConsoleTelemetry                                   98.7%
   Opc.Ua.Cloud.Library.Models.Category                             100%
   Opc.Ua.Cloud.Library.Models.Nodeset                              100%
@@ -57,7 +57,7 @@ UAEdgeTranslator                                                  83.8%
   Opc.Ua.Edge.Translator.Models.AssetActionResult                  100%
   Opc.Ua.Edge.Translator.Models.AssetConnection                    100%
   Opc.Ua.Edge.Translator.Models.ThingDescriptionId                66.6%
-  Opc.Ua.Edge.Translator.Models.WotMappingDocument                92.3%
+  Opc.Ua.Edge.Translator.Models.WotMappingDocument                97.9%
   Opc.Ua.Edge.Translator.Models.WotMappingProperty                 100%
   Opc.Ua.Edge.Translator.NodeFactory                               100%
   Opc.Ua.Edge.Translator.OpcUaHosting                             62.5%
@@ -68,7 +68,7 @@ UAEdgeTranslator                                                  83.8%
   Opc.Ua.Edge.Translator.TlsServerCertificates                    65.3%
   Opc.Ua.Edge.Translator.TranslatorSettings                       87.1%
   Opc.Ua.Edge.Translator.UACloudLibraryClient                     89.5%
-  Opc.Ua.Edge.Translator.UANodeManager                            76.9%
+  Opc.Ua.Edge.Translator.UANodeManager                            75.6%
   Opc.Ua.Edge.Translator.UANodeManagerFactory                      100%
   Opc.Ua.Edge.Translator.UAServer                                 97.4%
   Opc.Ua.Edge.Translator.VariantConversion                        93.7%
