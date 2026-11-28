@@ -1,17 +1,17 @@
 Summary
-  Generated on: 11/27/2026 - 11:34:20
-  Coverage date: 11/27/2026 - 11:34:18
+  Generated on: 11/28/2026 - 08:36:38
+  Coverage date: 11/28/2026 - 08:36:35
   Parser: Cobertura
   Assemblies: 1
   Classes: 69
   Files: 59
   Line coverage: 83.6%
-  Covered lines: 5905
-  Uncovered lines: 1154
+  Covered lines: 5904
+  Uncovered lines: 1155
   Coverable lines: 7059
   Total lines: 18368
-  Branch coverage: 74.4% (3034 of 4076)
-  Covered branches: 3034
+  Branch coverage: 74.2% (3028 of 4076)
+  Covered branches: 3028
   Total branches: 4076
   Method coverage: 94.8% (644 of 679)
   Full method coverage: 64.2% (436 of 679)
@@ -81,7 +81,7 @@ UAEdgeTranslator                                                  83.6%
   Opc.Ua.Edge.Translator.WotCon.DriverWotBindingChannel           87.6%
   Opc.Ua.Edge.Translator.WotCon.DriverWotBindingExecutor          89.3%
   Opc.Ua.Edge.Translator.WotCon.LeasingWotBlobResourceStore       92.7%
-  Opc.Ua.Edge.Translator.WotCon.ObjectTypeMappingRuntimeFactory   90.4%
+  Opc.Ua.Edge.Translator.WotCon.ObjectTypeMappingRuntimeFactory   89.8%
   Opc.Ua.Edge.Translator.WotCon.ProvisioningGate                   100%
   Opc.Ua.Edge.Translator.WotCon.ThingDescriptionCache               96%
   Opc.Ua.Edge.Translator.WotCon.WotAssetReconnector                 79%
